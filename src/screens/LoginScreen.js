@@ -66,7 +66,7 @@ export default function LoginScreen({ onLogin, theme, onNavigateToSignUp }) {
           // Comportement existant inchangé pour admin/sekretariat/driver/guest
           let assignedRole = 'guest';
 
-          if (cleanUsername === 'admin' || cleanUsername === 'pengarah' || cleanUsername === 'fatin') {
+          if (cleanUsername === 'admin' || cleanUsername === 'pengarah' || cleanUsername === 'fatin' || cleanUsername === 'zaiini') {
             assignedRole = 'admin';
           } else if (cleanUsername === 'sekretariat' || cleanUsername === 'jpbd') {
             assignedRole = 'sekretariat';

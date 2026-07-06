@@ -1,7 +1,7 @@
 // src/screens/SekretariatScreen.js
 import React, { useState, useEffect, createElement, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, Image, Modal, TextInput, Alert, ActivityIndicator } from 'react-native';
-import { Briefcase, AlertTriangle, Home, Droplets, Mountain, Users, AlertCircle, Plus, Edit, Trash2, X, Map } from 'lucide-react-native';
+import { Briefcase, AlertTriangle, Home, Droplets, Mountain, Users, AlertCircle, Plus, Edit, Trash2, X, Map, Flame, Wind, MoreHorizontal } from 'lucide-react-native';
 import { supabase } from '../supabaseClient';
 import { supabaseSandbox } from '../supabaseSandboxClient';
 
@@ -17,6 +17,27 @@ const getAgencyColor = (agencyName = '') => {
   if (name.includes('jkm')) return '#a855f7';
   return '#64748b';
 };
+
+const CALAMITY_CATEGORIES = [
+  { key: 'KJR', label: 'Kes Kemalangan Jalan Raya', color: '#ef4444' },
+  { key: 'KM', label: 'Kes Menangkap Ular', color: '#f97316' },
+  { key: 'MMS', label: 'Memusnah Sarang Serangga', color: '#eab308' },
+  { key: 'KBD', label: 'Kes Bunuh Diri', color: '#64748b' },
+  { key: 'KK', label: 'Khidmat Khas', color: '#a855f7' },
+  { key: 'SKT', label: 'Sakit (Medikal/Trauma)', color: '#ec4899' },
+  { key: 'KTK', label: 'Kemalangan Tempat Kerja', color: '#14b8a6' },
+  { key: 'PT', label: 'Pokok Tumbang', color: '#84cc16' },
+  { key: 'KBR', label: 'Kes Kebakaran', color: '#dc2626' },
+  { key: 'ML', label: 'Mangsa Lemas', color: '#0ea5e9' },
+  { key: 'LLK', label: 'Lain-lain Kes', color: '#94a3b8' },
+  { key: 'KB', label: 'Kes Bergaduh', color: '#f43f5e' },
+  { key: 'MHL', label: 'Menangkap Haiwan Liar', color: '#65a30d' },
+  { key: 'MHP', label: 'Menangkap Haiwan Peliharaan', color: '#22c55e' },
+  { key: 'MT', label: 'Mangsa Terperangkap', color: '#7c3aed' },
+];
+
+const getCalamityMeta = (key) => CALAMITY_CATEGORIES.find(c => c.key === key) || CALAMITY_CATEGORIES[4];
+
 
 const SekretariatScreen = ({ theme, userRole }) => {
   const [activeTab, setActiveTab] = useState('JPBD'); 
@@ -65,8 +86,41 @@ const SekretariatScreen = ({ theme, userRole }) => {
   const [petaIframeLoading, setPetaIframeLoading] = useState(true);
   const petaIframeRef = useRef(null);
 
+  const [calamityPoints, setCalamityPoints] = useState([]);
+  const [activeCalamityTool, setActiveCalamityTool] = useState(null); // catégorie en cours de placement
+  const [pendingPlacement, setPendingPlacement] = useState(null); // { lat, lng } en attente de confirmation
+  const [calamityDescription, setCalamityDescription] = useState('');
+  const [calamityModalVisible, setCalamityModalVisible] = useState(false);
+
   const handlePetaIframeLoad = () => {
     setPetaIframeLoading(false);
+
+    // Renvoie les données actuelles une fois l'iframe prête à les recevoir
+    setTimeout(() => {
+      if (petaIframeRef?.current?.contentWindow) {
+        const agencyPayload = onlineAgencies.map(a => ({
+          id: a.id,
+          name: a.member_name,
+          agency: a.jpbd_directory?.agency || '',
+          lat: a.latitude,
+          lng: a.longitude,
+          color: getAgencyColor(a.jpbd_directory?.agency || ''),
+          updated: a.last_updated ? new Date(a.last_updated).toLocaleTimeString() : ''
+        }));
+        petaIframeRef.current.contentWindow.postMessage(JSON.stringify({ type: 'UPDATE_AGENCIES', payload: agencyPayload }), '*');
+
+        const calamityPayload = calamityPoints.map(c => ({
+          id: c.id,
+          category: c.category,
+          description: c.description || '',
+          lat: c.latitude,
+          lng: c.longitude,
+          color: getCalamityMeta(c.category).color,
+          label: getCalamityMeta(c.category).label
+        }));
+        petaIframeRef.current.contentWindow.postMessage(JSON.stringify({ type: 'UPDATE_CALAMITIES', payload: calamityPayload }), '*');
+      }
+    }, 300);
   };
 
   useEffect(() => {
@@ -74,6 +128,7 @@ const SekretariatScreen = ({ theme, userRole }) => {
     fetchPPS();
     fetchHotspots();
     fetchOnlineAgencies();
+    fetchCalamityPoints();
 
     const ppsSubscription = supabase
       .channel('pps_changes')
@@ -96,12 +151,28 @@ const SekretariatScreen = ({ theme, userRole }) => {
       })
       .subscribe();
 
+     const calamitySubscription = supabaseSandbox
+      .channel('calamity_points_changes')
+      .on('postgres_changes', { event: '*', schema: 'sandbox', table: 'calamity_points' }, () => {
+        fetchCalamityPoints();
+      })
+      .subscribe();
+
     return () => {
       supabase.removeChannel(ppsSubscription);
       supabase.removeChannel(hotspotSubscription);
       supabaseSandbox.removeChannel(petaSubscription);
+      supabaseSandbox.removeChannel(calamitySubscription);
     };
   }, []);
+  
+  const fetchCalamityPoints = async () => {
+    const { data, error } = await supabaseSandbox
+      .from('calamity_points')
+      .select('*');
+    if (!error) setCalamityPoints(data || []);
+    else console.error(error);
+  };
 
   useEffect(() => {
     if (petaIframeRef?.current?.contentWindow) {
@@ -117,6 +188,68 @@ const SekretariatScreen = ({ theme, userRole }) => {
       petaIframeRef.current.contentWindow.postMessage(JSON.stringify({ type: 'UPDATE_AGENCIES', payload }), '*');
     }
   }, [onlineAgencies]);
+
+  useEffect(() => {
+    if (petaIframeRef?.current?.contentWindow) {
+      const payload = calamityPoints.map(c => ({
+        id: c.id,
+        category: c.category,
+        description: c.description || '',
+        lat: c.latitude,
+        lng: c.longitude,
+        color: getCalamityMeta(c.category).color,
+        label: getCalamityMeta(c.category).label
+      }));
+      petaIframeRef.current.contentWindow.postMessage(JSON.stringify({ type: 'UPDATE_CALAMITIES', payload }), '*');
+    }
+  }, [calamityPoints]);
+
+  useEffect(() => {
+    const handleMapMessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === 'MAP_CLICKED' && activeCalamityTool) {
+          setPendingPlacement({ lat: data.lat, lng: data.lng });
+          setCalamityModalVisible(true);
+        } else if (data.type === 'DELETE_CALAMITY_REQUEST') {
+          handleDeleteCalamity(data.id);
+        }
+      } catch (e) {}
+    };
+    window.addEventListener('message', handleMapMessage);
+    return () => window.removeEventListener('message', handleMapMessage);
+  }, [activeCalamityTool]);
+
+  const handleSaveCalamity = async () => {
+    if (!pendingPlacement || !activeCalamityTool) return;
+
+    const { error } = await supabaseSandbox
+      .from('calamity_points')
+      .insert([{
+        category: activeCalamityTool,
+        description: calamityDescription.trim() || null,
+        latitude: pendingPlacement.lat,
+        longitude: pendingPlacement.lng
+      }]);
+
+    if (error) {
+      Alert.alert('Ralat', 'Gagal menyimpan titik bencana.');
+    } else {
+      setCalamityModalVisible(false);
+      setCalamityDescription('');
+      setPendingPlacement(null);
+      setActiveCalamityTool(null);
+      fetchCalamityPoints();
+    }
+  };
+
+  const handleDeleteCalamity = async (id) => {
+    const confirmed = Platform.OS === 'web' ? window.confirm('Padam titik bencana ini?') : true;
+    if (!confirmed) return;
+    const { error } = await supabaseSandbox.from('calamity_points').delete().eq('id', id);
+    if (!error) fetchCalamityPoints();
+  };
+
 
   // ==========================================
   // JPBD CRUD FUNCTIONS
@@ -229,8 +362,6 @@ const SekretariatScreen = ({ theme, userRole }) => {
       .select('id, member_name, latitude, longitude, tracking_status, last_updated, jpbd_directory(agency)')
       .eq('tracking_status', 'Online')
       .not('latitude', 'is', null);
-
-    console.log('PETA DATA:', data, 'PETA ERROR:', error); // 👈 ajoute ça
 
     if (!error) setOnlineAgencies(data || []);
     else console.error(error);
@@ -647,6 +778,7 @@ const SekretariatScreen = ({ theme, userRole }) => {
         <div id="map"></div>
         <script>
           var map = L.map('map', { zoomControl: false, attributionControl: false }).setView([5.2831, 115.2308], 12);
+          var canDeleteCalamity = ${userRole === 'admin' || userRole === 'sekretariat' ? 'true' : 'false'};
           L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(map);
           L.control.zoom({ position: 'bottomright' }).addTo(map);
 
@@ -661,7 +793,34 @@ const SekretariatScreen = ({ theme, userRole }) => {
           });
 
           var markers = {};
+          var calamityMarkers = {};
 
+          map.on('click', function(e) {
+            window.parent.postMessage(JSON.stringify({
+              type: 'MAP_CLICKED',
+              lat: e.latlng.lat,
+              lng: e.latlng.lng
+            }), '*');
+          });
+
+          window.requestDeleteCalamity = function(id) {
+            window.parent.postMessage(JSON.stringify({
+              type: 'DELETE_CALAMITY_REQUEST',
+              id: id
+            }), '*');
+          };
+
+          var createCalamityIcon = (color, category) => L.divIcon({
+            className: 'calamity-pin',
+            html: '<div style="display: flex; align-items: center; gap: 5px; background-color: white; padding: 4px 8px 4px 4px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.4); border: 1.5px solid ' + color + ';">' +
+                    '<svg width="22" height="20" viewBox="0 0 24 22" style="flex-shrink: 0;">' +
+                      '<polygon points="12,1 23,20 1,20" fill="' + color + '" stroke="white" stroke-width="1.5" stroke-linejoin="round"/>' +
+                      '<text x="12" y="17" text-anchor="middle" font-size="12" font-weight="900" fill="white" font-family="sans-serif">!</text>' +
+                    '</svg>' +
+                    '<span style="color: #1f2937; font-size: 11px; font-weight: 800; font-family: sans-serif; white-space: nowrap;">' + category + '</span>' +
+                  '</div>',
+            iconSize: [70, 30], iconAnchor: [15, 28], popupAnchor: [10, -25]
+          });
           window.addEventListener('message', function(event) {
             var data = JSON.parse(event.data);
             if (data.type === 'UPDATE_AGENCIES') {
@@ -680,6 +839,52 @@ const SekretariatScreen = ({ theme, userRole }) => {
                 } else {
                   markers[a.id] = L.marker([a.lat, a.lng], { icon: createIcon(a.color) })
                     .bindPopup(popupContent)
+                    .addTo(map);
+                }
+              });
+            } else if (data.type === 'UPDATE_CALAMITIES') {
+              var currentCalamityIds = data.payload.map(function(c) { return c.id; });
+              Object.keys(calamityMarkers).forEach(function(id) {
+                if (currentCalamityIds.indexOf(id) === -1) {
+                  map.removeLayer(calamityMarkers[id]);
+                  delete calamityMarkers[id];
+                }
+              });
+
+              data.payload.forEach(function(c) {
+                if (!calamityMarkers[c.id]) {
+                  var popupDiv = document.createElement('div');
+                  popupDiv.className = 'custom-popup';
+
+                  var strongEl = document.createElement('strong');
+                  strongEl.textContent = c.label;
+                  popupDiv.appendChild(strongEl);
+
+                  var spanEl = document.createElement('span');
+                  spanEl.textContent = c.description || 'Tiada keterangan';
+                  popupDiv.appendChild(spanEl);
+
+                  if (canDeleteCalamity) {
+                    var btnEl = document.createElement('button');
+                    btnEl.textContent = 'Padam Titik';
+                    btnEl.style.marginTop = '6px';
+                    btnEl.style.backgroundColor = '#ef4444';
+                    btnEl.style.color = 'white';
+                    btnEl.style.border = 'none';
+                    btnEl.style.padding = '4px 10px';
+                    btnEl.style.borderRadius = '6px';
+                    btnEl.style.fontSize = '11px';
+                    btnEl.style.fontWeight = '700';
+                    btnEl.style.cursor = 'pointer';
+                    btnEl.style.width = '100%';
+                    btnEl.addEventListener('click', function() {
+                      window.requestDeleteCalamity(c.id);
+                    });
+                    popupDiv.appendChild(btnEl);
+                  }
+
+                  calamityMarkers[c.id] = L.marker([c.lat, c.lng], { icon: createCalamityIcon(c.color, c.category) })
+                    .bindPopup(popupDiv)
                     .addTo(map);
                 }
               });
@@ -777,6 +982,27 @@ const SekretariatScreen = ({ theme, userRole }) => {
               </ScrollView>
             </View>
           )}
+          {userRole === 'sekretariat' || userRole === 'admin' ? (
+            <View style={styles.calamityPalette}>
+              <ScrollView style={{ maxHeight: 280 }} showsVerticalScrollIndicator={false}>
+                {CALAMITY_CATEGORIES.map(cat => {
+                  const isActive = activeCalamityTool === cat.key;
+                  return (
+                    <TouchableOpacity
+                      key={cat.key}
+                      style={[styles.calamityToolBtn, { backgroundColor: isActive ? cat.color : '#fff', borderColor: cat.color }]}
+                      onPress={() => setActiveCalamityTool(isActive ? null : cat.key)}
+                    >
+                      <Text style={[styles.calamityToolText, { color: isActive ? '#fff' : cat.color }]}>{cat.key}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+              {activeCalamityTool && (
+                <Text style={styles.calamityHint}>Klik pada peta untuk letak titik</Text>
+              )}
+            </View>
+          ) : null}
         </View>
       ) : (
         // --- Autres onglets : ScrollView classique ---
@@ -934,6 +1160,32 @@ const SekretariatScreen = ({ theme, userRole }) => {
           </View>
         </View>
       </Modal>
+      <Modal visible={calamityModalVisible} transparent={true} animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Tambah Titik Bencana</Text>
+              <TouchableOpacity onPress={() => { setCalamityModalVisible(false); setPendingPlacement(null); }}>
+                <X size={24} color="#64748b" />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.modalForm}>
+              <Text style={styles.inputLabel}>Kategori: {getCalamityMeta(activeCalamityTool).label}</Text>
+              <Text style={styles.inputLabel}>Keterangan (pilihan)</Text>
+              <TextInput
+                style={[styles.input, { height: 80, textAlignVertical: 'top' }]}
+                placeholder="Cth: Air naik setinggi 1 meter"
+                multiline
+                value={calamityDescription}
+                onChangeText={setCalamityDescription}
+              />
+              <TouchableOpacity style={styles.saveButton} onPress={handleSaveCalamity}>
+                <Text style={styles.saveButtonText}>Simpan Titik</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
     </View>
   );
@@ -1049,6 +1301,10 @@ const styles = StyleSheet.create({
   petaAgencyDot: { width: 10, height: 10, borderRadius: 5 },
   petaAgencyName: { fontSize: 12, fontWeight: '700', color: '#0f172a', maxWidth: 120 },
   petaAgencyUser: { fontSize: 10, color: '#64748b' },
+  calamityPalette: { position: 'absolute', top: 16, right: 16, zIndex: 10, backgroundColor: '#fff', borderRadius: 16, padding: 10, gap: 6, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 10, elevation: 4, width: 90 },
+  calamityToolBtn: { paddingVertical: 8, borderRadius: 8, borderWidth: 2, justifyContent: 'center', alignItems: 'center', marginBottom: 6 },
+  calamityToolText: { fontSize: 11, fontWeight: '800' },
+  calamityHint: { fontSize: 10, color: '#64748b', textAlign: 'center', marginTop: 4 },
 });
 
 export default SekretariatScreen;
