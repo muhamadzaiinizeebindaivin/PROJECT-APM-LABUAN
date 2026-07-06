@@ -1,3 +1,4 @@
+// src/screen/OperasiScreen.js
 import React, { useState, useEffect, useRef, useMemo, createElement } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, ScrollView, TouchableOpacity, Modal, Alert, TextInput, Platform } from 'react-native';
 import { ShieldAlert, Ambulance, Truck, Car, Bike, Map as MapIcon, BarChart2, AlertTriangle, TrendingDown, TrendingUp, Calendar, ChevronDown, ChevronUp, Plus, Edit2, Trash2, X, Check } from 'lucide-react-native';

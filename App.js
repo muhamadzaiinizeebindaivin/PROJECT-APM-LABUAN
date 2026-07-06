@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
-import { View, StatusBar, TouchableOpacity, Alert, Platform, Text } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
+import React, { useState, useEffect } from 'react';
+import { View, StatusBar, TouchableOpacity, Alert, Platform, Text, ActivityIndicator } from 'react-native';import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { LayoutDashboard, Users, CreditCard, GraduationCap, Truck, ShieldAlert, Briefcase, Info, LogOut, SaveAllIcon } from 'lucide-react-native';
+import { supabaseSandbox } from './src/supabaseSandboxClient';
 
 // Import Screens
 import PentadbiranScreen from './src/screens/PentadbiranScreen';
@@ -17,6 +17,8 @@ import LoginScreen from './src/screens/LoginScreen';
 import HomeScreen from './src/screens/HomeScreen'; 
 import DriverScreen from './src/screens/DriverScreen';
 import SaveManagementScreen from './src/screens/SaveManagementScreen';
+import SignUpScreen from './src/screens/SignUpScreen';
+import AgencyTrackingScreen from './src/screens/AgencyTrackingScreen';
 
 import { themes } from './theme'; 
 
@@ -29,29 +31,107 @@ export default function App() {
 
   // --- AUTHENTICATION STATE ---
   const [userRole, setUserRole] = useState(null); 
+  const [agencyInfo, setAgencyInfo] = useState(null);
+  const [isCheckingSession, setIsCheckingSession] = useState(true);
 
-  const handleLogin = (role) => {
+  const handleLogin = (role, extraData = null) => {
     if (role) {
       setUserRole(role.toLowerCase().trim());
+      if (extraData) {
+        setAgencyInfo(extraData);
+      }
     } else {
       setUserRole(null);
+      setAgencyInfo(null);
     }
   };
 
+  useEffect(() => {
+    const restoreSession = async () => {
+      // 1. Vérifie d'abord si une session "agency" (sans compte) existe en localStorage
+      if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+        const agencySession = localStorage.getItem('apm_agency_session');
+        if (agencySession) {
+          handleLogin('agency');
+          setIsCheckingSession(false);
+          return;
+        }
+      }
 
-  const handleLogout = () => {
+      // 2. Sinon, comportement existant (vérifie la vraie session Supabase Auth)
+      const { data: { session } } = await supabaseSandbox.auth.getSession();
+
+      if (!session) {
+        setIsCheckingSession(false);
+        return;
+      }
+
+      const userId = session.user.id;
+      const email = session.user.email;
+      const cleanUsername = email.split('@')[0];
+
+      const { data: profile } = await supabaseSandbox
+        .from('profiles')
+        .select('role, agency_id')
+        .eq('id', userId)
+        .maybeSingle();
+
+      if (profile?.role === 'agency') {
+        const { data: agencyRow } = await supabaseSandbox
+          .from('jpbd_directory')
+          .select('id, agency')
+          .eq('id', profile.agency_id)
+          .single();
+
+        handleLogin('agency', { 
+          agencyId: agencyRow.id, 
+          agencyName: agencyRow.agency,
+          userId: userId,
+          username: cleanUsername
+        });
+      } else {
+        let assignedRole = 'guest';
+        if (cleanUsername === 'admin' || cleanUsername === 'pengarah' || cleanUsername === 'fatin') {
+          assignedRole = 'admin';
+        } else if (cleanUsername === 'sekretariat' || cleanUsername === 'jpbd') {
+          assignedRole = 'sekretariat';
+        } else if (cleanUsername === 'driver' || cleanUsername === 'pemandu') {
+          assignedRole = 'driver';
+        } else {
+          assignedRole = 'admin';
+        }
+        handleLogin(assignedRole);
+      }
+
+      setIsCheckingSession(false);
+    };
+
+    restoreSession();
+  }, []);
+
+
+  const handleLogout = async () => {
     if (Platform.OS === 'web') {
-        const confirm = window.confirm("Adakah anda pasti mahu log keluar?");
-        if (confirm) setUserRole(null);
+      const confirm = window.confirm("Adakah anda pasti mahu log keluar?");
+      if (confirm) {
+        await supabaseSandbox.auth.signOut();
+        setUserRole(null);
+        setAgencyInfo(null);
+      }
     } else {
-        Alert.alert(
+      Alert.alert(
         "Log Keluar",
         "Adakah anda pasti mahu log keluar?",
         [
-            { text: "Batal", style: "cancel" },
-            { text: "Ya", onPress: () => setUserRole(null) }
+          { text: "Batal", style: "cancel" },
+          { text: "Ya", onPress: async () => {
+              await supabaseSandbox.auth.signOut();
+              setUserRole(null);
+              setAgencyInfo(null);
+            }
+          }
         ]
-        );
+      );
     }
   };
 
@@ -97,16 +177,33 @@ export default function App() {
   // NAVIGATOR FLOWS
   // ==========================================
 
-  const AuthFlow = () => (
-    <Stack.Navigator>
-      <Stack.Screen name="HomeScreen" options={{ title: 'Dashboard APM Labuan', headerStyle: { backgroundColor: theme.background }, headerTitleStyle: { color: theme.text, fontWeight: 'bold' } }}>
-        {(props) => <HomeScreen {...props} theme={theme} isAuthFlow={true} onGuestLogin={() => handleLogin('guest')} onDriverLogin={() => handleLogin('driver')} />}
-      </Stack.Screen>
-      <Stack.Screen name="Login" options={{ title: 'Log Masuk Portal', headerStyle: { backgroundColor: theme.background }, headerTitleStyle: { color: theme.text, fontWeight: 'bold' }, headerTintColor: theme.text }}>
-        {(props) => <LoginScreen {...props} onLogin={handleLogin} theme={theme} />}
-      </Stack.Screen>
-    </Stack.Navigator>
-  );
+const AuthFlow = () => (
+  <Stack.Navigator>
+    <Stack.Screen name="HomeScreen" options={{ title: 'Dashboard APM Labuan', headerStyle: { backgroundColor: theme.background }, headerTitleStyle: { color: theme.text, fontWeight: 'bold' } }}>
+      {(props) => <HomeScreen {...props} theme={theme} isAuthFlow={true} onGuestLogin={() => handleLogin('guest')} onDriverLogin={() => handleLogin('driver')} onAgencyLogin={() => handleLogin('agency')} />}
+    </Stack.Screen>
+    <Stack.Screen name="Login" options={{ title: 'Log Masuk Portal', headerStyle: { backgroundColor: theme.background }, headerTitleStyle: { color: theme.text, fontWeight: 'bold' }, headerTintColor: theme.text }}>
+      {(props) => (
+        <LoginScreen
+          {...props}
+          onLogin={handleLogin}
+          theme={theme}
+          onNavigateToSignUp={() => props.navigation.navigate('SignUp')}
+        />
+      )}
+    </Stack.Screen>
+    <Stack.Screen name="SignUp" options={{ title: 'Daftar Akaun Agensi', headerStyle: { backgroundColor: theme.background }, headerTitleStyle: { color: theme.text, fontWeight: 'bold' }, headerTintColor: theme.text }}>
+      {(props) => (
+        <SignUpScreen
+          {...props}
+          theme={theme}
+          onSignUpSuccess={() => props.navigation.navigate('Login')}
+          onBackToLogin={() => props.navigation.navigate('Login')}
+        />
+      )}
+    </Stack.Screen>
+  </Stack.Navigator>
+);
 
   const AdminFlow = () => (
     <Tab.Navigator initialRouteName="Utama" screenOptions={sharedTabOptions}>
@@ -145,6 +242,28 @@ export default function App() {
     </Stack.Navigator>
   );
 
+  const AgencyFlow = () => (
+    <Stack.Navigator>
+      <Stack.Screen name="AgencyApp" options={{ title: 'Agensi', headerStyle: { backgroundColor: theme.background }, headerTitleStyle: { color: theme.text, fontWeight: 'bold' }, headerLeft: () => <HeaderLogoutButton />, headerRight: () => <HeaderRoleBadge /> }}>
+        {(props) => (
+          <AgencyTrackingScreen
+            {...props}
+            theme={theme}
+            onLogout={handleLogout}
+          />
+        )}
+      </Stack.Screen>
+    </Stack.Navigator>
+  );
+
+  if (isCheckingSession) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.background }}>
+        <ActivityIndicator size="large" color="#f97316" />
+      </View>
+    );
+  }
+
   // ==========================================
   // ROOT RENDER (THE FIX: ONLY ONE CONTAINER)
   // ==========================================
@@ -156,6 +275,7 @@ export default function App() {
        userRole === 'admin' ? <AdminFlow /> :
        (userRole === 'sekretariat' || userRole === 'jpbd') ? <SekretariatFlow /> :
        userRole === 'driver' ? <DriverFlow /> :
+       userRole === 'agency' ? <AgencyFlow /> :
        <GuestFlow />}
        
     </NavigationContainer>

@@ -1,3 +1,4 @@
+// src/screen/PentadbiranScreen.js
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Linking, TextInput, ActivityIndicator, Alert, Modal, Platform } from 'react-native';
 import { UserCog, Key, Edit, X, ShieldAlert, Trash2 } from 'lucide-react-native';

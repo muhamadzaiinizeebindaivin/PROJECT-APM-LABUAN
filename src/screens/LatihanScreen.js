@@ -1,3 +1,4 @@
+// src/screens/LatihanScreen.js
 import React, { useState, useMemo, useEffect, useRef, createElement } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated, Easing, Pressable, Modal, TextInput, Alert, ActivityIndicator, Platform } from 'react-native';
 import { Users, Calendar, CheckCircle2, Activity, Plus, Edit, Trash2, X, Settings2, XCircle, CalendarDays, Clock } from 'lucide-react-native';

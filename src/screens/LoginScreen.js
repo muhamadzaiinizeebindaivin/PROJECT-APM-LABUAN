@@ -1,12 +1,14 @@
+// src/screen/LoginScreen.js
 import React, { useState } from 'react';
 import { 
   View, Text, TextInput, TouchableOpacity, StyleSheet, 
   KeyboardAvoidingView, Platform, ActivityIndicator
 } from 'react-native';
 import { User, Lock, ArrowRight, ShieldCheck, AlertCircle } from 'lucide-react-native';
-import { supabase } from '../supabaseClient';
+// import { supabase } from '../supabaseClient';
+import { supabaseSandbox as supabase } from '../supabaseSandboxClient';
 
-export default function LoginScreen({ onLogin, theme }) {
+export default function LoginScreen({ onLogin, theme, onNavigateToSignUp }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
@@ -24,7 +26,7 @@ export default function LoginScreen({ onLogin, theme }) {
 
     try {
       const cleanUsername = username.toLowerCase().trim();
-      const formattedEmail = `${cleanUsername}@apm.local`;
+      const formattedEmail = `${cleanUsername}@apm-labuan.com`;
 
       const { data, error } = await supabase.auth.signInWithPassword({
         email: formattedEmail,
@@ -35,30 +37,47 @@ export default function LoginScreen({ onLogin, theme }) {
         setErrorMessage('Nama pengguna atau kata laluan salah.');
         setPassword(''); 
       } else if (data.session) {
-        
-        // 🚨 THE FIX: Map the username to the correct role
-        let assignedRole = 'guest';
-        
-        // Add any usernames here that should get full Admin access
-        if (cleanUsername === 'admin' || cleanUsername === 'pengarah' || cleanUsername === 'fatin') {
-          assignedRole = 'admin';
-        } 
-        // Add usernames for Sekretariat view
-        else if (cleanUsername === 'sekretariat' || cleanUsername === 'jpbd') {
-          assignedRole = 'sekretariat';
-        } 
-        // Add usernames for Drivers
-        else if (cleanUsername === 'driver' || cleanUsername === 'pemandu') {
-          assignedRole = 'driver';
-        } 
-        // Catch-all: If they successfully log in but aren't listed above, give them admin anyway for testing
-        else {
-          assignedRole = 'admin'; 
-        }
+          const userId = data.session.user.id;
 
-        // Pass the ROLE, not the username, back to App.js
-        onLogin(assignedRole); 
-      }
+          // Vérifie d'abord si un profil "agency" existe (sandbox.profiles)
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('role, agency_id')
+            .eq('id', userId)
+            .maybeSingle();
+
+          if (profile?.role === 'agency') {
+            const { data: agencyRow } = await supabase
+              .from('jpbd_directory')
+              .select('id, agency')
+              .eq('id', profile.agency_id)
+              .single();
+
+            onLogin('agency', { 
+              agencyId: agencyRow.id, 
+              agencyName: agencyRow.agency,
+              userId: userId,
+              username: cleanUsername
+            });
+            setIsLoading(false);
+            return;
+          }
+
+          // Comportement existant inchangé pour admin/sekretariat/driver/guest
+          let assignedRole = 'guest';
+
+          if (cleanUsername === 'admin' || cleanUsername === 'pengarah' || cleanUsername === 'fatin') {
+            assignedRole = 'admin';
+          } else if (cleanUsername === 'sekretariat' || cleanUsername === 'jpbd') {
+            assignedRole = 'sekretariat';
+          } else if (cleanUsername === 'driver' || cleanUsername === 'pemandu') {
+            assignedRole = 'driver';
+          } else {
+            assignedRole = 'admin';
+          }
+
+          onLogin(assignedRole);
+        }
     } catch (err) {
       setErrorMessage('Ralat sistem. Sila cuba lagi.');
     } finally {
@@ -131,6 +150,11 @@ export default function LoginScreen({ onLogin, theme }) {
               </>
             )}
           </TouchableOpacity>
+          <TouchableOpacity 
+            onPress={() => onNavigateToSignUp?.()} 
+            style={{ alignItems: 'center', marginTop: 10 }}>
+          <Text style={{ color: theme?.textSecondary || '#64748b' }}>Tiada akaun agensi? Daftar</Text>
+        </TouchableOpacity>
         </View>
 
       </View>

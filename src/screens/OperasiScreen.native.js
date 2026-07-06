@@ -1,3 +1,4 @@
+// src/screen/OperasiScreen.native.js
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, Dimensions, ScrollView, TouchableOpacity } from 'react-native';
 import { WebView } from 'react-native-webview';

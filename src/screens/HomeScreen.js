@@ -4,7 +4,7 @@ import {
   View, StyleSheet, Image, Dimensions, TouchableOpacity, 
   Text, Platform, Animated, TextInput, ActivityIndicator, Alert 
 } from 'react-native';
-import { ShieldCheck, User, Truck, Briefcase, Target, Eye, Info, Activity } from 'lucide-react-native';
+import { ShieldCheck, User, Truck, Briefcase, Target, Eye, Info, Activity, Building2 } from 'lucide-react-native';
 import { supabase } from '../supabaseClient';
 import AdminEditButton from '../components/AdminEditButton'; 
 
@@ -60,7 +60,7 @@ const AnimatedFeedItem = ({ item }) => {
   );
 };
 
-export default function HomeScreen({ theme, isAuthFlow, onGuestLogin, onDriverLogin, navigation, userRole }) {
+export default function HomeScreen({ theme, isAuthFlow, onGuestLogin, onDriverLogin, onAgencyLogin, navigation, userRole }) {
   const scrollY = useRef(new Animated.Value(0)).current;
 
   const [isEditing, setIsEditing] = useState(false);
@@ -232,6 +232,9 @@ export default function HomeScreen({ theme, isAuthFlow, onGuestLogin, onDriverLo
                 <TouchableOpacity style={[styles.button, styles.jpbdButton]} onPress={() => navigation.navigate('Login')}>
                   <Briefcase size={20} color="#fff" /><Text style={styles.buttonText}>Sekretariat JPBD</Text>
                 </TouchableOpacity>
+                  <TouchableOpacity style={[styles.button, styles.agencyButton]} onPress={onAgencyLogin}>
+                  <Building2 size={20} color="#fff" /><Text style={styles.buttonText}>Agensi</Text>
+                </TouchableOpacity>
                 <TouchableOpacity style={[styles.button, styles.guestButton]} onPress={onGuestLogin}>
                   <User size={20} color="#fff" /><Text style={styles.buttonText}>Tetamu Awam</Text>
                 </TouchableOpacity>
@@ -352,6 +355,7 @@ const styles = StyleSheet.create({
   actionContainer: { width: '100%', gap: 15 },
   button: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 16, borderRadius: 12, elevation: 3 },
   jpbdButton: { backgroundColor: 'rgba(16, 185, 129, 0.25)', borderWidth: 1, borderColor: 'rgba(16, 185, 129, 0.5)' },
+  agencyButton: { backgroundColor: 'rgba(168, 85, 247, 0.25)', borderWidth: 1, borderColor: 'rgba(168, 85, 247, 0.5)' },
   guestButton: { backgroundColor: 'rgba(255,255,255,0.15)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)' },
   buttonText: { color: '#fff', fontSize: 15, fontWeight: '700', marginLeft: 10 },
   footerInfo: { marginTop: 20, paddingBottom: 40, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 6 },

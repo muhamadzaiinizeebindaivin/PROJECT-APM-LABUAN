@@ -1,11 +1,22 @@
 // src/screens/SekretariatScreen.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, createElement, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, Image, Modal, TextInput, Alert, ActivityIndicator } from 'react-native';
-import { Briefcase, AlertTriangle, Home, Droplets, Mountain, Users, AlertCircle, Plus, Edit, Trash2, X } from 'lucide-react-native';
-import { supabase } from '../supabaseClient'; 
+import { Briefcase, AlertTriangle, Home, Droplets, Mountain, Users, AlertCircle, Plus, Edit, Trash2, X, Map } from 'lucide-react-native';
+import { supabase } from '../supabaseClient';
+import { supabaseSandbox } from '../supabaseSandboxClient';
 
 // Import your universal edit button
 import AdminEditButton from '../components/AdminEditButton';
+
+const getAgencyColor = (agencyName = '') => {
+  const name = agencyName.toLowerCase();
+  if (name.includes('bomba')) return '#ef4444';
+  if (name.includes('apm')) return '#1E3A8A';
+  if (name.includes('pdrm') || name.includes('polis')) return '#0f172a';
+  if (name.includes('kesihatan') || name.includes('hospital')) return '#22c55e';
+  if (name.includes('jkm')) return '#a855f7';
+  return '#64748b';
+};
 
 const SekretariatScreen = ({ theme, userRole }) => {
   const [activeTab, setActiveTab] = useState('JPBD'); 
@@ -47,10 +58,22 @@ const SekretariatScreen = ({ theme, userRole }) => {
     category: 'banjir', ref_no: '', river: '', area: ''
   });
 
+  // --- PETA STATES ---
+  const [onlineAgencies, setOnlineAgencies] = useState([]);
+  const [loadingPeta, setLoadingPeta] = useState(true);
+  const [hasLoadedPetaOnce, setHasLoadedPetaOnce] = useState(false);
+  const [petaIframeLoading, setPetaIframeLoading] = useState(true);
+  const petaIframeRef = useRef(null);
+
+  const handlePetaIframeLoad = () => {
+    setPetaIframeLoading(false);
+  };
+
   useEffect(() => {
     fetchJPBD();
     fetchPPS();
     fetchHotspots();
+    fetchOnlineAgencies();
 
     const ppsSubscription = supabase
       .channel('pps_changes')
@@ -66,11 +89,34 @@ const SekretariatScreen = ({ theme, userRole }) => {
       })
       .subscribe();
 
+    const petaSubscription = supabaseSandbox
+      .channel('agency_trackers_changes')
+      .on('postgres_changes', { event: '*', schema: 'sandbox', table: 'agency_trackers' }, () => {
+        fetchOnlineAgencies();
+      })
+      .subscribe();
+
     return () => {
       supabase.removeChannel(ppsSubscription);
       supabase.removeChannel(hotspotSubscription);
+      supabaseSandbox.removeChannel(petaSubscription);
     };
   }, []);
+
+  useEffect(() => {
+    if (petaIframeRef?.current?.contentWindow) {
+      const payload = onlineAgencies.map(a => ({
+        id: a.id,
+        name: a.member_name,  // ✅ corrigé
+        agency: a.jpbd_directory?.agency || '',
+        lat: a.latitude,
+        lng: a.longitude,
+        color: getAgencyColor(a.jpbd_directory?.agency || ''),
+        updated: a.last_updated ? new Date(a.last_updated).toLocaleTimeString() : ''
+      }));
+      petaIframeRef.current.contentWindow.postMessage(JSON.stringify({ type: 'UPDATE_AGENCIES', payload }), '*');
+    }
+  }, [onlineAgencies]);
 
   // ==========================================
   // JPBD CRUD FUNCTIONS
@@ -170,6 +216,27 @@ const SekretariatScreen = ({ theme, userRole }) => {
       fetchHotspots();
     }
     setLoadingHotspot(false);
+  };
+
+  // ==========================================
+  // PETA-AGENSI CRUD FUNCTIONS
+  // ==========================================
+  const fetchOnlineAgencies = async () => {
+    if (!hasLoadedPetaOnce) setLoadingPeta(true);
+
+    const { data, error } = await supabaseSandbox
+      .from('agency_trackers')
+      .select('id, member_name, latitude, longitude, tracking_status, last_updated, jpbd_directory(agency)')
+      .eq('tracking_status', 'Online')
+      .not('latitude', 'is', null);
+
+    console.log('PETA DATA:', data, 'PETA ERROR:', error); // 👈 ajoute ça
+
+    if (!error) setOnlineAgencies(data || []);
+    else console.error(error);
+
+    setLoadingPeta(false);
+    setHasLoadedPetaOnce(true);
   };
 
   // ==========================================
@@ -557,6 +624,74 @@ const SekretariatScreen = ({ theme, userRole }) => {
     </View>
   );
 
+  // 4. PETA MAP HTML (rendu au niveau composant, comme OperasiScreen)
+  const petaMapHtml = `
+    <!DOCTYPE html>
+    <html style="height: 100%; margin: 0;">
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+        <style>
+          body { margin: 0; padding: 0; height: 100%; background-color: ${theme?.background || '#f8fafc'}; }
+          #map { height: 100%; width: 100%; }
+          .leaflet-control-zoom { border: none !important; margin-right: 20px !important; margin-bottom: 30px !important; }
+          .leaflet-popup-content-wrapper { border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+          .custom-popup { text-align: center; font-family: sans-serif; }
+          .custom-popup strong { font-size: 14px; color: #1f2937; display: block; margin-bottom: 4px; }
+          .custom-popup span { font-size: 12px; color: #64748b; }
+        </style>
+      </head>
+      <body>
+        <div id="map"></div>
+        <script>
+          var map = L.map('map', { zoomControl: false, attributionControl: false }).setView([5.2831, 115.2308], 12);
+          L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(map);
+          L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+          window.addEventListener('resize', function() {
+            map.invalidateSize();
+          });
+
+          var createIcon = (color) => L.divIcon({
+            className: 'custom-pin',
+            html: '<div style="background-color: ' + color + '; width: 16px; height: 16px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>',
+            iconSize: [16, 16], iconAnchor: [8, 8], popupAnchor: [0, -10]
+          });
+
+          var markers = {};
+
+          window.addEventListener('message', function(event) {
+            var data = JSON.parse(event.data);
+            if (data.type === 'UPDATE_AGENCIES') {
+              var currentIds = data.payload.map(function(a) { return a.id; });
+              Object.keys(markers).forEach(function(id) {
+                if (currentIds.indexOf(id) === -1) {
+                  map.removeLayer(markers[id]);
+                  delete markers[id];
+                }
+              });
+
+              data.payload.forEach(function(a) {
+                var popupContent = '<div class="custom-popup"><strong>' + a.agency + '</strong><span>' + a.name + ' — ' + a.updated + '</span></div>';
+                if (markers[a.id]) {
+                  markers[a.id].setLatLng([a.lat, a.lng]).setPopupContent(popupContent);
+                } else {
+                  markers[a.id] = L.marker([a.lat, a.lng], { icon: createIcon(a.color) })
+                    .bindPopup(popupContent)
+                    .addTo(map);
+                }
+              });
+            }
+          });
+        </script>
+      </body>
+    </html>
+  `;
+
+  const petaMapSrc = `data:text/html;charset=utf-8,${encodeURIComponent(petaMapHtml)}`;
+
   return (
     <View style={styles.container}>
       <View style={styles.mainHeader}>
@@ -580,24 +715,85 @@ const SekretariatScreen = ({ theme, userRole }) => {
           <Text style={[styles.tabText, activeTab === 'PPS' ? styles.tabTextActive : null]}>Data PPS</Text>
         </TouchableOpacity>
         <TouchableOpacity style={[styles.tabItem, activeTab === 'PETA' ? styles.tabActive : null]} onPress={() => setActiveTab('PETA')}>
-          <Home size={18} color={activeTab === 'PPS' ? '#fff' : '#94a3b8'} />
+          <Map size={18} color={activeTab === 'PETA' ? '#fff' : '#94a3b8'} />
           <Text style={[styles.tabText, activeTab === 'PETA' ? styles.tabTextActive : null]}>PETA</Text>
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false}>
-        
-        {/* UNIVERSAL ADMIN EDIT BUTTON */}
-        <AdminEditButton 
-          isEditMode={isEditMode} 
-          setIsEditMode={setIsEditMode} 
-          userRole={userRole} 
-        />
+      {activeTab === 'PETA' ? (
+        // --- PETA: structure fixe hors ScrollView, comme OperasiScreen ---
+        <View style={[styles.petaFixedContainer, { height: '70vh', minHeight: 500 }]}>
+          <View style={styles.petaMapContainer}>
+            {Platform.OS === 'web' ? (
+              createElement('iframe', {
+                ref: petaIframeRef,
+                src: petaMapSrc,
+                style: { width: '100%', height: '100%', border: 'none' },
+                title: "Peta Agensi",
+                onLoad: handlePetaIframeLoad
+              })
+            ) : (
+              <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme?.card || '#fff' }}>
+                <Map size={48} color={theme?.textSecondary || '#64748b'} />
+                <Text style={{ marginTop: 12, color: theme?.textSecondary || '#64748b', fontWeight: '600' }}>
+                  Peta memerlukan 'react-native-webview' pada peranti mudah alih.
+                </Text>
+              </View>
+            )}
+            {petaIframeLoading && Platform.OS === 'web' && (
+              <View style={[styles.loader, { backgroundColor: theme?.background || '#f8fafc' }]}>
+                <ActivityIndicator size="large" color="#1E3A8A" />
+              </View>
+            )}
+          </View>
 
-        {activeTab === 'JPBD' ? renderJPBD() : null}
-        {activeTab === 'HOTSPOT' ? renderHotspot() : null}
-        {activeTab === 'PPS' ? renderPPS() : null}
-      </ScrollView>
+          <View style={styles.petaHeaderCard}>
+            <View style={styles.petaIconCircle}><Map color="#fff" size={20} /></View>
+            <View>
+              <Text style={styles.petaHeaderTitle}>Peta Agensi</Text>
+              <View style={styles.liveTagContainer}>
+                {onlineAgencies.length > 0 && <View style={styles.liveDot} />}
+                <Text style={[styles.liveText, { color: onlineAgencies.length > 0 ? '#22c55e' : '#94a3b8' }]}>
+                  {onlineAgencies.length} AGENSI ONLINE
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          {onlineAgencies.length > 0 && (
+            <View style={styles.petaListContainer}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
+                {onlineAgencies.map(a => (
+                  <View key={a.id} style={styles.petaAgencyCard}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                      <View style={[styles.petaAgencyDot, { backgroundColor: getAgencyColor(a.jpbd_directory?.agency) }]} />
+                      <View>
+                        <Text style={styles.petaAgencyName} numberOfLines={1}>{a.jpbd_directory?.agency || '-'}</Text>
+                        <Text style={styles.petaAgencyUser}>{a.member_name}</Text>
+                      </View>
+                    </View>
+                  </View>
+                ))}
+              </ScrollView>
+            </View>
+          )}
+        </View>
+      ) : (
+        // --- Autres onglets : ScrollView classique ---
+        <ScrollView contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false}>
+          
+          {/* UNIVERSAL ADMIN EDIT BUTTON */}
+          <AdminEditButton 
+            isEditMode={isEditMode} 
+            setIsEditMode={setIsEditMode} 
+            userRole={userRole} 
+          />
+
+          {activeTab === 'JPBD' ? renderJPBD() : null}
+          {activeTab === 'HOTSPOT' ? renderHotspot() : null}
+          {activeTab === 'PPS' ? renderPPS() : null}
+        </ScrollView>
+      )}
 
       {/* --- MODALS BELOW --- */}
       <Modal visible={modalJpbdVisible} animationType="slide" transparent={true}>
@@ -771,7 +967,7 @@ const styles = StyleSheet.create({
   body: { padding: 16, paddingTop: 0, backgroundColor: '#f8fafc', borderBottomLeftRadius: 12, borderBottomRightRadius: 12 },
   
   actionRow: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10, marginBottom: 10 },
-  editBtn: { flexDirection: 'row', backgroundColor: '#22c55e', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 6, alignItems: 'center', gap: 4 }, // Updated to green
+  editBtn: { flexDirection: 'row', backgroundColor: '#22c55e', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 6, alignItems: 'center', gap: 4 },
   deleteBtn: { flexDirection: 'row', backgroundColor: '#ef4444', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 6, alignItems: 'center', gap: 4 },
   actionText: { color: '#fff', fontSize: 11, fontWeight: '700' },
 
@@ -837,6 +1033,22 @@ const styles = StyleSheet.create({
   iconBtn: { padding: 8, backgroundColor: '#f1f5f9', borderRadius: 6 },
   alertBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fef2f2', padding: 10, gap: 8, borderTopWidth: 1, borderTopColor: '#fee2e2' },
   alertText: { fontSize: 11, color: '#ef4444', fontWeight: '700', flex: 1 },
+
+  // PETA Styles (structure fixe type Operasi)
+  petaFixedContainer: { position: 'relative', margin: 15, borderRadius: 20, overflow: 'hidden' },
+  petaMapContainer: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0 },
+  loader: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center', zIndex: 2 },
+  petaHeaderCard: { position: 'absolute', top: 16, left: 16, zIndex: 10, flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 16, gap: 12, backgroundColor: '#fff', shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 10, elevation: 4, minWidth: 200 },
+  petaIconCircle: { width: 40, height: 40, borderRadius: 12, backgroundColor: '#1E3A8A', justifyContent: 'center', alignItems: 'center' },
+  petaHeaderTitle: { fontSize: 16, fontWeight: '800', color: '#0f172a' },
+  liveTagContainer: { flexDirection: 'row', alignItems: 'center', marginTop: 4, gap: 6 },
+  liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#22c55e' },
+  liveText: { fontSize: 10, fontWeight: '700' },
+  petaListContainer: { position: 'absolute', bottom: 16, left: 16, right: 16, zIndex: 10 },
+  petaAgencyCard: { padding: 12, borderRadius: 12, backgroundColor: '#fff', shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 5, elevation: 3, minWidth: 160 },
+  petaAgencyDot: { width: 10, height: 10, borderRadius: 5 },
+  petaAgencyName: { fontSize: 12, fontWeight: '700', color: '#0f172a', maxWidth: 120 },
+  petaAgencyUser: { fontSize: 10, color: '#64748b' },
 });
 
 export default SekretariatScreen;
