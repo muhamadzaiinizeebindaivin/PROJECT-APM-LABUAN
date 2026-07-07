@@ -17,7 +17,6 @@ export default function AdminUserManagementScreen({ theme }) {
   // --- Formulaire de création ---
   const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [role, setRole] = useState('sekretariat');
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState(null);
@@ -116,7 +115,7 @@ export default function AdminUserManagementScreen({ theme }) {
   const handleCreateUser = async () => {
     setFeedback(null);
 
-    if (!displayName || !email || !password) {
+    if (!displayName || !email) {
       setFeedback({ type: 'error', message: 'Sila isi semua ruangan.' });
       return;
     }
@@ -124,7 +123,7 @@ export default function AdminUserManagementScreen({ theme }) {
     setLoading(true);
 
     const { data, error } = await supabase.functions.invoke('create-user', {
-      body: { displayName, email, password, role },
+      body: { displayName, email, role },
     });
 
     setLoading(false);
@@ -146,10 +145,9 @@ export default function AdminUserManagementScreen({ theme }) {
       return;
     }
 
-    setFeedback({ type: 'success', message: `Akaun "${data.displayName}" (${data.role}) telah berjaya dicipta.` });
+    setFeedback({ type: 'success', message: `Jemputan telah dihantar ke "${email}". Pengguna perlu semak e-mel untuk tetapkan kata laluan.` });
     setDisplayName('');
     setEmail('');
-    setPassword('');
     fetchUserList();
   };
 
@@ -230,22 +228,6 @@ export default function AdminUserManagementScreen({ theme }) {
           />
         </View>
 
-        <View style={[styles.inputGroup, focusedField === 'password' && styles.inputGroupFocused]}>
-          <View style={styles.inputIconWrap}>
-            <Lock size={18} color={focusedField === 'password' ? '#1E3A8A' : '#94a3b8'} />
-          </View>
-          <TextInput
-            style={styles.input}
-            placeholder="Kata Laluan"
-            placeholderTextColor="#94a3b8"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            onFocus={() => setFocusedField('password')}
-            onBlur={() => setFocusedField(null)}
-          />
-        </View>
-
         <Text style={[styles.sectionLabel, { marginTop: 24 }]}>PERANAN</Text>
 
         <View style={styles.roleGrid}>
@@ -289,7 +271,7 @@ export default function AdminUserManagementScreen({ theme }) {
           {loading ? <ActivityIndicator color="#fff" /> : (
             <>
               <UserPlus size={19} color="#fff" />
-              <Text style={styles.saveButtonText}>Cipta Akaun</Text>
+              <Text style={styles.saveButtonText}>Hantar Jemputan</Text>
             </>
           )}
         </TouchableOpacity>
@@ -337,12 +319,17 @@ export default function AdminUserManagementScreen({ theme }) {
               style={[styles.userRow, u.id === currentUserId && styles.userRowSelf]}
             >
               <View style={{ flex: 1 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                   <Text style={styles.userName}>{u.username}</Text>
                   {u.id === currentUserId && (
-                    <View style={styles.selfBadge}>
+                      <View style={styles.selfBadge}>
                       <Text style={styles.selfBadgeText}>ANDA</Text>
-                    </View>
+                      </View>
+                  )}
+                  {u.pending && (
+                      <View style={styles.pendingBadge}>
+                      <Text style={styles.pendingBadgeText}>MENUNGGU AKTIVASI</Text>
+                      </View>
                   )}
                 </View>
                 <Text style={styles.userEmail}>{u.email}</Text>
@@ -500,4 +487,6 @@ const styles = StyleSheet.create({
   selfBadgeText: { fontSize: 9, fontWeight: '800', color: '#fff', letterSpacing: 0.5 },
   userRoleBtnDisabled: { opacity: 0.4 },
   deleteIconBtnDisabled: { opacity: 0.4 },
+  pendingBadge: { backgroundColor: '#fef3c7', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, borderWidth: 1, borderColor: '#fbbf24' },
+  pendingBadgeText: { fontSize: 9, fontWeight: '800', color: '#92400e', letterSpacing: 0.3 },
 });

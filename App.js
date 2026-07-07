@@ -20,6 +20,7 @@ import DriverScreen from './src/screens/DriverScreen';
 import SaveManagementScreen from './src/screens/SaveManagementScreen';
 import SignUpScreen from './src/screens/SignUpScreen';
 import AgencyTrackingScreen from './src/screens/AgencyTrackingScreen';
+import SetPasswordScreen from './src/screens/SetPasswordScreen';
 
 import { themes } from './theme'; 
 
@@ -34,6 +35,16 @@ export default function App() {
   const [userRole, setUserRole] = useState(null); 
   const [agencyInfo, setAgencyInfo] = useState(null);
   const [isCheckingSession, setIsCheckingSession] = useState(true);
+  const [isInvitedUser, setIsInvitedUser] = useState(false);
+
+  useEffect(() => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      const hash = window.location.hash;
+      if (hash.includes('type=invite') || hash.includes('type=recovery')) {
+        setIsInvitedUser(true);
+      }
+    }
+  }, []);
 
   const handleLogin = (role, extraData = null) => {
     if (role) {
@@ -258,6 +269,20 @@ const AuthFlow = () => (
       </Stack.Screen>
     </Stack.Navigator>
   );
+
+  if (isInvitedUser) {
+    return (
+      <View style={{ flex: 1 }}>
+        <SetPasswordScreen
+          theme={theme}
+          onGoToLogin={() => {
+            window.location.hash = '';
+            setIsInvitedUser(false);
+          }}
+        />
+      </View>
+    );
+  }
 
   if (isCheckingSession) {
     return (

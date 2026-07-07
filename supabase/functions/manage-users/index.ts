@@ -80,8 +80,19 @@ serve(async (req) => {
         });
       }
 
+      // Vérifie quels comptes n'ont pas encore confirmé leur invitation
+      const usersWithStatus = await Promise.all(
+        (profiles || []).map(async (p) => {
+          const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(p.id);
+          return {
+            ...p,
+            pending: !authUser?.user?.email_confirmed_at,
+          };
+        })
+      );
+
       return new Response(JSON.stringify({
-        users: profiles,
+        users: usersWithStatus,
         total: count ?? 0,
         page,
         pageSize,

@@ -1,8 +1,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+// ⚠️ Remplace par ton vrai domaine de production une fois déployé
+const ALLOWED_ORIGIN = "http://localhost:8081";
+
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Origin": ALLOWED_ORIGIN,
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
@@ -11,6 +14,10 @@ const jsonResponse = (body: Record<string, unknown>, status: number) =>
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
+
+const ALLOWED_ROLES = ["admin", "sekretariat"];
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MAX_NAME_LENGTH = 100;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -44,14 +51,26 @@ serve(async (req) => {
     }
 
     // ── 3. Valide les données reçues ──
-    const { displayName, email, password, role } = await req.json();
+    const { displayName, email, role } = await req.json();
 
-    if (!displayName || !email || !password || !role) {
+    if (!displayName || !email || !role) {
       return jsonResponse({ error: "Data tidak lengkap" }, 400);
     }
 
-    const cleanEmail = email.toLowerCase().trim();
-    const cleanDisplayName = displayName.trim();
+    const cleanDisplayName = String(displayName).trim();
+    const cleanEmail = String(email).toLowerCase().trim();
+
+    if (cleanDisplayName.length === 0 || cleanDisplayName.length > MAX_NAME_LENGTH) {
+      return jsonResponse({ error: `Nama mestilah antara 1 dan ${MAX_NAME_LENGTH} aksara.` }, 400);
+    }
+
+    if (!EMAIL_REGEX.test(cleanEmail)) {
+      return jsonResponse({ error: "Format e-mel tidak sah." }, 400);
+    }
+
+    if (!ALLOWED_ROLES.includes(role)) {
+      return jsonResponse({ error: "Peranan tidak sah." }, 400);
+    }
 
     // ── 4. Crée le compte auth (via clé service_role) ──
     const supabaseAdmin = createClient(
@@ -59,11 +78,10 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
-      email: cleanEmail,
-      password,
-      email_confirm: true,
-    });
+    const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.inviteUserByEmail(
+      cleanEmail,
+      { redirectTo: ALLOWED_ORIGIN }
+    );
 
     if (createError) {
       return jsonResponse({ error: createError.message }, 400);
@@ -81,6 +99,8 @@ serve(async (req) => {
       }]);
 
     if (profileError) {
+      // Nettoyage : si le profil échoue, on retire le compte auth orphelin créé juste avant
+      await supabaseAdmin.auth.admin.deleteUser(newUser.user.id);
       return jsonResponse({ error: profileError.message }, 400);
     }
 
