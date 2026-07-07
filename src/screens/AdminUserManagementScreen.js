@@ -2,13 +2,19 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, ScrollView } from 'react-native';
 import {
   UserPlus, CheckCircle, AlertCircle, User, Mail, Lock, ShieldCheck, Briefcase,
-  Trash2, Users, Search, ChevronLeft, ChevronRight, ArrowUpDown
+  Trash2, Users, Search, ChevronLeft, ChevronRight, ArrowUpDown,
+  LayoutDashboard, CreditCard, Truck, GraduationCap
 } from 'lucide-react-native';
 import { supabaseSandbox as supabase } from '../supabaseSandboxClient';
 
 const ROLES = [
   { key: 'admin', label: 'Admin', icon: ShieldCheck, color: '#1E3A8A' },
+  { key: 'pentadbiran', label: 'Pentadbiran', icon: LayoutDashboard, color: '#7c3aed' },
+  { key: 'kewangan', label: 'Kewangan', icon: CreditCard, color: '#16a34a' },
+  { key: 'logistik', label: 'Logistik', icon: Truck, color: '#0891b2' },
+  { key: 'angkatan', label: 'Angkatan', icon: Users, color: '#ea580c' },
   { key: 'sekretariat', label: 'Sekretariat', icon: Briefcase, color: '#f97316' },
+  { key: 'latihan', label: 'Latihan', icon: GraduationCap, color: '#db2777' },
 ];
 
 const PAGE_SIZE = 20;
@@ -431,10 +437,11 @@ const styles = StyleSheet.create({
     color: '#0f172a', caretColor: '#1E3A8A', outlineStyle: 'none'
   },
 
-  roleGrid: { flexDirection: 'row', gap: 12, marginBottom: 20 },
+  roleGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 20 },
   roleCard: {
-    flex: 1, borderWidth: 1.5, borderRadius: 14, paddingVertical: 16, alignItems: 'center', gap: 8
+    width: '31%', borderWidth: 1.5, borderRadius: 14, paddingVertical: 16, alignItems: 'center', gap: 8
   },
+  
   roleIconCircle: { width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
   roleCardText: { fontSize: 13 },
 

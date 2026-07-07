@@ -4,6 +4,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { LayoutDashboard, Users, CreditCard, GraduationCap, Truck, ShieldAlert, Briefcase, Info, LogOut, SaveAllIcon, UserCog } from 'lucide-react-native';
 import { supabaseSandbox } from './src/supabaseSandboxClient';
+import { ROLE_PERMISSIONS } from './src/permissions';
 
 // Import Screens
 import AdminUserManagementScreen from './src/screens/AdminUserManagementScreen';
@@ -101,18 +102,13 @@ export default function App() {
           userId: userId,
           username: cleanUsername
         });
+      } else if (profile?.role) {
+        // Rôle réel vérifié en base — plus de mapping par username, plus de catch-all
+        handleLogin(profile.role);
       } else {
-        let assignedRole = 'guest';
-        if (cleanUsername === 'admin' || cleanUsername === 'pengarah' || cleanUsername === 'fatin') {
-          assignedRole = 'admin';
-        } else if (cleanUsername === 'sekretariat' || cleanUsername === 'jpbd') {
-          assignedRole = 'sekretariat';
-        } else if (cleanUsername === 'driver' || cleanUsername === 'pemandu') {
-          assignedRole = 'driver';
-        } else {
-          assignedRole = 'admin';
-        }
-        handleLogin(assignedRole);
+        // Aucun profil trouvé -> pas d'accès, on ne connecte personne par défaut
+        setIsCheckingSession(false);
+        return;
       }
 
       setIsCheckingSession(false);
@@ -190,55 +186,61 @@ export default function App() {
   // NAVIGATOR FLOWS
   // ==========================================
 
-const AuthFlow = () => (
-  <Stack.Navigator>
-    <Stack.Screen name="HomeScreen" options={{ title: 'Dashboard APM Labuan', headerStyle: { backgroundColor: theme.background }, headerTitleStyle: { color: theme.text, fontWeight: 'bold' } }}>
-      {(props) => <HomeScreen {...props} theme={theme} isAuthFlow={true} onGuestLogin={() => handleLogin('guest')} onDriverLogin={() => handleLogin('driver')} onAgencyLogin={() => handleLogin('agency')} />}
-    </Stack.Screen>
-    <Stack.Screen name="Login" options={{ title: 'Log Masuk Portal', headerStyle: { backgroundColor: theme.background }, headerTitleStyle: { color: theme.text, fontWeight: 'bold' }, headerTintColor: theme.text }}>
-      {(props) => (
-        <LoginScreen
-          {...props}
-          onLogin={handleLogin}
-          theme={theme}
-          onNavigateToSignUp={() => props.navigation.navigate('SignUp')}
-        />
-      )}
-    </Stack.Screen>
-    <Stack.Screen name="SignUp" options={{ title: 'Daftar Akaun Agensi', headerStyle: { backgroundColor: theme.background }, headerTitleStyle: { color: theme.text, fontWeight: 'bold' }, headerTintColor: theme.text }}>
-      {(props) => (
-        <SignUpScreen
-          {...props}
-          theme={theme}
-          onSignUpSuccess={() => props.navigation.navigate('Login')}
-          onBackToLogin={() => props.navigation.navigate('Login')}
-        />
-      )}
-    </Stack.Screen>
-  </Stack.Navigator>
-);
-
-  const AdminFlow = () => (
-    <Tab.Navigator initialRouteName="Utama" screenOptions={sharedTabOptions}>
-      <Tab.Screen name="Utama">{(props) => <HomeScreen {...props} theme={theme} isAuthFlow={false} userRole={userRole} />}</Tab.Screen>
-      <Tab.Screen name="Pentadbiran" options={{ tabBarActiveTintColor: '#3b82f6' }}>{(props) => <PentadbiranScreen {...props} theme={theme} userRole={userRole} />}</Tab.Screen>
-      <Tab.Screen name="Kewangan" options={{ tabBarActiveTintColor: '#3b82f6' }}>{(props) => <KewanganScreen {...props} theme={theme} />}</Tab.Screen>
-      <Tab.Screen name="Logistik" options={{ tabBarActiveTintColor: '#3b82f6' }}>{(props) => <LogistikScreen {...props} theme={theme} />}</Tab.Screen>
-      <Tab.Screen name="Angkatan" options={{ tabBarActiveTintColor: '#f97316' }}>{(props) => <AngkatanScreen {...props} theme={theme} />}</Tab.Screen>
-      <Tab.Screen name="Sekretariat" options={{ tabBarActiveTintColor: '#f97316' }}>{(props) => <SekretariatScreen {...props} theme={theme} userRole={userRole} />}</Tab.Screen>
-      <Tab.Screen name="Latihan" options={{ tabBarActiveTintColor: '#f97316' }}>{(props) => <LatihanScreen {...props} theme={theme} />}</Tab.Screen>
-      <Tab.Screen name="Operasi" options={{ tabBarActiveTintColor: '#f97316' }}>{(props) => <OperasiScreen {...props} theme={theme} />}</Tab.Screen>
-      <Tab.Screen name="Saves" options={{ tabBarActiveTintColor: '#8b5cf6' }}>{(props) => <SaveManagementScreen {...props} theme={theme} />}</Tab.Screen>
-      <Tab.Screen name="Pengurusan Akaun" options={{ tabBarActiveTintColor: '#8b5cf6' }}>{(props) => <AdminUserManagementScreen {...props} theme={theme} />}</Tab.Screen>
-    </Tab.Navigator>
+  const AuthFlow = () => (
+    <Stack.Navigator>
+      <Stack.Screen name="HomeScreen" options={{ title: 'Dashboard APM Labuan', headerStyle: { backgroundColor: theme.background }, headerTitleStyle: { color: theme.text, fontWeight: 'bold' } }}>
+        {(props) => <HomeScreen {...props} theme={theme} isAuthFlow={true} onGuestLogin={() => handleLogin('guest')} onDriverLogin={() => handleLogin('driver')} onAgencyLogin={() => handleLogin('agency')} />}
+      </Stack.Screen>
+      <Stack.Screen name="Login" options={{ title: 'Log Masuk Portal', headerStyle: { backgroundColor: theme.background }, headerTitleStyle: { color: theme.text, fontWeight: 'bold' }, headerTintColor: theme.text }}>
+        {(props) => (
+          <LoginScreen
+            {...props}
+            onLogin={handleLogin}
+            theme={theme}
+            onNavigateToSignUp={() => props.navigation.navigate('SignUp')}
+          />
+        )}
+      </Stack.Screen>
+      <Stack.Screen name="SignUp" options={{ title: 'Daftar Akaun Agensi', headerStyle: { backgroundColor: theme.background }, headerTitleStyle: { color: theme.text, fontWeight: 'bold' }, headerTintColor: theme.text }}>
+        {(props) => (
+          <SignUpScreen
+            {...props}
+            theme={theme}
+            onSignUpSuccess={() => props.navigation.navigate('Login')}
+            onBackToLogin={() => props.navigation.navigate('Login')}
+          />
+        )}
+      </Stack.Screen>
+    </Stack.Navigator>
   );
 
-  const SekretariatFlow = () => (
-    <Tab.Navigator initialRouteName="Utama" screenOptions={sharedTabOptions}>
-      <Tab.Screen name="Utama">{(props) => <HomeScreen {...props} theme={theme} isAuthFlow={false} userRole={userRole} />}</Tab.Screen>
-      <Tab.Screen name="Sekretariat" options={{ tabBarActiveTintColor: '#f97316' }}>{(props) => <SekretariatScreen {...props} theme={theme} userRole={userRole} />}</Tab.Screen>
-    </Tab.Navigator>
-  );
+  const TAB_CONFIG = [
+    { name: 'Utama', render: (props) => <HomeScreen {...props} theme={theme} isAuthFlow={false} userRole={userRole} /> },
+    { name: 'Pentadbiran', options: { tabBarActiveTintColor: '#3b82f6' }, render: (props) => <PentadbiranScreen {...props} theme={theme} userRole={userRole} /> },
+    { name: 'Kewangan', options: { tabBarActiveTintColor: '#3b82f6' }, render: (props) => <KewanganScreen {...props} theme={theme} /> },
+    { name: 'Logistik', options: { tabBarActiveTintColor: '#3b82f6' }, render: (props) => <LogistikScreen {...props} theme={theme} /> },
+    { name: 'Angkatan', options: { tabBarActiveTintColor: '#f97316' }, render: (props) => <AngkatanScreen {...props} theme={theme} /> },
+    { name: 'Sekretariat', options: { tabBarActiveTintColor: '#f97316' }, render: (props) => <SekretariatScreen {...props} theme={theme} userRole={userRole} /> },
+    { name: 'Latihan', options: { tabBarActiveTintColor: '#f97316' }, render: (props) => <LatihanScreen {...props} theme={theme} /> },
+    { name: 'Operasi', options: { tabBarActiveTintColor: '#f97316' }, render: (props) => <OperasiScreen {...props} theme={theme} /> },
+    { name: 'Saves', options: { tabBarActiveTintColor: '#8b5cf6' }, render: (props) => <SaveManagementScreen {...props} theme={theme} /> },
+    { name: 'Pengurusan Akaun', options: { tabBarActiveTintColor: '#8b5cf6' }, render: (props) => <AdminUserManagementScreen {...props} theme={theme} /> },
+  ];
+
+  const DepartmentFlow = () => {
+    const allowedTabs = ROLE_PERMISSIONS[userRole] || [];
+    const screens = TAB_CONFIG.filter(s => allowedTabs.includes(s.name));
+
+    return (
+      <Tab.Navigator initialRouteName="Utama" screenOptions={sharedTabOptions}>
+        {screens.map(s => (
+          <Tab.Screen key={s.name} name={s.name} options={s.options}>
+            {s.render}
+          </Tab.Screen>
+        ))}
+      </Tab.Navigator>
+    );
+  };
 
   const DriverFlow = () => (
     <Stack.Navigator>
@@ -298,14 +300,11 @@ const AuthFlow = () => (
   return (
     <NavigationContainer>
       <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} backgroundColor={theme.background} />
-      
       {!userRole ? <AuthFlow /> : 
-       userRole === 'admin' ? <AdminFlow /> :
-       (userRole === 'sekretariat' || userRole === 'jpbd') ? <SekretariatFlow /> :
-       userRole === 'driver' ? <DriverFlow /> :
-       userRole === 'agency' ? <AgencyFlow /> :
-       <GuestFlow />}
-       
+      ROLE_PERMISSIONS[userRole] ? <DepartmentFlow /> :
+      userRole === 'driver' ? <DriverFlow /> :
+      userRole === 'agency' ? <AgencyFlow /> :
+      <GuestFlow />}
     </NavigationContainer>
   );
 }
