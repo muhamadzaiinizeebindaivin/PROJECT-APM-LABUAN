@@ -29,6 +29,7 @@
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.8",
     "lucide-react-native": "^0.563.0",
+    "pdfjs-dist": "^6.1.200",
     "react": "19.1.0",
     "react-dom": "^19.1.0",
     "react-native": "0.81.5",

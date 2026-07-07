@@ -16,14 +16,11 @@ export default function LoginScreen({ onLogin, theme, onNavigateToSignUp }) {
 
   const handleAdminLogin = async () => {
     setErrorMessage('');
-    
     if (!username || !password) {
       setErrorMessage('Sila isi nama pengguna dan kata laluan.');
       return;
     }
-
     setIsLoading(true);
-
     try {
       const cleanUsername = username.toLowerCase().trim();
       const formattedEmail = `${cleanUsername}@apm-labuan.com`;
@@ -35,49 +32,35 @@ export default function LoginScreen({ onLogin, theme, onNavigateToSignUp }) {
 
       if (error) {
         setErrorMessage('Nama pengguna atau kata laluan salah.');
-        setPassword(''); 
-      } else if (data.session) {
-          const userId = data.session.user.id;
+        setPassword('');
+        setIsLoading(false);
+        return;
+      }
 
-          // Vérifie d'abord si un profil "agency" existe (sandbox.profiles)
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('role, agency_id')
-            .eq('id', userId)
-            .maybeSingle();
+      if (!data.session) {
+        setErrorMessage('Ralat sistem. Sila cuba lagi.');
+        setIsLoading(false);
+        return;
+      }
 
-          if (profile?.role === 'agency') {
-            const { data: agencyRow } = await supabase
-              .from('jpbd_directory')
-              .select('id, agency')
-              .eq('id', profile.agency_id)
-              .single();
+      // Vérifie le VRAI rôle en base, au lieu de deviner à partir du username
+      const userId = data.session.user.id;
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', userId)
+        .maybeSingle();
 
-            onLogin('agency', { 
-              agencyId: agencyRow.id, 
-              agencyName: agencyRow.agency,
-              userId: userId,
-              username: cleanUsername
-            });
-            setIsLoading(false);
-            return;
-          }
+      if (profileError || !profile) {
+        // Aucun profil trouvé -> accès refusé, PAS de repli sur admin
+        setErrorMessage('Akaun ini tiada peranan yang sah. Sila hubungi admin.');
+        await supabase.auth.signOut();
+        setPassword('');
+        setIsLoading(false);
+        return;
+      }
 
-          // Comportement existant inchangé pour admin/sekretariat/driver/guest
-          let assignedRole = 'guest';
-
-          if (cleanUsername === 'admin' || cleanUsername === 'pengarah' || cleanUsername === 'fatin' || cleanUsername === 'zaiini') {
-            assignedRole = 'admin';
-          } else if (cleanUsername === 'sekretariat' || cleanUsername === 'jpbd') {
-            assignedRole = 'sekretariat';
-          } else if (cleanUsername === 'driver' || cleanUsername === 'pemandu') {
-            assignedRole = 'driver';
-          } else {
-            assignedRole = 'admin';
-          }
-
-          onLogin(assignedRole);
-        }
+      onLogin(profile.role);
     } catch (err) {
       setErrorMessage('Ralat sistem. Sila cuba lagi.');
     } finally {
