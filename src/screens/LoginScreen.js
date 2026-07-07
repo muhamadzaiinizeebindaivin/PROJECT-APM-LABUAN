@@ -22,8 +22,8 @@ export default function LoginScreen({ onLogin, theme, onNavigateToSignUp }) {
     }
     setIsLoading(true);
     try {
-      const cleanUsername = username.toLowerCase().trim();
-      const formattedEmail = `${cleanUsername}@apm-labuan.com`;
+      const cleanInput = username.toLowerCase().trim();
+      const formattedEmail = cleanInput.includes('@') ? cleanInput : `${cleanInput}@apm-labuan.com`;
 
       const { data, error } = await supabase.auth.signInWithPassword({
         email: formattedEmail,
@@ -90,7 +90,7 @@ export default function LoginScreen({ onLogin, theme, onNavigateToSignUp }) {
             <User color={theme?.textSecondary || '#64748b'} size={20} style={styles.icon} />
             <TextInput
               style={[styles.input, { color: theme?.text || '#0f172a' }]}
-              placeholder="Nama Pengguna"
+              placeholder="Nama Pengguna atau E-mel"
               placeholderTextColor={theme?.textSecondary || '#94a3b8'}
               value={username}
               onChangeText={setUsername}

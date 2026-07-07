@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { View, StatusBar, TouchableOpacity, Alert, Platform, Text, ActivityIndicator } from 'react-native';import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { LayoutDashboard, Users, CreditCard, GraduationCap, Truck, ShieldAlert, Briefcase, Info, LogOut, SaveAllIcon } from 'lucide-react-native';
+import { LayoutDashboard, Users, CreditCard, GraduationCap, Truck, ShieldAlert, Briefcase, Info, LogOut, SaveAllIcon, UserCog } from 'lucide-react-native';
 import { supabaseSandbox } from './src/supabaseSandboxClient';
 
 // Import Screens
+import AdminUserManagementScreen from './src/screens/AdminUserManagementScreen';
 import PentadbiranScreen from './src/screens/PentadbiranScreen';
 import AngkatanScreen from './src/screens/AngkatanScreen';
 import KewanganScreen from './src/screens/KewanganScreen';
@@ -166,7 +167,8 @@ export default function App() {
       const icons = {
         Utama: Info, Pentadbiran: LayoutDashboard, Sekretariat: Briefcase,
         Angkatan: Users, Kewangan: CreditCard, Latihan: GraduationCap,
-        Logistik: Truck, Operasi: ShieldAlert, Saves: SaveAllIcon
+        Logistik: Truck, Operasi: ShieldAlert, Saves: SaveAllIcon,
+        'Pengurusan Akaun': UserCog,
       };
       const Icon = icons[route.name];
       return Icon ? <Icon size={24} color={color} strokeWidth={focused ? 2.5 : 2} /> : null;
@@ -216,6 +218,7 @@ const AuthFlow = () => (
       <Tab.Screen name="Latihan" options={{ tabBarActiveTintColor: '#f97316' }}>{(props) => <LatihanScreen {...props} theme={theme} />}</Tab.Screen>
       <Tab.Screen name="Operasi" options={{ tabBarActiveTintColor: '#f97316' }}>{(props) => <OperasiScreen {...props} theme={theme} />}</Tab.Screen>
       <Tab.Screen name="Saves" options={{ tabBarActiveTintColor: '#8b5cf6' }}>{(props) => <SaveManagementScreen {...props} theme={theme} />}</Tab.Screen>
+      <Tab.Screen name="Pengurusan Akaun" options={{ tabBarActiveTintColor: '#8b5cf6' }}>{(props) => <AdminUserManagementScreen {...props} theme={theme} />}</Tab.Screen>
     </Tab.Navigator>
   );
 
