@@ -4,7 +4,7 @@ import {
   View, StyleSheet, TouchableOpacity, 
   Text, Animated, TextInput, ActivityIndicator, Alert 
 } from 'react-native';
-import { ShieldCheck, User, Truck, Briefcase, Target, Eye, Info, Building2 } from 'lucide-react-native';
+import { ShieldCheck, User, Truck, Target, Eye, Info, Building2 } from 'lucide-react-native';
 import { supabase } from '../supabaseClient';
 import AdminEditButton from '../components/AdminEditButton'; 
 import HomepagePdfCard from '../components/HomepagePdfCard';
@@ -92,13 +92,10 @@ export default function HomeScreen({ theme, isAuthFlow, onGuestLogin, onDriverLo
               
               <View style={styles.actionContainer}>
                 <TouchableOpacity style={[styles.button, { backgroundColor: '#f97316' }]} onPress={() => navigation.navigate('Login')}>
-                  <ShieldCheck size={20} color="#fff" /><Text style={styles.buttonText}>Admin</Text>
+                  <ShieldCheck size={20} color="#fff" /><Text style={styles.buttonText}>Log Masuk</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={[styles.button, { backgroundColor: '#3b82f6' }]} onPress={onDriverLogin}>
                   <Truck size={20} color="#fff" /><Text style={styles.buttonText}>Pemandu</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={[styles.button, styles.jpbdButton]} onPress={() => navigation.navigate('Login')}>
-                  <Briefcase size={20} color="#fff" /><Text style={styles.buttonText}>Sekretariat JPBD</Text>
                 </TouchableOpacity>
                   <TouchableOpacity style={[styles.button, styles.agencyButton]} onPress={onAgencyLogin}>
                   <Building2 size={20} color="#fff" /><Text style={styles.buttonText}>Agensi</Text>
@@ -268,7 +265,6 @@ const styles = StyleSheet.create({
   authPortalSub: { fontSize: 14, color: 'rgba(255,255,255,0.7)', fontWeight: '600', marginBottom: 40 },
   actionContainer: { width: '100%', gap: 15 },
   button: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 16, borderRadius: 12, elevation: 3 },
-  jpbdButton: { backgroundColor: 'rgba(16, 185, 129, 0.25)', borderWidth: 1, borderColor: 'rgba(16, 185, 129, 0.5)' },
   agencyButton: { backgroundColor: 'rgba(168, 85, 247, 0.25)', borderWidth: 1, borderColor: 'rgba(168, 85, 247, 0.5)' },
   guestButton: { backgroundColor: 'rgba(255,255,255,0.15)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)' },
   buttonText: { color: '#fff', fontSize: 15, fontWeight: '700', marginLeft: 10 },
