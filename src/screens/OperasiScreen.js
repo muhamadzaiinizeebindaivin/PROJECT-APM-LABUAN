@@ -1,8 +1,9 @@
 // src/screen/OperasiScreen.js
 import React, { useState, useEffect, useRef, useMemo, createElement } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, ScrollView, TouchableOpacity, Modal, Alert, TextInput, Platform } from 'react-native';
-import { ShieldAlert, Ambulance, Truck, Car, Bike, Map as MapIcon, BarChart2, AlertTriangle, TrendingDown, TrendingUp, Calendar, ChevronDown, ChevronUp, Plus, Edit2, Trash2, X, Check } from 'lucide-react-native';
+import { ShieldAlert, Ambulance, Truck, Car, Bike, Map as MapIcon, BarChart2, AlertTriangle, TrendingDown, TrendingUp, Calendar, ChevronDown, ChevronUp, Plus, Edit2, Trash2, X, Check, History } from 'lucide-react-native';
 import { supabase } from '../supabaseClient';
+import { supabaseSandbox } from '../supabaseSandboxClient';
 
 // Import Universal Edit Button
 import AdminEditButton from '../components/AdminEditButton';
@@ -24,6 +25,26 @@ const MONTH_OPTIONS = [
   "January", "February", "March", "April", "May", "June", 
   "July", "August", "September", "October", "November", "December"
 ];
+
+const CALAMITY_CATEGORIES = [
+  { key: 'KJR', label: 'Kes Kemalangan Jalan Raya', color: '#ef4444' },
+  { key: 'KM', label: 'Kes Menangkap Ular', color: '#f97316' },
+  { key: 'MMS', label: 'Memusnah Sarang Serangga', color: '#eab308' },
+  { key: 'KBD', label: 'Kes Bunuh Diri', color: '#64748b' },
+  { key: 'KK', label: 'Khidmat Khas', color: '#a855f7' },
+  { key: 'SKT', label: 'Sakit (Medikal/Trauma)', color: '#ec4899' },
+  { key: 'KTK', label: 'Kemalangan Tempat Kerja', color: '#14b8a6' },
+  { key: 'PT', label: 'Pokok Tumbang', color: '#84cc16' },
+  { key: 'KBR', label: 'Kes Kebakaran', color: '#dc2626' },
+  { key: 'ML', label: 'Mangsa Lemas', color: '#0ea5e9' },
+  { key: 'LLK', label: 'Lain-lain Kes', color: '#94a3b8' },
+  { key: 'KB', label: 'Kes Bergaduh', color: '#f43f5e' },
+  { key: 'MHL', label: 'Menangkap Haiwan Liar', color: '#65a30d' },
+  { key: 'MHP', label: 'Menangkap Haiwan Peliharaan', color: '#22c55e' },
+  { key: 'MT', label: 'Mangsa Terperangkap', color: '#7c3aed' },
+];
+
+const getCalamityMeta = (key) => CALAMITY_CATEGORIES.find(c => c.key === key) || CALAMITY_CATEGORIES[10];
 
 const getCategoryColor = (id) => {
   const colors = {
@@ -54,6 +75,18 @@ export default function OperasiScreen({ theme, userRole }) {
   // Dropdown States for Modal
   const [categoryOpen, setCategoryOpen] = useState(false);
   const [monthOpen, setMonthOpen] = useState(false);
+
+  // --- Calamity points ---
+  const [calamityPoints, setCalamityPoints] = useState([]);
+  const [activeCalamityTool, setActiveCalamityTool] = useState(null);
+  const [pendingPlacement, setPendingPlacement] = useState(null);
+  const [calamityDescription, setCalamityDescription] = useState('');
+  const [calamityModalVisible, setCalamityModalVisible] = useState(false);
+
+  // --- Historique de patrouille ---
+  const [showHistory, setShowHistory] = useState(false);
+  const [patrolHistory, setPatrolHistory] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(true);
 
   useEffect(() => {
     let isMounted = true; 
@@ -94,12 +127,31 @@ export default function OperasiScreen({ theme, userRole }) {
         }
       })
       .subscribe();
+      
+    fetchCalamityPoints();
+    fetchPatrolHistory();
+
+    const calamitySubscription = supabaseSandbox
+      .channel('operasi_calamity_changes')
+      .on('postgres_changes', { event: '*', schema: 'sandbox', table: 'calamity_points' }, () => {
+        fetchCalamityPoints();
+      })
+      .subscribe();
+
+    const historySubscription = supabaseSandbox
+      .channel('vehicle_patrol_history_changes')
+      .on('postgres_changes', { event: '*', schema: 'sandbox', table: 'vehicle_patrol_history' }, () => {
+        fetchPatrolHistory();
+      })
+      .subscribe();
 
     return () => {
-      isMounted = false;
-      supabase.removeChannel(subscription);
-    };
-  }, []);
+          isMounted = false;
+          supabase.removeChannel(subscription);
+          supabaseSandbox.removeChannel(calamitySubscription);
+          supabaseSandbox.removeChannel(historySubscription);
+        };
+      }, []);
 
   useEffect(() => {
     if (!loading && iframeRef?.current?.contentWindow && vehicles.length > 0) {
@@ -123,6 +175,83 @@ export default function OperasiScreen({ theme, userRole }) {
     if (error) console.error("Error fetching NG999 data:", error);
     setLoadingNg(false);
   };
+
+  const fetchCalamityPoints = async () => {
+    const { data, error } = await supabaseSandbox.from('calamity_points').select('*');
+    if (!error) setCalamityPoints(data || []);
+  };
+
+  const fetchPatrolHistory = async () => {
+    setLoadingHistory(true);
+    const { data, error } = await supabaseSandbox
+      .from('vehicle_patrol_history')
+      .select('*')
+      .order('ended_at', { ascending: false })
+      .limit(50);
+    if (!error) setPatrolHistory(data || []);
+    setLoadingHistory(false);
+  };
+
+  const formatDuration = (seconds) => {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    if (h > 0) return `${h}j ${m}m`;
+    return `${m}m`;
+  };
+
+  const handleSaveCalamity = async () => {
+    if (!pendingPlacement || !activeCalamityTool) return;
+    const { error } = await supabaseSandbox.from('calamity_points').insert([{
+      category: activeCalamityTool,
+      description: calamityDescription.trim() || null,
+      latitude: pendingPlacement.lat,
+      longitude: pendingPlacement.lng
+    }]);
+    if (!error) {
+      setCalamityModalVisible(false);
+      setCalamityDescription('');
+      setPendingPlacement(null);
+      setActiveCalamityTool(null);
+      fetchCalamityPoints();
+    }
+  };
+
+  const handleDeleteCalamity = async (id) => {
+    const confirmed = Platform.OS === 'web' ? window.confirm('Padam titik bencana ini?') : true;
+    if (!confirmed) return;
+    const { error } = await supabaseSandbox.from('calamity_points').delete().eq('id', id);
+    if (!error) fetchCalamityPoints();
+  };
+
+  useEffect(() => {
+    const handleMapMessage = (event) => {
+      let data;
+      try { data = JSON.parse(event.data); } catch (e) { return; }
+      if (data.type === 'MAP_CLICKED' && activeCalamityTool) {
+        setPendingPlacement({ lat: data.lat, lng: data.lng });
+        setCalamityModalVisible(true);
+      } else if (data.type === 'DELETE_CALAMITY_REQUEST') {
+        handleDeleteCalamity(data.id);
+      }
+    };
+    window.addEventListener('message', handleMapMessage);
+    return () => window.removeEventListener('message', handleMapMessage);
+  }, [activeCalamityTool]);
+
+  useEffect(() => {
+    if (!loading && iframeRef?.current?.contentWindow) {
+      const payload = calamityPoints.map(c => ({
+        id: c.id,
+        category: c.category,
+        description: c.description || '',
+        lat: c.latitude,
+        lng: c.longitude,
+        color: getCalamityMeta(c.category).color,
+        label: getCalamityMeta(c.category).label
+      }));
+      iframeRef.current.contentWindow.postMessage(JSON.stringify({ type: 'UPDATE_CALAMITIES', payload }), '*');
+    }
+  }, [calamityPoints, loading]);
 
   const handleSaveNg = async () => {
     if (!form.kategori_kes || !form.month || !form.jumlah_kes) {
@@ -281,23 +410,48 @@ export default function OperasiScreen({ theme, userRole }) {
       <body>
         <div id="map"></div>
         <script>
+          var canDeleteCalamity = ${userRole === 'admin' ? 'true' : 'false'};
           var map = L.map('map', { zoomControl: false, attributionControl: false }).setView([5.2831, 115.2308], 13);
           
           L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(map);
           L.control.zoom({ position: 'bottomright' }).addTo(map);
 
+          map.on('click', function(e) {
+            window.parent.postMessage(JSON.stringify({ type: 'MAP_CLICKED', lat: e.latlng.lat, lng: e.latlng.lng }), '*');
+          });
+
+          window.requestDeleteCalamity = function(id) {
+            window.parent.postMessage(JSON.stringify({ type: 'DELETE_CALAMITY_REQUEST', id: id }), '*');
+          };
+
           var createIcon = (color) => L.divIcon({
             className: 'custom-pin',
-            html: \`<div style="background-color: \${color}; width: 16px; height: 16px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>\`,
-            iconSize: [16, 16], iconAnchor: [8, 8], popupAnchor: [0, -10]
+            html: '<svg width="26" height="34" viewBox="0 0 26 34" style="filter: drop-shadow(0 2px 3px rgba(0,0,0,0.35));">' +
+                    '<path d="M13 0C5.8 0 0 5.8 0 13c0 9.5 13 21 13 21s13-11.5 13-21C26 5.8 20.2 0 13 0z" fill="' + color + '" fill-opacity="0.72" stroke="white" stroke-width="2"/>' +
+                    '<circle cx="13" cy="13" r="5" fill="white" fill-opacity="0.9"/>' +
+                  '</svg>',
+            iconSize: [26, 34], iconAnchor: [13, 34], popupAnchor: [0, -30]
+          });
+
+          var createCalamityIcon = (color, category) => L.divIcon({
+            className: 'calamity-pin',
+            html: '<div style="display: flex; align-items: center; gap: 5px; background-color: white; padding: 4px 8px 4px 4px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.4); border: 1.5px solid ' + color + ';">' +
+                    '<svg width="22" height="20" viewBox="0 0 24 22" style="flex-shrink: 0;">' +
+                      '<polygon points="12,1 23,20 1,20" fill="' + color + '" stroke="white" stroke-width="1.5" stroke-linejoin="round"/>' +
+                      '<text x="12" y="17" text-anchor="middle" font-size="12" font-weight="900" fill="white" font-family="sans-serif">!</text>' +
+                    '</svg>' +
+                    '<span style="color: #1f2937; font-size: 11px; font-weight: 800; font-family: sans-serif; white-space: nowrap;">' + category + '</span>' +
+                  '</div>',
+            iconSize: [70, 30], iconAnchor: [15, 28], popupAnchor: [10, -25]
           });
 
           var createPopupContent = (name, status) => {
             var statusClass = status === 'Patrol' ? 'status-patrol' : 'status-idle';
-            return \`<div class="custom-popup"><strong>\${name}</strong><span class="\${statusClass}">\${status}</span></div>\`;
+            return '<div class="custom-popup"><strong>' + name + '</strong><span class="' + statusClass + '">' + status + '</span></div>';
           };
 
           var markers = {};
+          var calamityMarkers = {};
 
           window.addEventListener('message', function(event) {
             var data = JSON.parse(event.data);
@@ -325,6 +479,52 @@ export default function OperasiScreen({ theme, userRole }) {
                   delete markers[data.id];
                 }
               }
+            } else if (data.type === 'UPDATE_CALAMITIES') {
+              var currentCalamityIds = data.payload.map(function(c) { return c.id; });
+              Object.keys(calamityMarkers).forEach(function(id) {
+                if (currentCalamityIds.indexOf(id) === -1) {
+                  map.removeLayer(calamityMarkers[id]);
+                  delete calamityMarkers[id];
+                }
+              });
+
+              data.payload.forEach(function(c) {
+                if (!calamityMarkers[c.id]) {
+                  var popupDiv = document.createElement('div');
+                  popupDiv.className = 'custom-popup';
+
+                  var strongEl = document.createElement('strong');
+                  strongEl.textContent = c.label;
+                  popupDiv.appendChild(strongEl);
+
+                  var spanEl = document.createElement('span');
+                  spanEl.textContent = c.description || 'Tiada keterangan';
+                  popupDiv.appendChild(spanEl);
+
+                  if (canDeleteCalamity) {
+                    var btnEl = document.createElement('button');
+                    btnEl.textContent = 'Padam Titik';
+                    btnEl.style.marginTop = '6px';
+                    btnEl.style.backgroundColor = '#ef4444';
+                    btnEl.style.color = 'white';
+                    btnEl.style.border = 'none';
+                    btnEl.style.padding = '4px 10px';
+                    btnEl.style.borderRadius = '6px';
+                    btnEl.style.fontSize = '11px';
+                    btnEl.style.fontWeight = '700';
+                    btnEl.style.cursor = 'pointer';
+                    btnEl.style.width = '100%';
+                    btnEl.addEventListener('click', function() {
+                      window.requestDeleteCalamity(c.id);
+                    });
+                    popupDiv.appendChild(btnEl);
+                  }
+
+                  calamityMarkers[c.id] = L.marker([c.lat, c.lng], { icon: createCalamityIcon(c.color, c.category) })
+                    .bindPopup(popupDiv)
+                    .addTo(map);
+                }
+              });
             }
           });
         </script>
@@ -370,55 +570,122 @@ export default function OperasiScreen({ theme, userRole }) {
       </View>
 
       {/* --- VIEW 1: LIVE MAP --- */}
-      <View style={[styles.viewContainer, { display: activeTab === 'map' ? 'flex' : 'none' }]}>
-        <View style={styles.mapContainer}>
-          {Platform.OS === 'web' ? (
-            createElement('iframe', {
-              ref: iframeRef,
-              src: mapSrc,
-              style: { width: '100%', height: '100%', border: 'none' },
-              title: "Leaflet Map",
-              onLoad: handleIframeLoad
-            })
-          ) : (
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.card }}>
-              <MapIcon size={48} color={theme.textSecondary} />
-              <Text style={{ marginTop: 12, color: theme.textSecondary, fontWeight: '600' }}>
-                Live Map memerlukan 'react-native-webview' pada peranti mudah alih.
-              </Text>
-            </View>
-          )}
-          {loading && Platform.OS === 'web' && (
-            <View style={[styles.loader, { backgroundColor: theme.background }]}><ActivityIndicator size="large" color="#f97316" /></View>
-          )}
-        </View>
+      <View style={[styles.viewContainer, { display: activeTab === 'map' ? 'flex' : 'none', flexDirection: 'row' }]}>
+        <View style={{ flex: 1, position: 'relative' }}>
+          <View style={styles.mapContainer}>
+            {Platform.OS === 'web' ? (
+              createElement('iframe', {
+                ref: iframeRef,
+                src: mapSrc,
+                style: { width: '100%', height: '100%', border: 'none' },
+                title: "Leaflet Map",
+                onLoad: handleIframeLoad
+              })
+            ) : (
+              <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.card }}>
+                <MapIcon size={48} color={theme.textSecondary} />
+                <Text style={{ marginTop: 12, color: theme.textSecondary, fontWeight: '600' }}>
+                  Live Map memerlukan 'react-native-webview' pada peranti mudah alih.
+                </Text>
+              </View>
+            )}
+            {loading && Platform.OS === 'web' && (
+              <View style={[styles.loader, { backgroundColor: theme.background }]}><ActivityIndicator size="large" color="#f97316" /></View>
+            )}
+          </View>
 
-        <View style={[styles.headerCard, { backgroundColor: theme.card }]}>
-          <View style={styles.iconCircle}><ShieldAlert color="#fff" size={20} /></View>
-          <View>
-            <Text style={[styles.headerTitle, { color: theme.text }]}>Live Tracking</Text>
-            <View style={styles.liveTagContainer}>
-              {activeVehiclesCount > 0 && <View style={styles.liveDot} />}
-              <Text style={[styles.liveText, { color: activeVehiclesCount > 0 ? '#22c55e' : theme.textSecondary }]}>
-                {activeVehiclesCount} ACTIVE ASSETS
-              </Text>
+          <View style={[styles.headerCard, { backgroundColor: theme.card }]}>
+            <View style={styles.iconCircle}><ShieldAlert color="#fff" size={20} /></View>
+            <View>
+              <Text style={[styles.headerTitle, { color: theme.text }]}>Live Tracking</Text>
+              <View style={styles.liveTagContainer}>
+                {activeVehiclesCount > 0 && <View style={styles.liveDot} />}
+                <Text style={[styles.liveText, { color: activeVehiclesCount > 0 ? '#22c55e' : theme.textSecondary }]}>
+                  {activeVehiclesCount} ACTIVE ASSETS
+                </Text>
+              </View>
             </View>
           </View>
+
+          {activeVehiclesCount > 0 && (
+            <View style={styles.vehicleListContainer}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
+                {activeVehicles.map(v => (
+                  <VehicleCard 
+                    key={v.id} 
+                    name={v.reg || v.model}
+                    status={v.tracking_status} 
+                    icon={getVehicleIcon(v.type, v.color)} 
+                    theme={theme} 
+                  />
+                ))}
+              </ScrollView>
+            </View>
+          )}
+
+          <TouchableOpacity style={styles.historyToggleBtn} onPress={() => setShowHistory(!showHistory)}>
+            <History size={18} color="#1E3A8A" />
+          </TouchableOpacity>
+
+          {(userRole === 'sekretariat' || userRole === 'admin') && (
+            <View style={styles.calamityPalette}>
+              <ScrollView style={{ maxHeight: 280 }} showsVerticalScrollIndicator={false}>
+                {CALAMITY_CATEGORIES.map(cat => {
+                  const isActive = activeCalamityTool === cat.key;
+                  return (
+                    <TouchableOpacity
+                      key={cat.key}
+                      style={[styles.calamityToolBtn, { backgroundColor: isActive ? cat.color : '#fff', borderColor: cat.color }]}
+                      onPress={() => setActiveCalamityTool(isActive ? null : cat.key)}
+                    >
+                      <Text style={[styles.calamityToolText, { color: isActive ? '#fff' : cat.color }]}>{cat.key}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+              {activeCalamityTool && (
+                <Text style={styles.calamityHint}>Klik pada peta untuk letak titik</Text>
+              )}
+            </View>
+          )}
         </View>
 
-        {activeVehiclesCount > 0 && (
-          <View style={styles.vehicleListContainer}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
-              {activeVehicles.map(v => (
-                <VehicleCard 
-                  key={v.id} 
-                  name={v.reg || v.model}
-                  status={v.tracking_status} 
-                  icon={getVehicleIcon(v.type, v.color)} 
-                  theme={theme} 
-                />
-              ))}
-            </ScrollView>
+        {showHistory && (
+          <View style={styles.historyHalf}>
+            <View style={styles.historyHeader}>
+              <Text style={styles.historyTitle}>Sejarah Patrol Kenderaan</Text>
+            </View>
+
+            {loadingHistory ? (
+              <ActivityIndicator size="small" color="#1E3A8A" style={{ marginTop: 20 }} />
+            ) : patrolHistory.length === 0 ? (
+              <Text style={{ textAlign: 'center', color: theme.textSecondary, marginTop: 20 }}>Tiada rekod sejarah lagi.</Text>
+            ) : (
+              <>
+                <View style={styles.tableHeaderRow}>
+                  <Text style={[styles.tableHeaderCell, { flex: 1.6 }]}>Kenderaan</Text>
+                  <Text style={[styles.tableHeaderCell, { flex: 1 }]}>Tempoh</Text>
+                  <Text style={[styles.tableHeaderCell, { flex: 1 }]}>Jarak</Text>
+                  <Text style={[styles.tableHeaderCell, { flex: 1.3 }]}>Tarikh</Text>
+                </View>
+                <ScrollView showsVerticalScrollIndicator={false}>
+                  {patrolHistory.map((h, index) => (
+                    <View key={h.id} style={[styles.tableRow, { backgroundColor: index % 2 === 0 ? '#ffffff' : '#f8fafc' }]}>
+                      <View style={{ flex: 1.6 }}>
+                        <Text style={styles.tableCellAgency} numberOfLines={1}>{h.vehicle_reg}</Text>
+                        <Text style={styles.tableCellMember} numberOfLines={1}>{h.vehicle_model}</Text>
+                      </View>
+                      <Text style={[styles.tableCell, { flex: 1 }]}>{formatDuration(h.duration_seconds)}</Text>
+                      <Text style={[styles.tableCell, { flex: 1 }]}>{h.distance_km?.toFixed(2) || '0.00'} km</Text>
+                      <View style={{ flex: 1.3 }}>
+                        <Text style={styles.tableCellDate}>{new Date(h.ended_at).toLocaleDateString('ms-MY')}</Text>
+                        <Text style={styles.tableCellTime}>{new Date(h.ended_at).toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit' })}</Text>
+                      </View>
+                    </View>
+                  ))}
+                </ScrollView>
+              </>
+            )}
           </View>
         )}
       </View>
@@ -674,6 +941,34 @@ export default function OperasiScreen({ theme, userRole }) {
             </TouchableOpacity>
           </View>
         </View>
+</Modal>
+
+      <Modal visible={calamityModalVisible} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
+            <View style={styles.modalHeader}>
+              <Text style={{ fontSize: 16, fontWeight: '800', color: theme.text }}>Tambah Titik Bencana</Text>
+              <TouchableOpacity onPress={() => { setCalamityModalVisible(false); setPendingPlacement(null); }}>
+                <X size={24} color={theme.textSecondary} />
+              </TouchableOpacity>
+            </View>
+            <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>
+              Kategori: {getCalamityMeta(activeCalamityTool).label}
+            </Text>
+            <Text style={[styles.inputLabel, { color: theme.textSecondary, marginTop: 10 }]}>Keterangan (pilihan)</Text>
+            <TextInput
+              style={[styles.inputField, { backgroundColor: theme.background, color: theme.text, borderColor: theme.border, height: 80, textAlignVertical: 'top' }]}
+              placeholder="Cth: Air naik setinggi 1 meter"
+              placeholderTextColor={theme.textSecondary}
+              multiline
+              value={calamityDescription}
+              onChangeText={setCalamityDescription}
+            />
+            <TouchableOpacity style={styles.saveBtn} onPress={handleSaveCalamity}>
+              <Text style={styles.saveBtnText}>Simpan Titik</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       </Modal>
 
     </View>
@@ -702,6 +997,33 @@ const styles = StyleSheet.create({
   toggleTextActive: { color: '#fff' },
   viewContainer: { flex: 1, position: 'relative' },
   mapContainer: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0, borderRadius: 20, overflow: 'hidden' },
+
+  historyToggleBtn: {
+    position: 'absolute', top: 16, right: 116, zIndex: 10,
+    width: 40, height: 40, borderRadius: 12, backgroundColor: '#fff',
+    justifyContent: 'center', alignItems: 'center',
+    shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 10, elevation: 4,
+  },
+  calamityPalette: {
+    position: 'absolute', top: 16, right: 16, zIndex: 10, backgroundColor: '#fff',
+    borderRadius: 16, padding: 10, gap: 6, shadowColor: '#000', shadowOpacity: 0.1,
+    shadowRadius: 10, elevation: 4, width: 90,
+  },
+  calamityToolBtn: { paddingVertical: 8, borderRadius: 8, borderWidth: 2, justifyContent: 'center', alignItems: 'center', marginBottom: 6 },
+  calamityToolText: { fontSize: 11, fontWeight: '800' },
+  calamityHint: { fontSize: 10, color: '#64748b', textAlign: 'center', marginTop: 4 },
+
+  historyHalf: { flex: 1, backgroundColor: '#fff', borderLeftWidth: 1, borderLeftColor: '#e2e8f0', borderTopRightRadius: 20, borderBottomRightRadius: 20, overflow: 'hidden' },
+  historyHeader: { padding: 16, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
+  historyTitle: { fontSize: 14, fontWeight: '800', color: '#0f172a' },
+  tableHeaderRow: { flexDirection: 'row', paddingHorizontal: 16, paddingVertical: 10, backgroundColor: '#f1f5f9', borderBottomWidth: 1, borderBottomColor: '#e2e8f0' },
+  tableHeaderCell: { fontSize: 10, fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.5 },
+  tableRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
+  tableCell: { fontSize: 12, fontWeight: '700', color: '#334155' },
+  tableCellAgency: { fontSize: 13, fontWeight: '800', color: '#0f172a' },
+  tableCellMember: { fontSize: 11, color: '#64748b', marginTop: 1 },
+  tableCellDate: { fontSize: 11, fontWeight: '700', color: '#334155' },
+  tableCellTime: { fontSize: 10, color: '#94a3b8', marginTop: 1 },
   loader: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center', zIndex: 2 },
   headerCard: { position: 'absolute', top: 16, left: 16, zIndex: 10, flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 16, gap: 12, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 10, elevation: 4, minWidth: 200 },
   iconCircle: { width: 40, height: 40, borderRadius: 12, backgroundColor: '#ef4444', justifyContent: 'center', alignItems: 'center' },

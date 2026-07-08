@@ -4,6 +4,19 @@ import { View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, Fla
 import * as Location from 'expo-location';
 import { Navigation, StopCircle, ArrowLeft, Search, Truck, Car, Bike, PlusSquare } from 'lucide-react-native';
 import { supabase } from '../supabaseClient';
+import { supabaseSandbox } from '../supabaseSandboxClient';
+
+const haversineDistanceKm = (lat1, lon1, lat2, lon2) => {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+};
 
 export default function DriverScreen({ onLogout, theme }) {
   const [vehicles, setVehicles] = useState([]);
@@ -14,7 +27,10 @@ export default function DriverScreen({ onLogout, theme }) {
   const [status, setStatus] = useState('Idle');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Fetch vehicles from Supabase on mount
+  const jobStartTimeRef = React.useRef(null);
+  const lastCoordsRef = React.useRef(null);
+  const distanceAccumRef = React.useRef(0);
+
   // Fetch vehicles from Supabase on mount
   useEffect(() => {
     let isMounted = true;
@@ -55,87 +71,148 @@ export default function DriverScreen({ onLogout, theme }) {
   }, []);
 
   // Location Tracking Effect
-  useEffect(() => {
-    let subscriptionPromise = null;
-    let isMounted = true;
+    useEffect(() => {
+      let subscriptionPromise = null;
+      let isMounted = true;
 
-    const startWatching = async () => {
-  if (!selectedVehicle) return;
+      const startWatching = async () => {
+        if (!selectedVehicle) return;
 
-  let { status: permStatus } = await Location.requestForegroundPermissionsAsync();
-  if (permStatus !== 'granted') {
-    if (isMounted) {
-      Alert.alert('Akses Ditolak', 'Sila benarkan akses lokasi untuk menjejak kenderaan.');
-      setIsTracking(false);
-    }
-    return;
-  }
-
-  // 1. UPDATE STATUS IMMEDIATELY SO IT APPEARS ON THE MAP
-  await supabase
-    .from('logistik')
-    .update({ tracking_status: 'Patrol' })
-    .eq('id', selectedVehicle.id);
-
-  // 2. THEN START WATCHING GPS
-  subscriptionPromise = Location.watchPositionAsync(
-    {
-      accuracy: Location.Accuracy.High,
-      timeInterval: 5000, 
-      distanceInterval: 2, // Changed to 2 meters so it updates easier during testing
-    },
-    async (loc) => {
-      if (!isMounted) return; 
-
-      setLocation(loc.coords);
-      setStatus('Mengemaskini Pangkalan Data...');
-      
-      const { error } = await supabase
-        .from('logistik')
-        .update({ 
-          latitude: loc.coords.latitude, 
-          longitude: loc.coords.longitude,
-          last_updated: new Date().toISOString(),
-          tracking_status: 'Patrol'
-        })
-        .eq('id', selectedVehicle.id);
-
-      if (error) {
-        console.error("Supabase update error:", error);
-        if (isMounted) {
-          // This will show the actual database error on the screen
-          setStatus(`Ralat: ${error.message || 'Gagal kemaskini DB'}`); 
+        let { status: permStatus } = await Location.requestForegroundPermissionsAsync();
+        if (permStatus !== 'granted') {
+          if (isMounted) {
+            Alert.alert('Akses Ditolak', 'Sila benarkan akses lokasi untuk menjejak kenderaan.');
+            setIsTracking(false);
+          }
+          return;
         }
-      } else if (isMounted) {
-        setStatus(`Terakhir dihantar: ${new Date().toLocaleTimeString()}`);
-      }
-    }
-  );
-};
 
-    if (isTracking) {
-      setStatus('Mendapatkan isyarat GPS...');
-      startWatching();
-    } else if (selectedVehicle) {
-      setStatus('Sedia');
-      supabase
-        .from('logistik')
-        .update({ tracking_status: 'Idle' }) // Use new tracking_status column
-        .eq('id', selectedVehicle.id)
-        .then(({ error }) => {
-          if (error) console.error('Error updating idle status:', error);
-        });
-    }
+        // Récupère l'état persisté (survit à un rechargement de page)
+        const { data: existingJob } = await supabaseSandbox
+          .from('vehicle_current_job')
+          .select('started_at, distance_km')
+          .eq('vehicle_id', selectedVehicle.id)
+          .maybeSingle();
 
-    return () => {
-      isMounted = false;
-      if (subscriptionPromise) {
-        subscriptionPromise.then(subscription => {
-          if (subscription) subscription.remove();
-        });
+        if (existingJob?.started_at) {
+          jobStartTimeRef.current = new Date(existingJob.started_at).getTime();
+          distanceAccumRef.current = existingJob.distance_km || 0;
+        } else {
+          jobStartTimeRef.current = Date.now();
+          distanceAccumRef.current = 0;
+          await supabaseSandbox
+            .from('vehicle_current_job')
+            .upsert({
+              vehicle_id: selectedVehicle.id,
+              started_at: new Date(jobStartTimeRef.current).toISOString(),
+              distance_km: 0,
+            });
+        }
+        lastCoordsRef.current = null;
+
+        await supabase
+          .from('logistik')
+          .update({ tracking_status: 'Patrol' })
+          .eq('id', selectedVehicle.id);
+
+        subscriptionPromise = Location.watchPositionAsync(
+          { accuracy: Location.Accuracy.High, timeInterval: 5000, distanceInterval: 2 },
+          async (loc) => {
+            if (!isMounted) return;
+
+            setLocation(loc.coords);
+            setStatus('Mengemaskini Pangkalan Data...');
+
+            if (lastCoordsRef.current) {
+              const delta = haversineDistanceKm(
+                lastCoordsRef.current.latitude, lastCoordsRef.current.longitude,
+                loc.coords.latitude, loc.coords.longitude
+              );
+              distanceAccumRef.current += delta;
+            }
+            lastCoordsRef.current = loc.coords;
+
+            const { error } = await supabase
+            .from('logistik')
+            .update({
+              latitude: loc.coords.latitude,
+              longitude: loc.coords.longitude,
+              last_updated: new Date().toISOString()
+            })
+            .eq('id', selectedVehicle.id);
+
+            await supabaseSandbox
+              .from('vehicle_current_job')
+              .update({ distance_km: Number(distanceAccumRef.current.toFixed(3)) })
+              .eq('vehicle_id', selectedVehicle.id);
+
+            if (error) {
+              console.error("Supabase update error:", error);
+              if (isMounted) setStatus(`Ralat: ${error.message || 'Gagal kemaskini DB'}`);
+            } else if (isMounted) {
+              setStatus(`Terakhir dihantar: ${new Date().toLocaleTimeString()}`);
+            }
+          }
+        );
+      };
+
+      const recordHistoryAndStop = async () => {
+        if (!selectedVehicle) return;
+
+        const { data: existingJob } = await supabaseSandbox
+          .from('vehicle_current_job')
+          .select('started_at, distance_km')
+          .eq('vehicle_id', selectedVehicle.id)
+          .maybeSingle();
+
+        if (existingJob?.started_at) {
+          const startedAt = new Date(existingJob.started_at);
+          const endedAt = new Date();
+          const durationSeconds = Math.round((endedAt.getTime() - startedAt.getTime()) / 1000);
+
+          await supabaseSandbox.from('vehicle_patrol_history').insert([{
+            vehicle_id: selectedVehicle.id,
+            vehicle_reg: selectedVehicle.reg || 'TIADA PLAT',
+            vehicle_model: selectedVehicle.model,
+            started_at: startedAt.toISOString(),
+            ended_at: endedAt.toISOString(),
+            duration_seconds: durationSeconds,
+            distance_km: Number((existingJob.distance_km || 0).toFixed(2)),
+          }]);
+
+          await supabaseSandbox
+            .from('vehicle_current_job')
+            .delete()
+            .eq('vehicle_id', selectedVehicle.id);
+        }
+
+        jobStartTimeRef.current = null;
+        lastCoordsRef.current = null;
+        distanceAccumRef.current = 0;
+
+        await supabase
+          .from('logistik')
+          .update({ tracking_status: 'Idle' })
+          .eq('id', selectedVehicle.id);
+      };
+
+      if (isTracking) {
+        setStatus('Mendapatkan isyarat GPS...');
+        startWatching();
+      } else if (selectedVehicle) {
+        setStatus('Sedia');
+        recordHistoryAndStop().catch((err) => console.error(err));
       }
-    };
-  }, [isTracking, selectedVehicle]);
+
+      return () => {
+        isMounted = false;
+        if (subscriptionPromise) {
+          subscriptionPromise.then(subscription => {
+            if (subscription) subscription.remove();
+          });
+        }
+      };
+    }, [isTracking, selectedVehicle]);
 
   // Helper to determine icon based on vehicle type/model
   const getVehicleIcon = (type, color) => {

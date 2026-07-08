@@ -222,7 +222,7 @@ export default function App() {
     { name: 'Angkatan', options: { tabBarActiveTintColor: '#f97316' }, render: (props) => <AngkatanScreen {...props} theme={theme} /> },
     { name: 'Sekretariat', options: { tabBarActiveTintColor: '#f97316' }, render: (props) => <SekretariatScreen {...props} theme={theme} userRole={userRole} /> },
     { name: 'Latihan', options: { tabBarActiveTintColor: '#f97316' }, render: (props) => <LatihanScreen {...props} theme={theme} /> },
-    { name: 'Operasi', options: { tabBarActiveTintColor: '#f97316' }, render: (props) => <OperasiScreen {...props} theme={theme} /> },
+    { name: 'Operasi', options: { tabBarActiveTintColor: '#f97316' }, render: (props) => <OperasiScreen {...props} theme={theme} userRole={userRole} /> },
     { name: 'Saves', options: { tabBarActiveTintColor: '#8b5cf6' }, render: (props) => <SaveManagementScreen {...props} theme={theme} /> },
     { name: 'Pengurusan Akaun', options: { tabBarActiveTintColor: '#8b5cf6' }, render: (props) => <AdminUserManagementScreen {...props} theme={theme} /> },
   ];
