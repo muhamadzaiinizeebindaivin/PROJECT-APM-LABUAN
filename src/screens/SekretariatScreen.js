@@ -1,21 +1,23 @@
 // src/screens/SekretariatScreen.js
 import React, { useState, useEffect, createElement, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, Image, Modal, TextInput, Alert, ActivityIndicator } from 'react-native';
-import { Briefcase, AlertTriangle, Home, Droplets, Mountain, Users, AlertCircle, Plus, Edit, Trash2, X, Map, Flame, Wind, MoreHorizontal } from 'lucide-react-native';
+import { Briefcase, AlertTriangle, Home, Droplets, Mountain, Users, AlertCircle, Plus, Edit, Trash2, X, Map, Flame, Wind, MoreHorizontal, History } from 'lucide-react-native';
 import { supabase } from '../supabaseClient';
 import { supabaseSandbox } from '../supabaseSandboxClient';
 
 // Import your universal edit button
 import AdminEditButton from '../components/AdminEditButton';
 
-const getAgencyColor = (agencyName = '') => {
-  const name = agencyName.toLowerCase();
-  if (name.includes('bomba')) return '#ef4444';
-  if (name.includes('apm')) return '#1E3A8A';
-  if (name.includes('pdrm') || name.includes('polis')) return '#0f172a';
-  if (name.includes('kesihatan') || name.includes('hospital')) return '#22c55e';
-  if (name.includes('jkm')) return '#a855f7';
-  return '#64748b';
+// Répartit chaque agence sur un cercle de teintes (HSL) selon sa position dans jpbdList,
+// ce qui garantit un écart maximal entre les couleurs, peu importe combien d'agences existent.
+const buildAgencyColorMap = (agencyList) => {
+  const map = {};
+  const total = agencyList.length || 1;
+  agencyList.forEach((a, index) => {
+    const hue = Math.round((360 / total) * index);
+    map[a.agency] = `hsl(${hue}, 70%, 45%)`;
+  });
+  return map;
 };
 
 const CALAMITY_CATEGORIES = [
@@ -92,6 +94,12 @@ const SekretariatScreen = ({ theme, userRole }) => {
   const [calamityDescription, setCalamityDescription] = useState('');
   const [calamityModalVisible, setCalamityModalVisible] = useState(false);
 
+  const [trackingHistory, setTrackingHistory] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(true);
+  const [showHistory, setShowHistory] = useState(false);
+  const [historyBtnHovered, setHistoryBtnHovered] = useState(false);
+  const [calamityTooltip, setCalamityTooltip] = useState(null); // { text, top, left }
+
   const handlePetaIframeLoad = () => {
     setPetaIframeLoading(false);
 
@@ -104,7 +112,7 @@ const SekretariatScreen = ({ theme, userRole }) => {
           agency: a.jpbd_directory?.agency || '',
           lat: a.latitude,
           lng: a.longitude,
-          color: getAgencyColor(a.jpbd_directory?.agency || ''),
+          color: getAgencyColorFromMap(a.jpbd_directory?.agency || ''),
           updated: a.last_updated ? new Date(a.last_updated).toLocaleTimeString() : ''
         }));
         petaIframeRef.current.contentWindow.postMessage(JSON.stringify({ type: 'UPDATE_AGENCIES', payload: agencyPayload }), '*');
@@ -129,6 +137,7 @@ const SekretariatScreen = ({ theme, userRole }) => {
     fetchHotspots();
     fetchOnlineAgencies();
     fetchCalamityPoints();
+    fetchTrackingHistory();
 
     const ppsSubscription = supabase
       .channel('pps_changes')
@@ -151,10 +160,17 @@ const SekretariatScreen = ({ theme, userRole }) => {
       })
       .subscribe();
 
-     const calamitySubscription = supabaseSandbox
+    const calamitySubscription = supabaseSandbox
       .channel('calamity_points_changes')
       .on('postgres_changes', { event: '*', schema: 'sandbox', table: 'calamity_points' }, () => {
         fetchCalamityPoints();
+      })
+      .subscribe();
+
+    const historySubscription = supabaseSandbox
+      .channel('agency_tracking_history_changes')
+      .on('postgres_changes', { event: '*', schema: 'sandbox', table: 'agency_tracking_history' }, () => {
+        fetchTrackingHistory();
       })
       .subscribe();
 
@@ -163,8 +179,29 @@ const SekretariatScreen = ({ theme, userRole }) => {
       supabase.removeChannel(hotspotSubscription);
       supabaseSandbox.removeChannel(petaSubscription);
       supabaseSandbox.removeChannel(calamitySubscription);
+      supabaseSandbox.removeChannel(historySubscription);
     };
   }, []);
+
+  const fetchTrackingHistory = async () => {
+    setLoadingHistory(true);
+    const { data, error } = await supabaseSandbox
+      .from('agency_tracking_history')
+      .select('*, jpbd_directory(agency)')
+      .order('ended_at', { ascending: false })
+      .limit(50);
+
+    if (!error) setTrackingHistory(data || []);
+    else console.error(error);
+    setLoadingHistory(false);
+  };
+
+  const formatDuration = (seconds) => {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    if (h > 0) return `${h}jam ${m} minit`;
+    return `${m} minit`;
+  };
   
   const fetchCalamityPoints = async () => {
     const { data, error } = await supabaseSandbox
@@ -182,7 +219,7 @@ const SekretariatScreen = ({ theme, userRole }) => {
         agency: a.jpbd_directory?.agency || '',
         lat: a.latitude,
         lng: a.longitude,
-        color: getAgencyColor(a.jpbd_directory?.agency || ''),
+        color: getAgencyColorFromMap(a.jpbd_directory?.agency || ''),
         updated: a.last_updated ? new Date(a.last_updated).toLocaleTimeString() : ''
       }));
       petaIframeRef.current.contentWindow.postMessage(JSON.stringify({ type: 'UPDATE_AGENCIES', payload }), '*');
@@ -788,8 +825,11 @@ const SekretariatScreen = ({ theme, userRole }) => {
 
           var createIcon = (color) => L.divIcon({
             className: 'custom-pin',
-            html: '<div style="background-color: ' + color + '; width: 16px; height: 16px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>',
-            iconSize: [16, 16], iconAnchor: [8, 8], popupAnchor: [0, -10]
+            html: '<svg width="26" height="34" viewBox="0 0 26 34" style="filter: drop-shadow(0 2px 3px rgba(0,0,0,0.35));">' +
+                    '<path d="M13 0C5.8 0 0 5.8 0 13c0 9.5 13 21 13 21s13-11.5 13-21C26 5.8 20.2 0 13 0z" fill="' + color + '" fill-opacity="0.72" stroke="white" stroke-width="2"/>' +
+                    '<circle cx="13" cy="13" r="5" fill="white" fill-opacity="0.9"/>' +
+                  '</svg>',
+            iconSize: [26, 34], iconAnchor: [13, 34], popupAnchor: [0, -30]
           });
 
           var markers = {};
@@ -894,7 +934,8 @@ const SekretariatScreen = ({ theme, userRole }) => {
       </body>
     </html>
   `;
-
+  const agencyColorMap = buildAgencyColorMap(jpbdList);
+  const getAgencyColorFromMap = (agencyName) => agencyColorMap[agencyName] || '#64748b';
   const petaMapSrc = `data:text/html;charset=utf-8,${encodeURIComponent(petaMapHtml)}`;
 
   return (
@@ -926,85 +967,169 @@ const SekretariatScreen = ({ theme, userRole }) => {
       </View>
 
       {activeTab === 'PETA' ? (
-        // --- PETA: structure fixe hors ScrollView, comme OperasiScreen ---
+        // --- PETA: carte à gauche, historique à droite ---
         <View style={[styles.petaFixedContainer, { height: '70vh', minHeight: 500 }]}>
-          <View style={styles.petaMapContainer}>
-            {Platform.OS === 'web' ? (
-              createElement('iframe', {
-                ref: petaIframeRef,
-                src: petaMapSrc,
-                style: { width: '100%', height: '100%', border: 'none' },
-                title: "Peta Agensi",
-                onLoad: handlePetaIframeLoad
-              })
-            ) : (
-              <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme?.card || '#fff' }}>
-                <Map size={48} color={theme?.textSecondary || '#64748b'} />
-                <Text style={{ marginTop: 12, color: theme?.textSecondary || '#64748b', fontWeight: '600' }}>
-                  Peta memerlukan 'react-native-webview' pada peranti mudah alih.
-                </Text>
-              </View>
-            )}
-            {petaIframeLoading && Platform.OS === 'web' && (
-              <View style={[styles.loader, { backgroundColor: theme?.background || '#f8fafc' }]}>
-                <ActivityIndicator size="large" color="#1E3A8A" />
-              </View>
-            )}
-          </View>
+          <View style={styles.petaMapHalf}>
+            <View style={styles.petaMapContainer}>
+              {Platform.OS === 'web' ? (
+                createElement('iframe', {
+                  ref: petaIframeRef,
+                  src: petaMapSrc,
+                  style: { width: '100%', height: '100%', border: 'none' },
+                  title: "Peta Agensi",
+                  onLoad: handlePetaIframeLoad
+                })
+              ) : (
+                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme?.card || '#fff' }}>
+                  <Map size={48} color={theme?.textSecondary || '#64748b'} />
+                  <Text style={{ marginTop: 12, color: theme?.textSecondary || '#64748b', fontWeight: '600' }}>
+                    Peta memerlukan 'react-native-webview' pada peranti mudah alih.
+                  </Text>
+                </View>
+              )}
+              {petaIframeLoading && Platform.OS === 'web' && (
+                <View style={[styles.loader, { backgroundColor: theme?.background || '#f8fafc' }]}>
+                  <ActivityIndicator size="large" color="#1E3A8A" />
+                </View>
+              )}
+            </View>
 
-          <View style={styles.petaHeaderCard}>
-            <View style={styles.petaIconCircle}><Map color="#fff" size={20} /></View>
-            <View>
-              <Text style={styles.petaHeaderTitle}>Peta Agensi</Text>
-              <View style={styles.liveTagContainer}>
-                {onlineAgencies.length > 0 && <View style={styles.liveDot} />}
-                <Text style={[styles.liveText, { color: onlineAgencies.length > 0 ? '#22c55e' : '#94a3b8' }]}>
-                  {onlineAgencies.length} AGENSI ONLINE
-                </Text>
+            <View style={styles.petaHeaderCard}>
+              <View style={styles.petaIconCircle}><Map color="#fff" size={20} /></View>
+              <View>
+                <Text style={styles.petaHeaderTitle}>Peta Agensi</Text>
+                <View style={styles.liveTagContainer}>
+                  {onlineAgencies.length > 0 && <View style={styles.liveDot} />}
+                  <Text style={[styles.liveText, { color: onlineAgencies.length > 0 ? '#22c55e' : '#94a3b8' }]}>
+                    {onlineAgencies.length} AGENSI ONLINE
+                  </Text>
+                </View>
               </View>
             </View>
-          </View>
 
-          {onlineAgencies.length > 0 && (
-            <View style={styles.petaListContainer}>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
-                {onlineAgencies.map(a => (
-                  <View key={a.id} style={styles.petaAgencyCard}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                      <View style={[styles.petaAgencyDot, { backgroundColor: getAgencyColor(a.jpbd_directory?.agency) }]} />
-                      <View>
-                        <Text style={styles.petaAgencyName} numberOfLines={1}>{a.jpbd_directory?.agency || '-'}</Text>
-                        <Text style={styles.petaAgencyUser}>{a.member_name}</Text>
+            {onlineAgencies.length > 0 && (
+              <View style={styles.petaListContainer}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
+                  {onlineAgencies.map(a => (
+                    <View key={a.id} style={styles.petaAgencyCard}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                        <View style={[styles.petaAgencyDot, { backgroundColor: getAgencyColorFromMap(a.jpbd_directory?.agency) }]} />
+                        <View>
+                          <Text style={styles.petaAgencyName} numberOfLines={1}>{a.jpbd_directory?.agency || '-'}</Text>
+                          <Text style={styles.petaAgencyUser}>{a.member_name}</Text>
+                        </View>
                       </View>
                     </View>
-                  </View>
-                ))}
-              </ScrollView>
-            </View>
-          )}
-          {userRole === 'sekretariat' || userRole === 'admin' ? (
-            <View style={styles.calamityPalette}>
-              <ScrollView style={{ maxHeight: 280 }} showsVerticalScrollIndicator={false}>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
+            {userRole === 'sekretariat' || userRole === 'admin' ? (
+              <View style={styles.calamityPalette}>
+                <ScrollView style={{ maxHeight: 280 }} showsVerticalScrollIndicator={false}>
                 {CALAMITY_CATEGORIES.map(cat => {
                   const isActive = activeCalamityTool === cat.key;
                   return (
-                    <TouchableOpacity
-                      key={cat.key}
-                      style={[styles.calamityToolBtn, { backgroundColor: isActive ? cat.color : '#fff', borderColor: cat.color }]}
-                      onPress={() => setActiveCalamityTool(isActive ? null : cat.key)}
-                    >
-                      <Text style={[styles.calamityToolText, { color: isActive ? '#fff' : cat.color }]}>{cat.key}</Text>
-                    </TouchableOpacity>
+                  <TouchableOpacity
+                    key={cat.key}
+                    style={[styles.calamityToolBtn, { backgroundColor: isActive ? cat.color : '#fff', borderColor: cat.color }]}
+                    onPress={() => setActiveCalamityTool(isActive ? null : cat.key)}
+                    {...(Platform.OS === 'web' ? {
+                      onMouseEnter: (e) => {
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        setCalamityTooltip({ text: cat.label, top: rect.top, left: rect.left });
+                      },
+                      onMouseLeave: () => setCalamityTooltip(null),
+                    } : {})}
+                  >
+                    <Text style={[styles.calamityToolText, { color: isActive ? '#fff' : cat.color }]}>{cat.key}</Text>
+                  </TouchableOpacity>
                   );
                 })}
-              </ScrollView>
-              {activeCalamityTool && (
-                <Text style={styles.calamityHint}>Klik pada peta untuk letak titik</Text>
+                </ScrollView>
+                {activeCalamityTool && (
+                  <Text style={styles.calamityHint}>Klik pada peta untuk letak titik</Text>
+                )}
+              </View>
+            ) : null}
+            {jpbdList.length > 0 && (
+              <View style={styles.agencyLegendPalette}>
+                <ScrollView style={{ maxHeight: 220 }} showsVerticalScrollIndicator={false}>
+                  {jpbdList.map(a => (
+                    <View key={a.id} style={styles.agencyLegendRow}>
+                      <View style={[styles.agencyLegendDot, { backgroundColor: getAgencyColorFromMap(a.agency) }]} />
+                      <Text style={styles.agencyLegendLabel} numberOfLines={1}>{a.agency}</Text>
+                    </View>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
+                <TouchableOpacity
+                  style={styles.historyToggleBtn}
+                  onPress={() => setShowHistory(!showHistory)}
+                  {...(Platform.OS === 'web' ? {
+                    onMouseEnter: () => setHistoryBtnHovered(true),
+                    onMouseLeave: () => setHistoryBtnHovered(false),
+                  } : {})}
+                >
+                  <History size={18} color="#1E3A8A" />
+                  {historyBtnHovered && (
+                    <View style={styles.historyTooltip}>
+                      <Text style={styles.historyTooltipText}>Sejarah</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>          
+          </View>
+
+            {showHistory && (
+            <View style={styles.petaHistoryHalf}>
+              <View style={styles.petaHistoryHeader}>
+                <Text style={styles.petaHistoryTitle}>Sejarah Aktiviti Agensi</Text>
+              </View>
+
+              {loadingHistory ? (
+                <ActivityIndicator size="small" color="#1E3A8A" style={{ marginTop: 20 }} />
+              ) : trackingHistory.length === 0 ? (
+                <Text style={styles.emptyText}>Tiada rekod sejarah lagi.</Text>
+              ) : (
+                <>
+                  <View style={styles.tableHeaderRow}>
+                    <Text style={[styles.tableHeaderCell, { flex: 1.6 }]}>Agensi</Text>
+                    <Text style={[styles.tableHeaderCell, { flex: 1 }]}>Tempoh</Text>
+                    <Text style={[styles.tableHeaderCell, { flex: 1 }]}>Jarak</Text>
+                    <Text style={[styles.tableHeaderCell, { flex: 1.3 }]}>Tarikh</Text>
+                  </View>
+
+                  <ScrollView showsVerticalScrollIndicator={false}>
+                    {trackingHistory.map((h, index) => (
+                      <View
+                        key={h.id}
+                        style={[styles.tableRow, { backgroundColor: index % 2 === 0 ? '#ffffff' : '#f8fafc' }]}
+                      >
+                        <View style={{ flex: 1.6, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                          <View style={[styles.petaAgencyDot, { backgroundColor: getAgencyColorFromMap(h.jpbd_directory?.agency) }]} />
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.tableCellAgency} numberOfLines={1}>{h.jpbd_directory?.agency || '-'}</Text>
+                            <Text style={styles.tableCellMember} numberOfLines={1}>{h.member_name}</Text>
+                          </View>
+                        </View>
+
+                        <Text style={[styles.tableCell, { flex: 1 }]}>{formatDuration(h.duration_seconds)}</Text>
+                        <Text style={[styles.tableCell, { flex: 1 }]}>{h.distance_km?.toFixed(2) || '0.00'} km</Text>
+
+                        <View style={{ flex: 1.3 }}>
+                          <Text style={styles.tableCellDate}>{new Date(h.ended_at).toLocaleDateString('ms-MY')}</Text>
+                          <Text style={styles.tableCellTime}>{new Date(h.ended_at).toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit' })}</Text>
+                        </View>
+                      </View>
+                    ))}
+                  </ScrollView>
+                </>
               )}
             </View>
-          ) : null}
-        </View>
-      ) : (
+            )}
+          </View>
+        ) : (
         // --- Autres onglets : ScrollView classique ---
         <ScrollView contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false}>
           
@@ -1187,6 +1312,25 @@ const SekretariatScreen = ({ theme, userRole }) => {
         </View>
       </Modal>
 
+      {Platform.OS === 'web' && calamityTooltip &&
+        createElement('div', {
+          style: {
+            position: 'fixed',
+            top: `${calamityTooltip.top}px`,
+            left: `${calamityTooltip.left - 175}px`,
+            backgroundColor: '#0f172a',
+            color: '#fff',
+            padding: '8px 12px',
+            borderRadius: '8px',
+            fontSize: '11px',
+            fontWeight: '600',
+            width: '160px',
+            zIndex: 9999,
+            pointerEvents: 'none',
+            boxShadow: '0 4px 10px rgba(0,0,0,0.3)',
+          }
+        }, calamityTooltip.text)
+      }
     </View>
   );
 };
@@ -1287,7 +1431,36 @@ const styles = StyleSheet.create({
   alertText: { fontSize: 11, color: '#ef4444', fontWeight: '700', flex: 1 },
 
   // PETA Styles (structure fixe type Operasi)
-  petaFixedContainer: { position: 'relative', margin: 15, borderRadius: 20, overflow: 'hidden' },
+  petaFixedContainer: { flexDirection: 'row', margin: 15, borderRadius: 20, overflow: 'hidden' },
+  petaMapHalf: { flex: 1, position: 'relative' },
+  historyToggleBtn: {
+    position: 'absolute', top: 16, right: 116, zIndex: 10,
+    width: 40, height: 40, borderRadius: 12, backgroundColor: '#fff',
+    justifyContent: 'center', alignItems: 'center',
+    shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 10, elevation: 4,
+  },
+  historyTooltip: {
+    position: 'absolute', top: 46, right: 0, zIndex: 20,
+    backgroundColor: '#0f172a', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8,
+  },
+  historyTooltipText: { color: '#fff', fontSize: 11, fontWeight: '700' },
+  petaHistoryHalf: { flex: 1, backgroundColor: '#fff', borderLeftWidth: 1, borderLeftColor: '#e2e8f0' },
+  petaHistoryHeader: { padding: 16, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
+  petaHistoryTitle: { fontSize: 14, fontWeight: '800', color: '#0f172a' },
+  tableHeaderRow: {
+    flexDirection: 'row', paddingHorizontal: 16, paddingVertical: 10,
+    backgroundColor: '#f1f5f9', borderBottomWidth: 1, borderBottomColor: '#e2e8f0',
+  },
+  tableHeaderCell: { fontSize: 10, fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.5 },
+  tableRow: {
+    flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12,
+    borderBottomWidth: 1, borderBottomColor: '#f1f5f9',
+  },
+  tableCell: { fontSize: 12, fontWeight: '700', color: '#334155' },
+  tableCellAgency: { fontSize: 13, fontWeight: '800', color: '#0f172a' },
+  tableCellMember: { fontSize: 11, color: '#64748b', marginTop: 1 },
+  tableCellDate: { fontSize: 11, fontWeight: '700', color: '#334155' },
+  tableCellTime: { fontSize: 10, color: '#94a3b8', marginTop: 1 },
   petaMapContainer: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0 },
   loader: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center', zIndex: 2 },
   petaHeaderCard: { position: 'absolute', top: 16, left: 16, zIndex: 10, flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 16, gap: 12, backgroundColor: '#fff', shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 10, elevation: 4, minWidth: 200 },
@@ -1296,15 +1469,29 @@ const styles = StyleSheet.create({
   liveTagContainer: { flexDirection: 'row', alignItems: 'center', marginTop: 4, gap: 6 },
   liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#22c55e' },
   liveText: { fontSize: 10, fontWeight: '700' },
-  petaListContainer: { position: 'absolute', bottom: 16, left: 16, right: 16, zIndex: 10 },
+  petaListContainer: { position: 'absolute', bottom: 50, left: 16, right: 16, zIndex: 10 },
   petaAgencyCard: { padding: 12, borderRadius: 12, backgroundColor: '#fff', shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 5, elevation: 3, minWidth: 160 },
   petaAgencyDot: { width: 10, height: 10, borderRadius: 5 },
   petaAgencyName: { fontSize: 12, fontWeight: '700', color: '#0f172a', maxWidth: 120 },
   petaAgencyUser: { fontSize: 10, color: '#64748b' },
   calamityPalette: { position: 'absolute', top: 16, right: 16, zIndex: 10, backgroundColor: '#fff', borderRadius: 16, padding: 10, gap: 6, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 10, elevation: 4, width: 90 },
-  calamityToolBtn: { paddingVertical: 8, borderRadius: 8, borderWidth: 2, justifyContent: 'center', alignItems: 'center', marginBottom: 6 },
-  calamityToolText: { fontSize: 11, fontWeight: '800' },
+  calamityToolBtn: { paddingVertical: 8, borderRadius: 8, borderWidth: 2, justifyContent: 'center', alignItems: 'center', marginBottom: 6, position: 'relative' },
+  calamityTooltip: {
+    position: 'absolute', top: 0, right: '100%', marginRight: 8, zIndex: 30,
+    backgroundColor: '#0f172a', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8,
+    width: 160,
+  },
+  calamityTooltipText: { color: '#fff', fontSize: 11, fontWeight: '600', textAlign: 'left' },
+    calamityToolText: { fontSize: 11, fontWeight: '800' },
   calamityHint: { fontSize: 10, color: '#64748b', textAlign: 'center', marginTop: 4 },
+  agencyLegendPalette: {
+    position: 'absolute', top: 110, left: 16, zIndex: 10, backgroundColor: '#fff',
+    borderRadius: 16, padding: 10, shadowColor: '#000', shadowOpacity: 0.1,
+    shadowRadius: 10, elevation: 4, width: 140,
+  },
+  agencyLegendRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 5 },
+  agencyLegendDot: { width: 10, height: 10, borderRadius: 5 },
+  agencyLegendLabel: { fontSize: 11, fontWeight: '700', color: '#334155', flex: 1 },
 });
 
 export default SekretariatScreen;

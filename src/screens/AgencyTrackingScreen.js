@@ -1,5 +1,5 @@
 // src/screens/AgencyTrackingScreen.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, FlatList, TextInput, Platform } from 'react-native';
 import * as Location from 'expo-location';
 import { Navigation, StopCircle, ArrowLeft, Search, Building2 } from 'lucide-react-native';
@@ -27,6 +27,19 @@ const clearSession = () => {
   }
 };
 
+// Distance en km entre deux points GPS (formule de Haversine)
+const haversineDistanceKm = (lat1, lon1, lat2, lon2) => {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+};
+
 export default function AgencyTrackingScreen({ onLogout, theme }) {
   const [agencies, setAgencies] = useState([]);
   const [loadingAgencies, setLoadingAgencies] = useState(true);
@@ -41,6 +54,11 @@ export default function AgencyTrackingScreen({ onLogout, theme }) {
   const [location, setLocation] = useState(null);
   const [status, setStatus] = useState('Sedia');
   const [isRestoring, setIsRestoring] = useState(true);
+
+  const jobStartTimeRef = useRef(null);
+  const lastCoordsRef = useRef(null);
+  const distanceAccumRef = useRef(0);
+  const wasTrackingRef = useRef(false);
   
 
   useEffect(() => {
@@ -120,6 +138,37 @@ export default function AgencyTrackingScreen({ onLogout, theme }) {
         return;
       }
 
+      // Récupère l'état persisté en base (survit à un rechargement de page)
+      const { data: existingRow } = await supabase
+        .from('agency_trackers')
+        .select('current_job_started_at, current_job_distance_km, latitude, longitude')
+        .eq('id', trackerId)
+        .maybeSingle();
+
+      if (existingRow?.current_job_started_at) {
+        // Un travail était déjà en cours avant le rechargement -> on reprend où on en était
+        jobStartTimeRef.current = new Date(existingRow.current_job_started_at).getTime();
+        distanceAccumRef.current = existingRow.current_job_distance_km || 0;
+        lastCoordsRef.current = (existingRow.latitude && existingRow.longitude)
+          ? { latitude: existingRow.latitude, longitude: existingRow.longitude }
+          : null;
+      } else {
+        // Nouveau travail -> on initialise proprement, y compris en base
+        jobStartTimeRef.current = Date.now();
+        distanceAccumRef.current = 0;
+        lastCoordsRef.current = null;
+
+        await supabase
+          .from('agency_trackers')
+          .update({
+            current_job_started_at: new Date(jobStartTimeRef.current).toISOString(),
+            current_job_distance_km: 0,
+          })
+          .eq('id', trackerId);
+      }
+
+      wasTrackingRef.current = true;
+
       await supabase.from('agency_trackers').update({ tracking_status: 'Online' }).eq('id', trackerId);
 
       subscriptionPromise = Location.watchPositionAsync(
@@ -129,13 +178,23 @@ export default function AgencyTrackingScreen({ onLogout, theme }) {
           setLocation(loc.coords);
           setStatus('Mengemaskini Pangkalan Data...');
 
+          if (lastCoordsRef.current) {
+            const delta = haversineDistanceKm(
+              lastCoordsRef.current.latitude, lastCoordsRef.current.longitude,
+              loc.coords.latitude, loc.coords.longitude
+            );
+            distanceAccumRef.current += delta;
+          }
+          lastCoordsRef.current = loc.coords;
+
           const { error } = await supabase
             .from('agency_trackers')
             .update({
               latitude: loc.coords.latitude,
               longitude: loc.coords.longitude,
               last_updated: new Date().toISOString(),
-              tracking_status: 'Online'
+              tracking_status: 'Online',
+              current_job_distance_km: Number(distanceAccumRef.current.toFixed(3)),
             })
             .eq('id', trackerId);
 
@@ -148,6 +207,44 @@ export default function AgencyTrackingScreen({ onLogout, theme }) {
       );
     };
 
+    const recordHistoryAndStop = async () => {
+      // Relit l'état persisté en base -> fiable même après un rechargement
+      const { data: existingRow } = await supabase
+        .from('agency_trackers')
+        .select('current_job_started_at, current_job_distance_km')
+        .eq('id', trackerId)
+        .maybeSingle();
+
+      if (existingRow?.current_job_started_at) {
+        const startedAt = new Date(existingRow.current_job_started_at);
+        const endedAt = new Date();
+        const durationSeconds = Math.round((endedAt.getTime() - startedAt.getTime()) / 1000);
+
+        await supabase.from('agency_tracking_history').insert([{
+          agency_id: selectedAgency?.id,
+          member_name: memberName,
+          started_at: startedAt.toISOString(),
+          ended_at: endedAt.toISOString(),
+          duration_seconds: durationSeconds,
+          distance_km: Number((existingRow.current_job_distance_km || 0).toFixed(2)),
+        }]);
+      }
+
+      wasTrackingRef.current = false;
+      jobStartTimeRef.current = null;
+      lastCoordsRef.current = null;
+      distanceAccumRef.current = 0;
+
+      await supabase
+        .from('agency_trackers')
+        .update({
+          tracking_status: 'Offline',
+          current_job_started_at: null,
+          current_job_distance_km: 0,
+        })
+        .eq('id', trackerId);
+    };
+
     if (!trackerId) return;
 
     if (isTracking) {
@@ -155,8 +252,7 @@ export default function AgencyTrackingScreen({ onLogout, theme }) {
       startWatching();
     } else {
       setStatus('Sedia');
-      supabase.from('agency_trackers').update({ tracking_status: 'Offline' }).eq('id', trackerId)
-        .then(({ error }) => { if (error) console.error(error); });
+      recordHistoryAndStop().catch((err) => console.error(err));
     }
 
     return () => {
