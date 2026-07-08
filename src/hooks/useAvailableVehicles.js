@@ -1,7 +1,7 @@
 // src/hooks/useAvailableVehicles.js
 import { useState, useEffect } from 'react';
 import { Alert } from 'react-native';
-import { supabase } from '../supabaseClient';
+import { supabaseSandbox } from '../supabaseSandboxClient';
 
 /**
  * Fetches land ("Darat") vehicles that are in good condition ("Baik") for
@@ -17,9 +17,9 @@ export function useAvailableVehicles() {
 
     const fetchVehicles = async () => {
       try {
-        const { data, error } = await supabase
+        const { data, error } = await supabaseSandbox
           .from('logistik')
-          .select('id, model, reg, type, color')
+          .select('id, model, reg, type, color, icon_key')
           .eq('category', 'Darat')
           .eq('status', 'Baik')
           .order('model', { ascending: true });

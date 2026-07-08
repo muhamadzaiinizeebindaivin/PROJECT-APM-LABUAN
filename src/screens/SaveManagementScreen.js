@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { View, Text, FlatList, TouchableOpacity, TextInput, Alert, ActivityIndicator, ScrollView, Platform } from 'react-native';
 import { ChevronLeft, Trash2 } from 'lucide-react-native';
-import { supabase } from '../supabaseClient';
+import { supabaseSandbox } from '../supabaseSandboxClient';
 import PentadbiranArchiveView from '../components/archive/PentadbiranArchiveView';
 import KewanganArchiveView from '../components/archive/KewanganArchiveView';
 import LogistikArchiveView from '../components/archive/LogistikArchiveView';

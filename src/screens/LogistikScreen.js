@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator } from 'react-native';
 import { Ship, Truck, Activity, ShieldCheck, Hash, Search, X } from 'lucide-react-native';
-import { supabase } from '../supabaseClient'; 
+import { supabaseSandbox } from '../supabaseSandboxClient';
 
 // Import Reusable Components
 import AppModal from '../components/AppModal';
@@ -27,11 +27,18 @@ export default function LogistikScreen({ theme, userRole }) {
   const [isEditMode, setIsEditMode] = useState(false);
   const [editingAsset, setEditingAsset] = useState(null);
 
-  const defaultForm = { category: 'Darat', type: 'Lori', model: '', reg: '', qty: '1', status: 'Baik', nota_selenggara: '' };
+  const defaultForm = { category: 'Darat', type: 'Lori', model: '', reg: '', qty: '1', status: 'Baik', nota_selenggara: '', icon_key: 'lori' };
   const [formData, setFormData] = useState(defaultForm);
 
   const filterOptions = ['Semua', 'Bot', '4x4', 'Ambulans', 'Lori', 'Motosikal'];
   const statusOptions = ['Baik', 'Selenggara', 'Rosak'];
+  const iconOptions = [
+    { key: 'car', label: 'Kereta' },
+    { key: 'lori', label: 'Lori' },
+    { key: 'motor', label: 'Motosikal' },
+    { key: 'ambulans', label: 'Ambulans' },
+    { key: 'boat', label: 'Bot' },
+  ];
 
   useEffect(() => {
     fetchLogistik();
@@ -103,17 +110,18 @@ export default function LogistikScreen({ theme, userRole }) {
   };
 
   const openEditModal = (asset) => {
-    setEditingAsset(asset);
-    setFormData({
-      category: asset.category,
-      type: asset.type,
-      model: asset.model,
-      reg: asset.reg || '',
-      qty: asset.qty !== null ? asset.qty.toString() : '1',
-      status: asset.status,
-      nota_selenggara: asset.nota_selenggara || '' 
-    });
-    setFormModalVisible(true);
+      setEditingAsset(asset);
+      setFormData({
+        category: asset.category,
+        type: asset.type,
+        model: asset.model,
+        reg: asset.reg || '',
+        qty: asset.qty !== null ? asset.qty.toString() : '1',
+        status: asset.status,
+        nota_selenggara: asset.nota_selenggara || '',
+        icon_key: asset.icon_key || 'car'
+      });
+      setFormModalVisible(true);
   };
 
   const handleSave = async () => {
@@ -130,6 +138,7 @@ export default function LogistikScreen({ theme, userRole }) {
         model: formData.model,
         status: formData.status,
         nota_selenggara: formData.status === 'Selenggara' ? formData.nota_selenggara : null,
+        icon_key: formData.icon_key,
       };
 
       if (formData.category === 'Darat') {
@@ -429,6 +438,20 @@ export default function LogistikScreen({ theme, userRole }) {
             label="Model" theme={theme} placeholder="Cth: Toyota Hilux"
             value={formData.model} onChangeText={t => setFormData({...formData, model: t})}
           />
+          <View>
+            <Text style={styles.inputLabel}>Ikon Peta</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+              {iconOptions.map(opt => (
+                <TouchableOpacity
+                  key={opt.key}
+                  style={[styles.chip, formData.icon_key === opt.key ? styles.chipActive : styles.chipInactive]}
+                  onPress={() => setFormData({ ...formData, icon_key: opt.key })}
+                >
+                  <Text style={[styles.chipText, formData.icon_key === opt.key ? styles.chipTextActive : null]}>{opt.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
 
           {formData.category === 'Darat' ? (
             <AppTextInput 

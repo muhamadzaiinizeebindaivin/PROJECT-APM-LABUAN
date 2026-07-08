@@ -4,7 +4,7 @@ import { View, Text, StyleSheet, ActivityIndicator, Dimensions, ScrollView, Touc
 import { WebView } from 'react-native-webview';
 import LinearGradient from 'react-native-linear-gradient'; 
 import { ShieldAlert, Ambulance, Truck, Car, Bike, Map as MapIcon, BarChart2, AlertTriangle, TrendingDown, Calendar, ChevronDown, ChevronUp } from 'lucide-react-native';
-import { supabase } from '../supabaseClient'; 
+import { supabaseSandbox } from '../supabaseSandboxClient';
 import { MERS_SUMMARY, MERS_MONTHLY_TREND, MERS_CASE_BREAKDOWN } from '../../data';
 
 const { height: screenHeight, width: screenWidth } = Dimensions.get('window');

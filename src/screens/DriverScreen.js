@@ -65,7 +65,7 @@ export default function DriverScreen({ onLogout, theme }) {
                 activeOpacity={0.7}
               >
                 <View style={[styles.iconContainer, { backgroundColor: (theme.accent || '#3b82f6') + '15' }]}>
-                  {getVehicleIcon('driver', item.type, theme.accent || '#3b82f6', 32)}
+                  {getVehicleIcon(item.icon_key, theme.accent || '#3b82f6', 32)}
                 </View>
 
                 <Text style={[styles.vehiclePlateText, { color: theme.text }]} numberOfLines={1}>
@@ -117,7 +117,7 @@ export default function DriverScreen({ onLogout, theme }) {
       <View style={styles.header}>
         <Text style={[styles.title, { color: theme.text }]}>Pemandu</Text>
         <View style={styles.activeVehicleCard}>
-          {getVehicleIcon('driver', selectedVehicle.type, theme.accent || '#3b82f6', 32)}
+          {getVehicleIcon(selectedVehicle.icon_key, theme.accent || '#3b82f6', 32)}
           <Text style={{ color: theme.text, fontSize: 20, fontWeight: 'bold', marginTop: 10 }}>
             {selectedVehicle.reg || 'TIADA PLAT'}
           </Text>

@@ -50,6 +50,9 @@ export default function OperasiScreen({ theme, userRole }) {
         type: 'UPDATE_LOCATION',
         id: updatedVehicle.id,
         name: updatedVehicle.model,
+        reg: updatedVehicle.reg,
+        vehicleType: updatedVehicle.type,
+        iconKey: updatedVehicle.icon_key,
         lat: updatedVehicle.latitude,
         lng: updatedVehicle.longitude,
         color: updatedVehicle.color || '#ef4444',
@@ -129,7 +132,8 @@ export default function OperasiScreen({ theme, userRole }) {
         lat: c.latitude,
         lng: c.longitude,
         color: getCalamityMeta(c.category).color,
-        label: getCalamityMeta(c.category).label
+        label: getCalamityMeta(c.category).label,
+        created_at: c.created_at
       }));
       iframeRef.current.contentWindow.postMessage(JSON.stringify({ type: 'UPDATE_CALAMITIES', payload }), '*');
     }
@@ -293,7 +297,7 @@ export default function OperasiScreen({ theme, userRole }) {
                     key={v.id}
                     name={v.reg || v.model}
                     status={v.tracking_status}
-                    icon={getVehicleIcon('operasi', v.type, v.color, 16)}
+                    icon={getVehicleIcon(v.icon_key, v.color, 16)}
                     theme={theme}
                   />
                 ))}

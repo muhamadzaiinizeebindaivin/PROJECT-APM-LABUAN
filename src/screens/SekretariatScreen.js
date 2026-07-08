@@ -2,7 +2,6 @@
 import React, { useState, useEffect, createElement, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, Image, Modal, TextInput, Alert, ActivityIndicator } from 'react-native';
 import { Briefcase, AlertTriangle, Home, Droplets, Mountain, Users, AlertCircle, Plus, Edit, Trash2, X, Map, Flame, Wind, MoreHorizontal, History } from 'lucide-react-native';
-import { supabase } from '../supabaseClient';
 import { supabaseSandbox } from '../supabaseSandboxClient';
 
 // Import your universal edit button

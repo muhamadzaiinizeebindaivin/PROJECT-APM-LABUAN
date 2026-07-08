@@ -1,6 +1,6 @@
 // src/hooks/useVehicles.js
 import { useState, useEffect } from 'react';
-import { supabase } from '../supabaseClient';
+import { supabaseSandbox } from '../supabaseSandboxClient';
 
 /**
  * Fetches "Darat" category vehicles and keeps them in sync via realtime
@@ -15,7 +15,7 @@ export function useVehicles(onUpdate) {
     let isMounted = true;
 
     const fetchVehicles = async () => {
-      const { data } = await supabase
+      const { data } = await supabaseSandbox
         .from('logistik')
         .select('*')
         .eq('category', 'Darat');
@@ -27,9 +27,9 @@ export function useVehicles(onUpdate) {
 
     fetchVehicles();
 
-    const subscription = supabase
+    const subscription = supabaseSandbox
       .channel('vehicles_channel_web')
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'logistik' }, (payload) => {
+      .on('postgres_changes', { event: 'UPDATE', schema: 'sandbox', table: 'logistik' }, (payload) => {
         const updatedVehicle = payload.new;
 
         if (isMounted) {
@@ -42,7 +42,7 @@ export function useVehicles(onUpdate) {
 
     return () => {
       isMounted = false;
-      supabase.removeChannel(subscription);
+      supabaseSandbox.removeChannel(subscription);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

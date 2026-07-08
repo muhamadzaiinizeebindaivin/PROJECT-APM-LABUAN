@@ -2,7 +2,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Alert } from 'react-native';
 import * as Location from 'expo-location';
-import { supabase } from '../supabaseClient';
 import { supabaseSandbox } from '../supabaseSandboxClient';
 import { haversineDistanceKm } from '../utils/geo';
 
@@ -65,7 +64,7 @@ export function usePatrolTracking(selectedVehicle, isTracking, onPermissionDenie
       }
       lastCoordsRef.current = null;
 
-      await supabase
+      await supabaseSandbox
         .from('logistik')
         .update({ tracking_status: 'Patrol' })
         .eq('id', selectedVehicle.id);
@@ -87,7 +86,7 @@ export function usePatrolTracking(selectedVehicle, isTracking, onPermissionDenie
           }
           lastCoordsRef.current = loc.coords;
 
-          const { error } = await supabase
+          const { error } = await supabaseSandbox
             .from('logistik')
             .update({
               latitude: loc.coords.latitude,
@@ -145,7 +144,7 @@ export function usePatrolTracking(selectedVehicle, isTracking, onPermissionDenie
       lastCoordsRef.current = null;
       distanceAccumRef.current = 0;
 
-      await supabase
+      await supabaseSandbox
         .from('logistik')
         .update({ tracking_status: 'Idle' })
         .eq('id', selectedVehicle.id);
