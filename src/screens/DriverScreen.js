@@ -1,231 +1,28 @@
 // src/screens/DriverScreen.js
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, FlatList, TextInput } from 'react-native';
-import * as Location from 'expo-location';
-import { Navigation, StopCircle, ArrowLeft, Search, Truck, Car, Bike, PlusSquare } from 'lucide-react-native';
-import { supabase } from '../supabaseClient';
-import { supabaseSandbox } from '../supabaseSandboxClient';
+import { Navigation, StopCircle, ArrowLeft, Search } from 'lucide-react-native';
 
-const haversineDistanceKm = (lat1, lon1, lat2, lon2) => {
-  const R = 6371;
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-    Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
-};
+import { getVehicleIcon } from '../utils/vehicleIcons';
+import { useAvailableVehicles } from '../hooks/useAvailableVehicles';
+import { usePatrolTracking } from '../hooks/usePatrolTracking';
 
 export default function DriverScreen({ onLogout, theme }) {
-  const [vehicles, setVehicles] = useState([]);
-  const [loadingVehicles, setLoadingVehicles] = useState(true);
+  const { vehicles, loading: loadingVehicles } = useAvailableVehicles();
+
   const [selectedVehicle, setSelectedVehicle] = useState(null);
   const [isTracking, setIsTracking] = useState(false);
-  const [location, setLocation] = useState(null);
-  const [status, setStatus] = useState('Idle');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const jobStartTimeRef = React.useRef(null);
-  const lastCoordsRef = React.useRef(null);
-  const distanceAccumRef = React.useRef(0);
-
-  // Fetch vehicles from Supabase on mount
-  useEffect(() => {
-    let isMounted = true;
-    const fetchVehicles = async () => {
-      try {
-        // FETCH FROM LOGISTIK TABLE
-        const { data, error } = await supabase
-          .from('logistik')
-          .select('id, model, reg, type, color') 
-          .eq('category', 'Darat') // Only land vehicles
-          .eq('status', 'Baik')    // Only vehicles not under maintenance
-          .order('model', { ascending: true });
-        
-        if (error) throw error;
-        
-        if (data && data.length > 0) {
-          if (isMounted) setVehicles(data);
-        } else {
-          throw new Error("Tiada kenderaan darat yang berstatus 'Baik' dijumpai.");
-        }
-      } catch (error) {
-        // ACTUAL ERROR HANDLING INSTEAD OF FAKE DATA
-        console.error("Gagal mengambil data kenderaan:", error.message);
-        if (isMounted) {
-          Alert.alert(
-            'Ralat Pangkalan Data', 
-            'Gagal memuat turun senarai kenderaan. Sila hubungi admin atau semak sambungan internet.'
-          );
-          setVehicles([]); // Ensure the list stays completely empty
-        }
-      } finally {
-        if (isMounted) setLoadingVehicles(false);
-      }
-    };
-
-    fetchVehicles();
-    return () => { isMounted = false; };
-  }, []);
-
-  // Location Tracking Effect
-    useEffect(() => {
-      let subscriptionPromise = null;
-      let isMounted = true;
-
-      const startWatching = async () => {
-        if (!selectedVehicle) return;
-
-        let { status: permStatus } = await Location.requestForegroundPermissionsAsync();
-        if (permStatus !== 'granted') {
-          if (isMounted) {
-            Alert.alert('Akses Ditolak', 'Sila benarkan akses lokasi untuk menjejak kenderaan.');
-            setIsTracking(false);
-          }
-          return;
-        }
-
-        // Récupère l'état persisté (survit à un rechargement de page)
-        const { data: existingJob } = await supabaseSandbox
-          .from('vehicle_current_job')
-          .select('started_at, distance_km')
-          .eq('vehicle_id', selectedVehicle.id)
-          .maybeSingle();
-
-        if (existingJob?.started_at) {
-          jobStartTimeRef.current = new Date(existingJob.started_at).getTime();
-          distanceAccumRef.current = existingJob.distance_km || 0;
-        } else {
-          jobStartTimeRef.current = Date.now();
-          distanceAccumRef.current = 0;
-          await supabaseSandbox
-            .from('vehicle_current_job')
-            .upsert({
-              vehicle_id: selectedVehicle.id,
-              started_at: new Date(jobStartTimeRef.current).toISOString(),
-              distance_km: 0,
-            });
-        }
-        lastCoordsRef.current = null;
-
-        await supabase
-          .from('logistik')
-          .update({ tracking_status: 'Patrol' })
-          .eq('id', selectedVehicle.id);
-
-        subscriptionPromise = Location.watchPositionAsync(
-          { accuracy: Location.Accuracy.High, timeInterval: 5000, distanceInterval: 2 },
-          async (loc) => {
-            if (!isMounted) return;
-
-            setLocation(loc.coords);
-            setStatus('Mengemaskini Pangkalan Data...');
-
-            if (lastCoordsRef.current) {
-              const delta = haversineDistanceKm(
-                lastCoordsRef.current.latitude, lastCoordsRef.current.longitude,
-                loc.coords.latitude, loc.coords.longitude
-              );
-              distanceAccumRef.current += delta;
-            }
-            lastCoordsRef.current = loc.coords;
-
-            const { error } = await supabase
-            .from('logistik')
-            .update({
-              latitude: loc.coords.latitude,
-              longitude: loc.coords.longitude,
-              last_updated: new Date().toISOString()
-            })
-            .eq('id', selectedVehicle.id);
-
-            await supabaseSandbox
-              .from('vehicle_current_job')
-              .update({ distance_km: Number(distanceAccumRef.current.toFixed(3)) })
-              .eq('vehicle_id', selectedVehicle.id);
-
-            if (error) {
-              console.error("Supabase update error:", error);
-              if (isMounted) setStatus(`Ralat: ${error.message || 'Gagal kemaskini DB'}`);
-            } else if (isMounted) {
-              setStatus(`Terakhir dihantar: ${new Date().toLocaleTimeString()}`);
-            }
-          }
-        );
-      };
-
-      const recordHistoryAndStop = async () => {
-        if (!selectedVehicle) return;
-
-        const { data: existingJob } = await supabaseSandbox
-          .from('vehicle_current_job')
-          .select('started_at, distance_km')
-          .eq('vehicle_id', selectedVehicle.id)
-          .maybeSingle();
-
-        if (existingJob?.started_at) {
-          const startedAt = new Date(existingJob.started_at);
-          const endedAt = new Date();
-          const durationSeconds = Math.round((endedAt.getTime() - startedAt.getTime()) / 1000);
-
-          await supabaseSandbox.from('vehicle_patrol_history').insert([{
-            vehicle_id: selectedVehicle.id,
-            vehicle_reg: selectedVehicle.reg || 'TIADA PLAT',
-            vehicle_model: selectedVehicle.model,
-            started_at: startedAt.toISOString(),
-            ended_at: endedAt.toISOString(),
-            duration_seconds: durationSeconds,
-            distance_km: Number((existingJob.distance_km || 0).toFixed(2)),
-          }]);
-
-          await supabaseSandbox
-            .from('vehicle_current_job')
-            .delete()
-            .eq('vehicle_id', selectedVehicle.id);
-        }
-
-        jobStartTimeRef.current = null;
-        lastCoordsRef.current = null;
-        distanceAccumRef.current = 0;
-
-        await supabase
-          .from('logistik')
-          .update({ tracking_status: 'Idle' })
-          .eq('id', selectedVehicle.id);
-      };
-
-      if (isTracking) {
-        setStatus('Mendapatkan isyarat GPS...');
-        startWatching();
-      } else if (selectedVehicle) {
-        setStatus('Sedia');
-        recordHistoryAndStop().catch((err) => console.error(err));
-      }
-
-      return () => {
-        isMounted = false;
-        if (subscriptionPromise) {
-          subscriptionPromise.then(subscription => {
-            if (subscription) subscription.remove();
-          });
-        }
-      };
-    }, [isTracking, selectedVehicle]);
-
-  // Helper to determine icon based on vehicle type/model
-  const getVehicleIcon = (type, color) => {
-    const lowerType = (type || '').toLowerCase();
-    if (lowerType.includes('lori')) return <Truck color={color} size={32} />;
-    if (lowerType.includes('ambulans')) return <PlusSquare color={color} size={32} />;
-    if (lowerType.includes('motosikal')) return <Bike color={color} size={32} />;
-    return <Car color={color} size={32} />;
-  };
+  const { location, status } = usePatrolTracking(
+    selectedVehicle,
+    isTracking,
+    () => setIsTracking(false)
+  );
 
   // Filter vehicles based on search query
-  const filteredVehicles = vehicles.filter(v => 
-    v.model.toLowerCase().includes(searchQuery.toLowerCase()) || 
+  const filteredVehicles = vehicles.filter(v =>
+    v.model.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (v.reg || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -262,19 +59,19 @@ export default function DriverScreen({ onLogout, theme }) {
             columnWrapperStyle={styles.row}
             contentContainerStyle={{ paddingBottom: 20 }}
             renderItem={({ item }) => (
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[styles.vehicleCard, { borderColor: theme.border || '#e5e7eb', backgroundColor: theme.cardBackground || '#fff' }]}
                 onPress={() => setSelectedVehicle(item)}
                 activeOpacity={0.7}
               >
                 <View style={[styles.iconContainer, { backgroundColor: (theme.accent || '#3b82f6') + '15' }]}>
-                  {getVehicleIcon(item.type, theme.accent || '#3b82f6')}
+                  {getVehicleIcon('driver', item.type, theme.accent || '#3b82f6', 32)}
                 </View>
-                
+
                 <Text style={[styles.vehiclePlateText, { color: theme.text }]} numberOfLines={1}>
                   {item.reg || 'TIADA PLAT'}
                 </Text>
-                
+
                 <Text style={[styles.vehicleNameText, { color: theme.textSecondary }]} numberOfLines={2}>
                   {item.model}
                 </Text>
@@ -302,9 +99,9 @@ export default function DriverScreen({ onLogout, theme }) {
   // View 2: Tracking Screen
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
-      
-      <TouchableOpacity 
-        style={styles.backButton} 
+
+      <TouchableOpacity
+        style={styles.backButton}
         onPress={() => {
           if (isTracking) {
             Alert.alert("Amaran", "Sila hentikan syif sebelum menukar kenderaan.");
@@ -320,7 +117,7 @@ export default function DriverScreen({ onLogout, theme }) {
       <View style={styles.header}>
         <Text style={[styles.title, { color: theme.text }]}>Pemandu</Text>
         <View style={styles.activeVehicleCard}>
-           {getVehicleIcon(selectedVehicle.type, theme.accent || '#3b82f6')}
+          {getVehicleIcon('driver', selectedVehicle.type, theme.accent || '#3b82f6', 32)}
           <Text style={{ color: theme.text, fontSize: 20, fontWeight: 'bold', marginTop: 10 }}>
             {selectedVehicle.reg || 'TIADA PLAT'}
           </Text>
@@ -341,7 +138,7 @@ export default function DriverScreen({ onLogout, theme }) {
 
       <TouchableOpacity
         style={[
-          styles.button, 
+          styles.button,
           { backgroundColor: isTracking ? '#ef4444' : '#22c55e' }
         ]}
         onPress={() => setIsTracking(!isTracking)}
@@ -350,7 +147,7 @@ export default function DriverScreen({ onLogout, theme }) {
         {isTracking ? <StopCircle color="#fff" size={36} /> : <Navigation color="#fff" size={36} />}
         <Text style={styles.btnText}>{isTracking ? 'TAMAT SYIF' : 'MULA SYIF'}</Text>
       </TouchableOpacity>
-      
+
       {isTracking && <ActivityIndicator size="large" color={theme.accent || '#3b82f6'} style={{ marginTop: 20 }} />}
 
       <TouchableOpacity onPress={onLogout} style={{ marginTop: 'auto', paddingBottom: 20 }}>
