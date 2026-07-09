@@ -42,31 +42,28 @@ export function usePatrolTracking(selectedVehicle, isTracking, onPermissionDenie
       }
 
       // Récupère l'état persisté (survit à un rechargement de page)
-      const { data: existingJob } = await supabaseSandbox
-        .from('vehicle_current_job')
-        .select('started_at, distance_km')
-        .eq('vehicle_id', selectedVehicle.id)
+      const { data: existingVehicle } = await supabaseSandbox
+        .from('logistik')
+        .select('job_started_at, job_distance_km')
+        .eq('id', selectedVehicle.id)
         .maybeSingle();
 
-      if (existingJob?.started_at) {
-        jobStartTimeRef.current = new Date(existingJob.started_at).getTime();
-        distanceAccumRef.current = existingJob.distance_km || 0;
+      if (existingVehicle?.job_started_at) {
+        jobStartTimeRef.current = new Date(existingVehicle.job_started_at).getTime();
+        distanceAccumRef.current = existingVehicle.job_distance_km || 0;
       } else {
         jobStartTimeRef.current = Date.now();
         distanceAccumRef.current = 0;
-        await supabaseSandbox
-          .from('vehicle_current_job')
-          .upsert({
-            vehicle_id: selectedVehicle.id,
-            started_at: new Date(jobStartTimeRef.current).toISOString(),
-            distance_km: 0,
-          });
       }
       lastCoordsRef.current = null;
 
       await supabaseSandbox
         .from('logistik')
-        .update({ tracking_status: 'Patrol' })
+        .update({
+          tracking_status: 'Patrol',
+          job_started_at: new Date(jobStartTimeRef.current).toISOString(),
+          job_distance_km: distanceAccumRef.current,
+        })
         .eq('id', selectedVehicle.id);
 
       subscriptionPromise = Location.watchPositionAsync(
@@ -91,14 +88,10 @@ export function usePatrolTracking(selectedVehicle, isTracking, onPermissionDenie
             .update({
               latitude: loc.coords.latitude,
               longitude: loc.coords.longitude,
-              last_updated: new Date().toISOString()
+              last_updated: new Date().toISOString(),
+              job_distance_km: Number(distanceAccumRef.current.toFixed(3)),
             })
             .eq('id', selectedVehicle.id);
-
-          await supabaseSandbox
-            .from('vehicle_current_job')
-            .update({ distance_km: Number(distanceAccumRef.current.toFixed(3)) })
-            .eq('vehicle_id', selectedVehicle.id);
 
           if (error) {
             console.error("Supabase update error:", error);
@@ -113,14 +106,14 @@ export function usePatrolTracking(selectedVehicle, isTracking, onPermissionDenie
     const recordHistoryAndStop = async () => {
       if (!selectedVehicle) return;
 
-      const { data: existingJob } = await supabaseSandbox
-        .from('vehicle_current_job')
-        .select('started_at, distance_km')
-        .eq('vehicle_id', selectedVehicle.id)
+      const { data: existingVehicle } = await supabaseSandbox
+        .from('logistik')
+        .select('job_started_at, job_distance_km')
+        .eq('id', selectedVehicle.id)
         .maybeSingle();
 
-      if (existingJob?.started_at) {
-        const startedAt = new Date(existingJob.started_at);
+      if (existingVehicle?.job_started_at) {
+        const startedAt = new Date(existingVehicle.job_started_at);
         const endedAt = new Date();
         const durationSeconds = Math.round((endedAt.getTime() - startedAt.getTime()) / 1000);
 
@@ -131,13 +124,8 @@ export function usePatrolTracking(selectedVehicle, isTracking, onPermissionDenie
           started_at: startedAt.toISOString(),
           ended_at: endedAt.toISOString(),
           duration_seconds: durationSeconds,
-          distance_km: Number((existingJob.distance_km || 0).toFixed(2)),
+          distance_km: Number((existingVehicle.job_distance_km || 0).toFixed(2)),
         }]);
-
-        await supabaseSandbox
-          .from('vehicle_current_job')
-          .delete()
-          .eq('vehicle_id', selectedVehicle.id);
       }
 
       jobStartTimeRef.current = null;
@@ -146,7 +134,7 @@ export function usePatrolTracking(selectedVehicle, isTracking, onPermissionDenie
 
       await supabaseSandbox
         .from('logistik')
-        .update({ tracking_status: 'Idle' })
+        .update({ tracking_status: 'Idle', job_started_at: null, job_distance_km: 0 })
         .eq('id', selectedVehicle.id);
     };
 
