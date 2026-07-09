@@ -1,6 +1,6 @@
 // src/hooks/usePatrolTracking.js
 import { useState, useEffect, useRef } from 'react';
-import { Alert } from 'react-native';
+import { Alert, Platform } from 'react-native';
 import * as Location from 'expo-location';
 import { supabaseSandbox } from '../supabaseSandboxClient';
 import { haversineDistanceKm } from '../utils/geo';
@@ -26,6 +26,7 @@ export function usePatrolTracking(selectedVehicle, isTracking, onPermissionDenie
   const jobStartTimeRef = useRef(null);
   const lastCoordsRef = useRef(null);
   const distanceAccumRef = useRef(0);
+  const wasTrackingRef = useRef(false); // pour ne réagir qu'à un vrai arrêt, pas à une simple sélection
 
   // --- Waypoints ("Tanda Point") ---
   const segmentDistanceRef = useRef(0);
@@ -48,17 +49,76 @@ export function usePatrolTracking(selectedVehicle, isTracking, onPermissionDenie
         return;
       }
 
+      const STALE_JOB_THRESHOLD_MS = 12 * 60 * 60 * 1000; // 12 jam
+
       // Récupère l'état persisté (survit à un rechargement de page)
       const { data: existingVehicle } = await supabaseSandbox
         .from('logistik')
-        .select('job_started_at, job_distance_km')
+        .select('job_started_at, job_distance_km, last_updated, reg, model')
         .eq('id', selectedVehicle.id)
         .maybeSingle();
 
-      if (existingVehicle?.job_started_at) {
+      const existingJobAgeMs = existingVehicle?.job_started_at
+        ? Date.now() - new Date(existingVehicle.job_started_at).getTime()
+        : null;
+      const existingJobIsStale = existingJobAgeMs !== null && existingJobAgeMs > STALE_JOB_THRESHOLD_MS;
+
+      console.log('DEBUG STALE CHECK:', {
+        job_started_at: existingVehicle?.job_started_at,
+        clientNow: new Date().toISOString(),
+        existingJobAgeMs,
+        existingJobAgeHours: existingJobAgeMs ? (existingJobAgeMs / 3600000).toFixed(2) : null,
+        STALE_JOB_THRESHOLD_MS,
+        existingJobIsStale,
+      });
+
+      if (existingVehicle?.job_started_at && !existingJobIsStale) {
+        // Reprise légitime (ex: rechargement de page pendant la même session)
         jobStartTimeRef.current = new Date(existingVehicle.job_started_at).getTime();
         distanceAccumRef.current = existingVehicle.job_distance_km || 0;
       } else {
+        // Nouvelle session propre — soit rien n'existait, soit l'ancienne
+        // session est trop vieille (jamais terminée proprement par un
+        // précédent chauffeur) et ne doit pas être héritée.
+        if (existingJobIsStale) {
+          console.warn(`Job en cours pour ce véhicule ignoré (démarré il y a plus de 12h, jamais terminé) : ${existingVehicle.job_started_at}`);
+
+          // Ferme proprement l'ancienne session abandonnée : crée une ligne
+          // "abandoned" dans l'historique pour que ses points intermédiaires
+          // (déjà en base, orphelins) puissent y être rattachés au lieu de
+          // rester invisibles pour toujours.
+          const staleStartedAt = new Date(existingVehicle.job_started_at);
+          const staleEndedAt = existingVehicle.last_updated
+            ? new Date(existingVehicle.last_updated)
+            : staleStartedAt;
+          const staleDurationSeconds = Math.max(
+            0,
+            Math.round((staleEndedAt.getTime() - staleStartedAt.getTime()) / 1000)
+          );
+
+          const { data: abandonedHistory } = await supabaseSandbox
+            .from('vehicle_patrol_history')
+            .insert([{
+              vehicle_id: selectedVehicle.id,
+              vehicle_reg: existingVehicle.reg || selectedVehicle.reg || 'TIADA PLAT',
+              vehicle_model: existingVehicle.model || selectedVehicle.model,
+              started_at: staleStartedAt.toISOString(),
+              ended_at: staleEndedAt.toISOString(),
+              duration_seconds: staleDurationSeconds,
+              distance_km: Number((existingVehicle.job_distance_km || 0).toFixed(2)),
+              status: 'abandoned',
+            }])
+            .select()
+            .single();
+
+          if (abandonedHistory?.id) {
+            await supabaseSandbox
+              .from('vehicle_patrol_waypoints')
+              .update({ patrol_history_id: abandonedHistory.id })
+              .eq('vehicle_id', selectedVehicle.id)
+              .eq('job_started_at', staleStartedAt.toISOString());
+          }
+        }
         jobStartTimeRef.current = Date.now();
         distanceAccumRef.current = 0;
       }
@@ -138,14 +198,17 @@ export function usePatrolTracking(selectedVehicle, isTracking, onPermissionDenie
           distance_km: Number((existingVehicle.job_distance_km || 0).toFixed(2)),
         }]).select().single();
 
-        // Rattache les points marqués pendant ce trajet à la patrouille définitive
+        // Rattache les points marqués pendant ce trajet à la patrouille définitive.
+        // On filtre par égalité stricte sur job_started_at (l'identifiant exact de
+        // cette session), pas par une comparaison de dates : ça évite qu'une
+        // ancienne session jamais proprement terminée pour ce même véhicule ne
+        // contamine par erreur les points de la nouvelle patrouille.
         if (insertedHistory?.id) {
           await supabaseSandbox
             .from('vehicle_patrol_waypoints')
             .update({ patrol_history_id: insertedHistory.id })
             .eq('vehicle_id', selectedVehicle.id)
-            .is('patrol_history_id', null)
-            .gte('marked_at', startedAt.toISOString());
+            .eq('job_started_at', startedAt.toISOString());
         }
       }
 
@@ -165,10 +228,11 @@ export function usePatrolTracking(selectedVehicle, isTracking, onPermissionDenie
     if (isTracking) {
       setStatus('Mendapatkan isyarat GPS...');
       startWatching();
-    } else if (selectedVehicle) {
+    } else if (selectedVehicle && wasTrackingRef.current) {
       setStatus('Sedia');
       recordHistoryAndStop().catch((err) => console.error(err));
     }
+    wasTrackingRef.current = isTracking;
 
     return () => {
       isMounted = false;
@@ -199,6 +263,7 @@ export function usePatrolTracking(selectedVehicle, isTracking, onPermissionDenie
 
     const { error } = await supabaseSandbox.from('vehicle_patrol_waypoints').insert([{
       vehicle_id: selectedVehicle.id,
+      job_started_at: new Date(jobStartTimeRef.current).toISOString(),
       sequence: waypointSeqRef.current,
       latitude: lastCoordsRef.current.latitude,
       longitude: lastCoordsRef.current.longitude,
@@ -215,6 +280,12 @@ export function usePatrolTracking(selectedVehicle, isTracking, onPermissionDenie
 
     segmentDistanceRef.current = 0;
     lastWaypointTimeRef.current = now;
+
+    if (Platform.OS === 'web') {
+      window.alert('Titik berjaya ditanda!');
+    } else {
+      Alert.alert('Berjaya', 'Titik berjaya ditanda!');
+    }
   };
 
   return { location, status, markPoint };

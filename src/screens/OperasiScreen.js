@@ -664,7 +664,14 @@ export default function OperasiScreen({ theme, userRole }) {
                     <View key={h.id}>
                       <View style={[styles.calamityTableRow, { backgroundColor: index % 2 === 0 ? '#ffffff' : '#f8fafc' }]}>
                         <View style={[styles.historyKenderaanColFlex, { paddingLeft: 16, paddingVertical: 10 }]}>
-                          <Text style={styles.tableCellAgency} numberOfLines={1} ellipsizeMode="tail">{h.vehicle_reg}</Text>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                            <Text style={styles.tableCellAgency} numberOfLines={1} ellipsizeMode="tail">{h.vehicle_reg}</Text>
+                            {h.status === 'abandoned' && (
+                              <View style={styles.abandonedBadge}>
+                                <Text style={styles.abandonedBadgeText}>Ditinggalkan</Text>
+                              </View>
+                            )}
+                          </View>
                           <Text style={styles.tableCellMember} numberOfLines={1} ellipsizeMode="tail">{h.vehicle_model}</Text>
                         </View>
                         <Text style={[styles.calamityTableCell, styles.calamityCatColFlex]}>{formatDuration(h.duration_seconds)}</Text>
@@ -1180,6 +1187,8 @@ const styles = StyleSheet.create({
   tableRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
   tableCell: { fontSize: 12, fontWeight: '700', color: '#334155', textAlign: 'left' },
   tableCellAgency: { fontSize: 13, fontWeight: '800', color: '#0f172a', textAlign: 'left' },
+  abandonedBadge: { backgroundColor: '#fef3c7', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
+  abandonedBadgeText: { fontSize: 9, fontWeight: '700', color: '#92400e' },
   tableCellMember: { fontSize: 11, color: '#64748b', marginTop: 1, textAlign: 'left' },
   tableCellDate: { fontSize: 11, fontWeight: '700', color: '#334155', textAlign: 'left' },
   tableCellTime: { fontSize: 10, color: '#94a3b8', marginTop: 1, textAlign: 'left' },

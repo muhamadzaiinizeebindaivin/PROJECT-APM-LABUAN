@@ -3,10 +3,14 @@ import { useState, useEffect } from 'react';
 import { Alert } from 'react-native';
 import { supabaseSandbox } from '../supabaseSandboxClient';
 
+const STALE_JOB_THRESHOLD_MS = 12 * 60 * 60 * 1000; // même seuil que usePatrolTracking.js
+
 /**
  * Fetches land ("Darat") vehicles that are in good condition ("Baik") for
- * the driver's vehicle-selection screen. Logic/messages unchanged from
- * the original DriverScreen.js mount effect.
+ * the driver's vehicle-selection screen, kept in sync via realtime so the
+ * list reflects other drivers starting/stopping a patrol on the same
+ * vehicle. Each vehicle also carries a computed `isBusy` flag (true when
+ * it's genuinely in an active — not stale — patrol right now).
  */
 export function useAvailableVehicles() {
   const [vehicles, setVehicles] = useState([]);
@@ -19,7 +23,7 @@ export function useAvailableVehicles() {
       try {
         const { data, error } = await supabaseSandbox
           .from('logistik')
-          .select('id, model, reg, type, color, icon_key')
+          .select('id, model, reg, type, color, icon_key, tracking_status, job_started_at')
           .eq('category', 'Darat')
           .eq('status', 'Baik')
           .order('model', { ascending: true });
@@ -46,8 +50,29 @@ export function useAvailableVehicles() {
     };
 
     fetchVehicles();
-    return () => { isMounted = false; };
+
+    const subscription = supabaseSandbox
+      .channel('available_vehicles_channel')
+      .on('postgres_changes', { event: 'UPDATE', schema: 'sandbox', table: 'logistik' }, (payload) => {
+        const updated = payload.new;
+        if (isMounted) {
+          setVehicles(current => current.map(v => v.id === updated.id ? { ...v, ...updated } : v));
+        }
+      })
+      .subscribe();
+
+    return () => {
+      isMounted = false;
+      supabaseSandbox.removeChannel(subscription);
+    };
   }, []);
 
-  return { vehicles, loading };
+  const vehiclesWithBusyFlag = vehicles.map(v => {
+    const jobAgeMs = v.job_started_at ? Date.now() - new Date(v.job_started_at).getTime() : null;
+    const jobIsStale = jobAgeMs !== null && jobAgeMs > STALE_JOB_THRESHOLD_MS;
+    const isBusy = v.tracking_status === 'Patrol' && !jobIsStale;
+    return { ...v, isBusy };
+  });
+
+  return { vehicles: vehiclesWithBusyFlag, loading };
 }
