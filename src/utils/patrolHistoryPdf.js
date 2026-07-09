@@ -69,24 +69,32 @@ export async function generatePatrolHistoryPdf({ rows, periodLabel, calamityBrea
   doc.text(`Dijana pada: ${new Date().toLocaleString('ms-MY')}`, pageWidth / 2, cursorY, { align: 'center' });
   cursorY += 8;
 
-  const tableRows = rows.map((h, index) => [
-    index + 1,
-    h.vehicle_reg || '-',
-    h.vehicle_model || '-',
-    formatDurationForPdf(h.duration_seconds),
-    `${(h.distance_km || 0).toFixed(2)} km`,
-    new Date(h.ended_at).toLocaleDateString('ms-MY'),
-    new Date(h.ended_at).toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit' }),
-  ]);
+  if (rows.length === 0) {
+    doc.setFontSize(11);
+    doc.setFont(undefined, 'italic');
+    doc.setTextColor(100);
+    doc.text('Tiada rekod sejarah untuk tempoh ini.', pageWidth / 2, cursorY + 10, { align: 'center' });
+    doc.setTextColor(0);
+  } else {
+    const tableRows = rows.map((h, index) => [
+      index + 1,
+      h.vehicle_reg || '-',
+      h.vehicle_model || '-',
+      formatDurationForPdf(h.duration_seconds),
+      `${(h.distance_km || 0).toFixed(2)} km`,
+      new Date(h.ended_at).toLocaleDateString('ms-MY'),
+      new Date(h.ended_at).toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit' }),
+    ]);
 
-  autoTable(doc, {
-    startY: cursorY,
-    head: [['#', 'No. Plat', 'Model', 'Tempoh', 'Jarak', 'Tarikh', 'Masa']],
-    body: tableRows,
-    styles: { fontSize: 9, cellPadding: 3 },
-    headStyles: { fillColor: [30, 58, 138], textColor: 255, fontStyle: 'bold' },
-    alternateRowStyles: { fillColor: [248, 250, 252] },
-  });
+    autoTable(doc, {
+      startY: cursorY,
+      head: [['#', 'No. Plat', 'Model', 'Tempoh', 'Jarak', 'Tarikh', 'Masa']],
+      body: tableRows,
+      styles: { fontSize: 9, cellPadding: 3 },
+      headStyles: { fillColor: [30, 58, 138], textColor: 255, fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
+    });
+  }
 
   if (calamityBreakdown && calamityBreakdown.rows.length > 0) {
     doc.addPage([297, 210]);
@@ -156,18 +164,34 @@ export async function generateCalamitySummaryPdf({ rows, categories, periodLabel
   cursorY += 8;
 
   const catKeys = categories.map(c => c.key);
-  const nonEmptyRows = rows.filter(r => r.total > 0);
-  const head = [['Bulan', ...catKeys, 'Jumlah']];
-  const body = nonEmptyRows.map(r => [r.month, ...catKeys.map(k => r.counts[k]), r.total]);
+  const visibleRows = rows;
 
-  autoTable(doc, {
-    startY: cursorY,
-    head,
-    body,
-    styles: { fontSize: 8, cellPadding: 2.5, halign: 'center' },
-    headStyles: { fillColor: [30, 58, 138], textColor: 255, fontStyle: 'bold' },
-    alternateRowStyles: { fillColor: [248, 250, 252] },
-  });
+  if (visibleRows.length === 0) {
+    doc.setFontSize(11);
+    doc.setFont(undefined, 'italic');
+    doc.setTextColor(100);
+    doc.text('Tiada data kecemasan untuk tempoh ini.', pageWidth / 2, cursorY + 10, { align: 'center' });
+    doc.setTextColor(0);
+  } else {
+    const cumulativeRowIndex = visibleRows.findIndex(r => r.isCumulative);
+    const head = [['Bulan', ...catKeys, 'Jumlah']];
+    const body = visibleRows.map(r => [r.month, ...catKeys.map(k => r.counts[k]), r.total]);
+
+    autoTable(doc, {
+      startY: cursorY,
+      head,
+      body,
+      styles: { fontSize: 8, cellPadding: 2.5, halign: 'center' },
+      headStyles: { fillColor: [30, 58, 138], textColor: 255, fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
+      didParseCell: (data) => {
+        if (data.section === 'body' && data.row.index === cumulativeRowIndex) {
+          data.cell.styles.fillColor = [254, 243, 199];
+          data.cell.styles.fontStyle = 'bold';
+        }
+      },
+    });
+  }
 
   const filename = `ringkasan-kecemasan-${periodLabel.replace(/\s+/g, '-').toLowerCase()}.pdf`;
   doc.save(filename);

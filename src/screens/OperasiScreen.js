@@ -15,7 +15,7 @@ import { useSandboxTable } from '../hooks/useSandboxTable';
 import { useNg999Report } from '../hooks/useNg999Report';
 import { buildOperasiMapHtml } from './operasiMapTemplate';
 import { formStyles } from '../styles/formStyles';
-import { generatePatrolHistoryPdf } from '../utils/patrolHistoryPdf';
+import { generatePatrolHistoryPdf, generateCalamitySummaryPdf } from '../utils/patrolHistoryPdf';
 
 const BULAN_MS = ['Januari', 'Februari', 'Mac', 'April', 'Mei', 'Jun', 'Julai', 'Ogos', 'September', 'Oktober', 'November', 'Disember'];
 const BULAN_OPTIONS = ['Semua Bulan', ...BULAN_MS];
@@ -159,10 +159,22 @@ export default function OperasiScreen({ theme, userRole }) {
     });
   }, [calamityYearRows]);
 
-  // Si un mois précis est choisi, ne garder que cette ligne ; sinon les 12 mois
+  // Si un mois précis est choisi, ne garder que cette ligne ; sinon les 12 mois + une ligne cumulative
   const calamitySummaryRows = useMemo(() => {
-    if (summaryMonth === null) return calamityMonthlyBreakdown;
-    return calamityMonthlyBreakdown.filter((_, idx) => idx === summaryMonth);
+    if (summaryMonth !== null) {
+      return calamityMonthlyBreakdown.filter((_, idx) => idx === summaryMonth);
+    }
+    const cumulativeCounts = {};
+    let cumulativeTotal = 0;
+    CALAMITY_CATEGORIES.forEach(cat => { cumulativeCounts[cat.key] = 0; });
+    calamityMonthlyBreakdown.forEach(row => {
+      CALAMITY_CATEGORIES.forEach(cat => { cumulativeCounts[cat.key] += row.counts[cat.key]; });
+      cumulativeTotal += row.total;
+    });
+    return [
+      ...calamityMonthlyBreakdown,
+      { month: 'Kumulatif', counts: cumulativeCounts, total: cumulativeTotal, isCumulative: true },
+    ];
   }, [calamityMonthlyBreakdown, summaryMonth]);
   const [exportingPdf, setExportingPdf] = useState(false);
   const [exportingSummaryPdf, setExportingSummaryPdf] = useState(false);
@@ -172,7 +184,6 @@ export default function OperasiScreen({ theme, userRole }) {
     : `${BULAN_MS[summaryMonth]} ${summaryYear}`;
 
   const handleExportSummaryPdf = async () => {
-    if (calamitySummaryRows.every(r => r.total === 0)) return;
     setExportingSummaryPdf(true);
     try {
       await generateCalamitySummaryPdf({
@@ -193,7 +204,6 @@ export default function OperasiScreen({ theme, userRole }) {
     : `${BULAN_MS[historyMonth]} ${historyYear}`;
 
   const handleExportHistoryPdf = async () => {
-    if (patrolHistory.length === 0) return;
     setExportingPdf(true);
     try {
       await generatePatrolHistoryPdf({
@@ -524,8 +534,8 @@ export default function OperasiScreen({ theme, userRole }) {
               <Text style={styles.historyTitle}>Sejarah Patrol Kenderaan</Text>
               <TouchableOpacity
                 onPress={handleExportHistoryPdf}
-                disabled={patrolHistory.length === 0 || exportingPdf}
-                style={[styles.pdfExportBtn, (patrolHistory.length === 0 || exportingPdf) && styles.pdfExportBtnDisabled]}
+                disabled={exportingPdf}
+                style={[styles.pdfExportBtn, exportingPdf && styles.pdfExportBtnDisabled]}
               >
                 {exportingPdf ? (
                   <ActivityIndicator size="small" color="#fff" />
@@ -638,8 +648,8 @@ export default function OperasiScreen({ theme, userRole }) {
               <Text style={styles.historyTitle}>Ringkasan Kecemasan</Text>
               <TouchableOpacity
                 onPress={handleExportSummaryPdf}
-                disabled={calamitySummaryRows.every(r => r.total === 0) || exportingSummaryPdf}
-                style={[styles.pdfExportBtn, (calamitySummaryRows.every(r => r.total === 0) || exportingSummaryPdf) && styles.pdfExportBtnDisabled]}
+                disabled={exportingSummaryPdf}
+                style={[styles.pdfExportBtn, exportingSummaryPdf && styles.pdfExportBtnDisabled]}
               >
                 {exportingSummaryPdf ? (
                   <ActivityIndicator size="small" color="#fff" />
@@ -697,10 +707,18 @@ export default function OperasiScreen({ theme, userRole }) {
                 </View>
               </View>
               {calamitySummaryRows.map((row, idx) => (
-                <View key={row.month} style={[styles.calamityTableRow, { backgroundColor: idx % 2 === 0 ? '#ffffff' : '#f8fafc' }]}>
-                  <Text style={[styles.calamityTableCell, styles.calamityMonthColFlex, { fontWeight: '700', textAlign: 'left' }]}>{row.month}</Text>
+                <View
+                  key={row.month}
+                  style={[
+                    styles.calamityTableRow,
+                    row.isCumulative
+                      ? styles.calamityCumulativeRow
+                      : { backgroundColor: idx % 2 === 0 ? '#ffffff' : '#f8fafc' },
+                  ]}
+                >
+                  <Text style={[styles.calamityTableCell, styles.calamityMonthColFlex, { fontWeight: '800', textAlign: 'left' }]}>{row.month}</Text>
                   {CALAMITY_CATEGORIES.map(cat => (
-                    <Text key={cat.key} style={[styles.calamityTableCell, styles.calamityCatColFlex]}>{row.counts[cat.key] || '–'}</Text>
+                    <Text key={cat.key} style={[styles.calamityTableCell, styles.calamityCatColFlex, row.isCumulative && { fontWeight: '700' }]}>{row.counts[cat.key] || '–'}</Text>
                   ))}
                   <View style={[styles.calamityTotalColFlex, styles.calamityTotalBadge]}>
                     <Text style={styles.calamityTotalBadgeText}>{row.total}</Text>
@@ -1056,6 +1074,7 @@ const styles = StyleSheet.create({
   calamityCatColFlex: { flex: 1 },
   calamityTotalColFlex: { flex: 1.2, alignItems: 'center', justifyContent: 'center', paddingVertical: 14 },
   calamityTotalBadge: {},
+  calamityCumulativeRow: { backgroundColor: '#fef3c7' },
   calamityTotalBadgeText: { fontSize: 15, fontWeight: '900', color: '#1E3A8A' },
   historyTableWrapper: { marginHorizontal: 16, marginTop: 8, borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 12, overflow: 'hidden' },
   tableHeaderRow: { flexDirection: 'row', paddingHorizontal: 16, paddingVertical: 10, backgroundColor: '#f1f5f9', borderBottomWidth: 1, borderBottomColor: '#e2e8f0' },
