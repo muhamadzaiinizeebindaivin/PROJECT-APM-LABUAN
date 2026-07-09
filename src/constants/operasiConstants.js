@@ -4,12 +4,17 @@ export const CATEGORY_OPTIONS = [
   "KJR - Kemalangan Jalan Raya",
   "KMU - Kes Menangkap Ular",
   "MSS - Musnah Sarang Serangga",
-  "ML - Mangsa Lemas",
-  "SKT - Sakit",
-  "KTK - Kemalangan Tempat Kerja",
-  "MT - Mangsa Terperangkap",
-  "KK - Kes Kebakaran",
   "KBD - Kes Bunuh Diri",
+  "KK - Kes Kebakaran",
+  "SKT - Sakit (Medikal/Trauma)",
+  "KTK - Kemalangan Tempat Kerja",
+  "PT - Pokok Tumbang",
+  "KBR - Kes Kebakaran",,
+  'ML - Mangsa Lemas',
+  "KB - Kes Bergaduh",
+  "MHL - Menangkap Haiwan Liar",
+  "MHP - Menangkap Haiwan Peliharaan",
+  "MT - Mangsa Terperangkap",
   "LLK - Lain-lain kes"
 ];
 
@@ -29,11 +34,11 @@ export const CALAMITY_CATEGORIES = [
   { key: 'PT', label: 'Pokok Tumbang', color: '#84cc16' },
   { key: 'KBR', label: 'Kes Kebakaran', color: '#dc2626' },
   { key: 'ML', label: 'Mangsa Lemas', color: '#0ea5e9' },
-  { key: 'LLK', label: 'Lain-lain Kes', color: '#94a3b8' },
   { key: 'KB', label: 'Kes Bergaduh', color: '#f43f5e' },
   { key: 'MHL', label: 'Menangkap Haiwan Liar', color: '#65a30d' },
   { key: 'MHP', label: 'Menangkap Haiwan Peliharaan', color: '#22c55e' },
   { key: 'MT', label: 'Mangsa Terperangkap', color: '#7c3aed' },
+  { key: 'LLK', label: 'Lain-lain Kes', color: '#94a3b8' },
 ];
 
 export const getCalamityMeta = (key) =>
