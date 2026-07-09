@@ -247,6 +247,13 @@ export default function OperasiScreen({ theme, userRole }) {
     if (!error) refetchCalamityPoints();
   };
 
+  const handleResolveCalamity = async (id) => {
+    const confirmed = Platform.OS === 'web' ? window.confirm('Tandakan titik ini sebagai selesai?') : true;
+    if (!confirmed) return;
+    const { error } = await supabaseSandbox.from('calamity_points').update({ status: 'resolved' }).eq('id', id);
+    if (!error) refetchCalamityPoints();
+  };
+
   useEffect(() => {
     const handleMapMessage = (event) => {
       if (event.source !== iframeRef.current?.contentWindow) return;
@@ -257,6 +264,8 @@ export default function OperasiScreen({ theme, userRole }) {
         setCalamityModalVisible(true);
       } else if (data.type === 'DELETE_CALAMITY_REQUEST') {
         handleDeleteCalamity(data.id);
+      } else if (data.type === 'RESOLVE_CALAMITY_REQUEST') {
+        handleResolveCalamity(data.id);
       }
     };
     window.addEventListener('message', handleMapMessage);
@@ -265,16 +274,18 @@ export default function OperasiScreen({ theme, userRole }) {
 
   useEffect(() => {
     if (!loading && iframeRef?.current?.contentWindow) {
-      const payload = calamityPoints.map(c => ({
-        id: c.id,
-        category: c.category,
-        description: c.description || '',
-        lat: c.latitude,
-        lng: c.longitude,
-        color: getCalamityMeta(c.category).color,
-        label: getCalamityMeta(c.category).label,
-        created_at: c.created_at
-      }));
+      const payload = calamityPoints
+        .filter(c => c.status !== 'resolved')
+        .map(c => ({
+          id: c.id,
+          category: c.category,
+          description: c.description || '',
+          lat: c.latitude,
+          lng: c.longitude,
+          color: getCalamityMeta(c.category).color,
+          label: getCalamityMeta(c.category).label,
+          created_at: c.created_at
+        }));
       iframeRef.current.contentWindow.postMessage(JSON.stringify({ type: 'UPDATE_CALAMITIES', payload }), '*');
     }
   }, [calamityPoints, loading]);

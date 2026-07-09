@@ -66,6 +66,10 @@ export function buildOperasiMapHtml({ theme, userRole }) {
             window.parent.postMessage(JSON.stringify({ type: 'DELETE_CALAMITY_REQUEST', id: id }), '*');
           };
 
+          window.requestResolveCalamity = function(id) {
+            window.parent.postMessage(JSON.stringify({ type: 'RESOLVE_CALAMITY_REQUEST', id: id }), '*');
+          };
+
           // ---- Cluster groups (one for vehicles, one for calamity points) ----
           function makeClusterIcon(className) {
             return function(cluster) {
@@ -211,6 +215,23 @@ export function buildOperasiMapHtml({ theme, userRole }) {
                   }
 
                   if (canDeleteCalamity) {
+                    var resolveBtnEl = document.createElement('button');
+                    resolveBtnEl.textContent = 'Selesai';
+                    resolveBtnEl.style.marginTop = '6px';
+                    resolveBtnEl.style.backgroundColor = '#22c55e';
+                    resolveBtnEl.style.color = 'white';
+                    resolveBtnEl.style.border = 'none';
+                    resolveBtnEl.style.padding = '4px 10px';
+                    resolveBtnEl.style.borderRadius = '6px';
+                    resolveBtnEl.style.fontSize = '11px';
+                    resolveBtnEl.style.fontWeight = '700';
+                    resolveBtnEl.style.cursor = 'pointer';
+                    resolveBtnEl.style.width = '100%';
+                    resolveBtnEl.addEventListener('click', function() {
+                      window.requestResolveCalamity(c.id);
+                    });
+                    popupDiv.appendChild(resolveBtnEl);
+
                     var btnEl = document.createElement('button');
                     btnEl.textContent = 'Padam Titik';
                     btnEl.style.marginTop = '6px';
