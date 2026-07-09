@@ -1,5 +1,5 @@
 // src/screen/OperasiScreen.js
-import React, { useState, useEffect, useRef, createElement } from 'react';
+import React, { useState, useEffect, useRef, useMemo, createElement } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, ScrollView, TouchableOpacity, Modal, Alert, TextInput, Platform } from 'react-native';
 import { ShieldAlert, MapIcon, BarChart2, AlertTriangle, TrendingDown, TrendingUp, Calendar, ChevronDown, ChevronUp, Plus, Edit2, Trash2, X, History } from 'lucide-react-native';
 import { supabaseSandbox } from '../supabaseSandboxClient';
@@ -15,6 +15,10 @@ import { useSandboxTable } from '../hooks/useSandboxTable';
 import { useNg999Report } from '../hooks/useNg999Report';
 import { buildOperasiMapHtml } from './operasiMapTemplate';
 import { formStyles } from '../styles/formStyles';
+
+const BULAN_MS = ['Januari', 'Februari', 'Mac', 'April', 'Mei', 'Jun', 'Julai', 'Ogos', 'September', 'Oktober', 'November', 'Disember'];
+const BULAN_OPTIONS = ['Semua Bulan', ...BULAN_MS];
+const HISTORY_PAGE_SIZE = 15;
 
 export default function OperasiScreen({ theme, userRole }) {
   const [loading, setLoading] = useState(true);
@@ -44,6 +48,12 @@ export default function OperasiScreen({ theme, userRole }) {
   const [showHistory, setShowHistory] = useState(false);
   const [historyBtnHovered, setHistoryBtnHovered] = useState(false);
   const [calamityTooltip, setCalamityTooltip] = useState(null); // { text, top, left }
+  const now = new Date();
+  const [historyYear, setHistoryYear] = useState(now.getFullYear());
+  const [historyMonth, setHistoryMonth] = useState(now.getMonth()); // 0-11
+  const [historyYearOpen, setHistoryYearOpen] = useState(false);
+  const [historyMonthOpen, setHistoryMonthOpen] = useState(false);
+  const [historyPage, setHistoryPage] = useState(0);
 
   // Vehicles: fetch + realtime, also forwards updates into the Leaflet iframe
   const vehicles = useVehicles((updatedVehicle) => {
@@ -68,13 +78,53 @@ export default function OperasiScreen({ theme, userRole }) {
     channelName: 'operasi_calamity_changes',
   });
 
-  const { data: patrolHistory, loading: loadingHistory } = useSandboxTable({
+  // Requête légère (juste les dates) pour connaître les années disponibles dans le sélecteur
+  const { data: historyDates } = useSandboxTable({
     table: 'vehicle_patrol_history',
-    channelName: 'vehicle_patrol_history_changes',
+    channelName: 'vehicle_patrol_history_years',
+    columns: 'ended_at',
     orderBy: 'ended_at',
     ascending: false,
-    limit: 50,
   });
+
+  const availableHistoryYears = useMemo(() => {
+    const years = new Set(historyDates.map(row => new Date(row.ended_at).getFullYear()));
+    years.add(now.getFullYear()); // toujours proposer l'année en cours, même sans données
+    return Array.from(years).sort((a, b) => b - a).map(String);
+  }, [historyDates]);
+
+  const historyMonthFilters = useMemo(() => {
+    const start = historyMonth === null
+      ? new Date(historyYear, 0, 1).toISOString()
+      : new Date(historyYear, historyMonth, 1).toISOString();
+    const end = historyMonth === null
+      ? new Date(historyYear + 1, 0, 1).toISOString()
+      : new Date(historyYear, historyMonth + 1, 1).toISOString();
+    return [
+      { method: 'gte', column: 'ended_at', value: start },
+      { method: 'lt', column: 'ended_at', value: end },
+    ];
+  }, [historyYear, historyMonth]);
+
+  // Contenu du mois/année sélectionné (mois en cours par défaut, ou toute l'année si "Semua Bulan")
+  const { data: patrolHistory, loading: loadingHistory } = useSandboxTable({
+    table: 'vehicle_patrol_history',
+    channelName: 'vehicle_patrol_history_detail',
+    orderBy: 'ended_at',
+    ascending: false,
+    filters: historyMonthFilters,
+  });
+
+  // Revenir à la page 1 à chaque changement de filtre
+  useEffect(() => {
+    setHistoryPage(0);
+  }, [historyYear, historyMonth]);
+
+  const historyTotalPages = Math.max(1, Math.ceil(patrolHistory.length / HISTORY_PAGE_SIZE));
+  const pagedHistory = useMemo(() => {
+    const start = historyPage * HISTORY_PAGE_SIZE;
+    return patrolHistory.slice(start, start + HISTORY_PAGE_SIZE);
+  }, [patrolHistory, historyPage]);
 
   const { ngData, loadingNg, saveRecord, deleteRecord, stats } = useNg999Report();
   const { dynamicMonthlyTrend, dynamicCaseBreakdown, topCaseData, totalMersCases } = stats;
@@ -231,7 +281,7 @@ export default function OperasiScreen({ theme, userRole }) {
   const activeVehiclesCount = activeVehicles.length;
 
   return (
-    <View style={[styles.container, { height: '80vh', minHeight: 600, backgroundColor: theme.background }]}>
+    <View style={[styles.container, { flex: 1, backgroundColor: theme.background }]}>
 
       {/* --- TOGGLE BUTTONS --- */}
       <View style={[styles.toggleWrapper, { backgroundColor: theme.card }]}>
@@ -356,38 +406,89 @@ export default function OperasiScreen({ theme, userRole }) {
 
         {showHistory && (
           <View style={styles.historyHalf}>
-            <View style={styles.historyHeader}>
+            <View style={styles.historyHeaderRow}>
               <Text style={styles.historyTitle}>Sejarah Patrol Kenderaan</Text>
+            </View>
+
+            <View style={styles.historyFilterRow}>
+              <View style={{ flex: 1 }}>
+                <ModalSelectField
+                  theme={theme}
+                  label="Tahun"
+                  value={String(historyYear)}
+                  placeholder="Tahun"
+                  options={availableHistoryYears}
+                  isOpen={historyYearOpen}
+                  onToggle={() => { setHistoryYearOpen(!historyYearOpen); setHistoryMonthOpen(false); }}
+                  onSelect={(opt) => { setHistoryYear(Number(opt)); setHistoryYearOpen(false); }}
+                  stackIndex={2000}
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <ModalSelectField
+                  theme={theme}
+                  label="Bulan"
+                  value={historyMonth === null ? 'Semua Bulan' : BULAN_MS[historyMonth]}
+                  placeholder="Bulan"
+                  options={BULAN_OPTIONS}
+                  isOpen={historyMonthOpen}
+                  onToggle={() => { setHistoryMonthOpen(!historyMonthOpen); setHistoryYearOpen(false); }}
+                  onSelect={(opt) => { setHistoryMonth(opt === 'Semua Bulan' ? null : BULAN_MS.indexOf(opt)); setHistoryMonthOpen(false); }}
+                  stackIndex={1000}
+                />
+              </View>
             </View>
 
             {loadingHistory ? (
               <ActivityIndicator size="small" color="#1E3A8A" style={{ marginTop: 20 }} />
             ) : patrolHistory.length === 0 ? (
-              <Text style={{ textAlign: 'center', color: theme.textSecondary, marginTop: 20 }}>Tiada rekod sejarah lagi.</Text>
+              <Text style={{ textAlign: 'center', color: theme.textSecondary, marginTop: 20 }}>
+                Tiada rekod sejarah untuk {historyMonth === null ? historyYear : `${BULAN_MS[historyMonth]} ${historyYear}`}.
+              </Text>
             ) : (
               <>
                 <View style={styles.tableHeaderRow}>
-                  <Text style={[styles.tableHeaderCell, { flex: 1.6 }]}>Kenderaan</Text>
-                  <Text style={[styles.tableHeaderCell, { flex: 1 }]}>Tempoh</Text>
-                  <Text style={[styles.tableHeaderCell, { flex: 1 }]}>Jarak</Text>
-                  <Text style={[styles.tableHeaderCell, { flex: 1.3 }]}>Tarikh</Text>
+                  <Text style={[styles.tableHeaderCell, { flex: 1 }]}>Kenderaan</Text>
+                  <Text style={[styles.tableHeaderCell, styles.colTempoh]}>Tempoh</Text>
+                  <Text style={[styles.tableHeaderCell, styles.colJarak]}>Jarak</Text>
+                  <Text style={[styles.tableHeaderCell, styles.colTarikh]}>Tarikh</Text>
                 </View>
                 <ScrollView showsVerticalScrollIndicator={false}>
-                  {patrolHistory.map((h, index) => (
+                  {pagedHistory.map((h, index) => (
                     <View key={h.id} style={[styles.tableRow, { backgroundColor: index % 2 === 0 ? '#ffffff' : '#f8fafc' }]}>
-                      <View style={{ flex: 1.6 }}>
+                      <View style={{ flex: 1 }}>
                         <Text style={styles.tableCellAgency} numberOfLines={1}>{h.vehicle_reg}</Text>
                         <Text style={styles.tableCellMember} numberOfLines={1}>{h.vehicle_model}</Text>
                       </View>
-                      <Text style={[styles.tableCell, { flex: 1 }]}>{formatDuration(h.duration_seconds)}</Text>
-                      <Text style={[styles.tableCell, { flex: 1 }]}>{h.distance_km?.toFixed(2) || '0.00'} km</Text>
-                      <View style={{ flex: 1.3 }}>
+                      <Text style={[styles.tableCell, styles.colTempoh]}>{formatDuration(h.duration_seconds)}</Text>
+                      <Text style={[styles.tableCell, styles.colJarak]}>{h.distance_km?.toFixed(2) || '0.00'} km</Text>
+                      <View style={styles.colTarikh}>
                         <Text style={styles.tableCellDate}>{new Date(h.ended_at).toLocaleDateString('ms-MY')}</Text>
                         <Text style={styles.tableCellTime}>{new Date(h.ended_at).toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit' })}</Text>
                       </View>
                     </View>
                   ))}
                 </ScrollView>
+
+                <View style={styles.paginationRow}>
+                  <Text style={styles.pageIndicator}>{historyPage + 1} / {historyTotalPages}</Text>
+                  <View style={styles.pageArrowRow}>
+                    <TouchableOpacity
+                      onPress={() => setHistoryPage(p => Math.max(0, p - 1))}
+                      disabled={historyPage === 0}
+                      style={[styles.pageBtn, historyPage === 0 && styles.pageBtnDisabled]}
+                    >
+                      <Text style={[styles.pageBtnText, historyPage === 0 && styles.pageBtnTextDisabled]}>←</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => setHistoryPage(p => Math.min(historyTotalPages - 1, p + 1))}
+                      disabled={historyPage >= historyTotalPages - 1}
+                      style={[styles.pageBtn, historyPage >= historyTotalPages - 1 && styles.pageBtnDisabled]}
+                    >
+                      <Text style={[styles.pageBtnText, historyPage >= historyTotalPages - 1 && styles.pageBtnTextDisabled]}>→</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
               </>
             )}
           </View>
@@ -676,13 +777,13 @@ const VehicleCard = ({ name, status, icon, theme }) => (
 );
 
 const styles = StyleSheet.create({
-  container: { position: 'relative', width: '100%', overflow: 'hidden', borderRadius: 24, paddingBottom: 10 },
+  container: { position: 'relative', width: '100%', overflow: 'hidden', borderRadius: 24, paddingBottom: 16 },
   toggleWrapper: { flexDirection: 'row', margin: 16, padding: 6, borderRadius: 16, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 5, elevation: 3, zIndex: 20 },
   toggleBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 12, borderRadius: 12, gap: 8 },
   toggleBtnActive: { backgroundColor: '#3b82f6' },
   toggleText: { fontSize: 13, fontWeight: '700' },
   toggleTextActive: { color: '#fff' },
-  viewContainer: { flex: 1, position: 'relative' },
+  viewContainer: { flex: 1, position: 'relative', marginHorizontal: 16, marginTop: 16 },
   mapContainer: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0, borderRadius: 20, overflow: 'hidden' },
 
   historyToggleBtn: {
@@ -706,16 +807,29 @@ const styles = StyleSheet.create({
   calamityHint: { fontSize: 10, color: '#64748b', textAlign: 'center', marginTop: 4 },
 
   historyHalf: { flex: 1, backgroundColor: '#fff', borderLeftWidth: 1, borderLeftColor: '#e2e8f0', borderTopRightRadius: 20, borderBottomRightRadius: 20, overflow: 'hidden' },
-  historyHeader: { padding: 16, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
+  historyHeaderRow: { padding: 16, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
   historyTitle: { fontSize: 14, fontWeight: '800', color: '#0f172a' },
+  historyFilterRow: { flexDirection: 'row', gap: 10, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4, zIndex: 50 },
   tableHeaderRow: { flexDirection: 'row', paddingHorizontal: 16, paddingVertical: 10, backgroundColor: '#f1f5f9', borderBottomWidth: 1, borderBottomColor: '#e2e8f0' },
-  tableHeaderCell: { fontSize: 10, fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.5 },
+  tableHeaderCell: { fontSize: 10, fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.5, textAlign: 'left' },
   tableRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
-  tableCell: { fontSize: 12, fontWeight: '700', color: '#334155' },
-  tableCellAgency: { fontSize: 13, fontWeight: '800', color: '#0f172a' },
-  tableCellMember: { fontSize: 11, color: '#64748b', marginTop: 1 },
-  tableCellDate: { fontSize: 11, fontWeight: '700', color: '#334155' },
-  tableCellTime: { fontSize: 10, color: '#94a3b8', marginTop: 1 },
+  tableCell: { fontSize: 12, fontWeight: '700', color: '#334155', textAlign: 'left' },
+  tableCellAgency: { fontSize: 13, fontWeight: '800', color: '#0f172a', textAlign: 'left' },
+  tableCellMember: { fontSize: 11, color: '#64748b', marginTop: 1, textAlign: 'left' },
+  tableCellDate: { fontSize: 11, fontWeight: '700', color: '#334155', textAlign: 'left' },
+  tableCellTime: { fontSize: 10, color: '#94a3b8', marginTop: 1, textAlign: 'left' },
+  tableCellDate: { fontSize: 11, fontWeight: '700', color: '#334155', textAlign: 'left' },
+  tableCellTime: { fontSize: 10, color: '#94a3b8', marginTop: 1, textAlign: 'left' },
+  colTempoh: { width: '12%', minWidth: 55, maxWidth: 90, flexShrink: 0 },
+  colJarak: { width: '13%', minWidth: 60, maxWidth: 100, flexShrink: 0 },
+  colTarikh: { width: '16%', minWidth: 80, maxWidth: 130, flexShrink: 0 },
+  paginationRow: { alignItems: 'center', paddingVertical: 12, borderTopWidth: 1, borderTopColor: '#f1f5f9', gap: 8 },
+  pageArrowRow: { flexDirection: 'row', gap: 10 },
+  pageBtn: { width: 36, height: 36, borderRadius: 8, backgroundColor: '#eff6ff', justifyContent: 'center', alignItems: 'center' },
+  pageBtnDisabled: { backgroundColor: '#f1f5f9' },
+  pageBtnText: { fontSize: 16, fontWeight: '700', color: '#1E3A8A' },
+  pageBtnTextDisabled: { color: '#cbd5e1' },
+  pageIndicator: { fontSize: 12, fontWeight: '700', color: '#64748b' },
   loader: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center', zIndex: 2 },
   headerCard: { position: 'absolute', top: 16, left: 16, zIndex: 10, flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 16, gap: 12, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 10, elevation: 4, minWidth: 200 },
   iconCircle: { width: 40, height: 40, borderRadius: 12, backgroundColor: '#ef4444', justifyContent: 'center', alignItems: 'center' },
