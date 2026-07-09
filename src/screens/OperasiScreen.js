@@ -1,7 +1,7 @@
 // src/screen/OperasiScreen.js
 import React, { useState, useEffect, useRef, useMemo, createElement } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, ScrollView, TouchableOpacity, Modal, Alert, TextInput, Platform } from 'react-native';
-import { ShieldAlert, MapIcon, BarChart2, AlertTriangle, TrendingDown, TrendingUp, Calendar, ChevronDown, ChevronUp, Plus, Edit2, Trash2, X, History } from 'lucide-react-native';
+import { ShieldAlert, MapIcon, BarChart2, AlertTriangle, TrendingDown, TrendingUp, Calendar, ChevronDown, ChevronUp, Plus, Edit2, Trash2, X, History, Download, ClipboardList } from 'lucide-react-native';
 import { supabaseSandbox } from '../supabaseSandboxClient';
 
 // Import Universal Edit Button
@@ -15,6 +15,7 @@ import { useSandboxTable } from '../hooks/useSandboxTable';
 import { useNg999Report } from '../hooks/useNg999Report';
 import { buildOperasiMapHtml } from './operasiMapTemplate';
 import { formStyles } from '../styles/formStyles';
+import { generatePatrolHistoryPdf } from '../utils/patrolHistoryPdf';
 
 const BULAN_MS = ['Januari', 'Februari', 'Mac', 'April', 'Mei', 'Jun', 'Julai', 'Ogos', 'September', 'Oktober', 'November', 'Disember'];
 const BULAN_OPTIONS = ['Semua Bulan', ...BULAN_MS];
@@ -45,8 +46,9 @@ export default function OperasiScreen({ theme, userRole }) {
   const [calamityModalVisible, setCalamityModalVisible] = useState(false);
 
   // --- Historique de patrouille ---
-  const [showHistory, setShowHistory] = useState(false);
+  const [sidePanel, setSidePanel] = useState('none'); // 'none' | 'history' | 'summary'
   const [historyBtnHovered, setHistoryBtnHovered] = useState(false);
+  const [summaryBtnHovered, setSummaryBtnHovered] = useState(false);
   const [calamityTooltip, setCalamityTooltip] = useState(null); // { text, top, left }
   const now = new Date();
   const [historyYear, setHistoryYear] = useState(now.getFullYear());
@@ -54,6 +56,10 @@ export default function OperasiScreen({ theme, userRole }) {
   const [historyYearOpen, setHistoryYearOpen] = useState(false);
   const [historyMonthOpen, setHistoryMonthOpen] = useState(false);
   const [historyPage, setHistoryPage] = useState(0);
+  const [summaryYear, setSummaryYear] = useState(now.getFullYear());
+  const [summaryYearOpen, setSummaryYearOpen] = useState(false);
+  const [summaryMonth, setSummaryMonth] = useState(null); // null = Semua Bulan (défaut)
+  const [summaryMonthOpen, setSummaryMonthOpen] = useState(false);
 
   // Vehicles: fetch + realtime, also forwards updates into the Leaflet iframe
   const vehicles = useVehicles((updatedVehicle) => {
@@ -125,6 +131,87 @@ export default function OperasiScreen({ theme, userRole }) {
     const start = historyPage * HISTORY_PAGE_SIZE;
     return patrolHistory.slice(start, start + HISTORY_PAGE_SIZE);
   }, [patrolHistory, historyPage]);
+  // Pivot mois × catégorie de sinistre, indépendant du filtre historique de patrouille
+  const availableSummaryYears = useMemo(() => {
+    const years = new Set(calamityPoints.filter(c => c.created_at).map(c => new Date(c.created_at).getFullYear()));
+    years.add(now.getFullYear());
+    return Array.from(years).sort((a, b) => b - a).map(String);
+  }, [calamityPoints]);
+
+  const calamityYearRows = useMemo(() => {
+    return calamityPoints.filter(c => c.created_at && new Date(c.created_at).getFullYear() === summaryYear);
+  }, [calamityPoints, summaryYear]);
+
+  const calamityMonthlyBreakdown = useMemo(() => {
+    return BULAN_MS.map((label, monthIndex) => {
+      const counts = {};
+      let total = 0;
+      CALAMITY_CATEGORIES.forEach(cat => { counts[cat.key] = 0; });
+      calamityYearRows.forEach(c => {
+        const d = new Date(c.created_at);
+        if (d.getMonth() !== monthIndex) return;
+        if (counts[c.category] !== undefined) {
+          counts[c.category] += 1;
+          total += 1;
+        }
+      });
+      return { month: label, counts, total };
+    });
+  }, [calamityYearRows]);
+
+  // Si un mois précis est choisi, ne garder que cette ligne ; sinon les 12 mois
+  const calamitySummaryRows = useMemo(() => {
+    if (summaryMonth === null) return calamityMonthlyBreakdown;
+    return calamityMonthlyBreakdown.filter((_, idx) => idx === summaryMonth);
+  }, [calamityMonthlyBreakdown, summaryMonth]);
+  const [exportingPdf, setExportingPdf] = useState(false);
+  const [exportingSummaryPdf, setExportingSummaryPdf] = useState(false);
+
+  const summaryPeriodLabel = summaryMonth === null
+    ? `Tahun ${summaryYear}`
+    : `${BULAN_MS[summaryMonth]} ${summaryYear}`;
+
+  const handleExportSummaryPdf = async () => {
+    if (calamitySummaryRows.every(r => r.total === 0)) return;
+    setExportingSummaryPdf(true);
+    try {
+      await generateCalamitySummaryPdf({
+        rows: calamitySummaryRows,
+        categories: CALAMITY_CATEGORIES,
+        periodLabel: summaryPeriodLabel,
+      });
+    } catch (e) {
+      console.error('Gagal menjana PDF:', e);
+      Alert.alert('Ralat', 'Gagal menjana PDF. Sila cuba lagi.');
+    } finally {
+      setExportingSummaryPdf(false);
+    }
+  };
+
+  const historyPeriodLabel = historyMonth === null
+    ? `Tahun ${historyYear}`
+    : `${BULAN_MS[historyMonth]} ${historyYear}`;
+
+  const handleExportHistoryPdf = async () => {
+    if (patrolHistory.length === 0) return;
+    setExportingPdf(true);
+    try {
+      await generatePatrolHistoryPdf({
+        rows: patrolHistory,
+        periodLabel: historyPeriodLabel,
+        calamityBreakdown: {
+          year: summaryYear,
+          categories: CALAMITY_CATEGORIES,
+          rows: calamityMonthlyBreakdown,
+        },
+      });
+    } catch (e) {
+      console.error('Gagal menjana PDF:', e);
+      Alert.alert('Ralat', 'Gagal menjana PDF. Sila cuba lagi.');
+    } finally {
+      setExportingPdf(false);
+    }
+  };
 
   const { ngData, loadingNg, saveRecord, deleteRecord, stats } = useNg999Report();
   const { dynamicMonthlyTrend, dynamicCaseBreakdown, topCaseData, totalMersCases } = stats;
@@ -360,7 +447,7 @@ export default function OperasiScreen({ theme, userRole }) {
 
           <TouchableOpacity
             style={styles.historyToggleBtn}
-            onPress={() => setShowHistory(!showHistory)}
+            onPress={() => setSidePanel(sidePanel === 'history' ? 'none' : 'history')}
             {...(Platform.OS === 'web' ? {
               onMouseEnter: () => setHistoryBtnHovered(true),
               onMouseLeave: () => setHistoryBtnHovered(false),
@@ -370,6 +457,22 @@ export default function OperasiScreen({ theme, userRole }) {
             {historyBtnHovered && (
               <View style={styles.historyTooltip}>
                 <Text style={styles.historyTooltipText}>Sejarah Patrol Kenderaan</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.summaryToggleBtn}
+            onPress={() => setSidePanel(sidePanel === 'summary' ? 'none' : 'summary')}
+            {...(Platform.OS === 'web' ? {
+              onMouseEnter: () => setSummaryBtnHovered(true),
+              onMouseLeave: () => setSummaryBtnHovered(false),
+            } : {})}
+          >
+            <ClipboardList size={18} color="#1E3A8A" />
+            {summaryBtnHovered && (
+              <View style={styles.historyTooltip}>
+                <Text style={styles.historyTooltipText}>Ringkasan Kecemasan</Text>
               </View>
             )}
           </TouchableOpacity>
@@ -404,10 +507,24 @@ export default function OperasiScreen({ theme, userRole }) {
           )}
         </View>
 
-        {showHistory && (
+        {sidePanel === 'history' && (
           <View style={styles.historyHalf}>
             <View style={styles.historyHeaderRow}>
               <Text style={styles.historyTitle}>Sejarah Patrol Kenderaan</Text>
+              <TouchableOpacity
+                onPress={handleExportHistoryPdf}
+                disabled={patrolHistory.length === 0 || exportingPdf}
+                style={[styles.pdfExportBtn, (patrolHistory.length === 0 || exportingPdf) && styles.pdfExportBtnDisabled]}
+              >
+                {exportingPdf ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <>
+                    <Download size={14} color="#fff" />
+                    <Text style={styles.pdfExportBtnText}>PDF</Text>
+                  </>
+                )}
+              </TouchableOpacity>
             </View>
 
             <View style={styles.historyFilterRow}>
@@ -447,27 +564,37 @@ export default function OperasiScreen({ theme, userRole }) {
               </Text>
             ) : (
               <>
-                <View style={styles.tableHeaderRow}>
-                  <Text style={[styles.tableHeaderCell, { flex: 1 }]}>Kenderaan</Text>
-                  <Text style={[styles.tableHeaderCell, styles.colTempoh]}>Tempoh</Text>
-                  <Text style={[styles.tableHeaderCell, styles.colJarak]}>Jarak</Text>
-                  <Text style={[styles.tableHeaderCell, styles.colTarikh]}>Tarikh</Text>
-                </View>
-                <ScrollView showsVerticalScrollIndicator={false}>
+                <ScrollView showsVerticalScrollIndicator={false} style={{ marginTop: 8 }}>
+                <View style={styles.calamityTableWrapper}>
+                  <View style={styles.calamityTableHeaderRow}>
+                    <View style={[styles.historyKenderaanColFlex, styles.calamityHeaderCellBox]}>
+                      <Text style={styles.calamityTableHeaderCell}>Kenderaan</Text>
+                    </View>
+                    <View style={[styles.calamityCatColFlex, styles.calamityHeaderCellBox]}>
+                      <Text style={styles.calamityTableHeaderCell}>Tempoh</Text>
+                    </View>
+                    <View style={[styles.calamityCatColFlex, styles.calamityHeaderCellBox]}>
+                      <Text style={styles.calamityTableHeaderCell}>Jarak</Text>
+                    </View>
+                    <View style={[styles.calamityTotalColFlex, styles.calamityHeaderCellBox]}>
+                      <Text style={styles.calamityTableHeaderCell}>Tarikh</Text>
+                    </View>
+                  </View>
                   {pagedHistory.map((h, index) => (
-                    <View key={h.id} style={[styles.tableRow, { backgroundColor: index % 2 === 0 ? '#ffffff' : '#f8fafc' }]}>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.tableCellAgency} numberOfLines={1}>{h.vehicle_reg}</Text>
-                        <Text style={styles.tableCellMember} numberOfLines={1}>{h.vehicle_model}</Text>
+                    <View key={h.id} style={[styles.calamityTableRow, { backgroundColor: index % 2 === 0 ? '#ffffff' : '#f8fafc' }]}>
+                      <View style={[styles.historyKenderaanColFlex, { paddingLeft: 16, paddingVertical: 10 }]}>
+                        <Text style={styles.tableCellAgency} numberOfLines={1} ellipsizeMode="tail">{h.vehicle_reg}</Text>
+                        <Text style={styles.tableCellMember} numberOfLines={1} ellipsizeMode="tail">{h.vehicle_model}</Text>
                       </View>
-                      <Text style={[styles.tableCell, styles.colTempoh]}>{formatDuration(h.duration_seconds)}</Text>
-                      <Text style={[styles.tableCell, styles.colJarak]}>{h.distance_km?.toFixed(2) || '0.00'} km</Text>
-                      <View style={styles.colTarikh}>
+                      <Text style={[styles.calamityTableCell, styles.calamityCatColFlex]}>{formatDuration(h.duration_seconds)}</Text>
+                      <Text style={[styles.calamityTableCell, styles.calamityCatColFlex]}>{h.distance_km?.toFixed(2) || '0.00'} km</Text>
+                      <View style={[styles.calamityTotalColFlex, { paddingVertical: 10 }]}>
                         <Text style={styles.tableCellDate}>{new Date(h.ended_at).toLocaleDateString('ms-MY')}</Text>
                         <Text style={styles.tableCellTime}>{new Date(h.ended_at).toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit' })}</Text>
                       </View>
                     </View>
                   ))}
+                </View>
                 </ScrollView>
 
                 <View style={styles.paginationRow}>
@@ -491,6 +618,86 @@ export default function OperasiScreen({ theme, userRole }) {
                 </View>
               </>
             )}
+          </View>
+        )}
+
+        {sidePanel === 'summary' && (
+          <View style={styles.historyHalf}>
+            <View style={styles.historyHeaderRow}>
+              <Text style={styles.historyTitle}>Ringkasan Kecemasan</Text>
+              <TouchableOpacity
+                onPress={handleExportSummaryPdf}
+                disabled={calamitySummaryRows.every(r => r.total === 0) || exportingSummaryPdf}
+                style={[styles.pdfExportBtn, (calamitySummaryRows.every(r => r.total === 0) || exportingSummaryPdf) && styles.pdfExportBtnDisabled]}
+              >
+                {exportingSummaryPdf ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <>
+                    <Download size={14} color="#fff" />
+                    <Text style={styles.pdfExportBtnText}>PDF</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.historyFilterRow}>
+              <View style={{ flex: 1 }}>
+                <ModalSelectField
+                  theme={theme}
+                  label="Tahun"
+                  value={String(summaryYear)}
+                  placeholder="Tahun"
+                  options={availableSummaryYears}
+                  isOpen={summaryYearOpen}
+                  onToggle={() => { setSummaryYearOpen(!summaryYearOpen); setSummaryMonthOpen(false); }}
+                  onSelect={(opt) => { setSummaryYear(Number(opt)); setSummaryYearOpen(false); }}
+                  stackIndex={2000}
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <ModalSelectField
+                  theme={theme}
+                  label="Bulan"
+                  value={summaryMonth === null ? 'Semua Bulan' : BULAN_MS[summaryMonth]}
+                  placeholder="Bulan"
+                  options={BULAN_OPTIONS}
+                  isOpen={summaryMonthOpen}
+                  onToggle={() => { setSummaryMonthOpen(!summaryMonthOpen); setSummaryYearOpen(false); }}
+                  onSelect={(opt) => { setSummaryMonth(opt === 'Semua Bulan' ? null : BULAN_MS.indexOf(opt)); setSummaryMonthOpen(false); }}
+                  stackIndex={1000}
+                />
+              </View>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} style={{ marginTop: 8 }}>
+            <View style={styles.calamityTableWrapper}>
+              <View style={styles.calamityTableHeaderRow}>
+                <View style={[styles.calamityMonthColFlex, styles.calamityHeaderCellBox]}>
+                  <Text style={styles.calamityTableHeaderCell}>Bulan</Text>
+                </View>
+                {CALAMITY_CATEGORIES.map(cat => (
+                  <View key={cat.key} style={[styles.calamityCatColFlex, styles.calamityHeaderCellBox]}>
+                    <Text style={styles.calamityTableHeaderCell}>{cat.key}</Text>
+                  </View>
+                ))}
+                <View style={[styles.calamityTotalColFlex, styles.calamityHeaderCellBox]}>
+                  <Text style={styles.calamityTableHeaderCell}>Jumlah</Text>
+                </View>
+              </View>
+              {calamitySummaryRows.map((row, idx) => (
+                <View key={row.month} style={[styles.calamityTableRow, { backgroundColor: idx % 2 === 0 ? '#ffffff' : '#f8fafc' }]}>
+                  <Text style={[styles.calamityTableCell, styles.calamityMonthColFlex, { fontWeight: '700', textAlign: 'left' }]}>{row.month}</Text>
+                  {CALAMITY_CATEGORIES.map(cat => (
+                    <Text key={cat.key} style={[styles.calamityTableCell, styles.calamityCatColFlex]}>{row.counts[cat.key] || '–'}</Text>
+                  ))}
+                  <View style={[styles.calamityTotalColFlex, styles.calamityTotalBadge]}>
+                    <Text style={styles.calamityTotalBadgeText}>{row.total}</Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+            </ScrollView>
           </View>
         )}
       </View>
@@ -792,6 +999,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center',
     shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 10, elevation: 4,
   },
+  historyToggleBtn: {
+    position: 'absolute', top: 16, right: 116, zIndex: 10,
+    width: 40, height: 40, borderRadius: 12, backgroundColor: '#fff',
+    justifyContent: 'center', alignItems: 'center',
+    shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 10, elevation: 4,
+  },
+  summaryToggleBtn: {
+    position: 'absolute', top: 16, right: 164, zIndex: 10,
+    width: 40, height: 40, borderRadius: 12, backgroundColor: '#fff',
+    justifyContent: 'center', alignItems: 'center',
+    shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 10, elevation: 4,
+  },
   historyTooltip: {
     position: 'absolute', top: 46, right: 0, zIndex: 20,
     backgroundColor: '#0f172a', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8,
@@ -807,9 +1026,27 @@ const styles = StyleSheet.create({
   calamityHint: { fontSize: 10, color: '#64748b', textAlign: 'center', marginTop: 4 },
 
   historyHalf: { flex: 1, backgroundColor: '#fff', borderLeftWidth: 1, borderLeftColor: '#e2e8f0', borderTopRightRadius: 20, borderBottomRightRadius: 20, overflow: 'hidden' },
-  historyHeaderRow: { padding: 16, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
+  historyHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
+  pdfExportBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#1E3A8A', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, minWidth: 60, justifyContent: 'center' },
+  pdfExportBtnDisabled: { backgroundColor: '#cbd5e1' },
+  pdfExportBtnText: { color: '#fff', fontSize: 12, fontWeight: '700' },
   historyTitle: { fontSize: 14, fontWeight: '800', color: '#0f172a' },
   historyFilterRow: { flexDirection: 'row', gap: 10, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4, zIndex: 50 },
+  summaryYearBtnWrap: { width: 120 },
+  calamityTableWrapper: { borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 12, overflow: 'hidden', marginHorizontal: 16 },
+  calamityTableHeaderRow: { flexDirection: 'row', backgroundColor: '#1E3A8A' },
+  calamityHeaderCellBox: { alignItems: 'center', justifyContent: 'center', paddingVertical: 14, paddingHorizontal: 6, gap: 5 },
+  calamityCatDot: { width: 8, height: 8, borderRadius: 4 },
+  calamityTableHeaderCell: { fontSize: 13, fontWeight: '800', color: '#fff', textAlign: 'center' },
+  calamityTableRow: { flexDirection: 'row', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#f1f5f9' },
+  calamityTableCell: { fontSize: 14, color: '#334155', textAlign: 'center', paddingVertical: 14, paddingHorizontal: 6 },
+  calamityMonthColFlex: { flex: 2, paddingLeft: 16 },
+  historyKenderaanColFlex: { flex: 2 },
+  calamityCatColFlex: { flex: 1 },
+  calamityTotalColFlex: { flex: 1.2, alignItems: 'center', justifyContent: 'center', paddingVertical: 14 },
+  calamityTotalBadge: {},
+  calamityTotalBadgeText: { fontSize: 15, fontWeight: '900', color: '#1E3A8A' },
+  historyTableWrapper: { marginHorizontal: 16, marginTop: 8, borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 12, overflow: 'hidden' },
   tableHeaderRow: { flexDirection: 'row', paddingHorizontal: 16, paddingVertical: 10, backgroundColor: '#f1f5f9', borderBottomWidth: 1, borderBottomColor: '#e2e8f0' },
   tableHeaderCell: { fontSize: 10, fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.5, textAlign: 'left' },
   tableRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
@@ -818,8 +1055,7 @@ const styles = StyleSheet.create({
   tableCellMember: { fontSize: 11, color: '#64748b', marginTop: 1, textAlign: 'left' },
   tableCellDate: { fontSize: 11, fontWeight: '700', color: '#334155', textAlign: 'left' },
   tableCellTime: { fontSize: 10, color: '#94a3b8', marginTop: 1, textAlign: 'left' },
-  tableCellDate: { fontSize: 11, fontWeight: '700', color: '#334155', textAlign: 'left' },
-  tableCellTime: { fontSize: 10, color: '#94a3b8', marginTop: 1, textAlign: 'left' },
+  colKenderaan: { flex: 1, maxWidth: 180 },
   colTempoh: { width: '12%', minWidth: 55, maxWidth: 90, flexShrink: 0 },
   colJarak: { width: '13%', minWidth: 60, maxWidth: 100, flexShrink: 0 },
   colTarikh: { width: '16%', minWidth: 80, maxWidth: 130, flexShrink: 0 },

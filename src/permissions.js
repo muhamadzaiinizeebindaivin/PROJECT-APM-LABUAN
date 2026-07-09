@@ -1,5 +1,5 @@
 export const ROLE_PERMISSIONS = {
-  admin: ['Utama', 'Pentadbiran', 'Kewangan', 'Angkatan', 'Latihan', 'Logistik', 'Operasi', 'Sekretariat', 'Saves', 'Pengurusan Akaun'],
+  admin: ['Utama', 'Pentadbiran', 'Kewangan', 'Angkatan', 'Latihan', 'Logistik', 'Operasi', 'Sekretariat', 'Pengurusan Akaun'],
   pentadbiran: ['Utama', 'Pentadbiran'],
   kewangan: ['Utama', 'Kewangan'],
   logistik: ['Utama', 'Logistik'],

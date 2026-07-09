@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, StatusBar, TouchableOpacity, Alert, Platform, Text, ActivityIndicator } from 'react-native';import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { LayoutDashboard, Users, CreditCard, GraduationCap, Truck, ShieldAlert, Briefcase, Info, LogOut, SaveAllIcon, UserCog } from 'lucide-react-native';
+import { LayoutDashboard, Users, CreditCard, GraduationCap, Truck, ShieldAlert, Briefcase, Info, LogOut, UserCog } from 'lucide-react-native';
 import { supabaseSandbox } from './src/supabaseSandboxClient';
 import { ROLE_PERMISSIONS } from './src/permissions';
 
@@ -18,7 +18,6 @@ import SekretariatScreen from './src/screens/SekretariatScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import HomeScreen from './src/screens/HomeScreen'; 
 import DriverScreen from './src/screens/DriverScreen';
-import SaveManagementScreen from './src/screens/SaveManagementScreen';
 import SignUpScreen from './src/screens/SignUpScreen';
 import AgencyTrackingScreen from './src/screens/AgencyTrackingScreen';
 import SetPasswordScreen from './src/screens/SetPasswordScreen';
@@ -174,7 +173,7 @@ export default function App() {
       const icons = {
         Utama: Info, Pentadbiran: LayoutDashboard, Sekretariat: Briefcase,
         Angkatan: Users, Kewangan: CreditCard, Latihan: GraduationCap,
-        Logistik: Truck, Operasi: ShieldAlert, Saves: SaveAllIcon,
+        Logistik: Truck, Operasi: ShieldAlert,
         'Pengurusan Akaun': UserCog,
       };
       const Icon = icons[route.name];
@@ -223,7 +222,6 @@ export default function App() {
     { name: 'Sekretariat', options: { tabBarActiveTintColor: '#f97316' }, render: (props) => <SekretariatScreen {...props} theme={theme} userRole={userRole} /> },
     { name: 'Latihan', options: { tabBarActiveTintColor: '#f97316' }, render: (props) => <LatihanScreen {...props} theme={theme} /> },
     { name: 'Operasi', options: { tabBarActiveTintColor: '#f97316' }, render: (props) => <OperasiScreen {...props} theme={theme} userRole={userRole} /> },
-    { name: 'Saves', options: { tabBarActiveTintColor: '#8b5cf6' }, render: (props) => <SaveManagementScreen {...props} theme={theme} /> },
     { name: 'Pengurusan Akaun', options: { tabBarActiveTintColor: '#8b5cf6' }, render: (props) => <AdminUserManagementScreen {...props} theme={theme} /> },
   ];
 
