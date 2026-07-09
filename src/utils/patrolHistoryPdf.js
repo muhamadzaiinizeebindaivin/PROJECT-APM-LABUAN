@@ -94,9 +94,54 @@ export async function generatePatrolHistoryPdf({ rows, periodLabel, calamityBrea
       headStyles: { fillColor: [30, 58, 138], textColor: 255, fontStyle: 'bold' },
       alternateRowStyles: { fillColor: [248, 250, 252] },
     });
+
+    // --- Ringkasan mengikut kenderaan (agrégation par véhicule) ---
+    const vehicleRecapMap = {};
+    rows.forEach(h => {
+      const key = h.vehicle_reg || h.vehicle_model || 'N/A';
+      if (!vehicleRecapMap[key]) {
+        vehicleRecapMap[key] = {
+          reg: h.vehicle_reg || '-',
+          model: h.vehicle_model || '-',
+          count: 0,
+          totalSeconds: 0,
+          totalDistance: 0,
+        };
+      }
+      vehicleRecapMap[key].count += 1;
+      vehicleRecapMap[key].totalSeconds += h.duration_seconds || 0;
+      vehicleRecapMap[key].totalDistance += h.distance_km || 0;
+    });
+    const vehicleRecapRows = Object.values(vehicleRecapMap).sort((a, b) => b.count - a.count);
+
+    doc.addPage('a4', 'portrait');
+    let recapY = 16;
+
+    doc.setFontSize(13);
+    doc.setFont(undefined, 'bold');
+    doc.text('Ringkasan Mengikut Kenderaan', pageWidth / 2, recapY, { align: 'center' });
+    recapY += 8;
+
+    const recapBody = vehicleRecapRows.map(v => [
+      v.reg,
+      v.model,
+      v.count,
+      formatDurationForPdf(v.totalSeconds),
+      `${v.totalDistance.toFixed(2)} km`,
+    ]);
+
+    autoTable(doc, {
+      startY: recapY,
+      head: [['No. Plat', 'Model', 'Bilangan Patrol', 'Jumlah Tempoh', 'Jumlah Jarak']],
+      body: recapBody,
+      styles: { fontSize: 9, cellPadding: 3, halign: 'center' },
+      headStyles: { fillColor: [30, 58, 138], textColor: 255, fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
+      columnStyles: { 0: { halign: 'left' }, 1: { halign: 'left' } },
+    });
   }
 
-  if (calamityBreakdown && calamityBreakdown.rows.length > 0) {
+  if (calamityBreakdown) {
     doc.addPage([297, 210]);
     const landscapeWidth = doc.internal.pageSize.getWidth();
 
@@ -109,19 +154,33 @@ export async function generatePatrolHistoryPdf({ rows, periodLabel, calamityBrea
       { align: 'center' }
     );
 
-    const catKeys = calamityBreakdown.categories.map(c => c.key);
-    const nonEmptyRows = calamityBreakdown.rows.filter(r => r.total > 0);
-    const head = [['Bulan', ...catKeys, 'Jumlah']];
-    const body = nonEmptyRows.map(r => [r.month, ...catKeys.map(k => r.counts[k]), r.total]);
+    if (calamityBreakdown.rows.length === 0) {
+      doc.setFontSize(11);
+      doc.setFont(undefined, 'italic');
+      doc.setTextColor(100);
+      doc.text('Tiada data kecemasan untuk tempoh ini.', landscapeWidth / 2, 30, { align: 'center' });
+      doc.setTextColor(0);
+    } else {
+      const catKeys = calamityBreakdown.categories.map(c => c.key);
+      const cumulativeRowIndex = calamityBreakdown.rows.findIndex(r => r.isCumulative);
+      const head = [['Bulan', ...catKeys, 'Jumlah']];
+      const body = calamityBreakdown.rows.map(r => [r.month, ...catKeys.map(k => r.counts[k]), r.total]);
 
-    autoTable(doc, {
-      startY: 22,
-      head,
-      body,
-      styles: { fontSize: 7, cellPadding: 2, halign: 'center' },
-      headStyles: { fillColor: [30, 58, 138], textColor: 255, fontStyle: 'bold' },
-      alternateRowStyles: { fillColor: [248, 250, 252] },
-    });
+      autoTable(doc, {
+        startY: 22,
+        head,
+        body,
+        styles: { fontSize: 7, cellPadding: 2, halign: 'center' },
+        headStyles: { fillColor: [30, 58, 138], textColor: 255, fontStyle: 'bold' },
+        alternateRowStyles: { fillColor: [248, 250, 252] },
+        didParseCell: (data) => {
+          if (data.section === 'body' && data.row.index === cumulativeRowIndex) {
+            data.cell.styles.fillColor = [254, 243, 199];
+            data.cell.styles.fontStyle = 'bold';
+          }
+        },
+      });
+    }
   }
 
   const filename = `sejarah-patrol-${periodLabel.replace(/\s+/g, '-').toLowerCase()}.pdf`;

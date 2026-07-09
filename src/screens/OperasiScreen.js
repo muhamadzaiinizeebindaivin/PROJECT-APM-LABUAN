@@ -203,6 +203,40 @@ export default function OperasiScreen({ theme, userRole }) {
     ? `Tahun ${historyYear}`
     : `${BULAN_MS[historyMonth]} ${historyYear}`;
 
+  // Pivot mois × catégorie recalculé pour l'année/mois du panneau Sejarah (pas Ringkasan),
+  // pour que la page Kes Kecemasan incluse dans le PDF suive le même filtre que le bouton PDF.
+  const historyCalamityRows = useMemo(() => {
+    const yearRows = calamityPoints.filter(c => c.created_at && new Date(c.created_at).getFullYear() === historyYear);
+    const fullBreakdown = BULAN_MS.map((label, monthIndex) => {
+      const counts = {};
+      let total = 0;
+      CALAMITY_CATEGORIES.forEach(cat => { counts[cat.key] = 0; });
+      yearRows.forEach(c => {
+        const d = new Date(c.created_at);
+        if (d.getMonth() !== monthIndex) return;
+        if (counts[c.category] !== undefined) {
+          counts[c.category] += 1;
+          total += 1;
+        }
+      });
+      return { month: label, counts, total };
+    });
+    if (historyMonth !== null) {
+      return fullBreakdown.filter((_, idx) => idx === historyMonth);
+    }
+    const cumulativeCounts = {};
+    let cumulativeTotal = 0;
+    CALAMITY_CATEGORIES.forEach(cat => { cumulativeCounts[cat.key] = 0; });
+    fullBreakdown.forEach(row => {
+      CALAMITY_CATEGORIES.forEach(cat => { cumulativeCounts[cat.key] += row.counts[cat.key]; });
+      cumulativeTotal += row.total;
+    });
+    return [
+      ...fullBreakdown,
+      { month: 'Kumulatif', counts: cumulativeCounts, total: cumulativeTotal, isCumulative: true },
+    ];
+  }, [calamityPoints, historyYear, historyMonth]);
+
   const handleExportHistoryPdf = async () => {
     setExportingPdf(true);
     try {
@@ -210,9 +244,9 @@ export default function OperasiScreen({ theme, userRole }) {
         rows: patrolHistory,
         periodLabel: historyPeriodLabel,
         calamityBreakdown: {
-          year: summaryYear,
+          year: historyYear,
           categories: CALAMITY_CATEGORIES,
-          rows: calamityMonthlyBreakdown,
+          rows: historyCalamityRows,
         },
       });
     } catch (e) {
