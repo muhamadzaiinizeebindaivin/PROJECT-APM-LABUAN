@@ -8,10 +8,12 @@ import { haversineDistanceKm } from '../utils/geo';
 /**
  * Drives GPS tracking for the currently-selected vehicle: watches
  * position, persists the running job (start time / accumulated
- * distance) to `vehicle_current_job`, updates `logistik` with live
- * coordinates, and records a `vehicle_patrol_history` row + resets
- * `tracking_status` when tracking stops. Extracted from DriverScreen.js;
- * logic is unchanged.
+ * distance) directly on `logistik` (job_started_at / job_distance_km),
+ * lets the driver mark intermediate waypoints via `markPoint` (segment
+ * distance/duration computed between consecutive points), and records a
+ * `vehicle_patrol_history` row + resets tracking fields when tracking
+ * stops. Waypoints marked during the trip are linked to that history
+ * row once it's created.
  *
  * `onPermissionDenied` is called if location permission isn't granted,
  * so the caller can flip `isTracking` back off (mirrors the original
@@ -24,6 +26,11 @@ export function usePatrolTracking(selectedVehicle, isTracking, onPermissionDenie
   const jobStartTimeRef = useRef(null);
   const lastCoordsRef = useRef(null);
   const distanceAccumRef = useRef(0);
+
+  // --- Waypoints ("Tanda Point") ---
+  const segmentDistanceRef = useRef(0);
+  const lastWaypointTimeRef = useRef(null);
+  const waypointSeqRef = useRef(0);
 
   useEffect(() => {
     let subscriptionPromise = null;
@@ -56,6 +63,9 @@ export function usePatrolTracking(selectedVehicle, isTracking, onPermissionDenie
         distanceAccumRef.current = 0;
       }
       lastCoordsRef.current = null;
+      segmentDistanceRef.current = 0;
+      lastWaypointTimeRef.current = jobStartTimeRef.current;
+      waypointSeqRef.current = 0;
 
       await supabaseSandbox
         .from('logistik')
@@ -80,6 +90,7 @@ export function usePatrolTracking(selectedVehicle, isTracking, onPermissionDenie
               loc.coords.latitude, loc.coords.longitude
             );
             distanceAccumRef.current += delta;
+            segmentDistanceRef.current += delta;
           }
           lastCoordsRef.current = loc.coords;
 
@@ -117,7 +128,7 @@ export function usePatrolTracking(selectedVehicle, isTracking, onPermissionDenie
         const endedAt = new Date();
         const durationSeconds = Math.round((endedAt.getTime() - startedAt.getTime()) / 1000);
 
-        await supabaseSandbox.from('vehicle_patrol_history').insert([{
+        const { data: insertedHistory } = await supabaseSandbox.from('vehicle_patrol_history').insert([{
           vehicle_id: selectedVehicle.id,
           vehicle_reg: selectedVehicle.reg || 'TIADA PLAT',
           vehicle_model: selectedVehicle.model,
@@ -125,12 +136,25 @@ export function usePatrolTracking(selectedVehicle, isTracking, onPermissionDenie
           ended_at: endedAt.toISOString(),
           duration_seconds: durationSeconds,
           distance_km: Number((existingVehicle.job_distance_km || 0).toFixed(2)),
-        }]);
+        }]).select().single();
+
+        // Rattache les points marqués pendant ce trajet à la patrouille définitive
+        if (insertedHistory?.id) {
+          await supabaseSandbox
+            .from('vehicle_patrol_waypoints')
+            .update({ patrol_history_id: insertedHistory.id })
+            .eq('vehicle_id', selectedVehicle.id)
+            .is('patrol_history_id', null)
+            .gte('marked_at', startedAt.toISOString());
+        }
       }
 
       jobStartTimeRef.current = null;
       lastCoordsRef.current = null;
       distanceAccumRef.current = 0;
+      segmentDistanceRef.current = 0;
+      lastWaypointTimeRef.current = null;
+      waypointSeqRef.current = 0;
 
       await supabaseSandbox
         .from('logistik')
@@ -157,5 +181,41 @@ export function usePatrolTracking(selectedVehicle, isTracking, onPermissionDenie
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isTracking, selectedVehicle]);
 
-  return { location, status };
+  /**
+   * Marks an intermediate waypoint ("Tanda Point"). Records the segment
+   * distance/duration since the previous waypoint (or since the trip
+   * started, if this is the first one), then resets the segment counters.
+   */
+  const markPoint = async () => {
+    if (!selectedVehicle || !isTracking) return;
+    if (!lastCoordsRef.current) {
+      Alert.alert('Tunggu Sebentar', 'Isyarat GPS belum sedia lagi.');
+      return;
+    }
+
+    const now = Date.now();
+    const durationSeconds = Math.round((now - (lastWaypointTimeRef.current || now)) / 1000);
+    waypointSeqRef.current += 1;
+
+    const { error } = await supabaseSandbox.from('vehicle_patrol_waypoints').insert([{
+      vehicle_id: selectedVehicle.id,
+      sequence: waypointSeqRef.current,
+      latitude: lastCoordsRef.current.latitude,
+      longitude: lastCoordsRef.current.longitude,
+      marked_at: new Date(now).toISOString(),
+      distance_from_previous_km: Number(segmentDistanceRef.current.toFixed(3)),
+      duration_from_previous_seconds: durationSeconds,
+    }]);
+
+    if (error) {
+      console.error('Gagal menanda titik:', error);
+      Alert.alert('Ralat', 'Gagal menanda titik. Sila cuba lagi.');
+      return;
+    }
+
+    segmentDistanceRef.current = 0;
+    lastWaypointTimeRef.current = now;
+  };
+
+  return { location, status, markPoint };
 }

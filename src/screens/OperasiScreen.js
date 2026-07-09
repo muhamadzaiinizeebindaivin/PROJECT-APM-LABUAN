@@ -1,7 +1,7 @@
 // src/screen/OperasiScreen.js
 import React, { useState, useEffect, useRef, useMemo, createElement } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, ScrollView, TouchableOpacity, Modal, Alert, TextInput, Platform } from 'react-native';
-import { ShieldAlert, MapIcon, BarChart2, AlertTriangle, TrendingDown, TrendingUp, Calendar, ChevronDown, ChevronUp, Plus, Edit2, Trash2, X, History, Download, ClipboardList } from 'lucide-react-native';
+import { ShieldAlert, MapIcon, BarChart2, AlertTriangle, TrendingDown, TrendingUp, Calendar, ChevronDown, ChevronUp, Plus, Edit2, Trash2, X, History, Download, ClipboardList, Route } from 'lucide-react-native';
 import { supabaseSandbox } from '../supabaseSandboxClient';
 
 // Import Universal Edit Button
@@ -131,6 +131,28 @@ export default function OperasiScreen({ theme, userRole }) {
     const start = historyPage * HISTORY_PAGE_SIZE;
     return patrolHistory.slice(start, start + HISTORY_PAGE_SIZE);
   }, [patrolHistory, historyPage]);
+  const [expandedHistoryId, setExpandedHistoryId] = useState(null);
+  const [historyWaypoints, setHistoryWaypoints] = useState({}); // { [patrolHistoryId]: waypoints[] }
+  const [loadingWaypointsId, setLoadingWaypointsId] = useState(null);
+
+  const toggleHistoryRow = async (historyId) => {
+    if (expandedHistoryId === historyId) {
+      setExpandedHistoryId(null);
+      return;
+    }
+    setExpandedHistoryId(historyId);
+    if (!historyWaypoints[historyId]) {
+      setLoadingWaypointsId(historyId);
+      const { data } = await supabaseSandbox
+        .from('vehicle_patrol_waypoints')
+        .select('*')
+        .eq('patrol_history_id', historyId)
+        .order('sequence', { ascending: true });
+      setHistoryWaypoints(prev => ({ ...prev, [historyId]: data || [] }));
+      setLoadingWaypointsId(null);
+    }
+  };
+
   // Pivot mois × catégorie de sinistre, indépendant du filtre historique de patrouille
   const availableSummaryYears = useMemo(() => {
     const years = new Set(calamityPoints.filter(c => c.created_at).map(c => new Date(c.created_at).getFullYear()));
@@ -634,19 +656,53 @@ export default function OperasiScreen({ theme, userRole }) {
                     <View style={[styles.calamityTotalColFlex, styles.calamityHeaderCellBox]}>
                       <Text style={styles.calamityTableHeaderCell}>Tarikh</Text>
                     </View>
+                    <View style={[styles.routeColFlex, styles.calamityHeaderCellBox]}>
+                      <Text style={styles.calamityTableHeaderCell}>Route</Text>
+                    </View>
                   </View>
                   {pagedHistory.map((h, index) => (
-                    <View key={h.id} style={[styles.calamityTableRow, { backgroundColor: index % 2 === 0 ? '#ffffff' : '#f8fafc' }]}>
-                      <View style={[styles.historyKenderaanColFlex, { paddingLeft: 16, paddingVertical: 10 }]}>
-                        <Text style={styles.tableCellAgency} numberOfLines={1} ellipsizeMode="tail">{h.vehicle_reg}</Text>
-                        <Text style={styles.tableCellMember} numberOfLines={1} ellipsizeMode="tail">{h.vehicle_model}</Text>
+                    <View key={h.id}>
+                      <View style={[styles.calamityTableRow, { backgroundColor: index % 2 === 0 ? '#ffffff' : '#f8fafc' }]}>
+                        <View style={[styles.historyKenderaanColFlex, { paddingLeft: 16, paddingVertical: 10 }]}>
+                          <Text style={styles.tableCellAgency} numberOfLines={1} ellipsizeMode="tail">{h.vehicle_reg}</Text>
+                          <Text style={styles.tableCellMember} numberOfLines={1} ellipsizeMode="tail">{h.vehicle_model}</Text>
+                        </View>
+                        <Text style={[styles.calamityTableCell, styles.calamityCatColFlex]}>{formatDuration(h.duration_seconds)}</Text>
+                        <Text style={[styles.calamityTableCell, styles.calamityCatColFlex]}>{h.distance_km?.toFixed(2) || '0.00'} km</Text>
+                        <View style={[styles.calamityTotalColFlex, { paddingVertical: 10 }]}>
+                          <Text style={styles.tableCellDate}>{new Date(h.ended_at).toLocaleDateString('ms-MY')}</Text>
+                          <Text style={styles.tableCellTime}>{new Date(h.ended_at).toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit' })}</Text>
+                        </View>
+                        <View style={[styles.routeColFlex, { paddingVertical: 10, alignItems: 'center', justifyContent: 'center' }]}>
+                          <TouchableOpacity
+                            onPress={() => toggleHistoryRow(h.id)}
+                            style={[styles.routeBtn, expandedHistoryId === h.id && styles.routeBtnActive]}
+                          >
+                            <Route size={16} color={expandedHistoryId === h.id ? '#fff' : '#1E3A8A'} />
+                          </TouchableOpacity>
+                        </View>
                       </View>
-                      <Text style={[styles.calamityTableCell, styles.calamityCatColFlex]}>{formatDuration(h.duration_seconds)}</Text>
-                      <Text style={[styles.calamityTableCell, styles.calamityCatColFlex]}>{h.distance_km?.toFixed(2) || '0.00'} km</Text>
-                      <View style={[styles.calamityTotalColFlex, { paddingVertical: 10 }]}>
-                        <Text style={styles.tableCellDate}>{new Date(h.ended_at).toLocaleDateString('ms-MY')}</Text>
-                        <Text style={styles.tableCellTime}>{new Date(h.ended_at).toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit' })}</Text>
-                      </View>
+
+                      {expandedHistoryId === h.id && (
+                        <View style={styles.waypointPanel}>
+                          {loadingWaypointsId === h.id ? (
+                            <ActivityIndicator size="small" color="#1E3A8A" />
+                          ) : (historyWaypoints[h.id] || []).length === 0 ? (
+                            <Text style={styles.waypointEmptyText}>Tiada titik ditanda semasa patrol ini.</Text>
+                          ) : (
+                            (historyWaypoints[h.id] || []).map((wp, wpIndex) => (
+                              <View key={wp.id} style={styles.waypointRow}>
+                                <Text style={styles.waypointLabel}>
+                                  {wpIndex === 0 ? 'Pangkalan' : `Titik ${wpIndex}`} → Titik {wpIndex + 1}
+                                </Text>
+                                <Text style={styles.waypointDetail}>
+                                  {formatDuration(wp.duration_from_previous_seconds)} · {wp.distance_from_previous_km.toFixed(2)} km · {new Date(wp.marked_at).toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit' })}
+                                </Text>
+                              </View>
+                            ))
+                          )}
+                        </View>
+                      )}
                     </View>
                   ))}
                 </View>
@@ -1107,8 +1163,16 @@ const styles = StyleSheet.create({
   historyKenderaanColFlex: { flex: 2 },
   calamityCatColFlex: { flex: 1 },
   calamityTotalColFlex: { flex: 1.2, alignItems: 'center', justifyContent: 'center', paddingVertical: 14 },
+  routeColFlex: { flex: 0.8 },
+  routeBtn: { width: 32, height: 32, borderRadius: 8, backgroundColor: '#eff6ff', justifyContent: 'center', alignItems: 'center' },
+  routeBtnActive: { backgroundColor: '#1E3A8A' },
   calamityTotalBadge: {},
   calamityCumulativeRow: { backgroundColor: '#fef3c7' },
+  waypointPanel: { paddingHorizontal: 20, paddingVertical: 10, backgroundColor: '#f8fafc', borderTopWidth: 1, borderTopColor: '#e2e8f0' },
+  waypointRow: { paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
+  waypointLabel: { fontSize: 12, fontWeight: '700', color: '#0f172a' },
+  waypointDetail: { fontSize: 11, color: '#64748b', marginTop: 2 },
+  waypointEmptyText: { fontSize: 12, color: '#94a3b8', fontStyle: 'italic', textAlign: 'center', paddingVertical: 8 },
   calamityTotalBadgeText: { fontSize: 15, fontWeight: '900', color: '#1E3A8A' },
   historyTableWrapper: { marginHorizontal: 16, marginTop: 8, borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 12, overflow: 'hidden' },
   tableHeaderRow: { flexDirection: 'row', paddingHorizontal: 16, paddingVertical: 10, backgroundColor: '#f1f5f9', borderBottomWidth: 1, borderBottomColor: '#e2e8f0' },
