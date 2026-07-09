@@ -114,14 +114,12 @@ export function buildOperasiMapHtml({ theme, userRole }) {
 
           var createCalamityIcon = (color, category) => L.divIcon({
             className: 'calamity-pin',
-            html: '<div style="display: flex; align-items: center; gap: 5px; background-color: white; padding: 4px 8px 4px 4px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.4); border: 1.5px solid ' + color + ';">' +
-                    '<svg width="22" height="20" viewBox="0 0 24 22" style="flex-shrink: 0;">' +
-                      '<polygon points="12,1 23,20 1,20" fill="' + color + '" stroke="white" stroke-width="1.5" stroke-linejoin="round"/>' +
-                      '<text x="12" y="17" text-anchor="middle" font-size="12" font-weight="900" fill="white" font-family="sans-serif">!</text>' +
-                    '</svg>' +
-                    '<span style="color: #1f2937; font-size: 11px; font-weight: 800; font-family: sans-serif; white-space: nowrap;">' + category + '</span>' +
-                  '</div>',
-            iconSize: [70, 30], iconAnchor: [15, 28], popupAnchor: [10, -25]
+            html: '<svg width="28" height="36" viewBox="0 0 28 36" style="filter: drop-shadow(0 2px 3px rgba(0,0,0,0.35));">' +
+                    '<path d="M14 0C6.3 0 0 6.3 0 14c0 10.5 14 22 14 22s14-11.5 14-22C28 6.3 21.7 0 14 0z" fill="' + color + '" stroke="white" stroke-width="2"/>' +
+                    '<polygon points="14,7 20,18 8,18" fill="white"/>' +
+                    '<text x="14" y="17" text-anchor="middle" font-size="9" font-weight="900" fill="' + color + '" font-family="sans-serif">!</text>' +
+                  '</svg>',
+            iconSize: [28, 36], iconAnchor: [14, 36], popupAnchor: [0, -34]
           });
 
           var createPopupContent = (name, reg, type, status) => {
