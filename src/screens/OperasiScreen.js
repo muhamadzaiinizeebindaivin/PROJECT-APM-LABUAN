@@ -262,8 +262,23 @@ export default function OperasiScreen({ theme, userRole }) {
   const handleExportHistoryPdf = async () => {
     setExportingPdf(true);
     try {
+      let waypointsByPatrol = {};
+      if (patrolHistory.length > 0) {
+        const patrolIds = patrolHistory.map(h => h.id);
+        const { data: allWaypoints } = await supabaseSandbox
+          .from('vehicle_patrol_waypoints')
+          .select('*')
+          .in('patrol_history_id', patrolIds)
+          .order('sequence', { ascending: true });
+        (allWaypoints || []).forEach(wp => {
+          if (!waypointsByPatrol[wp.patrol_history_id]) waypointsByPatrol[wp.patrol_history_id] = [];
+          waypointsByPatrol[wp.patrol_history_id].push(wp);
+        });
+      }
+
       await generatePatrolHistoryPdf({
         rows: patrolHistory,
+        waypointsByPatrol,
         periodLabel: historyPeriodLabel,
         calamityBreakdown: {
           year: historyYear,

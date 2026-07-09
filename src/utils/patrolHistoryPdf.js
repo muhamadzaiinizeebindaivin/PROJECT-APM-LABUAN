@@ -36,7 +36,7 @@ function getImageNaturalSize(base64) {
  * history rows currently shown on screen — the full filtered set, not
  * just the current pagination page.
  */
-export async function generatePatrolHistoryPdf({ rows, periodLabel, calamityBreakdown }) {
+export async function generatePatrolHistoryPdf({ rows, periodLabel, calamityBreakdown, waypointsByPatrol = {} }) {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -76,24 +76,111 @@ export async function generatePatrolHistoryPdf({ rows, periodLabel, calamityBrea
     doc.text('Tiada rekod sejarah untuk tempoh ini.', pageWidth / 2, cursorY + 10, { align: 'center' });
     doc.setTextColor(0);
   } else {
-    const tableRows = rows.map((h, index) => [
-      index + 1,
-      h.vehicle_reg || '-',
-      h.vehicle_model || '-',
-      formatDurationForPdf(h.duration_seconds),
-      `${(h.distance_km || 0).toFixed(2)} km`,
-      new Date(h.ended_at).toLocaleDateString('ms-MY'),
-      new Date(h.ended_at).toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit' }),
-    ]);
+    const MAIN_HEAD = ['#', 'No. Plat', 'Model', 'Tempoh', 'Jumlah Jarak', 'Tarikh', 'Masa'];
+    const pageHeight = doc.internal.pageSize.getHeight();
 
-    autoTable(doc, {
-      startY: cursorY,
-      head: [['#', 'No. Plat', 'Model', 'Tempoh', 'Jarak', 'Tarikh', 'Masa']],
-      body: tableRows,
-      styles: { fontSize: 9, cellPadding: 3 },
-      headStyles: { fillColor: [30, 58, 138], textColor: 255, fontStyle: 'bold' },
-      alternateRowStyles: { fillColor: [248, 250, 252] },
+    let mainBuffer = [];
+    let isFirstMainTable = true;
+    let tableY = cursorY;
+
+    const flushMainBuffer = () => {
+      if (mainBuffer.length === 0) return;
+      autoTable(doc, {
+        startY: tableY,
+        head: isFirstMainTable ? [MAIN_HEAD] : undefined,
+        body: mainBuffer,
+        styles: { fontSize: 9, cellPadding: 3 },
+        headStyles: { fillColor: [30, 58, 138], textColor: 255, fontStyle: 'bold' },
+        alternateRowStyles: { fillColor: [248, 250, 252] },
+      });
+      tableY = doc.lastAutoTable.finalY;
+      isFirstMainTable = false;
+      mainBuffer = [];
+    };
+
+    rows.forEach((h, index) => {
+      const waypoints = waypointsByPatrol[h.id] || [];
+
+      if (waypoints.length === 0) {
+        mainBuffer.push([
+          index + 1,
+          h.vehicle_reg || '-',
+          h.vehicle_model || '-',
+          formatDurationForPdf(h.duration_seconds),
+          `${(h.distance_km || 0).toFixed(2)} km`,
+          new Date(h.ended_at).toLocaleDateString('ms-MY'),
+          new Date(h.ended_at).toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit' }),
+        ]);
+        return;
+      }
+
+      // Termine le tableau principal jusqu'à la patrouille précédente,
+      // pour isoler celle-ci (qui a des points) dans son propre mini-tableau.
+      flushMainBuffer();
+
+      if (tableY > pageHeight - 60) {
+        doc.addPage('a4', 'portrait');
+        tableY = 16;
+        isFirstMainTable = false; // évite de réafficher l'en-tête principal après un saut de page ici
+      }
+
+      const frameTop = tableY;
+
+      autoTable(doc, {
+        startY: tableY,
+        head: isFirstMainTable ? [MAIN_HEAD] : undefined,
+        body: [[
+          index + 1,
+          h.vehicle_reg || '-',
+          h.vehicle_model || '-',
+          formatDurationForPdf(h.duration_seconds),
+          `${(h.distance_km || 0).toFixed(2)} km`,
+          new Date(h.ended_at).toLocaleDateString('ms-MY'),
+          new Date(h.ended_at).toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit' }),
+        ]],
+        styles: { fontSize: 9, cellPadding: 3 },
+        headStyles: { fillColor: [30, 58, 138], textColor: 255, fontStyle: 'bold' },
+      });
+      isFirstMainTable = false;
+      tableY = doc.lastAutoTable.finalY;
+
+      doc.setFontSize(9);
+      doc.setFont(undefined, 'bold');
+      doc.setTextColor(30, 58, 138);
+      doc.text(`Titik Patrol — ${h.vehicle_reg || '-'} (#${index + 1})`, 20, tableY + 6);
+      doc.setTextColor(0);
+      tableY += 8;
+
+      const segBody = waypoints.map((wp, wpIndex) => [
+        wpIndex === 0 ? 'Pangkalan' : `Titik ${wpIndex}`,
+        `Titik ${wpIndex + 1}`,
+        formatDurationForPdf(wp.duration_from_previous_seconds),
+        `${wp.distance_from_previous_km.toFixed(2)} km`,
+        new Date(wp.marked_at).toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit' }),
+      ]);
+
+      const subTableSideMargin = 20; // même marge que le cadre, de chaque côté
+
+      autoTable(doc, {
+        startY: tableY,
+        head: [['Dari', 'Ke', 'Tempoh', 'Jarak', 'Masa']],
+        body: segBody,
+        styles: { fontSize: 8, cellPadding: 2 },
+        headStyles: { fillColor: [148, 163, 184], textColor: 255, fontStyle: 'bold' },
+        margin: { left: subTableSideMargin, right: subTableSideMargin },
+      });
+
+      const frameBottom = doc.lastAutoTable.finalY;
+
+      // Cadre englobant la ligne de patrouille + son sous-tableau de points
+      doc.setDrawColor(30, 58, 138);
+      doc.setLineWidth(0.4);
+      doc.rect(14, frameTop, pageWidth - 28, frameBottom - frameTop);
+
+      tableY = frameBottom + 6;
     });
+
+    flushMainBuffer();
 
     // --- Ringkasan mengikut kenderaan (agrégation par véhicule) ---
     const vehicleRecapMap = {};
