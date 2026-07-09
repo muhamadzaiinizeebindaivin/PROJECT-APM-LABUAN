@@ -42,6 +42,8 @@ export default function OperasiScreen({ theme, userRole }) {
 
   // --- Historique de patrouille ---
   const [showHistory, setShowHistory] = useState(false);
+  const [historyBtnHovered, setHistoryBtnHovered] = useState(false);
+  const [calamityTooltip, setCalamityTooltip] = useState(null); // { text, top, left }
 
   // Vehicles: fetch + realtime, also forwards updates into the Leaflet iframe
   const vehicles = useVehicles((updatedVehicle) => {
@@ -110,6 +112,7 @@ export default function OperasiScreen({ theme, userRole }) {
 
   useEffect(() => {
     const handleMapMessage = (event) => {
+      if (event.source !== iframeRef.current?.contentWindow) return;
       let data;
       try { data = JSON.parse(event.data); } catch (e) { return; }
       if (data.type === 'MAP_CLICKED' && activeCalamityTool) {
@@ -305,8 +308,20 @@ export default function OperasiScreen({ theme, userRole }) {
             </View>
           )}
 
-          <TouchableOpacity style={styles.historyToggleBtn} onPress={() => setShowHistory(!showHistory)}>
+          <TouchableOpacity
+            style={styles.historyToggleBtn}
+            onPress={() => setShowHistory(!showHistory)}
+            {...(Platform.OS === 'web' ? {
+              onMouseEnter: () => setHistoryBtnHovered(true),
+              onMouseLeave: () => setHistoryBtnHovered(false),
+            } : {})}
+          >
             <History size={18} color="#1E3A8A" />
+            {historyBtnHovered && (
+              <View style={styles.historyTooltip}>
+                <Text style={styles.historyTooltipText}>Sejarah Patrol Kenderaan</Text>
+              </View>
+            )}
           </TouchableOpacity>
 
           {(userRole === 'sekretariat' || userRole === 'admin') && (
@@ -319,6 +334,13 @@ export default function OperasiScreen({ theme, userRole }) {
                       key={cat.key}
                       style={[styles.calamityToolBtn, { backgroundColor: isActive ? cat.color : '#fff', borderColor: cat.color }]}
                       onPress={() => setActiveCalamityTool(isActive ? null : cat.key)}
+                      {...(Platform.OS === 'web' ? {
+                        onMouseEnter: (e) => {
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          setCalamityTooltip({ text: cat.key, top: rect.top, left: rect.left });
+                        },
+                        onMouseLeave: () => setCalamityTooltip(null),
+                      } : {})}
                     >
                       <Text style={[styles.calamityToolText, { color: isActive ? '#fff' : cat.color }]}>{cat.key}</Text>
                     </TouchableOpacity>
@@ -616,10 +638,29 @@ export default function OperasiScreen({ theme, userRole }) {
           </View>
         </View>
       </Modal>
+      {Platform.OS === 'web' && calamityTooltip &&
+              createElement('div', {
+                style: {
+                  position: 'fixed',
+                  top: `${calamityTooltip.top}px`,
+                  left: `${calamityTooltip.left - 175}px`,
+                  backgroundColor: '#0f172a',
+                  color: '#fff',
+                  padding: '8px 12px',
+                  borderRadius: '8px',
+                  fontSize: '11px',
+                  fontWeight: '600',
+                  width: '160px',
+                  zIndex: 9999,
+                  pointerEvents: 'none',
+                  boxShadow: '0 4px 10px rgba(0,0,0,0.3)',
+                }
+              }, calamityTooltip.text)
+            }
 
-    </View>
-  );
-}
+          </View>
+        );
+      }
 
 const VehicleCard = ({ name, status, icon, theme }) => (
   <View style={[styles.vehicleCard, { backgroundColor: theme.card }]}>
@@ -650,6 +691,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center',
     shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 10, elevation: 4,
   },
+  historyTooltip: {
+    position: 'absolute', top: 46, right: 0, zIndex: 20,
+    backgroundColor: '#0f172a', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8,
+  },
+  historyTooltipText: { color: '#fff', fontSize: 11, fontWeight: '700' },
   calamityPalette: {
     position: 'absolute', top: 16, right: 16, zIndex: 10, backgroundColor: '#fff',
     borderRadius: 16, padding: 10, gap: 6, shadowColor: '#000', shadowOpacity: 0.1,
