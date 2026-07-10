@@ -1,7 +1,7 @@
 // src/screens/sekretariat/PetaTab.js
 import React, { useState, useEffect, useRef, createElement } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Platform, Modal, TextInput, ActivityIndicator } from 'react-native';
-import { Map, History, ClipboardList, AlertTriangle, X } from 'lucide-react-native';
+import { View, Text, TouchableOpacity, ScrollView, Platform, Modal, TextInput, ActivityIndicator, Alert } from 'react-native';
+import { Map, History, ClipboardList, AlertTriangle, X, Plus } from 'lucide-react-native';
 import { supabase } from '../../supabaseClient';
 import { supabaseSandbox } from '../../supabaseSandboxClient';
 import { buildSekretariatMapHtml } from '../../mapTemplates/sekretariatMapTemplate';
@@ -168,6 +168,16 @@ export default function PetaTab({ theme, userRole }) {
 
   const handleSaveBencana = async () => {
     if (!pendingBencanaPlacement) return;
+
+    if (!bencanaCategory.trim()) {
+      if (Platform.OS === 'web') {
+        window.alert('Sila isi nama bencana.');
+      } else {
+        Alert.alert('Ralat', 'Sila isi nama bencana.');
+      }
+      return;
+    }
+
     const { error } = await saveBencana({
       category: bencanaCategory,
       description: bencanaDescription,
@@ -344,7 +354,11 @@ export default function PetaTab({ theme, userRole }) {
               onMouseLeave: () => setAddBencanaBtnHovered(false),
             } : {})}
           >
-            <AlertTriangle size={18} color={isPlacingBencana ? '#fff' : '#ea580c'} />
+            {isPlacingBencana ? (
+              <X size={18} color="#fff" />
+            ) : (
+              <Plus size={18} color="#ea580c" />
+            )}
             {addBencanaBtnHovered && !isPlacingBencana && (
               <View style={styles.historyTooltip}>
                 <Text style={styles.historyTooltipText}>Tambah Bencana</Text>
@@ -564,6 +578,7 @@ export default function PetaTab({ theme, userRole }) {
               <TextInput
                 style={sharedStyles.input}
                 placeholder="Cth: Banjir Kilat, Tanah Runtuh, Ribut..."
+                placeholderTextColor="#94a3b8"
                 value={bencanaCategory}
                 onChangeText={setBencanaCategory}
               />
@@ -571,6 +586,7 @@ export default function PetaTab({ theme, userRole }) {
               <TextInput
                 style={[sharedStyles.input, { height: 80, textAlignVertical: 'top' }]}
                 placeholder="Cth: Air naik setinggi 1 meter"
+                placeholderTextColor="#94a3b8"
                 multiline
                 value={bencanaDescription}
                 onChangeText={setBencanaDescription}

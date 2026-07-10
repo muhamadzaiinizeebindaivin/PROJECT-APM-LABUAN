@@ -18,7 +18,7 @@ export const petaStyles = StyleSheet.create({
   petaAgencyName: { fontSize: 12, fontWeight: '700', color: '#0f172a', maxWidth: 120 },
   petaAgencyUser: { fontSize: 10, color: '#64748b' },
   agencyLegendPalette: {
-    position: 'absolute', top: 70, left: 16, zIndex: 10, backgroundColor: '#fff',
+    position: 'absolute', top: 108, left: 16, zIndex: 10, backgroundColor: '#fff',
     borderRadius: 16, padding: 10, shadowColor: '#000', shadowOpacity: 0.1,
     shadowRadius: 10, elevation: 4, width: 140,
   },
