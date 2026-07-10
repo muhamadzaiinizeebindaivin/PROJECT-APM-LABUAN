@@ -154,8 +154,65 @@ export default function LiveMapTab({ theme, userRole }) {
   const activeVehicles = vehicles.filter(v => v.tracking_status === 'Patrol');
   const activeVehiclesCount = activeVehicles.length;
 
+  const [selectedChartCategories, setSelectedChartCategories] = useState(
+    CALAMITY_CATEGORIES.map(cat => cat.key)
+  );
+
+  const toggleChartCategory = (key) => {
+    setSelectedChartCategories(prev =>
+      prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
+    );
+  };
+
+  const toggleAllChartCategories = () => {
+    setSelectedChartCategories(prev =>
+      prev.length === CALAMITY_CATEGORIES.length ? [] : CALAMITY_CATEGORIES.map(cat => cat.key)
+    );
+  };
+
+  const selectedChartHasData = summary.calamityMonthlyBreakdown.some(row =>
+    selectedChartCategories.some(key => (row.counts[key] || 0) > 0)
+  );
+
   const renderHistoryTable = (large = false) => (
     <>
+      <View style={styles.historyFilterRow}>
+        <View style={{ flex: 1 }}>
+          <ModalSelectField
+            theme={theme}
+            label="Tahun"
+            value={String(history.historyYear)}
+            placeholder="Tahun"
+            options={history.availableHistoryYears}
+            isOpen={history.historyYearOpen}
+            onToggle={() => { history.setHistoryYearOpen(!history.historyYearOpen); history.setHistoryMonthOpen(false); }}
+            onSelect={(opt) => { history.setHistoryYear(Number(opt)); history.setHistoryYearOpen(false); }}
+            stackIndex={2000}
+          />
+        </View>
+        <View style={{ flex: 1 }}>
+          <ModalSelectField
+            theme={theme}
+            label="Bulan"
+            value={history.historyMonth === null ? 'Semua Bulan' : BULAN_MS[history.historyMonth]}
+            placeholder="Bulan"
+            options={BULAN_OPTIONS}
+            isOpen={history.historyMonthOpen}
+            onToggle={() => { history.setHistoryMonthOpen(!history.historyMonthOpen); history.setHistoryYearOpen(false); }}
+            onSelect={(opt) => { history.setHistoryMonth(opt === 'Semua Bulan' ? null : BULAN_MS.indexOf(opt)); history.setHistoryMonthOpen(false); }}
+            stackIndex={1000}
+          />
+        </View>
+      </View>
+
+      {history.loadingHistory ? (
+        <ActivityIndicator size="small" color="#1E3A8A" style={{ marginTop: 20 }} />
+      ) : history.patrolHistory.length === 0 ? (
+        <Text style={{ textAlign: 'center', color: theme.textSecondary, marginTop: 20 }}>
+          Tiada rekod sejarah untuk {history.historyMonth === null ? history.historyYear : `${BULAN_MS[history.historyMonth]} ${history.historyYear}`}.
+        </Text>
+      ) : (
+        <>
       <ScrollView showsVerticalScrollIndicator={false} style={{ marginTop: 8 }}>
         <View style={styles.calamityTableWrapper}>
           <View style={styles.calamityTableHeaderRow}>
@@ -249,10 +306,41 @@ export default function LiveMapTab({ theme, userRole }) {
           </TouchableOpacity>
         </View>
       </View>
+        </>
+      )}
     </>
   );
   const renderSummaryContent = (large = false) => (
     <ScrollView showsVerticalScrollIndicator={false} style={{ marginTop: 8 }}>
+      <View style={styles.historyFilterRow}>
+        <View style={{ flex: 1 }}>
+          <ModalSelectField
+            theme={theme}
+            label="Tahun"
+            value={String(summary.summaryYear)}
+            placeholder="Tahun"
+            options={summary.availableSummaryYears}
+            isOpen={summary.summaryYearOpen}
+            onToggle={() => { summary.setSummaryYearOpen(!summary.summaryYearOpen); summary.setSummaryMonthOpen(false); }}
+            onSelect={(opt) => { summary.setSummaryYear(Number(opt)); summary.setSummaryYearOpen(false); }}
+            stackIndex={2000}
+          />
+        </View>
+        <View style={{ flex: 1 }}>
+          <ModalSelectField
+            theme={theme}
+            label="Bulan"
+            value={summary.summaryMonth === null ? 'Semua Bulan' : BULAN_MS[summary.summaryMonth]}
+            placeholder="Bulan"
+            options={BULAN_OPTIONS}
+            isOpen={summary.summaryMonthOpen}
+            onToggle={() => { summary.setSummaryMonthOpen(!summary.summaryMonthOpen); summary.setSummaryYearOpen(false); }}
+            onSelect={(opt) => { summary.setSummaryMonth(opt === 'Semua Bulan' ? null : BULAN_MS.indexOf(opt)); summary.setSummaryMonthOpen(false); }}
+            stackIndex={1000}
+          />
+        </View>
+      </View>
+
       <View style={styles.calamityTableWrapper}>
         <View style={styles.calamityTableHeaderRow}>
           <View style={[styles.calamityMonthColFlex, styles.calamityHeaderCellBox]}>
@@ -291,6 +379,33 @@ export default function LiveMapTab({ theme, userRole }) {
       {Platform.OS === 'web' ? (
         <View style={styles.summaryChartWrapper}>
           <Text style={styles.summaryChartTitle}>Trend Mengikut Bulan ({summary.summaryYear})</Text>
+
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+            <TouchableOpacity
+              onPress={toggleAllChartCategories}
+              style={[styles.chartCatChip, { backgroundColor: '#1E3A8A', borderColor: '#1E3A8A' }]}
+            >
+              <Text style={[styles.chartCatChipText, { color: '#fff' }]}>
+                {selectedChartCategories.length === CALAMITY_CATEGORIES.length ? 'Kosongkan' : 'Semua'}
+              </Text>
+            </TouchableOpacity>
+            {CALAMITY_CATEGORIES.map(cat => {
+              const isSelected = selectedChartCategories.includes(cat.key);
+              return (
+                <TouchableOpacity
+                  key={cat.key}
+                  onPress={() => toggleChartCategory(cat.key)}
+                  style={[
+                    styles.chartCatChip,
+                    { borderColor: cat.color, backgroundColor: isSelected ? cat.color : '#fff' },
+                  ]}
+                >
+                  <Text style={[styles.chartCatChipText, { color: isSelected ? '#fff' : cat.color }]}>{cat.key}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
           <ResponsiveContainer width="100%" height={280}>
             <LineChart data={summary.calamityMonthlyBreakdown} margin={{ top: 10, right: 20, left: 0, bottom: 10 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
@@ -298,7 +413,7 @@ export default function LiveMapTab({ theme, userRole }) {
               <YAxis allowDecimals={false} tick={{ fontSize: 10 }} />
               <Tooltip content={<CompactTooltip />} />
               <Legend wrapperStyle={{ fontSize: 11 }} />
-              {CALAMITY_CATEGORIES.map(cat => (
+              {CALAMITY_CATEGORIES.filter(cat => selectedChartCategories.includes(cat.key)).map(cat => (
                 <Line
                   key={cat.key}
                   type="monotone"
@@ -460,44 +575,7 @@ export default function LiveMapTab({ theme, userRole }) {
               </View>
             </View>
 
-            <View style={styles.historyFilterRow}>
-              <View style={{ flex: 1 }}>
-                <ModalSelectField
-                  theme={theme}
-                  label="Tahun"
-                  value={String(history.historyYear)}
-                  placeholder="Tahun"
-                  options={history.availableHistoryYears}
-                  isOpen={history.historyYearOpen}
-                  onToggle={() => { history.setHistoryYearOpen(!history.historyYearOpen); history.setHistoryMonthOpen(false); }}
-                  onSelect={(opt) => { history.setHistoryYear(Number(opt)); history.setHistoryYearOpen(false); }}
-                  stackIndex={2000}
-                />
-              </View>
-              <View style={{ flex: 1 }}>
-                <ModalSelectField
-                  theme={theme}
-                  label="Bulan"
-                  value={history.historyMonth === null ? 'Semua Bulan' : BULAN_MS[history.historyMonth]}
-                  placeholder="Bulan"
-                  options={BULAN_OPTIONS}
-                  isOpen={history.historyMonthOpen}
-                  onToggle={() => { history.setHistoryMonthOpen(!history.historyMonthOpen); history.setHistoryYearOpen(false); }}
-                  onSelect={(opt) => { history.setHistoryMonth(opt === 'Semua Bulan' ? null : BULAN_MS.indexOf(opt)); history.setHistoryMonthOpen(false); }}
-                  stackIndex={1000}
-                />
-              </View>
-            </View>
-
-            {history.loadingHistory ? (
-              <ActivityIndicator size="small" color="#1E3A8A" style={{ marginTop: 20 }} />
-            ) : history.patrolHistory.length === 0 ? (
-              <Text style={{ textAlign: 'center', color: theme.textSecondary, marginTop: 20 }}>
-                Tiada rekod sejarah untuk {history.historyMonth === null ? history.historyYear : `${BULAN_MS[history.historyMonth]} ${history.historyYear}`}.
-              </Text>
-            ) : (
-              renderHistoryTable()
-            )}
+            {renderHistoryTable()}
           </View>
         )}
 
@@ -523,35 +601,6 @@ export default function LiveMapTab({ theme, userRole }) {
                   </>
                 )}
                 </TouchableOpacity>
-              </View>
-            </View>
-
-            <View style={styles.historyFilterRow}>
-              <View style={{ flex: 1 }}>
-                <ModalSelectField
-                  theme={theme}
-                  label="Tahun"
-                  value={String(summary.summaryYear)}
-                  placeholder="Tahun"
-                  options={summary.availableSummaryYears}
-                  isOpen={summary.summaryYearOpen}
-                  onToggle={() => { summary.setSummaryYearOpen(!summary.summaryYearOpen); summary.setSummaryMonthOpen(false); }}
-                  onSelect={(opt) => { summary.setSummaryYear(Number(opt)); summary.setSummaryYearOpen(false); }}
-                  stackIndex={2000}
-                />
-              </View>
-              <View style={{ flex: 1 }}>
-                <ModalSelectField
-                  theme={theme}
-                  label="Bulan"
-                  value={summary.summaryMonth === null ? 'Semua Bulan' : BULAN_MS[summary.summaryMonth]}
-                  placeholder="Bulan"
-                  options={BULAN_OPTIONS}
-                  isOpen={summary.summaryMonthOpen}
-                  onToggle={() => { summary.setSummaryMonthOpen(!summary.summaryMonthOpen); summary.setSummaryYearOpen(false); }}
-                  onSelect={(opt) => { summary.setSummaryMonth(opt === 'Semua Bulan' ? null : BULAN_MS.indexOf(opt)); summary.setSummaryMonthOpen(false); }}
-                  stackIndex={1000}
-                />
               </View>
             </View>
 

@@ -62,6 +62,8 @@ export const mapStyles = StyleSheet.create({
   calamityCumulativeRow: { backgroundColor: '#fef3c7' },
   calamityTotalBadgeText: { fontSize: 15, fontWeight: '900', color: '#1E3A8A' },
   summaryChartWrapper: { marginHorizontal: 16, marginTop: 16, marginBottom: 8, backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: '#e2e8f0', padding: 12, position: 'relative', overflow: 'hidden' },
+  chartCatChip: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, borderWidth: 1.5 },
+  chartCatChipText: { fontSize: 10, fontWeight: '800' },
   summaryChartTitle: { fontSize: 12, fontWeight: '800', color: '#0f172a', marginBottom: 8 },
 
   waypointPanel: { paddingHorizontal: 20, paddingVertical: 10, backgroundColor: '#f8fafc', borderTopWidth: 1, borderTopColor: '#e2e8f0' },
