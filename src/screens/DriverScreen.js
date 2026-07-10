@@ -167,10 +167,7 @@ export default function DriverScreen({ onLogout, theme }) {
           />
         )}
 
-        <TouchableOpacity onPress={onLogout} style={styles.logoutBtn}>
-          <Text style={{ color: theme.textSecondary, fontWeight: 'bold' }}>Log Keluar</Text>
-        </TouchableOpacity>
-      </View>
+        </View>
     );
   }
 
@@ -214,34 +211,41 @@ export default function DriverScreen({ onLogout, theme }) {
         )}
       </View>
 
-      <TouchableOpacity
-        style={[
-          styles.button,
-          { backgroundColor: isTracking ? '#ef4444' : '#22c55e' }
-        ]}
-        onPress={handleToggleTracking}
-        activeOpacity={0.8}
-      >
-        {isTracking ? <StopCircle color="#fff" size={36} /> : <Navigation color="#fff" size={36} />}
-        <Text style={styles.btnText}>{isTracking ? 'TAMAT SYIF' : 'MULA SYIF'}</Text>
-      </TouchableOpacity>
-
-      {isTracking && (
+      <View style={styles.actionRow}>
         <TouchableOpacity
-          style={styles.markPointBtn}
-          onPress={handleMarkPoint}
+          style={[
+            styles.button,
+            styles.buttonSmall,
+            { backgroundColor: isTracking ? '#ef4444' : '#22c55e' }
+          ]}
+          onPress={handleToggleTracking}
           activeOpacity={0.8}
         >
-          <MapPin color="#fff" size={22} />
-          <Text style={styles.markPointBtnText}>TANDA TITIK</Text>
+          {isTracking ? <StopCircle color="#fff" size={30} /> : <Navigation color="#fff" size={30} />}
+          <Text style={styles.btnTextSmall}>{isTracking ? 'TAMAT SYIF' : 'MULA SYIF'}</Text>
         </TouchableOpacity>
-      )}
+
+        {isTracking && (
+          <TouchableOpacity
+            style={[
+              styles.button,
+              styles.buttonSmall,
+              { backgroundColor: location ? '#f97316' : '#cbd5e1' }
+            ]}
+            onPress={handleMarkPoint}
+            disabled={!location}
+            activeOpacity={location ? 0.8 : 1}
+          >
+            <MapPin color="#fff" size={30} />
+            <Text style={styles.btnTextSmall}>
+              {location ? 'TANDA TITIK' : 'MENUNGGU GPS...'}
+            </Text>
+          </TouchableOpacity>
+        )}
+      </View>
 
       {isTracking && <ActivityIndicator size="large" color={theme.accent || '#3b82f6'} style={{ marginTop: 20 }} />}
 
-      <TouchableOpacity onPress={onLogout} style={{ marginTop: 'auto', paddingBottom: 20 }}>
-        <Text style={{ color: theme.textSecondary, textDecorationLine: 'underline' }}>Log Keluar</Text>
-      </TouchableOpacity>
     </View>
   );
 }
@@ -268,9 +272,8 @@ const styles = StyleSheet.create({
   statusBox: { marginBottom: 40, alignItems: 'center', padding: 20, borderWidth: 1, borderRadius: 16, width: '100%', shadowColor: '#000', shadowOpacity: 0.03, shadowRadius: 5, elevation: 2 },
   statusText: { fontSize: 16, fontWeight: 'bold' },
   button: { width: 200, height: 200, borderRadius: 100, justifyContent: 'center', alignItems: 'center', elevation: 10, shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 10, shadowOffset: { width: 0, height: 5 } },
-  markPointBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#f97316', paddingVertical: 12, paddingHorizontal: 24, borderRadius: 14, marginTop: 24 },
-  markPointBtnText: { color: '#fff', fontWeight: '900', fontSize: 14 },
-  markPointBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#f97316', paddingVertical: 12, paddingHorizontal: 24, borderRadius: 14, marginTop: 24 },
-  markPointBtnText: { color: '#fff', fontWeight: '900', fontSize: 14 },
+  actionRow: { flexDirection: 'row', gap: 20, alignItems: 'center', justifyContent: 'center' },
+  buttonSmall: { width: 150, height: 150, borderRadius: 75 },
+  btnTextSmall: { color: '#fff', fontSize: 16, fontWeight: '900', marginTop: 8, textAlign: 'center' },
   btnText: { color: '#fff', fontSize: 20, fontWeight: '900', marginTop: 10 }
 });
