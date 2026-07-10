@@ -1,64 +1,26 @@
 // src/screens/operasi/Ng999ReportTab.js
 import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Modal, TextInput, Platform, Alert } from 'react-native';
-import { BarChart2, AlertTriangle, TrendingDown, TrendingUp, Calendar, ChevronDown, ChevronUp, Plus, Edit2, Trash2, X } from 'lucide-react-native';
-
+import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Modal, TextInput, Alert, Platform } from 'react-native';
+import { BarChart2, AlertTriangle, Calendar, ChevronDown, ChevronUp, Plus, Edit2, Trash2, X, TrendingDown, TrendingUp } from 'lucide-react-native';
 import AdminEditButton from '../../components/AdminEditButton';
 import ModalSelectField from '../../components/ModalSelectField';
-import { CATEGORY_OPTIONS, MONTH_OPTIONS } from '../../constants/operasiConstants';
 import { useNg999Report } from '../../hooks/useNg999Report';
+import { CATEGORY_OPTIONS, MONTH_OPTIONS } from '../../constants/operasiConstants';
 import { formStyles } from '../../styles/formStyles';
 import { reportStyles as styles } from './reportStyles';
 
-const EMPTY_FORM = { id: null, kategori_kes: '', month: '', jumlah_kes: '1' };
-
-/**
- * Onglet "NG999 Report" : stats, tendance, highlight, breakdown par mois,
- * et CRUD (mode édition) des enregistrements. Extrait de OperasiScreen.js.
- */
 export default function Ng999ReportTab({ theme, userRole }) {
-  const { ngData, loadingNg, saveRecord, deleteRecord, stats } = useNg999Report();
-  const { dynamicMonthlyTrend, dynamicCaseBreakdown, topCaseData, totalMersCases } = stats;
-
   const [isEditMode, setIsEditMode] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
   const [modalVisible, setModalVisible] = useState(false);
-  const [form, setForm] = useState(EMPTY_FORM);
+  const [form, setForm] = useState({ id: null, kategori_kes: '', month: '', jumlah_kes: '1' });
   const [categoryOpen, setCategoryOpen] = useState(false);
   const [monthOpen, setMonthOpen] = useState(false);
 
-  const getTrendData = () => {
-    if (dynamicMonthlyTrend.length >= 2) {
-      const current = dynamicMonthlyTrend[dynamicMonthlyTrend.length - 1];
-      const prev = dynamicMonthlyTrend[dynamicMonthlyTrend.length - 2];
-      const diff = current.total - prev.total;
-
-      if (diff > 0) return { text: `+${diff} Cases`, color: '#b91c1c', bg: '#fef2f2', border: '#ef4444', icon: <TrendingUp size={16} color="#b91c1c" />, sub: `Compared to ${prev.month}` };
-      if (diff < 0) return { text: `${diff} Cases`, color: '#15803d', bg: '#f0fdf4', border: '#22c55e', icon: <TrendingDown size={16} color="#15803d" />, sub: `Compared to ${prev.month}` };
-      return { text: 'No Change', color: '#64748b', bg: '#f8fafc', border: '#cbd5e1', icon: <BarChart2 size={16} color="#64748b" />, sub: `Compared to ${prev.month}` };
-    }
-    return { text: 'N/A', color: '#64748b', bg: '#f8fafc', border: '#cbd5e1', icon: <BarChart2 size={16} color="#64748b" />, sub: 'Need 2 months of data' };
-  };
-  const trendData = getTrendData();
-
-  const closeModal = () => {
-    setModalVisible(false);
-    setCategoryOpen(false);
-    setMonthOpen(false);
-    setForm(EMPTY_FORM);
-  };
-
-  const openEditModal = (record) => {
-    setForm({
-      id: record.id,
-      kategori_kes: record.kategori_kes,
-      month: record.month,
-      jumlah_kes: (record.jumlah_kes || 1).toString(),
-    });
-    setModalVisible(true);
-  };
+  const { ngData, loadingNg, saveRecord, deleteRecord, stats } = useNg999Report();
+  const { dynamicMonthlyTrend, dynamicCaseBreakdown, topCaseData, totalMersCases } = stats;
 
   const handleSaveNg = async () => {
     if (!form.kategori_kes || !form.month || !form.jumlah_kes) {
@@ -90,11 +52,42 @@ export default function Ng999ReportTab({ theme, userRole }) {
           style: 'destructive',
           onPress: async () => {
             await deleteRecord(id);
-          },
-        },
+          }
+        }
       ]);
     }
   };
+
+  const openEditModal = (record) => {
+    setForm({
+      id: record.id,
+      kategori_kes: record.kategori_kes,
+      month: record.month,
+      jumlah_kes: (record.jumlah_kes || 1).toString()
+    });
+    setModalVisible(true);
+  };
+
+  const closeModal = () => {
+    setModalVisible(false);
+    setCategoryOpen(false);
+    setMonthOpen(false);
+    setForm({ id: null, kategori_kes: '', month: '', jumlah_kes: '1' });
+  };
+
+  const getTrendData = () => {
+    if (dynamicMonthlyTrend.length >= 2) {
+      const current = dynamicMonthlyTrend[dynamicMonthlyTrend.length - 1];
+      const prev = dynamicMonthlyTrend[dynamicMonthlyTrend.length - 2];
+      const diff = current.total - prev.total;
+
+      if (diff > 0) return { text: `+${diff} Cases`, color: '#b91c1c', bg: '#fef2f2', border: '#ef4444', icon: <TrendingUp size={16} color="#b91c1c" />, sub: `Compared to ${prev.month}` };
+      if (diff < 0) return { text: `${diff} Cases`, color: '#15803d', bg: '#f0fdf4', border: '#22c55e', icon: <TrendingDown size={16} color="#15803d" />, sub: `Compared to ${prev.month}` };
+      return { text: "No Change", color: '#64748b', bg: '#f8fafc', border: '#cbd5e1', icon: <BarChart2 size={16} color="#64748b" />, sub: `Compared to ${prev.month}` };
+    }
+    return { text: "N/A", color: '#64748b', bg: '#f8fafc', border: '#cbd5e1', icon: <BarChart2 size={16} color="#64748b" />, sub: "Need 2 months of data" };
+  };
+  const trendData = getTrendData();
 
   return (
     <>
@@ -113,11 +106,11 @@ export default function Ng999ReportTab({ theme, userRole }) {
 
         <View style={styles.statsRow}>
           {dynamicMonthlyTrend.length === 0 ? (
-            <View style={[styles.statBox, { backgroundColor: theme.card }]}>
-              <Text style={{ color: theme.textSecondary, fontWeight: '700' }}>No Monthly Data</Text>
-            </View>
+             <View style={[styles.statBox, { backgroundColor: theme.card }]}>
+                <Text style={{ color: theme.textSecondary, fontWeight: '700' }}>No Monthly Data</Text>
+             </View>
           ) : (
-            dynamicMonthlyTrend.slice(-2).map((item, index) => (
+             dynamicMonthlyTrend.slice(-2).map((item, index) => (
               <View key={index} style={[styles.statBox, { backgroundColor: theme.card }]}>
                 <View style={styles.statBoxTop}>
                   <Calendar size={16} color={theme.accent} />
@@ -130,12 +123,12 @@ export default function Ng999ReportTab({ theme, userRole }) {
           )}
 
           <View style={[styles.statBox, { backgroundColor: trendData.bg, borderColor: trendData.border, borderWidth: 1 }]}>
-            <View style={styles.statBoxTop}>
-              {trendData.icon}
-              <Text style={{ color: trendData.color, fontWeight: '700' }}>Trend</Text>
-            </View>
-            <Text style={[styles.statBoxValue, { color: trendData.color, fontSize: 20 }]}>{trendData.text}</Text>
-            <Text style={{ color: trendData.color, fontSize: 10 }}>{trendData.sub}</Text>
+             <View style={styles.statBoxTop}>
+                {trendData.icon}
+                <Text style={{ color: trendData.color, fontWeight: '700' }}>Trend</Text>
+              </View>
+              <Text style={[styles.statBoxValue, { color: trendData.color, fontSize: 20 }]}>{trendData.text}</Text>
+              <Text style={{ color: trendData.color, fontSize: 10 }}>{trendData.sub}</Text>
           </View>
         </View>
 
@@ -176,7 +169,7 @@ export default function Ng999ReportTab({ theme, userRole }) {
                 </TouchableOpacity>
               ))}
               {dynamicMonthlyTrend.length === 0 && (
-                <View style={styles.dropdownItem}><Text style={{ color: theme.textSecondary }}>No data available</Text></View>
+                 <View style={styles.dropdownItem}><Text style={{ color: theme.textSecondary }}>No data available</Text></View>
               )}
             </View>
           )}
@@ -216,7 +209,7 @@ export default function Ng999ReportTab({ theme, userRole }) {
               <Text style={[styles.breakdownTitle, { color: theme.text, marginBottom: 0 }]}>NG999 Data Management</Text>
               <TouchableOpacity
                 style={styles.addBtn}
-                onPress={() => { setForm(EMPTY_FORM); setModalVisible(true); }}
+                onPress={() => { setForm({ id: null, kategori_kes: '', month: '', jumlah_kes: '1' }); setModalVisible(true); }}
               >
                 <Plus size={16} color="#fff" />
                 <Text style={styles.addBtnText}>Add New</Text>
@@ -233,7 +226,7 @@ export default function Ng999ReportTab({ theme, userRole }) {
                   <View style={{ flex: 1 }}>
                     <Text style={{ color: theme.text, fontWeight: '700', fontSize: 14 }}>{item.kategori_kes}</Text>
                     <Text style={{ color: theme.textSecondary, fontSize: 12 }}>
-                      Month: {item.month} | Total: <Text style={{ fontWeight: '800', color: theme.text }}>{item.jumlah_kes || 1}</Text> cases
+                      Month: {item.month} | Total: <Text style={{fontWeight: '800', color: theme.text}}>{item.jumlah_kes || 1}</Text> cases
                     </Text>
                   </View>
                   <View style={styles.actionBtns}>
@@ -252,7 +245,6 @@ export default function Ng999ReportTab({ theme, userRole }) {
 
       </ScrollView>
 
-      {/* --- CRUD MODAL --- */}
       <Modal visible={modalVisible} transparent={true} animationType="fade">
         <View style={formStyles.modalOverlay}>
           <View style={[formStyles.modalContent, { backgroundColor: theme.background }]}>

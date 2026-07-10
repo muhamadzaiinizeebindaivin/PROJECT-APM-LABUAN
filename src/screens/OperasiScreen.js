@@ -1,18 +1,15 @@
 // src/screens/OperasiScreen.js
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { MapIcon, BarChart2 } from 'lucide-react-native';
-
 import LiveMapTab from './operasi/LiveMapTab';
 import Ng999ReportTab from './operasi/Ng999ReportTab';
-import { operasiScreenStyles as styles } from './operasi/operasiScreenStyles';
 
 export default function OperasiScreen({ theme, userRole }) {
   const [activeTab, setActiveTab] = useState('map');
 
   return (
     <View style={[styles.container, { flex: 1, backgroundColor: theme.background }]}>
-
       <View style={[styles.toggleWrapper, { backgroundColor: theme.card }]}>
         <TouchableOpacity
           style={[styles.toggleBtn, activeTab === 'map' && styles.toggleBtnActive]}
@@ -33,15 +30,17 @@ export default function OperasiScreen({ theme, userRole }) {
         </TouchableOpacity>
       </View>
 
-      {/* Le Live Map reste monté (display: none) quand on quitte l'onglet, pour
-          ne pas recharger l'iframe Leaflet à chaque changement d'onglet. */}
-      <View style={{ flex: 1, display: activeTab === 'map' ? 'flex' : 'none' }}>
-        <LiveMapTab theme={theme} userRole={userRole} />
-      </View>
-
-      {activeTab === 'report' && (
-        <Ng999ReportTab theme={theme} userRole={userRole} />
-      )}
+      {activeTab === 'map' && <LiveMapTab theme={theme} userRole={userRole} />}
+      {activeTab === 'report' && <Ng999ReportTab theme={theme} userRole={userRole} />}
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: { position: 'relative', width: '100%', overflow: 'hidden', borderRadius: 24, paddingBottom: 16 },
+  toggleWrapper: { flexDirection: 'row', margin: 16, padding: 6, borderRadius: 16, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 5, elevation: 3, zIndex: 20 },
+  toggleBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 12, borderRadius: 12, gap: 8 },
+  toggleBtnActive: { backgroundColor: '#3b82f6' },
+  toggleText: { fontSize: 13, fontWeight: '700' },
+  toggleTextActive: { color: '#fff' },
+});

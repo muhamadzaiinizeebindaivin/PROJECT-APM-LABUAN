@@ -2,7 +2,7 @@
 import { StyleSheet } from 'react-native';
 
 export const petaStyles = StyleSheet.create({
-  petaFixedContainer: { flexDirection: 'row', margin: 15, borderRadius: 20, overflow: 'hidden' },
+  petaFixedContainer: { flex: 1, flexDirection: 'row', margin: 15, borderRadius: 20, overflow: 'hidden' },
   petaMapHalf: { flex: 1, position: 'relative' },
   petaMapContainer: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0 },
   loader: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center', zIndex: 2 },

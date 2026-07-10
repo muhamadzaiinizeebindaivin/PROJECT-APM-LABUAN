@@ -243,7 +243,7 @@ export default function PetaTab({ theme, userRole }) {
   useEffect(() => { setSummaryPage(0); }, [summaryYear, summaryMonth]);
 
   return (
-    <View style={[styles.petaFixedContainer, { height: '70vh', minHeight: 500 }]}>
+    <View style={styles.petaFixedContainer}>
       <View style={styles.petaMapHalf}>
         <View style={styles.petaMapContainer}>
           {Platform.OS === 'web' ? (

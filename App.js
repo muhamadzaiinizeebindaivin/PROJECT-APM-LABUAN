@@ -219,9 +219,9 @@ export default function App() {
     { name: 'Kewangan', options: { tabBarActiveTintColor: '#3b82f6' }, render: (props) => <KewanganScreen {...props} theme={theme} /> },
     { name: 'Logistik', options: { tabBarActiveTintColor: '#3b82f6' }, render: (props) => <LogistikScreen {...props} theme={theme} /> },
     { name: 'Angkatan', options: { tabBarActiveTintColor: '#f97316' }, render: (props) => <AngkatanScreen {...props} theme={theme} /> },
-    { name: 'Sekretariat', options: { tabBarActiveTintColor: '#f97316' }, render: (props) => <SekretariatScreen {...props} theme={theme} userRole={userRole} /> },
+    { name: 'Sekretariat', options: { tabBarActiveTintColor: '#f97316', unmountOnBlur: true }, render: (props) => <SekretariatScreen {...props} theme={theme} userRole={userRole} /> },
     { name: 'Latihan', options: { tabBarActiveTintColor: '#f97316' }, render: (props) => <LatihanScreen {...props} theme={theme} /> },
-    { name: 'Operasi', options: { tabBarActiveTintColor: '#f97316' }, render: (props) => <OperasiScreen {...props} theme={theme} userRole={userRole} /> },
+    { name: 'Operasi', options: { tabBarActiveTintColor: '#f97316', unmountOnBlur: true }, render: (props) => <OperasiScreen {...props} theme={theme} userRole={userRole} /> },
     { name: 'Pengurusan Akaun', options: { tabBarActiveTintColor: '#8b5cf6' }, render: (props) => <AdminUserManagementScreen {...props} theme={theme} /> },
   ];
 
@@ -230,7 +230,11 @@ export default function App() {
     const screens = TAB_CONFIG.filter(s => allowedTabs.includes(s.name));
 
     return (
-      <Tab.Navigator initialRouteName="Utama" screenOptions={sharedTabOptions}>
+      <Tab.Navigator
+        initialRouteName="Utama"
+        screenOptions={sharedTabOptions}
+        sceneContainerStyle={{ backgroundColor: theme.background, flex: 1 }}
+      >
         {screens.map(s => (
           <Tab.Screen key={s.name} name={s.name} options={s.options}>
             {s.render}
