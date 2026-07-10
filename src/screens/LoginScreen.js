@@ -5,8 +5,7 @@ import {
   KeyboardAvoidingView, Platform, ActivityIndicator
 } from 'react-native';
 import { User, Lock, ArrowRight, ShieldCheck, AlertCircle } from 'lucide-react-native';
-// import { supabase } from '../supabaseClient';
-import { supabase } from '../supabaseSandboxClient';
+import { supabaseSandbox as supabase } from '../supabaseSandboxClient';
 
 export default function LoginScreen({ onLogin, theme, onNavigateToSignUp }) {
   const [username, setUsername] = useState('');

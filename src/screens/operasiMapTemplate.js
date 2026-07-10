@@ -53,7 +53,8 @@ export function buildOperasiMapHtml({ theme, userRole }) {
         <div id="map"></div>
         <script>
           var canDeleteCalamity = ${userRole === 'admin' ? 'true' : 'false'};
-          var map = L.map('map', { zoomControl: false, attributionControl: false }).setView([5.2831, 115.2308], 13);
+          function initMap() {
+          var map = L.map('map', { zoomControl: false, attributionControl: false, maxZoom: 19 }).setView([5.2831, 115.2308], 13);
 
           L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(map);
           L.control.zoom({ position: 'bottomright' }).addTo(map);
@@ -257,6 +258,13 @@ export function buildOperasiMapHtml({ theme, userRole }) {
               });
             }
           });
+          }
+
+          if (document.readyState === 'complete') {
+            initMap();
+          } else {
+            window.addEventListener('load', initMap);
+          }
         </script>
       </body>
     </html>
