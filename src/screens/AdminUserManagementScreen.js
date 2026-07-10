@@ -3,7 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator,
 import {
   UserPlus, CheckCircle, AlertCircle, User, Mail, Lock, ShieldCheck, Briefcase,
   Trash2, Users, Search, ChevronLeft, ChevronRight, ArrowUpDown,
-  LayoutDashboard, CreditCard, Truck, GraduationCap
+  LayoutDashboard, CreditCard, Truck, GraduationCap, ShieldAlert
 } from 'lucide-react-native';
 import { supabaseSandbox as supabase } from '../supabaseSandboxClient';
 
@@ -15,6 +15,7 @@ const ROLES = [
   { key: 'angkatan', label: 'Angkatan', icon: Users, color: '#ea580c' },
   { key: 'sekretariat', label: 'Sekretariat', icon: Briefcase, color: '#f97316' },
   { key: 'latihan', label: 'Latihan', icon: GraduationCap, color: '#db2777' },
+  { key: 'operasi', label: 'Operasi', icon: ShieldAlert, color: '#dc2626' },
 ];
 
 const PAGE_SIZE = 20;

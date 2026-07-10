@@ -11,29 +11,32 @@ import PpsSection from './sekretariat/PpsSection';
 import PetaTab from './sekretariat/PetaTab';
 
 const SekretariatScreen = ({ theme, userRole }) => {
-  const [activeTab, setActiveTab] = useState('JPBD');
+  const canManageSekretariat = userRole === 'admin' || userRole === 'sekretariat';
+  const [activeTab, setActiveTab] = useState(canManageSekretariat ? 'JPBD' : 'PETA');
   const [isEditMode, setIsEditMode] = useState(false);
 
   return (
     <View style={styles.container}>
-      <View style={styles.tabBar}>
-        <TouchableOpacity style={[styles.tabItem, activeTab === 'JPBD' && styles.tabItemActive]} onPress={() => setActiveTab('JPBD')} activeOpacity={0.8}>
-          <Users size={16} color={activeTab === 'JPBD' ? '#fff' : '#94a3b8'} />
-          <Text style={[styles.tabText, activeTab === 'JPBD' ? styles.tabTextActive : { color: '#94a3b8' }]}>Jawatankuasa</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.tabItem, activeTab === 'HOTSPOT' && styles.tabItemActive]} onPress={() => setActiveTab('HOTSPOT')} activeOpacity={0.8}>
-          <AlertTriangle size={16} color={activeTab === 'HOTSPOT' ? '#fff' : '#94a3b8'} />
-          <Text style={[styles.tabText, activeTab === 'HOTSPOT' ? styles.tabTextActive : { color: '#94a3b8' }]}>Hotspot</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.tabItem, activeTab === 'PPS' && styles.tabItemActive]} onPress={() => setActiveTab('PPS')} activeOpacity={0.8}>
-          <Home size={16} color={activeTab === 'PPS' ? '#fff' : '#94a3b8'} />
-          <Text style={[styles.tabText, activeTab === 'PPS' ? styles.tabTextActive : { color: '#94a3b8' }]}>Data PPS</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.tabItem, activeTab === 'PETA' && styles.tabItemActive]} onPress={() => setActiveTab('PETA')} activeOpacity={0.8}>
-          <Map size={16} color={activeTab === 'PETA' ? '#fff' : '#94a3b8'} />
-          <Text style={[styles.tabText, activeTab === 'PETA' ? styles.tabTextActive : { color: '#94a3b8' }]}>PETA</Text>
-        </TouchableOpacity>
-      </View>
+      {canManageSekretariat && (
+        <View style={styles.tabBar}>
+          <TouchableOpacity style={[styles.tabItem, activeTab === 'JPBD' && styles.tabItemActive]} onPress={() => setActiveTab('JPBD')} activeOpacity={0.8}>
+            <Users size={16} color={activeTab === 'JPBD' ? '#fff' : '#94a3b8'} />
+            <Text style={[styles.tabText, activeTab === 'JPBD' ? styles.tabTextActive : { color: '#94a3b8' }]}>Jawatankuasa</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.tabItem, activeTab === 'HOTSPOT' && styles.tabItemActive]} onPress={() => setActiveTab('HOTSPOT')} activeOpacity={0.8}>
+            <AlertTriangle size={16} color={activeTab === 'HOTSPOT' ? '#fff' : '#94a3b8'} />
+            <Text style={[styles.tabText, activeTab === 'HOTSPOT' ? styles.tabTextActive : { color: '#94a3b8' }]}>Hotspot</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.tabItem, activeTab === 'PPS' && styles.tabItemActive]} onPress={() => setActiveTab('PPS')} activeOpacity={0.8}>
+            <Home size={16} color={activeTab === 'PPS' ? '#fff' : '#94a3b8'} />
+            <Text style={[styles.tabText, activeTab === 'PPS' ? styles.tabTextActive : { color: '#94a3b8' }]}>Data PPS</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.tabItem, activeTab === 'PETA' && styles.tabItemActive]} onPress={() => setActiveTab('PETA')} activeOpacity={0.8}>
+            <Map size={16} color={activeTab === 'PETA' ? '#fff' : '#94a3b8'} />
+            <Text style={[styles.tabText, activeTab === 'PETA' ? styles.tabTextActive : { color: '#94a3b8' }]}>Peta Bencana</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {activeTab === 'PETA' ? (
         <PetaTab theme={theme} userRole={userRole} />
@@ -55,7 +58,7 @@ const SekretariatScreen = ({ theme, userRole }) => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f8fafc' },
+  container: { flex: 1, backgroundColor: '#f8fafc', paddingBottom: 16 },
   tabBar: { flexDirection: 'row', margin: 16, padding: 6, borderRadius: 16, backgroundColor: '#fff', shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 5, elevation: 3 },
   tabItem: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 12, borderRadius: 12, gap: 8 },
   tabItemActive: { backgroundColor: '#f97316' },

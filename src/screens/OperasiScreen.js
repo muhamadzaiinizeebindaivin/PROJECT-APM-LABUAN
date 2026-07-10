@@ -6,32 +6,35 @@ import LiveMapTab from './operasi/LiveMapTab';
 import Ng999ReportTab from './operasi/Ng999ReportTab';
 
 export default function OperasiScreen({ theme, userRole }) {
+  const canManageOperasi = userRole === 'admin' || userRole === 'operasi';
   const [activeTab, setActiveTab] = useState('map');
 
   return (
     <View style={[styles.container, { flex: 1, backgroundColor: theme.background }]}>
-      <View style={[styles.toggleWrapper, { backgroundColor: theme.card }]}>
-        <TouchableOpacity
-          style={[styles.toggleBtn, activeTab === 'map' && styles.toggleBtnActive]}
-          onPress={() => setActiveTab('map')}
-          activeOpacity={0.8}
-        >
-          <MapIcon size={16} color={activeTab === 'map' ? '#fff' : theme.textSecondary} />
-          <Text style={[styles.toggleText, activeTab === 'map' ? styles.toggleTextActive : { color: theme.textSecondary }]}>Live Map</Text>
-        </TouchableOpacity>
+      {canManageOperasi && (
+        <View style={[styles.toggleWrapper, { backgroundColor: theme.card }]}>
+          <TouchableOpacity
+            style={[styles.toggleBtn, activeTab === 'map' && styles.toggleBtnActive]}
+            onPress={() => setActiveTab('map')}
+            activeOpacity={0.8}
+          >
+            <MapIcon size={16} color={activeTab === 'map' ? '#fff' : theme.textSecondary} />
+            <Text style={[styles.toggleText, activeTab === 'map' ? styles.toggleTextActive : { color: theme.textSecondary }]}>Peta Kecemasan</Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.toggleBtn, activeTab === 'report' && styles.toggleBtnActive]}
-          onPress={() => setActiveTab('report')}
-          activeOpacity={0.8}
-        >
-          <BarChart2 size={16} color={activeTab === 'report' ? '#fff' : theme.textSecondary} />
-          <Text style={[styles.toggleText, activeTab === 'report' ? styles.toggleTextActive : { color: theme.textSecondary }]}>NG999 Report</Text>
-        </TouchableOpacity>
-      </View>
+          <TouchableOpacity
+            style={[styles.toggleBtn, activeTab === 'report' && styles.toggleBtnActive]}
+            onPress={() => setActiveTab('report')}
+            activeOpacity={0.8}
+          >
+            <BarChart2 size={16} color={activeTab === 'report' ? '#fff' : theme.textSecondary} />
+            <Text style={[styles.toggleText, activeTab === 'report' ? styles.toggleTextActive : { color: theme.textSecondary }]}>NG999 Report</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {activeTab === 'map' && <LiveMapTab theme={theme} userRole={userRole} />}
-      {activeTab === 'report' && <Ng999ReportTab theme={theme} userRole={userRole} />}
+      {activeTab === 'report' && canManageOperasi && <Ng999ReportTab theme={theme} userRole={userRole} />}
     </View>
   );
 }
