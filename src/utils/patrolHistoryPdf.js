@@ -2,16 +2,16 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
-const LOGO_URL = 'https://kceeewyadcskivtmilyf.supabase.co/storage/v1/object/public/public-assets/apmlogo.png';
+export const LOGO_URL = 'https://kceeewyadcskivtmilyf.supabase.co/storage/v1/object/public/public-assets/apmlogo.png';
 
-function formatDurationForPdf(seconds) {
+export function formatDurationForPdf(seconds) {
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
   if (h > 0) return `${h}j ${m}m`;
   return `${m}m`;
 }
 
-async function fetchImageAsBase64(url) {
+export async function fetchImageAsBase64(url) {
   const response = await fetch(url);
   const blob = await response.blob();
   return new Promise((resolve, reject) => {
@@ -22,7 +22,7 @@ async function fetchImageAsBase64(url) {
   });
 }
 
-function getImageNaturalSize(base64) {
+export function getImageNaturalSize(base64) {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });

@@ -1,7 +1,7 @@
 // src/screens/sekretariat/PetaTab.js
 import React, { useState, useEffect, useRef, createElement } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Platform, Modal, TextInput, ActivityIndicator, Alert } from 'react-native';
-import { Map, History, ClipboardList, AlertTriangle, X, Plus } from 'lucide-react-native';
+import { Map, History, ClipboardList, AlertTriangle, X, Plus, Download } from 'lucide-react-native';
 import { supabase } from '../../supabaseClient';
 import { supabaseSandbox } from '../../supabaseSandboxClient';
 import { buildSekretariatMapHtml } from '../../mapTemplates/sekretariatMapTemplate';
@@ -9,6 +9,7 @@ import { useOnlineAgencies } from '../../hooks/useOnlineAgencies';
 import { useBencanaPoints } from '../../hooks/useBencanaPoints';
 import { useAgencyTrackingHistory } from '../../hooks/useAgencyTrackingHistory';
 import ModalSelectField from '../../components/ModalSelectField';
+import { generateAgencyHistoryPdf, generateBencanaHistoryPdf } from '../../utils/agencyReportsPdf';
 import { sharedStyles } from './sharedStyles';
 import { petaStyles as styles } from './petaStyles';
 
@@ -84,6 +85,39 @@ export default function PetaTab({ theme, userRole }) {
   const [summaryYearOpen, setSummaryYearOpen] = useState(false);
   const [summaryMonthOpen, setSummaryMonthOpen] = useState(false);
   const [summaryPage, setSummaryPage] = useState(0);
+
+  const [exportingHistoryPdf, setExportingHistoryPdf] = useState(false);
+  const [exportingSummaryPdf, setExportingSummaryPdf] = useState(false);
+
+  const historyPeriodLabel = historyMonth === null
+    ? `Tahun ${historyYear}`
+    : `${BULAN_MS[historyMonth]} ${historyYear}`;
+
+  const summaryPeriodLabel = summaryMonth === null
+    ? `Tahun ${summaryYear}`
+    : `${BULAN_MS[summaryMonth]} ${summaryYear}`;
+
+  const handleExportHistoryPdf = async () => {
+    setExportingHistoryPdf(true);
+    try {
+      await generateAgencyHistoryPdf({ rows: filteredHistory, periodLabel: historyPeriodLabel });
+    } catch (e) {
+      console.error('Gagal menjana PDF:', e);
+    } finally {
+      setExportingHistoryPdf(false);
+    }
+  };
+
+  const handleExportSummaryPdf = async () => {
+    setExportingSummaryPdf(true);
+    try {
+      await generateBencanaHistoryPdf({ rows: filteredBencanaSummary, periodLabel: summaryPeriodLabel });
+    } catch (e) {
+      console.error('Gagal menjana PDF:', e);
+    } finally {
+      setExportingSummaryPdf(false);
+    }
+  };
 
   const agencyColorMap = buildAgencyColorMap(agencyNames);
   const getAgencyColorFromMap = (agencyName) => agencyColorMap[agencyName] || '#64748b';
@@ -373,8 +407,22 @@ export default function PetaTab({ theme, userRole }) {
 
       {sidePanel === 'history' && (
         <View style={styles.petaHistoryHalf}>
-          <View style={styles.petaHistoryHeader}>
+          <View style={[styles.petaHistoryHeader, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}>
             <Text style={styles.petaHistoryTitle}>Sejarah Patrol Agensi</Text>
+            <TouchableOpacity
+              onPress={handleExportHistoryPdf}
+              disabled={exportingHistoryPdf}
+              style={[sharedStyles.pdfExportBtn, exportingHistoryPdf && sharedStyles.pdfExportBtnDisabled]}
+            >
+              {exportingHistoryPdf ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <>
+                  <Download size={14} color="#fff" />
+                  <Text style={sharedStyles.pdfExportBtnText}>PDF</Text>
+                </>
+              )}
+            </TouchableOpacity>
           </View>
 
           <View style={styles.historyFilterRow}>
@@ -474,8 +522,22 @@ export default function PetaTab({ theme, userRole }) {
 
       {sidePanel === 'summary' && (
         <View style={styles.petaHistoryHalf}>
-          <View style={styles.petaHistoryHeader}>
+          <View style={[styles.petaHistoryHeader, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}>
             <Text style={styles.petaHistoryTitle}>Ringkasan Bencana</Text>
+            <TouchableOpacity
+              onPress={handleExportSummaryPdf}
+              disabled={exportingSummaryPdf}
+              style={[sharedStyles.pdfExportBtn, exportingSummaryPdf && sharedStyles.pdfExportBtnDisabled]}
+            >
+              {exportingSummaryPdf ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <>
+                  <Download size={14} color="#fff" />
+                  <Text style={sharedStyles.pdfExportBtnText}>PDF</Text>
+                </>
+              )}
+            </TouchableOpacity>
           </View>
 
           <View style={styles.historyFilterRow}>
@@ -532,8 +594,8 @@ export default function PetaTab({ theme, userRole }) {
                       <Text style={[styles.calamityTableCell, styles.calamityTotalColFlex]}>
                         {new Date(b.created_at).toLocaleDateString('ms-MY')}
                       </Text>
-                      <Text style={[styles.calamityTableCell, styles.calamityTotalColFlex]}>
-                        {b.resolved_at ? new Date(b.resolved_at).toLocaleDateString('ms-MY') : '-'}
+                      <Text style={[styles.calamityTableCell, styles.calamityTotalColFlex, !b.resolved_at && { fontStyle: 'italic', color: '#ea580c' }]}>
+                        {b.resolved_at ? new Date(b.resolved_at).toLocaleDateString('ms-MY') : 'Bencana Belum Selesai'}
                       </Text>
                     </View>
                   ))}

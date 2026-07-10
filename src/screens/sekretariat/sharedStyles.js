@@ -54,4 +54,7 @@ export const sharedStyles = StyleSheet.create({
 
   ppsActions: { flexDirection: 'row', gap: 10 },
   iconBtn: { padding: 8, backgroundColor: '#f1f5f9', borderRadius: 6 },
+  pdfExportBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#1E3A8A', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, minWidth: 60, justifyContent: 'center' },
+  pdfExportBtnDisabled: { backgroundColor: '#cbd5e1' },
+  pdfExportBtnText: { color: '#fff', fontSize: 12, fontWeight: '700' },
 });

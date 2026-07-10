@@ -2,6 +2,7 @@
 import React, { useState, useRef, useEffect, createElement } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Platform, ActivityIndicator, Modal, TextInput } from 'react-native';
 import { ShieldAlert, MapIcon, History, ClipboardList, Download, Route, X } from 'lucide-react-native';
+import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { getVehicleIcon } from '../../utils/vehicleIcons';
 import { useVehicles } from '../../hooks/useVehicles';
 import { useCalamityPoints } from '../../hooks/useCalamityPoints';
@@ -11,9 +12,33 @@ import { buildOperasiMapHtml } from '../../mapTemplates/operasiMapTemplate';
 import { CALAMITY_CATEGORIES, getCalamityMeta } from '../../constants/operasiConstants';
 import { BULAN_MS, BULAN_OPTIONS } from '../../constants/bulanMonths';
 import ModalSelectField from '../../components/ModalSelectField';
+import FullscreenViewer from '../../components/FullscreenViewer';
 import { formStyles } from '../../styles/formStyles';
 import VehicleCard from './VehicleCard';
 import { mapStyles as styles } from './mapStyles';
+
+function CompactTooltip({ active, payload, label }) {
+  if (!active || !payload || payload.length === 0) return null;
+  const nonZero = payload.filter(p => p.value > 0);
+  if (nonZero.length === 0) return null;
+
+  return (
+    <View style={{
+      backgroundColor: '#0f172a', borderRadius: 8, padding: 10,
+      maxWidth: 260, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 6,
+    }}>
+      <Text style={{ color: '#fff', fontSize: 11, fontWeight: '800', marginBottom: 6 }}>{label}</Text>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+        {nonZero.map((p, i) => (
+          <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(255,255,255,0.1)', paddingHorizontal: 6, paddingVertical: 3, borderRadius: 6 }}>
+            <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: p.color }} />
+            <Text style={{ color: '#fff', fontSize: 10, fontWeight: '700' }}>{p.name}: {p.value}</Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
 
 function formatDuration(seconds) {
   const h = Math.floor(seconds / 3600);
@@ -128,6 +153,170 @@ export default function LiveMapTab({ theme, userRole }) {
 
   const activeVehicles = vehicles.filter(v => v.tracking_status === 'Patrol');
   const activeVehiclesCount = activeVehicles.length;
+
+  const renderHistoryTable = (large = false) => (
+    <>
+      <ScrollView showsVerticalScrollIndicator={false} style={{ marginTop: 8 }}>
+        <View style={styles.calamityTableWrapper}>
+          <View style={styles.calamityTableHeaderRow}>
+            <View style={[styles.historyKenderaanColFlex, styles.calamityHeaderCellBox]}>
+              <Text style={[styles.calamityTableHeaderCell, large && { fontSize: 16 }]}>Kenderaan</Text>
+            </View>
+            <View style={[styles.calamityCatColFlex, styles.calamityHeaderCellBox]}>
+              <Text style={[styles.calamityTableHeaderCell, large && { fontSize: 16 }]}>Tempoh</Text>
+            </View>
+            <View style={[styles.calamityCatColFlex, styles.calamityHeaderCellBox]}>
+              <Text style={[styles.calamityTableHeaderCell, large && { fontSize: 16 }]}>Jarak</Text>
+            </View>
+            <View style={[styles.calamityTotalColFlex, styles.calamityHeaderCellBox]}>
+              <Text style={[styles.calamityTableHeaderCell, large && { fontSize: 16 }]}>Tarikh</Text>
+            </View>
+            <View style={[styles.routeColFlex, styles.calamityHeaderCellBox]}>
+              <Text style={[styles.calamityTableHeaderCell, large && { fontSize: 16 }]}>Route</Text>
+            </View>
+          </View>
+          {history.pagedHistory.map((h, index) => (
+            <View key={h.id}>
+              <View style={[styles.calamityTableRow, { backgroundColor: index % 2 === 0 ? '#ffffff' : '#f8fafc' }]}>
+                <View style={[styles.historyKenderaanColFlex, { paddingLeft: 16, paddingVertical: 10 }]}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Text style={[styles.tableCellAgency, large && { fontSize: 16 }]} numberOfLines={1} ellipsizeMode="tail">{h.vehicle_reg}</Text>
+                    {h.status === 'abandoned' && (
+                      <View style={styles.abandonedBadge}>
+                        <Text style={styles.abandonedBadgeText}>Ditinggalkan</Text>
+                      </View>
+                    )}
+                  </View>
+                  <Text style={[styles.tableCellMember, large && { fontSize: 13 }]} numberOfLines={1} ellipsizeMode="tail">{h.vehicle_model}</Text>
+                </View>
+                <Text style={[styles.calamityTableCell, styles.calamityCatColFlex, large && { fontSize: 16 }]}>{formatDuration(h.duration_seconds)}</Text>
+                <Text style={[styles.calamityTableCell, styles.calamityCatColFlex, large && { fontSize: 16 }]}>{h.distance_km?.toFixed(2) || '0.00'} km</Text>
+                <View style={[styles.calamityTotalColFlex, { paddingVertical: 10 }]}>
+                  <Text style={[styles.tableCellDate, large && { fontSize: 13 }]}>{new Date(h.ended_at).toLocaleDateString('ms-MY')}</Text>
+                  <Text style={[styles.tableCellTime, large && { fontSize: 12 }]}>{new Date(h.ended_at).toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit' })}</Text>
+                </View>
+                <View style={[styles.routeColFlex, { paddingVertical: 10, alignItems: 'center', justifyContent: 'center' }]}>
+                  <TouchableOpacity
+                    onPress={() => history.toggleHistoryRow(h.id)}
+                    style={[styles.routeBtn, history.expandedHistoryId === h.id && styles.routeBtnActive]}
+                  >
+                    <Route size={16} color={history.expandedHistoryId === h.id ? '#fff' : '#1E3A8A'} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {history.expandedHistoryId === h.id && (
+                <View style={styles.waypointPanel}>
+                  {history.loadingWaypointsId === h.id ? (
+                    <ActivityIndicator size="small" color="#1E3A8A" />
+                  ) : (history.historyWaypoints[h.id] || []).length === 0 ? (
+                    <Text style={styles.waypointEmptyText}>Tiada titik ditanda semasa patrol ini.</Text>
+                  ) : (
+                    (history.historyWaypoints[h.id] || []).map((wp, wpIndex) => (
+                      <View key={wp.id} style={styles.waypointRow}>
+                        <Text style={styles.waypointLabel}>
+                          {wpIndex === 0 ? 'Pangkalan' : `Titik ${wpIndex}`} → Titik {wpIndex + 1}
+                        </Text>
+                        <Text style={styles.waypointDetail}>
+                          {formatDuration(wp.duration_from_previous_seconds)} · {wp.distance_from_previous_km.toFixed(2)} km · {new Date(wp.marked_at).toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit' })}
+                        </Text>
+                      </View>
+                    ))
+                  )}
+                </View>
+              )}
+            </View>
+          ))}
+        </View>
+      </ScrollView>
+
+      <View style={styles.paginationRow}>
+        <Text style={styles.pageIndicator}>{history.historyPage + 1} / {history.historyTotalPages}</Text>
+        <View style={styles.pageArrowRow}>
+          <TouchableOpacity
+            onPress={() => history.setHistoryPage(p => Math.max(0, p - 1))}
+            disabled={history.historyPage === 0}
+            style={[styles.pageBtn, history.historyPage === 0 && styles.pageBtnDisabled]}
+          >
+            <Text style={[styles.pageBtnText, history.historyPage === 0 && styles.pageBtnTextDisabled]}>←</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => history.setHistoryPage(p => Math.min(history.historyTotalPages - 1, p + 1))}
+            disabled={history.historyPage >= history.historyTotalPages - 1}
+            style={[styles.pageBtn, history.historyPage >= history.historyTotalPages - 1 && styles.pageBtnDisabled]}
+          >
+            <Text style={[styles.pageBtnText, history.historyPage >= history.historyTotalPages - 1 && styles.pageBtnTextDisabled]}>→</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </>
+  );
+  const renderSummaryContent = (large = false) => (
+    <ScrollView showsVerticalScrollIndicator={false} style={{ marginTop: 8 }}>
+      <View style={styles.calamityTableWrapper}>
+        <View style={styles.calamityTableHeaderRow}>
+          <View style={[styles.calamityMonthColFlex, styles.calamityHeaderCellBox]}>
+            <Text style={[styles.calamityTableHeaderCell, large && { fontSize: 16 }]}>Bulan</Text>
+          </View>
+          {CALAMITY_CATEGORIES.map(cat => (
+            <View key={cat.key} style={[styles.calamityCatColFlex, styles.calamityHeaderCellBox]}>
+              <Text style={[styles.calamityTableHeaderCell, large && { fontSize: 16 }]}>{cat.key}</Text>
+            </View>
+          ))}
+          <View style={[styles.calamityTotalColFlex, styles.calamityHeaderCellBox]}>
+            <Text style={[styles.calamityTableHeaderCell, large && { fontSize: 16 }]}>Jumlah</Text>
+          </View>
+        </View>
+        {summary.calamitySummaryRows.map((row, idx) => (
+          <View
+            key={row.month}
+            style={[
+              styles.calamityTableRow,
+              row.isCumulative
+                ? styles.calamityCumulativeRow
+                : { backgroundColor: idx % 2 === 0 ? '#ffffff' : '#f8fafc' },
+            ]}
+          >
+            <Text style={[styles.calamityTableCell, styles.calamityMonthColFlex, { fontWeight: '800', textAlign: 'left' }, large && { fontSize: 16 }]}>{row.month}</Text>
+            {CALAMITY_CATEGORIES.map(cat => (
+              <Text key={cat.key} style={[styles.calamityTableCell, styles.calamityCatColFlex, row.isCumulative && { fontWeight: '700' }, large && { fontSize: 16 }]}>{row.counts[cat.key] || '–'}</Text>
+            ))}
+            <View style={[styles.calamityTotalColFlex, styles.calamityTotalBadge]}>
+              <Text style={[styles.calamityTotalBadgeText, large && { fontSize: 18 }]}>{row.total}</Text>
+            </View>
+          </View>
+        ))}
+      </View>
+
+      {Platform.OS === 'web' ? (
+        <View style={styles.summaryChartWrapper}>
+          <Text style={styles.summaryChartTitle}>Trend Mengikut Bulan ({summary.summaryYear})</Text>
+          <ResponsiveContainer width="100%" height={280}>
+            <LineChart data={summary.calamityMonthlyBreakdown} margin={{ top: 10, right: 20, left: 0, bottom: 10 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <XAxis dataKey="month" tick={{ fontSize: 10 }} />
+              <YAxis allowDecimals={false} tick={{ fontSize: 10 }} />
+              <Tooltip content={<CompactTooltip />} />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+              {CALAMITY_CATEGORIES.map(cat => (
+                <Line
+                  key={cat.key}
+                  type="monotone"
+                  dataKey={(row) => row.counts[cat.key]}
+                  name={cat.key}
+                  stroke={cat.color}
+                  strokeWidth={2}
+                  dot={{ r: 2 }}
+                />
+              ))}
+            </LineChart>
+          </ResponsiveContainer>
+        </View>
+      ) : (
+        <Text style={styles.waypointEmptyText}>Carta trend hanya tersedia di versi web.</Text>
+      )}
+    </ScrollView>
+  );
 
   return (
     <>
@@ -250,8 +439,12 @@ export default function LiveMapTab({ theme, userRole }) {
           <View style={styles.historyHalf}>
             <View style={styles.historyHeaderRow}>
               <Text style={styles.historyTitle}>Sejarah Patrol Kenderaan</Text>
-              <TouchableOpacity
-                onPress={history.handleExportHistoryPdf}
+              <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+                <FullscreenViewer title="Sejarah Patrol Kenderaan">
+                  {renderHistoryTable(true)}
+                </FullscreenViewer>
+                <TouchableOpacity
+                  onPress={history.handleExportHistoryPdf}
                 disabled={history.exportingPdf}
                 style={[styles.pdfExportBtn, history.exportingPdf && styles.pdfExportBtnDisabled]}
               >
@@ -263,7 +456,8 @@ export default function LiveMapTab({ theme, userRole }) {
                     <Text style={styles.pdfExportBtnText}>PDF</Text>
                   </>
                 )}
-              </TouchableOpacity>
+                </TouchableOpacity>
+              </View>
             </View>
 
             <View style={styles.historyFilterRow}>
@@ -302,101 +496,7 @@ export default function LiveMapTab({ theme, userRole }) {
                 Tiada rekod sejarah untuk {history.historyMonth === null ? history.historyYear : `${BULAN_MS[history.historyMonth]} ${history.historyYear}`}.
               </Text>
             ) : (
-              <>
-                <ScrollView showsVerticalScrollIndicator={false} style={{ marginTop: 8 }}>
-                  <View style={styles.calamityTableWrapper}>
-                    <View style={styles.calamityTableHeaderRow}>
-                      <View style={[styles.historyKenderaanColFlex, styles.calamityHeaderCellBox]}>
-                        <Text style={styles.calamityTableHeaderCell}>Kenderaan</Text>
-                      </View>
-                      <View style={[styles.calamityCatColFlex, styles.calamityHeaderCellBox]}>
-                        <Text style={styles.calamityTableHeaderCell}>Tempoh</Text>
-                      </View>
-                      <View style={[styles.calamityCatColFlex, styles.calamityHeaderCellBox]}>
-                        <Text style={styles.calamityTableHeaderCell}>Jarak</Text>
-                      </View>
-                      <View style={[styles.calamityTotalColFlex, styles.calamityHeaderCellBox]}>
-                        <Text style={styles.calamityTableHeaderCell}>Tarikh</Text>
-                      </View>
-                      <View style={[styles.routeColFlex, styles.calamityHeaderCellBox]}>
-                        <Text style={styles.calamityTableHeaderCell}>Route</Text>
-                      </View>
-                    </View>
-                    {history.pagedHistory.map((h, index) => (
-                      <View key={h.id}>
-                        <View style={[styles.calamityTableRow, { backgroundColor: index % 2 === 0 ? '#ffffff' : '#f8fafc' }]}>
-                          <View style={[styles.historyKenderaanColFlex, { paddingLeft: 16, paddingVertical: 10 }]}>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                              <Text style={styles.tableCellAgency} numberOfLines={1} ellipsizeMode="tail">{h.vehicle_reg}</Text>
-                              {h.status === 'abandoned' && (
-                                <View style={styles.abandonedBadge}>
-                                  <Text style={styles.abandonedBadgeText}>Ditinggalkan</Text>
-                                </View>
-                              )}
-                            </View>
-                            <Text style={styles.tableCellMember} numberOfLines={1} ellipsizeMode="tail">{h.vehicle_model}</Text>
-                          </View>
-                          <Text style={[styles.calamityTableCell, styles.calamityCatColFlex]}>{formatDuration(h.duration_seconds)}</Text>
-                          <Text style={[styles.calamityTableCell, styles.calamityCatColFlex]}>{h.distance_km?.toFixed(2) || '0.00'} km</Text>
-                          <View style={[styles.calamityTotalColFlex, { paddingVertical: 10 }]}>
-                            <Text style={styles.tableCellDate}>{new Date(h.ended_at).toLocaleDateString('ms-MY')}</Text>
-                            <Text style={styles.tableCellTime}>{new Date(h.ended_at).toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit' })}</Text>
-                          </View>
-                          <View style={[styles.routeColFlex, { paddingVertical: 10, alignItems: 'center', justifyContent: 'center' }]}>
-                            <TouchableOpacity
-                              onPress={() => history.toggleHistoryRow(h.id)}
-                              style={[styles.routeBtn, history.expandedHistoryId === h.id && styles.routeBtnActive]}
-                            >
-                              <Route size={16} color={history.expandedHistoryId === h.id ? '#fff' : '#1E3A8A'} />
-                            </TouchableOpacity>
-                          </View>
-                        </View>
-
-                        {history.expandedHistoryId === h.id && (
-                          <View style={styles.waypointPanel}>
-                            {history.loadingWaypointsId === h.id ? (
-                              <ActivityIndicator size="small" color="#1E3A8A" />
-                            ) : (history.historyWaypoints[h.id] || []).length === 0 ? (
-                              <Text style={styles.waypointEmptyText}>Tiada titik ditanda semasa patrol ini.</Text>
-                            ) : (
-                              (history.historyWaypoints[h.id] || []).map((wp, wpIndex) => (
-                                <View key={wp.id} style={styles.waypointRow}>
-                                  <Text style={styles.waypointLabel}>
-                                    {wpIndex === 0 ? 'Pangkalan' : `Titik ${wpIndex}`} → Titik {wpIndex + 1}
-                                  </Text>
-                                  <Text style={styles.waypointDetail}>
-                                    {formatDuration(wp.duration_from_previous_seconds)} · {wp.distance_from_previous_km.toFixed(2)} km · {new Date(wp.marked_at).toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit' })}
-                                  </Text>
-                                </View>
-                              ))
-                            )}
-                          </View>
-                        )}
-                      </View>
-                    ))}
-                  </View>
-                </ScrollView>
-
-                <View style={styles.paginationRow}>
-                  <Text style={styles.pageIndicator}>{history.historyPage + 1} / {history.historyTotalPages}</Text>
-                  <View style={styles.pageArrowRow}>
-                    <TouchableOpacity
-                      onPress={() => history.setHistoryPage(p => Math.max(0, p - 1))}
-                      disabled={history.historyPage === 0}
-                      style={[styles.pageBtn, history.historyPage === 0 && styles.pageBtnDisabled]}
-                    >
-                      <Text style={[styles.pageBtnText, history.historyPage === 0 && styles.pageBtnTextDisabled]}>←</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      onPress={() => history.setHistoryPage(p => Math.min(history.historyTotalPages - 1, p + 1))}
-                      disabled={history.historyPage >= history.historyTotalPages - 1}
-                      style={[styles.pageBtn, history.historyPage >= history.historyTotalPages - 1 && styles.pageBtnDisabled]}
-                    >
-                      <Text style={[styles.pageBtnText, history.historyPage >= history.historyTotalPages - 1 && styles.pageBtnTextDisabled]}>→</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              </>
+              renderHistoryTable()
             )}
           </View>
         )}
@@ -405,8 +505,12 @@ export default function LiveMapTab({ theme, userRole }) {
           <View style={styles.historyHalf}>
             <View style={styles.historyHeaderRow}>
               <Text style={styles.historyTitle}>Ringkasan Kecemasan</Text>
-              <TouchableOpacity
-                onPress={summary.handleExportSummaryPdf}
+              <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+                <FullscreenViewer title="Ringkasan Kecemasan">
+                  {renderSummaryContent()}
+                </FullscreenViewer>
+                <TouchableOpacity
+                  onPress={summary.handleExportSummaryPdf}
                 disabled={summary.exportingSummaryPdf}
                 style={[styles.pdfExportBtn, summary.exportingSummaryPdf && styles.pdfExportBtnDisabled]}
               >
@@ -418,7 +522,8 @@ export default function LiveMapTab({ theme, userRole }) {
                     <Text style={styles.pdfExportBtnText}>PDF</Text>
                   </>
                 )}
-              </TouchableOpacity>
+                </TouchableOpacity>
+              </View>
             </View>
 
             <View style={styles.historyFilterRow}>
@@ -450,42 +555,7 @@ export default function LiveMapTab({ theme, userRole }) {
               </View>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} style={{ marginTop: 8 }}>
-              <View style={styles.calamityTableWrapper}>
-                <View style={styles.calamityTableHeaderRow}>
-                  <View style={[styles.calamityMonthColFlex, styles.calamityHeaderCellBox]}>
-                    <Text style={styles.calamityTableHeaderCell}>Bulan</Text>
-                  </View>
-                  {CALAMITY_CATEGORIES.map(cat => (
-                    <View key={cat.key} style={[styles.calamityCatColFlex, styles.calamityHeaderCellBox]}>
-                      <Text style={styles.calamityTableHeaderCell}>{cat.key}</Text>
-                    </View>
-                  ))}
-                  <View style={[styles.calamityTotalColFlex, styles.calamityHeaderCellBox]}>
-                    <Text style={styles.calamityTableHeaderCell}>Jumlah</Text>
-                  </View>
-                </View>
-                {summary.calamitySummaryRows.map((row, idx) => (
-                  <View
-                    key={row.month}
-                    style={[
-                      styles.calamityTableRow,
-                      row.isCumulative
-                        ? styles.calamityCumulativeRow
-                        : { backgroundColor: idx % 2 === 0 ? '#ffffff' : '#f8fafc' },
-                    ]}
-                  >
-                    <Text style={[styles.calamityTableCell, styles.calamityMonthColFlex, { fontWeight: '800', textAlign: 'left' }]}>{row.month}</Text>
-                    {CALAMITY_CATEGORIES.map(cat => (
-                      <Text key={cat.key} style={[styles.calamityTableCell, styles.calamityCatColFlex, row.isCumulative && { fontWeight: '700' }]}>{row.counts[cat.key] || '–'}</Text>
-                    ))}
-                    <View style={[styles.calamityTotalColFlex, styles.calamityTotalBadge]}>
-                      <Text style={styles.calamityTotalBadgeText}>{row.total}</Text>
-                    </View>
-                  </View>
-                ))}
-              </View>
-            </ScrollView>
+            {renderSummaryContent()}
           </View>
         )}
       </View>

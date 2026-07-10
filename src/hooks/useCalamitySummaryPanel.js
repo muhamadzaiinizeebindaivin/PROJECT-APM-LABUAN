@@ -87,7 +87,7 @@ export function useCalamitySummaryPanel(calamityPoints) {
   return {
     summaryYear, setSummaryYear, summaryYearOpen, setSummaryYearOpen,
     summaryMonth, setSummaryMonth, summaryMonthOpen, setSummaryMonthOpen,
-    availableSummaryYears, calamitySummaryRows,
+    availableSummaryYears, calamitySummaryRows, calamityMonthlyBreakdown,
     exportingSummaryPdf, handleExportSummaryPdf,
   };
 }

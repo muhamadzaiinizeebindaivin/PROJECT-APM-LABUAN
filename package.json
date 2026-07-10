@@ -39,10 +39,12 @@
     "react-native-svg": "^15.12.1",
     "react-native-web": "^0.21.2",
     "react-native-webview": "^13.16.0",
+    "recharts": "^2.15.1",
     "three": "^0.184.0"
   },
   "private": true,
   "devDependencies": {
+    "@types/react": "~19.1.10",
     "typescript": "~5.9.2"
   }
 }
