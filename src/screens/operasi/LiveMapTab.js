@@ -572,6 +572,9 @@ export default function LiveMapTab({ theme, userRole }) {
                   </>
                 )}
                 </TouchableOpacity>
+                <TouchableOpacity onPress={() => setSidePanel('none')} style={styles.panelCloseBtn}>
+                  <X size={16} color="#64748b" />
+                </TouchableOpacity>
               </View>
             </View>
 
@@ -585,7 +588,7 @@ export default function LiveMapTab({ theme, userRole }) {
               <Text style={styles.historyTitle}>Ringkasan Kecemasan</Text>
               <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
                 <FullscreenViewer title="Ringkasan Kecemasan">
-                  {renderSummaryContent()}
+                  {renderSummaryContent(true)}
                 </FullscreenViewer>
                 <TouchableOpacity
                   onPress={summary.handleExportSummaryPdf}
@@ -600,6 +603,9 @@ export default function LiveMapTab({ theme, userRole }) {
                     <Text style={styles.pdfExportBtnText}>PDF</Text>
                   </>
                 )}
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => setSidePanel('none')} style={styles.panelCloseBtn}>
+                  <X size={16} color="#64748b" />
                 </TouchableOpacity>
               </View>
             </View>

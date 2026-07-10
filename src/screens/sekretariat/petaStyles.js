@@ -55,6 +55,7 @@ export const petaStyles = StyleSheet.create({
     backgroundColor: '#0f172a', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8,
   },
   historyTooltipText: { color: '#fff', fontSize: 11, fontWeight: '700' },
+  panelCloseBtn: { width: 28, height: 28, borderRadius: 6, backgroundColor: '#f1f5f9', justifyContent: 'center', alignItems: 'center' },
 
   petaHistoryHalf: { flex: 1, backgroundColor: '#fff', borderLeftWidth: 1, borderLeftColor: '#e2e8f0' },
   petaHistoryHeader: { padding: 16, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },

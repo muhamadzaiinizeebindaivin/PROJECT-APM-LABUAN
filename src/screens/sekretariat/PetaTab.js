@@ -9,6 +9,7 @@ import { useOnlineAgencies } from '../../hooks/useOnlineAgencies';
 import { useBencanaPoints } from '../../hooks/useBencanaPoints';
 import { useAgencyTrackingHistory } from '../../hooks/useAgencyTrackingHistory';
 import ModalSelectField from '../../components/ModalSelectField';
+import FullscreenViewer from '../../components/FullscreenViewer';
 import { generateAgencyHistoryPdf, generateBencanaHistoryPdf } from '../../utils/agencyReportsPdf';
 import { sharedStyles } from './sharedStyles';
 import { petaStyles as styles } from './petaStyles';
@@ -88,6 +89,9 @@ export default function PetaTab({ theme, userRole }) {
 
   const [exportingHistoryPdf, setExportingHistoryPdf] = useState(false);
   const [exportingSummaryPdf, setExportingSummaryPdf] = useState(false);
+
+  const [searchHistoryQuery, setSearchHistoryQuery] = useState('');
+  const [searchSummaryQuery, setSearchSummaryQuery] = useState('');
 
   const historyPeriodLabel = historyMonth === null
     ? `Tahun ${historyYear}`
@@ -234,13 +238,19 @@ export default function PetaTab({ theme, userRole }) {
   }, [trackingHistory]);
 
   const filteredHistory = React.useMemo(() => {
+    const q = searchHistoryQuery.trim().toLowerCase();
     return trackingHistory.filter(h => {
       const d = new Date(h.ended_at);
       if (d.getFullYear() !== historyYear) return false;
       if (historyMonth !== null && d.getMonth() !== historyMonth) return false;
+      if (q) {
+        const agency = (h.jpbd_directory?.agency || '').toLowerCase();
+        const member = (h.member_name || '').toLowerCase();
+        if (!agency.includes(q) && !member.includes(q)) return false;
+      }
       return true;
     });
-  }, [trackingHistory, historyYear, historyMonth]);
+  }, [trackingHistory, historyYear, historyMonth, searchHistoryQuery]);
 
   const historyTotalPages = Math.max(1, Math.ceil(filteredHistory.length / PAGE_SIZE));
   const pagedHistory = React.useMemo(() => {
@@ -258,15 +268,17 @@ export default function PetaTab({ theme, userRole }) {
   }, [bencanaPoints]);
 
   const filteredBencanaSummary = React.useMemo(() => {
+    const q = searchSummaryQuery.trim().toLowerCase();
     return bencanaPoints
       .filter(b => {
         const d = new Date(b.created_at);
         if (d.getFullYear() !== summaryYear) return false;
         if (summaryMonth !== null && d.getMonth() !== summaryMonth) return false;
+        if (q && !(b.category || '').toLowerCase().includes(q)) return false;
         return true;
       })
       .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-  }, [bencanaPoints, summaryYear, summaryMonth]);
+  }, [bencanaPoints, summaryYear, summaryMonth, searchSummaryQuery]);
 
   const summaryTotalPages = Math.max(1, Math.ceil(filteredBencanaSummary.length / PAGE_SIZE));
   const pagedBencanaSummary = React.useMemo(() => {
@@ -275,6 +287,211 @@ export default function PetaTab({ theme, userRole }) {
   }, [filteredBencanaSummary, summaryPage]);
 
   useEffect(() => { setSummaryPage(0); }, [summaryYear, summaryMonth]);
+
+  const renderHistoryTable = (large = false) => (
+    <>
+      <View style={styles.historyFilterRow}>
+        <View style={{ flex: 1 }}>
+          <ModalSelectField
+            theme={theme}
+            label="Tahun"
+            value={String(historyYear)}
+            placeholder="Tahun"
+            options={availableHistoryYears}
+            isOpen={historyYearOpen}
+            onToggle={() => { setHistoryYearOpen(!historyYearOpen); setHistoryMonthOpen(false); }}
+            onSelect={(opt) => { setHistoryYear(Number(opt)); setHistoryYearOpen(false); }}
+            stackIndex={2000}
+          />
+        </View>
+        <View style={{ flex: 1 }}>
+          <ModalSelectField
+            theme={theme}
+            label="Bulan"
+            value={historyMonth === null ? 'Semua Bulan' : BULAN_MS[historyMonth]}
+            placeholder="Bulan"
+            options={BULAN_OPTIONS}
+            isOpen={historyMonthOpen}
+            onToggle={() => { setHistoryMonthOpen(!historyMonthOpen); setHistoryYearOpen(false); }}
+            onSelect={(opt) => { setHistoryMonth(opt === 'Semua Bulan' ? null : BULAN_MS.indexOf(opt)); setHistoryMonthOpen(false); }}
+            stackIndex={1000}
+          />
+        </View>
+      </View>
+
+      <View style={{ paddingHorizontal: 16, marginBottom: 8 }}>
+        <TextInput
+          style={sharedStyles.input}
+          placeholder="Cari agensi atau ahli..."
+          placeholderTextColor="#94a3b8"
+          value={searchHistoryQuery}
+          onChangeText={setSearchHistoryQuery}
+        />
+      </View>
+
+      {loadingHistory ? (
+        <ActivityIndicator size="small" color="#1E3A8A" style={{ marginTop: 20 }} />
+      ) : pagedHistory.length === 0 ? (
+        <Text style={styles.emptyText}>Tiada rekod sejarah untuk tempoh ini.</Text>
+      ) : (
+        <>
+          <View style={styles.calamityTableWrapper}>
+            <View style={styles.calamityTableHeaderRow}>
+              <View style={[styles.historyAgencyColFlex, styles.calamityHeaderCellBox]}>
+                <Text style={[styles.calamityTableHeaderCell, large && { fontSize: 16 }]}>Agensi</Text>
+              </View>
+              <View style={[styles.calamityCatColFlex, styles.calamityHeaderCellBox]}>
+                <Text style={[styles.calamityTableHeaderCell, large && { fontSize: 16 }]}>Tempoh</Text>
+              </View>
+              <View style={[styles.calamityCatColFlex, styles.calamityHeaderCellBox]}>
+                <Text style={[styles.calamityTableHeaderCell, large && { fontSize: 16 }]}>Jarak</Text>
+              </View>
+              <View style={[styles.calamityTotalColFlex, styles.calamityHeaderCellBox]}>
+                <Text style={[styles.calamityTableHeaderCell, large && { fontSize: 16 }]}>Tarikh</Text>
+              </View>
+            </View>
+            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 380 }}>
+              {pagedHistory.map((h, index) => (
+                <View key={h.id} style={[styles.calamityTableRow, { backgroundColor: index % 2 === 0 ? '#ffffff' : '#f8fafc' }]}>
+                  <View style={[styles.historyAgencyColFlex, { flexDirection: 'row', alignItems: 'center', gap: 8, paddingLeft: 16, paddingVertical: 10 }]}>
+                    <View style={[styles.petaAgencyDot, { backgroundColor: getAgencyColorFromMap(h.jpbd_directory?.agency) }]} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.tableCellAgency, large && { fontSize: 16 }]} numberOfLines={1}>{h.jpbd_directory?.agency || '-'}</Text>
+                      <Text style={[styles.tableCellMember, large && { fontSize: 13 }]} numberOfLines={1}>{h.member_name}</Text>
+                    </View>
+                  </View>
+                  <Text style={[styles.calamityTableCell, styles.calamityCatColFlex, large && { fontSize: 16 }]}>{formatDuration(h.duration_seconds)}</Text>
+                  <Text style={[styles.calamityTableCell, styles.calamityCatColFlex, large && { fontSize: 16 }]}>{h.distance_km?.toFixed(2) || '0.00'} km</Text>
+                  <View style={[styles.calamityTotalColFlex, { paddingVertical: 10 }]}>
+                    <Text style={[styles.tableCellDate, large && { fontSize: 13 }]}>{new Date(h.ended_at).toLocaleDateString('ms-MY')}</Text>
+                    <Text style={[styles.tableCellTime, large && { fontSize: 12 }]}>{new Date(h.ended_at).toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit' })}</Text>
+                  </View>
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+
+          <View style={styles.paginationRow}>
+            <Text style={styles.pageIndicator}>{historyPage + 1} / {historyTotalPages}</Text>
+            <View style={styles.pageArrowRow}>
+              <TouchableOpacity
+                onPress={() => setHistoryPage(p => Math.max(0, p - 1))}
+                disabled={historyPage === 0}
+                style={[styles.pageBtn, historyPage === 0 && styles.pageBtnDisabled]}
+              >
+                <Text style={[styles.pageBtnText, historyPage === 0 && styles.pageBtnTextDisabled]}>←</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setHistoryPage(p => Math.min(historyTotalPages - 1, p + 1))}
+                disabled={historyPage >= historyTotalPages - 1}
+                style={[styles.pageBtn, historyPage >= historyTotalPages - 1 && styles.pageBtnDisabled]}
+              >
+                <Text style={[styles.pageBtnText, historyPage >= historyTotalPages - 1 && styles.pageBtnTextDisabled]}>→</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </>
+      )}
+    </>
+  );
+
+  const renderSummaryContent = (large = false) => (
+    <>
+      <View style={styles.historyFilterRow}>
+        <View style={{ flex: 1 }}>
+          <ModalSelectField
+            theme={theme}
+            label="Tahun"
+            value={String(summaryYear)}
+            placeholder="Tahun"
+            options={availableSummaryYears}
+            isOpen={summaryYearOpen}
+            onToggle={() => { setSummaryYearOpen(!summaryYearOpen); setSummaryMonthOpen(false); }}
+            onSelect={(opt) => { setSummaryYear(Number(opt)); setSummaryYearOpen(false); }}
+            stackIndex={2000}
+          />
+        </View>
+        <View style={{ flex: 1 }}>
+          <ModalSelectField
+            theme={theme}
+            label="Bulan"
+            value={summaryMonth === null ? 'Semua Bulan' : BULAN_MS[summaryMonth]}
+            placeholder="Bulan"
+            options={BULAN_OPTIONS}
+            isOpen={summaryMonthOpen}
+            onToggle={() => { setSummaryMonthOpen(!summaryMonthOpen); setSummaryYearOpen(false); }}
+            onSelect={(opt) => { setSummaryMonth(opt === 'Semua Bulan' ? null : BULAN_MS.indexOf(opt)); setSummaryMonthOpen(false); }}
+            stackIndex={1000}
+          />
+        </View>
+      </View>
+
+      <View style={{ paddingHorizontal: 16, marginBottom: 8 }}>
+        <TextInput
+          style={sharedStyles.input}
+          placeholder="Cari nama bencana..."
+          placeholderTextColor="#94a3b8"
+          value={searchSummaryQuery}
+          onChangeText={setSearchSummaryQuery}
+        />
+      </View>
+
+      {pagedBencanaSummary.length === 0 ? (
+        <Text style={styles.emptyText}>Tiada rekod bencana untuk tempoh ini.</Text>
+      ) : (
+        <>
+          <View style={styles.calamityTableWrapper}>
+            <View style={styles.calamityTableHeaderRow}>
+              <View style={[styles.historyAgencyColFlex, styles.calamityHeaderCellBox]}>
+                <Text style={[styles.calamityTableHeaderCell, large && { fontSize: 16 }]}>Nama Bencana</Text>
+              </View>
+              <View style={[styles.calamityTotalColFlex, styles.calamityHeaderCellBox]}>
+                <Text style={[styles.calamityTableHeaderCell, large && { fontSize: 16 }]}>Tarikh Mula</Text>
+              </View>
+              <View style={[styles.calamityTotalColFlex, styles.calamityHeaderCellBox]}>
+                <Text style={[styles.calamityTableHeaderCell, large && { fontSize: 16 }]}>Tarikh Tamat</Text>
+              </View>
+            </View>
+            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 380 }}>
+              {pagedBencanaSummary.map((b, index) => (
+                <View key={b.id} style={[styles.calamityTableRow, { backgroundColor: index % 2 === 0 ? '#ffffff' : '#f8fafc' }]}>
+                  <Text style={[styles.calamityTableCell, styles.historyAgencyColFlex, { textAlign: 'left', paddingLeft: 16, fontWeight: '700' }, large && { fontSize: 16 }]} numberOfLines={1}>
+                    {b.category}
+                  </Text>
+                  <Text style={[styles.calamityTableCell, styles.calamityTotalColFlex, large && { fontSize: 16 }]}>
+                    {new Date(b.created_at).toLocaleDateString('ms-MY')}
+                  </Text>
+                  <Text style={[styles.calamityTableCell, styles.calamityTotalColFlex, !b.resolved_at && { fontStyle: 'italic', color: '#ea580c' }, large && { fontSize: 16 }]}>
+                    {b.resolved_at ? new Date(b.resolved_at).toLocaleDateString('ms-MY') : 'Bencana Belum Selesai'}
+                  </Text>
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+
+          <View style={styles.paginationRow}>
+            <Text style={styles.pageIndicator}>{summaryPage + 1} / {summaryTotalPages}</Text>
+            <View style={styles.pageArrowRow}>
+              <TouchableOpacity
+                onPress={() => setSummaryPage(p => Math.max(0, p - 1))}
+                disabled={summaryPage === 0}
+                style={[styles.pageBtn, summaryPage === 0 && styles.pageBtnDisabled]}
+              >
+                <Text style={[styles.pageBtnText, summaryPage === 0 && styles.pageBtnTextDisabled]}>←</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setSummaryPage(p => Math.min(summaryTotalPages - 1, p + 1))}
+                disabled={summaryPage >= summaryTotalPages - 1}
+                style={[styles.pageBtn, summaryPage >= summaryTotalPages - 1 && styles.pageBtnDisabled]}
+              >
+                <Text style={[styles.pageBtnText, summaryPage >= summaryTotalPages - 1 && styles.pageBtnTextDisabled]}>→</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </>
+      )}
+    </>
+  );
 
   return (
     <View style={styles.petaFixedContainer}>
@@ -409,114 +626,31 @@ export default function PetaTab({ theme, userRole }) {
         <View style={styles.petaHistoryHalf}>
           <View style={[styles.petaHistoryHeader, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}>
             <Text style={styles.petaHistoryTitle}>Sejarah Patrol Agensi</Text>
-            <TouchableOpacity
-              onPress={handleExportHistoryPdf}
-              disabled={exportingHistoryPdf}
-              style={[sharedStyles.pdfExportBtn, exportingHistoryPdf && sharedStyles.pdfExportBtnDisabled]}
-            >
-              {exportingHistoryPdf ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <>
-                  <Download size={14} color="#fff" />
-                  <Text style={sharedStyles.pdfExportBtnText}>PDF</Text>
-                </>
-              )}
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.historyFilterRow}>
-            <View style={{ flex: 1 }}>
-              <ModalSelectField
-                theme={theme}
-                label="Tahun"
-                value={String(historyYear)}
-                placeholder="Tahun"
-                options={availableHistoryYears}
-                isOpen={historyYearOpen}
-                onToggle={() => { setHistoryYearOpen(!historyYearOpen); setHistoryMonthOpen(false); }}
-                onSelect={(opt) => { setHistoryYear(Number(opt)); setHistoryYearOpen(false); }}
-                stackIndex={2000}
-              />
-            </View>
-            <View style={{ flex: 1 }}>
-              <ModalSelectField
-                theme={theme}
-                label="Bulan"
-                value={historyMonth === null ? 'Semua Bulan' : BULAN_MS[historyMonth]}
-                placeholder="Bulan"
-                options={BULAN_OPTIONS}
-                isOpen={historyMonthOpen}
-                onToggle={() => { setHistoryMonthOpen(!historyMonthOpen); setHistoryYearOpen(false); }}
-                onSelect={(opt) => { setHistoryMonth(opt === 'Semua Bulan' ? null : BULAN_MS.indexOf(opt)); setHistoryMonthOpen(false); }}
-                stackIndex={1000}
-              />
+            <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+              <FullscreenViewer title="Sejarah Patrol Agensi">
+                {renderHistoryTable(true)}
+              </FullscreenViewer>
+              <TouchableOpacity
+                onPress={handleExportHistoryPdf}
+                disabled={exportingHistoryPdf}
+                style={[sharedStyles.pdfExportBtn, exportingHistoryPdf && sharedStyles.pdfExportBtnDisabled]}
+              >
+                {exportingHistoryPdf ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <>
+                    <Download size={14} color="#fff" />
+                    <Text style={sharedStyles.pdfExportBtnText}>PDF</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setSidePanel('none')} style={styles.panelCloseBtn}>
+                <X size={16} color="#64748b" />
+              </TouchableOpacity>
             </View>
           </View>
 
-          {loadingHistory ? (
-            <ActivityIndicator size="small" color="#1E3A8A" style={{ marginTop: 20 }} />
-          ) : pagedHistory.length === 0 ? (
-            <Text style={styles.emptyText}>Tiada rekod sejarah untuk tempoh ini.</Text>
-          ) : (
-            <>
-              <View style={styles.calamityTableWrapper}>
-                <View style={styles.calamityTableHeaderRow}>
-                  <View style={[styles.historyAgencyColFlex, styles.calamityHeaderCellBox]}>
-                    <Text style={styles.calamityTableHeaderCell}>Agensi</Text>
-                  </View>
-                  <View style={[styles.calamityCatColFlex, styles.calamityHeaderCellBox]}>
-                    <Text style={styles.calamityTableHeaderCell}>Tempoh</Text>
-                  </View>
-                  <View style={[styles.calamityCatColFlex, styles.calamityHeaderCellBox]}>
-                    <Text style={styles.calamityTableHeaderCell}>Jarak</Text>
-                  </View>
-                  <View style={[styles.calamityTotalColFlex, styles.calamityHeaderCellBox]}>
-                    <Text style={styles.calamityTableHeaderCell}>Tarikh</Text>
-                  </View>
-                </View>
-                <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 380 }}>
-                  {pagedHistory.map((h, index) => (
-                    <View key={h.id} style={[styles.calamityTableRow, { backgroundColor: index % 2 === 0 ? '#ffffff' : '#f8fafc' }]}>
-                      <View style={[styles.historyAgencyColFlex, { flexDirection: 'row', alignItems: 'center', gap: 8, paddingLeft: 16, paddingVertical: 10 }]}>
-                        <View style={[styles.petaAgencyDot, { backgroundColor: getAgencyColorFromMap(h.jpbd_directory?.agency) }]} />
-                        <View style={{ flex: 1 }}>
-                          <Text style={styles.tableCellAgency} numberOfLines={1}>{h.jpbd_directory?.agency || '-'}</Text>
-                          <Text style={styles.tableCellMember} numberOfLines={1}>{h.member_name}</Text>
-                        </View>
-                      </View>
-                      <Text style={[styles.calamityTableCell, styles.calamityCatColFlex]}>{formatDuration(h.duration_seconds)}</Text>
-                      <Text style={[styles.calamityTableCell, styles.calamityCatColFlex]}>{h.distance_km?.toFixed(2) || '0.00'} km</Text>
-                      <View style={[styles.calamityTotalColFlex, { paddingVertical: 10 }]}>
-                        <Text style={styles.tableCellDate}>{new Date(h.ended_at).toLocaleDateString('ms-MY')}</Text>
-                        <Text style={styles.tableCellTime}>{new Date(h.ended_at).toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit' })}</Text>
-                      </View>
-                    </View>
-                  ))}
-                </ScrollView>
-              </View>
-
-              <View style={styles.paginationRow}>
-                <Text style={styles.pageIndicator}>{historyPage + 1} / {historyTotalPages}</Text>
-                <View style={styles.pageArrowRow}>
-                  <TouchableOpacity
-                    onPress={() => setHistoryPage(p => Math.max(0, p - 1))}
-                    disabled={historyPage === 0}
-                    style={[styles.pageBtn, historyPage === 0 && styles.pageBtnDisabled]}
-                  >
-                    <Text style={[styles.pageBtnText, historyPage === 0 && styles.pageBtnTextDisabled]}>←</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => setHistoryPage(p => Math.min(historyTotalPages - 1, p + 1))}
-                    disabled={historyPage >= historyTotalPages - 1}
-                    style={[styles.pageBtn, historyPage >= historyTotalPages - 1 && styles.pageBtnDisabled]}
-                  >
-                    <Text style={[styles.pageBtnText, historyPage >= historyTotalPages - 1 && styles.pageBtnTextDisabled]}>→</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </>
-          )}
+          {renderHistoryTable()}
         </View>
       )}
 
@@ -524,105 +658,31 @@ export default function PetaTab({ theme, userRole }) {
         <View style={styles.petaHistoryHalf}>
           <View style={[styles.petaHistoryHeader, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}>
             <Text style={styles.petaHistoryTitle}>Ringkasan Bencana</Text>
-            <TouchableOpacity
-              onPress={handleExportSummaryPdf}
-              disabled={exportingSummaryPdf}
-              style={[sharedStyles.pdfExportBtn, exportingSummaryPdf && sharedStyles.pdfExportBtnDisabled]}
-            >
-              {exportingSummaryPdf ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <>
-                  <Download size={14} color="#fff" />
-                  <Text style={sharedStyles.pdfExportBtnText}>PDF</Text>
-                </>
-              )}
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.historyFilterRow}>
-            <View style={{ flex: 1 }}>
-              <ModalSelectField
-                theme={theme}
-                label="Tahun"
-                value={String(summaryYear)}
-                placeholder="Tahun"
-                options={availableSummaryYears}
-                isOpen={summaryYearOpen}
-                onToggle={() => { setSummaryYearOpen(!summaryYearOpen); setSummaryMonthOpen(false); }}
-                onSelect={(opt) => { setSummaryYear(Number(opt)); setSummaryYearOpen(false); }}
-                stackIndex={2000}
-              />
-            </View>
-            <View style={{ flex: 1 }}>
-              <ModalSelectField
-                theme={theme}
-                label="Bulan"
-                value={summaryMonth === null ? 'Semua Bulan' : BULAN_MS[summaryMonth]}
-                placeholder="Bulan"
-                options={BULAN_OPTIONS}
-                isOpen={summaryMonthOpen}
-                onToggle={() => { setSummaryMonthOpen(!summaryMonthOpen); setSummaryYearOpen(false); }}
-                onSelect={(opt) => { setSummaryMonth(opt === 'Semua Bulan' ? null : BULAN_MS.indexOf(opt)); setSummaryMonthOpen(false); }}
-                stackIndex={1000}
-              />
+            <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+              <FullscreenViewer title="Ringkasan Bencana">
+                {renderSummaryContent(true)}
+              </FullscreenViewer>
+              <TouchableOpacity
+                onPress={handleExportSummaryPdf}
+                disabled={exportingSummaryPdf}
+                style={[sharedStyles.pdfExportBtn, exportingSummaryPdf && sharedStyles.pdfExportBtnDisabled]}
+              >
+                {exportingSummaryPdf ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <>
+                    <Download size={14} color="#fff" />
+                    <Text style={sharedStyles.pdfExportBtnText}>PDF</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setSidePanel('none')} style={styles.panelCloseBtn}>
+                <X size={16} color="#64748b" />
+              </TouchableOpacity>
             </View>
           </View>
 
-          {pagedBencanaSummary.length === 0 ? (
-            <Text style={styles.emptyText}>Tiada rekod bencana untuk tempoh ini.</Text>
-          ) : (
-            <>
-              <View style={styles.calamityTableWrapper}>
-                <View style={styles.calamityTableHeaderRow}>
-                  <View style={[styles.historyAgencyColFlex, styles.calamityHeaderCellBox]}>
-                    <Text style={styles.calamityTableHeaderCell}>Nama Bencana</Text>
-                  </View>
-                  <View style={[styles.calamityTotalColFlex, styles.calamityHeaderCellBox]}>
-                    <Text style={styles.calamityTableHeaderCell}>Tarikh Mula</Text>
-                  </View>
-                  <View style={[styles.calamityTotalColFlex, styles.calamityHeaderCellBox]}>
-                    <Text style={styles.calamityTableHeaderCell}>Tarikh Tamat</Text>
-                  </View>
-                </View>
-                <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 380 }}>
-                  {pagedBencanaSummary.map((b, index) => (
-                    <View key={b.id} style={[styles.calamityTableRow, { backgroundColor: index % 2 === 0 ? '#ffffff' : '#f8fafc' }]}>
-                      <Text style={[styles.calamityTableCell, styles.historyAgencyColFlex, { textAlign: 'left', paddingLeft: 16, fontWeight: '700' }]} numberOfLines={1}>
-                        {b.category}
-                      </Text>
-                      <Text style={[styles.calamityTableCell, styles.calamityTotalColFlex]}>
-                        {new Date(b.created_at).toLocaleDateString('ms-MY')}
-                      </Text>
-                      <Text style={[styles.calamityTableCell, styles.calamityTotalColFlex, !b.resolved_at && { fontStyle: 'italic', color: '#ea580c' }]}>
-                        {b.resolved_at ? new Date(b.resolved_at).toLocaleDateString('ms-MY') : 'Bencana Belum Selesai'}
-                      </Text>
-                    </View>
-                  ))}
-                </ScrollView>
-              </View>
-
-              <View style={styles.paginationRow}>
-                <Text style={styles.pageIndicator}>{summaryPage + 1} / {summaryTotalPages}</Text>
-                <View style={styles.pageArrowRow}>
-                  <TouchableOpacity
-                    onPress={() => setSummaryPage(p => Math.max(0, p - 1))}
-                    disabled={summaryPage === 0}
-                    style={[styles.pageBtn, summaryPage === 0 && styles.pageBtnDisabled]}
-                  >
-                    <Text style={[styles.pageBtnText, summaryPage === 0 && styles.pageBtnTextDisabled]}>←</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => setSummaryPage(p => Math.min(summaryTotalPages - 1, p + 1))}
-                    disabled={summaryPage >= summaryTotalPages - 1}
-                    style={[styles.pageBtn, summaryPage >= summaryTotalPages - 1 && styles.pageBtnDisabled]}
-                  >
-                    <Text style={[styles.pageBtnText, summaryPage >= summaryTotalPages - 1 && styles.pageBtnTextDisabled]}>→</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </>
-          )}
+          {renderSummaryContent()}
         </View>
       )}
 
