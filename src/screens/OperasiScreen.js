@@ -13,7 +13,7 @@ import { getVehicleIcon } from '../utils/vehicleIcons';
 import { useVehicles } from '../hooks/useVehicles';
 import { useSandboxTable } from '../hooks/useSandboxTable';
 import { useNg999Report } from '../hooks/useNg999Report';
-import { buildOperasiMapHtml } from './operasiMapTemplate';
+import { buildOperasiMapHtml } from '../mapTemplates/operasiMapTemplate';
 import { formStyles } from '../styles/formStyles';
 import { generatePatrolHistoryPdf, generateCalamitySummaryPdf } from '../utils/patrolHistoryPdf';
 
