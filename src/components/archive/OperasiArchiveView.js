@@ -15,7 +15,10 @@ const CATEGORY_OPTIONS = [
   "ML - Mangsa Lemas", "SKT - Sakit", "KTK - Kemalangan Tempat Kerja",
   "MT - Mangsa Terperangkap", "KK - Kes Kebakaran", "KBD - Kes Bunuh Diri", "LLK - Lain-lain kes",
 ];
+import { BULAN_MS } from '../../constants/bulan';
+
 const MONTH_OPTIONS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const monthLabelMs = (englishMonth) => BULAN_MS[MONTH_OPTIONS.indexOf(englishMonth)] || englishMonth;
 
 const getCategoryColor = (id) => ({
   KJR: '#ef4444', KMU: '#f97316', MSS: '#eab308', ML: '#3b82f6', SKT: '#a855f7',
@@ -31,6 +34,7 @@ export default function OperasiArchiveView({ ngRows = [] }) {
 
     const monthlyTrend = MONTH_OPTIONS.map((month) => ({
       month,
+      label: monthLabelMs(month),
       total: ngRows.filter((item) => item.month === month).reduce((sum, item) => sum + (item.jumlah_kes || 1), 0),
     })).filter((m) => m.total > 0);
 

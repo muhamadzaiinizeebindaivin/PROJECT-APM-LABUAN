@@ -20,6 +20,7 @@ import HomeScreen from './src/screens/HomeScreen';
 import DriverScreen from './src/screens/DriverScreen';
 import SignUpScreen from './src/screens/SignUpScreen';
 import AgencyTrackingScreen from './src/screens/AgencyTrackingScreen';
+import PublicNg999Form from './src/screens/PublicNg999Form';
 import SetPasswordScreen from './src/screens/SetPasswordScreen';
 
 import { themes } from './theme'; 
@@ -57,6 +58,10 @@ export default function App() {
       setAgencyInfo(null);
     }
   };
+
+  // Formulaire public (lien partagé au personnel de terrain, avec code d'accès)
+  const isPublicNg999Route = Platform.OS === 'web' && typeof window !== 'undefined' &&
+    window.location.search.includes('lapor=ng999');
 
   useEffect(() => {
     const restoreSession = async () => {
@@ -310,6 +315,10 @@ export default function App() {
         />
       </View>
     );
+  }
+
+  if (isPublicNg999Route) {
+    return <PublicNg999Form />;
   }
 
   if (isCheckingSession) {

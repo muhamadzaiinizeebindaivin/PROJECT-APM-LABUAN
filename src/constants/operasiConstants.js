@@ -9,18 +9,13 @@ export const CATEGORY_OPTIONS = [
   "SKT - Sakit (Medikal/Trauma)",
   "KTK - Kemalangan Tempat Kerja",
   "PT - Pokok Tumbang",
-  "KBR - Kes Kebakaran",,
+  "KBR - Kes Kebakaran",
   'ML - Mangsa Lemas',
   "KB - Kes Bergaduh",
   "MHL - Menangkap Haiwan Liar",
   "MHP - Menangkap Haiwan Peliharaan",
   "MT - Mangsa Terperangkap",
   "LLK - Lain-lain kes"
-];
-
-export const MONTH_OPTIONS = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December"
 ];
 
 export const CALAMITY_CATEGORIES = [

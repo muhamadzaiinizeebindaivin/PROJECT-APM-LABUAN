@@ -4,7 +4,7 @@ import { Alert } from 'react-native';
 import { supabaseSandbox } from '../supabaseSandboxClient';
 import { useSandboxTable } from './useSandboxTable';
 import { CALAMITY_CATEGORIES } from '../constants/operasiConstants';
-import { BULAN_MS } from '../constants/bulanMonths';
+import { BULAN_MS } from '../constants/bulan';
 import { generatePatrolHistoryPdf } from '../utils/patrolHistoryPdf';
 
 const HISTORY_PAGE_SIZE = 15;

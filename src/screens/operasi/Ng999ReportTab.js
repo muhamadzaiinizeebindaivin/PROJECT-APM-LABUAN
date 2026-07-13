@@ -1,59 +1,98 @@
 // src/screens/operasi/Ng999ReportTab.js
-import React, { useState } from 'react';
+import React, { useState, useMemo, createElement } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Modal, TextInput, Alert, Platform } from 'react-native';
-import { BarChart2, AlertTriangle, Calendar, ChevronDown, ChevronUp, Plus, Edit2, Trash2, X, TrendingDown, TrendingUp } from 'lucide-react-native';
-import AdminEditButton from '../../components/AdminEditButton';
+import { BarChart2, AlertTriangle, Plus, Edit2, Trash2, X, TrendingDown, TrendingUp } from 'lucide-react-native';
 import ModalSelectField from '../../components/ModalSelectField';
 import { useNg999Report } from '../../hooks/useNg999Report';
-import { CATEGORY_OPTIONS, MONTH_OPTIONS } from '../../constants/operasiConstants';
+import { CATEGORY_OPTIONS } from '../../constants/operasiConstants';
+import { BULAN_MS, BULAN_OPTIONS } from '../../constants/bulan';
 import { formStyles } from '../../styles/formStyles';
 import { reportStyles as styles } from './reportStyles';
+import { mapStyles as tableStyles } from './mapStyles';
 
 export default function Ng999ReportTab({ theme, userRole }) {
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [selectedMonth, setSelectedMonth] = useState(null);
-  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const now = new Date();
 
+  const { ngData, loadingNg, saveRecord, deleteRecord, categories, availableYears, totalMersCases, topCaseData, getTrend } = useNg999Report();
+
+  // --- Filtre Tahun / Bulan / Hari + recherche, sur la liste CRUD ---
+  const [filterYear, setFilterYear] = useState(now.getFullYear());
+  const [filterMonth, setFilterMonth] = useState(null); // null = Semua Bulan
+  const [filterDay, setFilterDay] = useState(null); // null = Semua Hari
+  const [filterYearOpen, setFilterYearOpen] = useState(false);
+  const [filterMonthOpen, setFilterMonthOpen] = useState(false);
+  const [filterDayOpen, setFilterDayOpen] = useState(false);
+
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const daysInFilterMonth = filterMonth === null ? 31 : new Date(filterYear, filterMonth + 1, 0).getDate();
+  const dayOptions = ['Semua Hari', ...Array.from({ length: daysInFilterMonth }, (_, i) => String(i + 1))];
+
+  const filteredNgData = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    return ngData.filter(item => {
+      const d = new Date(item.tarikh);
+      if (d.getFullYear() !== filterYear) return false;
+      if (filterMonth !== null && d.getMonth() !== filterMonth) return false;
+      if (filterDay !== null && d.getDate() !== filterDay) return false;
+      if (q && !(item.kategori_kes || '').toLowerCase().includes(q)) return false;
+      return true;
+    });
+  }, [ngData, filterYear, filterMonth, filterDay, searchQuery]);
+
+  const aggregatedByCategory = useMemo(() => {
+    const totals = {};
+    filteredNgData.forEach(item => {
+      const key = item.kategori_kes || 'Lain-lain';
+      totals[key] = (totals[key] || 0) + (item.jumlah_kes || 1);
+    });
+    return Object.entries(totals)
+      .map(([kategori_kes, total]) => ({ kategori_kes, total }))
+      .sort((a, b) => b.total - a.total);
+  }, [filteredNgData]);
+
+  const filteredTotalCases = useMemo(() => aggregatedByCategory.reduce((sum, row) => sum + row.total, 0), [aggregatedByCategory]);
+
+  const [viewMode, setViewMode] = useState('ringkasan'); // 'ringkasan' | 'senarai'
+
+  const groupedByMonth = useMemo(() => {
+    if (filterMonth !== null) return null; // pas besoin de regrouper, déjà un seul mois
+    const groups = {};
+    filteredNgData.forEach(item => {
+      const d = new Date(item.tarikh);
+      const key = `${d.getFullYear()}-${String(d.getMonth()).padStart(2, '0')}`;
+      if (!groups[key]) groups[key] = { label: `${BULAN_MS[d.getMonth()]} ${d.getFullYear()}`, monthIndex: d.getMonth(), items: [] };
+      groups[key].items.push(item);
+    });
+    return Object.values(groups).sort((a, b) => b.monthIndex - a.monthIndex);
+  }, [filteredNgData, filterMonth]);
+
+  // --- Modale d'ajout/modification ---
   const [modalVisible, setModalVisible] = useState(false);
-  const [form, setForm] = useState({ id: null, kategori_kes: '', month: '', jumlah_kes: '1' });
+  const [form, setForm] = useState({ id: null, kategori_kes: '', tarikh: '', jumlah_kes: '1' });
   const [categoryOpen, setCategoryOpen] = useState(false);
-  const [monthOpen, setMonthOpen] = useState(false);
-
-  const { ngData, loadingNg, saveRecord, deleteRecord, stats } = useNg999Report();
-  const { dynamicMonthlyTrend, dynamicCaseBreakdown, topCaseData, totalMersCases } = stats;
 
   const handleSaveNg = async () => {
-    if (!form.kategori_kes || !form.month || !form.jumlah_kes) {
+    if (!form.kategori_kes || !form.tarikh || !form.jumlah_kes) {
       Alert.alert('Error', 'Please fill in all fields.');
       return;
     }
-
     const caseAmount = parseInt(form.jumlah_kes, 10);
     if (isNaN(caseAmount) || caseAmount < 1) {
       Alert.alert('Error', 'Amount of cases must be a valid number greater than 0.');
       return;
     }
-
-    await saveRecord({ id: form.id, kategori_kes: form.kategori_kes, month: form.month, jumlah_kes: caseAmount });
+    await saveRecord({ id: form.id, kategori_kes: form.kategori_kes, tarikh: form.tarikh, jumlah_kes: caseAmount });
     closeModal();
   };
 
   const handleDeleteNg = async (id) => {
     if (Platform.OS === 'web') {
-      const confirmed = window.confirm('Are you sure you want to delete this record?');
-      if (confirmed) {
-        await deleteRecord(id);
-      }
+      if (window.confirm('Are you sure you want to delete this record?')) await deleteRecord(id);
     } else {
       Alert.alert('Confirmation', 'Are you sure you want to delete this record?', [
         { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            await deleteRecord(id);
-          }
-        }
+        { text: 'Delete', style: 'destructive', onPress: async () => { await deleteRecord(id); } }
       ]);
     }
   };
@@ -62,7 +101,7 @@ export default function Ng999ReportTab({ theme, userRole }) {
     setForm({
       id: record.id,
       kategori_kes: record.kategori_kes,
-      month: record.month,
+      tarikh: record.tarikh,
       jumlah_kes: (record.jumlah_kes || 1).toString()
     });
     setModalVisible(true);
@@ -71,64 +110,23 @@ export default function Ng999ReportTab({ theme, userRole }) {
   const closeModal = () => {
     setModalVisible(false);
     setCategoryOpen(false);
-    setMonthOpen(false);
-    setForm({ id: null, kategori_kes: '', month: '', jumlah_kes: '1' });
+    setForm({ id: null, kategori_kes: '', tarikh: '', jumlah_kes: '1' });
   };
-
-  const getTrendData = () => {
-    if (dynamicMonthlyTrend.length >= 2) {
-      const current = dynamicMonthlyTrend[dynamicMonthlyTrend.length - 1];
-      const prev = dynamicMonthlyTrend[dynamicMonthlyTrend.length - 2];
-      const diff = current.total - prev.total;
-
-      if (diff > 0) return { text: `+${diff} Cases`, color: '#b91c1c', bg: '#fef2f2', border: '#ef4444', icon: <TrendingUp size={16} color="#b91c1c" />, sub: `Compared to ${prev.month}` };
-      if (diff < 0) return { text: `${diff} Cases`, color: '#15803d', bg: '#f0fdf4', border: '#22c55e', icon: <TrendingDown size={16} color="#15803d" />, sub: `Compared to ${prev.month}` };
-      return { text: "No Change", color: '#64748b', bg: '#f8fafc', border: '#cbd5e1', icon: <BarChart2 size={16} color="#64748b" />, sub: `Compared to ${prev.month}` };
-    }
-    return { text: "N/A", color: '#64748b', bg: '#f8fafc', border: '#cbd5e1', icon: <BarChart2 size={16} color="#64748b" />, sub: "Need 2 months of data" };
-  };
-  const trendData = getTrendData();
 
   return (
     <>
       <ScrollView style={styles.reportContainer} showsVerticalScrollIndicator={false}>
 
-        <AdminEditButton
-          isEditMode={isEditMode}
-          setIsEditMode={setIsEditMode}
-          userRole={userRole}
-        />
-
         <View style={styles.reportHeader}>
           <Text style={[styles.reportTitle, { color: theme.text }]}>Emergency Case Report</Text>
-          <Text style={{ color: theme.textSecondary, fontWeight: '600' }}>NG 999 W.P. Labuan {new Date().getFullYear()}</Text>
+          <Text style={{ color: theme.textSecondary, fontWeight: '600' }}>NG 999 W.P. Labuan {now.getFullYear()}</Text>
         </View>
 
         <View style={styles.statsRow}>
-          {dynamicMonthlyTrend.length === 0 ? (
-             <View style={[styles.statBox, { backgroundColor: theme.card }]}>
-                <Text style={{ color: theme.textSecondary, fontWeight: '700' }}>No Monthly Data</Text>
-             </View>
-          ) : (
-             dynamicMonthlyTrend.slice(-2).map((item, index) => (
-              <View key={index} style={[styles.statBox, { backgroundColor: theme.card }]}>
-                <View style={styles.statBoxTop}>
-                  <Calendar size={16} color={theme.accent} />
-                  <Text style={{ color: theme.textSecondary, fontWeight: '700' }}>{item.month}</Text>
-                </View>
-                <Text style={[styles.statBoxValue, { color: theme.text }]}>{item.total}</Text>
-                <Text style={{ color: theme.textSecondary, fontSize: 10 }}>Total Cases</Text>
-              </View>
-            ))
-          )}
-
-          <View style={[styles.statBox, { backgroundColor: trendData.bg, borderColor: trendData.border, borderWidth: 1 }]}>
-             <View style={styles.statBoxTop}>
-                {trendData.icon}
-                <Text style={{ color: trendData.color, fontWeight: '700' }}>Trend</Text>
-              </View>
-              <Text style={[styles.statBoxValue, { color: trendData.color, fontSize: 20 }]}>{trendData.text}</Text>
-              <Text style={{ color: trendData.color, fontSize: 10 }}>{trendData.sub}</Text>
+          <View style={[styles.statBox, { backgroundColor: theme.card }]}>
+            <Text style={{ color: theme.textSecondary, fontWeight: '700', fontSize: 12 }}>Jumlah Keseluruhan</Text>
+            <Text style={[styles.statBoxValue, { color: theme.text }]}>{totalMersCases}</Text>
+            <Text style={{ color: theme.textSecondary, fontSize: 10 }}>Semua Rekod</Text>
           </View>
         </View>
 
@@ -142,106 +140,209 @@ export default function Ng999ReportTab({ theme, userRole }) {
             Contributing {topCaseData.total} out of {totalMersCases} total calls.
           </Text>
         </View>
-
-        <View style={{ marginBottom: 20 }}>
-          <TouchableOpacity
-            style={[styles.dropdownHeaderBtn, { backgroundColor: theme.card, borderColor: '#e2e8f0' }]}
-            onPress={() => setDropdownOpen(!dropdownOpen)}
-            activeOpacity={0.7}
-          >
-            <Text style={{ color: theme.text, fontWeight: '700', fontSize: 14 }}>
-              {selectedMonth ? `Category Breakdown: ${selectedMonth}` : 'Select Month For Category Breakdown'}
-            </Text>
-            {dropdownOpen ? <ChevronUp size={20} color={theme.textSecondary} /> : <ChevronDown size={20} color={theme.textSecondary} />}
-          </TouchableOpacity>
-
-          {dropdownOpen && (
-            <View style={[styles.dropdownList, { backgroundColor: theme.card, borderColor: '#e2e8f0' }]}>
-              {dynamicMonthlyTrend.map((m, index) => (
-                <TouchableOpacity
-                  key={index}
-                  style={[styles.dropdownItem, index < dynamicMonthlyTrend.length - 1 && { borderBottomWidth: 1, borderBottomColor: '#f1f5f9' }]}
-                  onPress={() => { setSelectedMonth(m.month); setDropdownOpen(false); }}
-                >
-                  <Text style={{ color: selectedMonth === m.month ? '#3b82f6' : theme.text, fontWeight: selectedMonth === m.month ? '800' : '500' }}>
-                    {m.month}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-              {dynamicMonthlyTrend.length === 0 && (
-                 <View style={styles.dropdownItem}><Text style={{ color: theme.textSecondary }}>No data available</Text></View>
-              )}
-            </View>
-          )}
-        </View>
-
-        {selectedMonth && (
-          <View style={[styles.breakdownContainer, { backgroundColor: theme.card }]}>
-            <Text style={[styles.breakdownTitle, { color: theme.text }]}>Case Breakdown ({selectedMonth})</Text>
-
-            {dynamicCaseBreakdown.map((item, index) => {
-              const monthVal = item[selectedMonth];
-              if (!monthVal || monthVal === 0) return null;
-
-              const monthTotal = dynamicMonthlyTrend.find(m => m.month === selectedMonth)?.total || 1;
-              const percent = Math.round((monthVal / monthTotal) * 100);
-
-              return (
-                <View key={index} style={styles.breakdownRow}>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <Text style={{ color: theme.text, fontWeight: '700', fontSize: 13 }}>[{item.id}] {item.label}</Text>
-                    <Text style={{ color: theme.text, fontWeight: '800', fontSize: 13 }}>
-                      {monthVal} <Text style={{ fontSize: 10, color: theme.textSecondary, fontWeight: '600' }}>({percent}%)</Text>
-                    </Text>
-                  </View>
-                  <View style={styles.progressBarBg}>
-                    <View style={[styles.progressBarFill, { backgroundColor: item.color, width: `${percent}%` }]} />
-                  </View>
-                </View>
-              );
-            })}
-          </View>
-        )}
-
-        {isEditMode && (
-          <View style={[styles.crudContainer, { backgroundColor: theme.card }]}>
-            <View style={styles.crudHeader}>
-              <Text style={[styles.breakdownTitle, { color: theme.text, marginBottom: 0 }]}>NG999 Data Management</Text>
+        <View style={[styles.crudContainer, { backgroundColor: theme.card }]}>
+          <View style={styles.crudHeader}>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
               <TouchableOpacity
-                style={styles.addBtn}
-                onPress={() => { setForm({ id: null, kategori_kes: '', month: '', jumlah_kes: '1' }); setModalVisible(true); }}
+                onPress={() => setViewMode('ringkasan')}
+                style={{
+                  paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8,
+                  backgroundColor: viewMode === 'ringkasan' ? '#1E3A8A' : '#f1f5f9',
+                }}
               >
-                <Plus size={16} color="#fff" />
-                <Text style={styles.addBtnText}>Add New</Text>
+                <Text style={{ fontSize: 12, fontWeight: '700', color: viewMode === 'ringkasan' ? '#fff' : '#64748b' }}>
+                  Ringkasan Kecemasan
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setViewMode('senarai')}
+                style={{
+                  paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8,
+                  backgroundColor: viewMode === 'senarai' ? '#1E3A8A' : '#f1f5f9',
+                }}
+              >
+                <Text style={{ fontSize: 12, fontWeight: '700', color: viewMode === 'senarai' ? '#fff' : '#64748b' }}>
+                  Senarai Penuh Kecemasan
+                </Text>
               </TouchableOpacity>
             </View>
+            {viewMode === 'senarai' && (
+              <TouchableOpacity
+                style={styles.addBtn}
+                onPress={() => { setForm({ id: null, kategori_kes: '', tarikh: '', jumlah_kes: '1' }); setModalVisible(true); }}
+              >
+                <Plus size={16} color="#fff" />
+                <Text style={styles.addBtnText}>Tambah Baru</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+            <View style={{ flexDirection: 'row', gap: 10, marginBottom: 14 }}>
+              <View style={{ flex: 1 }}>
+                <ModalSelectField
+                  theme={theme}
+                  label="Tahun"
+                  value={String(filterYear)}
+                  placeholder="Tahun"
+                  options={availableYears.map(String)}
+                  isOpen={filterYearOpen}
+                  onToggle={() => { setFilterYearOpen(!filterYearOpen); setFilterMonthOpen(false); setFilterDayOpen(false); }}
+                  onSelect={(opt) => { setFilterYear(Number(opt)); setFilterYearOpen(false); }}
+                  stackIndex={3000}
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <ModalSelectField
+                  theme={theme}
+                  label="Bulan"
+                  value={filterMonth === null ? 'Semua Bulan' : BULAN_MS[filterMonth]}
+                  placeholder="Bulan"
+                  options={BULAN_OPTIONS}
+                  isOpen={filterMonthOpen}
+                  onToggle={() => { setFilterMonthOpen(!filterMonthOpen); setFilterYearOpen(false); setFilterDayOpen(false); }}
+                  onSelect={(opt) => {
+                    setFilterMonth(opt === 'Semua Bulan' ? null : BULAN_MS.indexOf(opt));
+                    setFilterDay(null);
+                    setFilterMonthOpen(false);
+                  }}
+                  stackIndex={2000}
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <ModalSelectField
+                  theme={theme}
+                  label="Hari"
+                  value={filterDay === null ? 'Semua Hari' : String(filterDay)}
+                  placeholder="Hari"
+                  options={dayOptions}
+                  isOpen={filterDayOpen}
+                  onToggle={() => { setFilterDayOpen(!filterDayOpen); setFilterYearOpen(false); setFilterMonthOpen(false); }}
+                  onSelect={(opt) => { setFilterDay(opt === 'Semua Hari' ? null : Number(opt)); setFilterDayOpen(false); }}
+                  stackIndex={1000}
+                />
+              </View>
+            </View>
+
+            <TextInput
+              style={[formStyles.inputField, { backgroundColor: theme.background, color: theme.text, borderColor: theme.border, marginBottom: 14 }]}
+              placeholder="Cari kategori kes..."
+              placeholderTextColor={theme.textSecondary}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
 
             {loadingNg ? (
               <ActivityIndicator size="small" color="#3b82f6" style={{ marginVertical: 20 }} />
-            ) : ngData.length === 0 ? (
-              <Text style={{ color: theme.textSecondary, textAlign: 'center', marginVertical: 10 }}>No records found.</Text>
-            ) : (
-              ngData.map((item) => (
-                <View key={item.id} style={[styles.crudItem, { borderBottomColor: theme.border }]}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ color: theme.text, fontWeight: '700', fontSize: 14 }}>{item.kategori_kes}</Text>
-                    <Text style={{ color: theme.textSecondary, fontSize: 12 }}>
-                      Month: {item.month} | Total: <Text style={{fontWeight: '800', color: theme.text}}>{item.jumlah_kes || 1}</Text> cases
-                    </Text>
+            ) : viewMode === 'ringkasan' ? (
+              aggregatedByCategory.length === 0 ? (
+                <Text style={{ color: theme.textSecondary, textAlign: 'center', marginVertical: 10 }}>No records found.</Text>
+              ) : (
+                <View style={tableStyles.calamityTableWrapper}>
+                  <View style={tableStyles.calamityTableHeaderRow}>
+                    <View style={[{ flex: 2 }, tableStyles.calamityHeaderCellBox]}>
+                      <Text style={tableStyles.calamityTableHeaderCell}>Kategori Kes</Text>
+                    </View>
+                    <View style={[{ flex: 1 }, tableStyles.calamityHeaderCellBox]}>
+                      <Text style={tableStyles.calamityTableHeaderCell}>Jumlah Kes</Text>
+                    </View>
                   </View>
-                  <View style={styles.actionBtns}>
-                    <TouchableOpacity onPress={() => openEditModal(item)} style={styles.iconBtn}>
-                      <Edit2 size={18} color="#22c55e" />
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={() => handleDeleteNg(item.id)} style={styles.iconBtn}>
-                      <Trash2 size={18} color="#ef4444" />
-                    </TouchableOpacity>
+                  <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 420 }}>
+                    {aggregatedByCategory.map((row, index) => (
+                      <View key={row.kategori_kes} style={[tableStyles.calamityTableRow, { backgroundColor: index % 2 === 0 ? '#ffffff' : '#f8fafc' }]}>
+                        <Text style={[tableStyles.calamityTableCell, { flex: 2, textAlign: 'left', paddingLeft: 16 }]} numberOfLines={1}>
+                          {row.kategori_kes}
+                        </Text>
+                        <Text style={[tableStyles.calamityTableCell, { flex: 1, fontWeight: '800' }]}>{row.total}</Text>
+                      </View>
+                    ))}
+                    <View style={[tableStyles.calamityTableRow, { backgroundColor: '#eff6ff', borderTopWidth: 2, borderTopColor: '#1E3A8A' }]}>
+                      <Text style={[tableStyles.calamityTableCell, { flex: 2, textAlign: 'left', paddingLeft: 16, fontWeight: '900' }]}>Jumlah Keseluruhan</Text>
+                      <Text style={[tableStyles.calamityTableCell, { flex: 1, fontWeight: '900', color: '#1E3A8A' }]}>{filteredTotalCases}</Text>
+                    </View>
+                  </ScrollView>
+                </View>
+              )
+            ) : filteredNgData.length === 0 ? (
+              <Text style={{ color: theme.textSecondary, textAlign: 'center', marginVertical: 10 }}>No records found.</Text>
+            ) : filterMonth === null ? (
+              // --- Semua Bulan : un encadré distinct par mois ---
+              groupedByMonth.map((group) => (
+                <View key={group.label} style={{ marginBottom: 16 }}>
+                  <Text style={{ fontSize: 13, fontWeight: '800', color: '#1E3A8A', marginBottom: 6 }}>{group.label}</Text>
+                  <View style={tableStyles.calamityTableWrapper}>
+                    <View style={tableStyles.calamityTableHeaderRow}>
+                      <View style={[{ flex: 2 }, tableStyles.calamityHeaderCellBox]}>
+                        <Text style={tableStyles.calamityTableHeaderCell}>Kategori Kes</Text>
+                      </View>
+                      <View style={[{ flex: 1 }, tableStyles.calamityHeaderCellBox]}>
+                        <Text style={tableStyles.calamityTableHeaderCell}>Tarikh</Text>
+                      </View>
+                      <View style={[{ flex: 1 }, tableStyles.calamityHeaderCellBox]}>
+                        <Text style={tableStyles.calamityTableHeaderCell}>Jumlah</Text>
+                      </View>
+                      <View style={[{ flex: 1 }, tableStyles.calamityHeaderCellBox]}>
+                        <Text style={tableStyles.calamityTableHeaderCell}>Aksi</Text>
+                      </View>
+                    </View>
+                    {group.items.map((item, index) => (
+                      <View key={item.id} style={[tableStyles.calamityTableRow, { backgroundColor: index % 2 === 0 ? '#ffffff' : '#f8fafc' }]}>
+                        <Text style={[tableStyles.calamityTableCell, { flex: 2, textAlign: 'left', paddingLeft: 16 }]} numberOfLines={1}>
+                          {item.kategori_kes}
+                        </Text>
+                        <Text style={[tableStyles.calamityTableCell, { flex: 1 }]}>{item.tarikh}</Text>
+                        <Text style={[tableStyles.calamityTableCell, { flex: 1, fontWeight: '800' }]}>{item.jumlah_kes || 1}</Text>
+                        <View style={[{ flex: 1 }, styles.actionBtns, { justifyContent: 'center' }]}>
+                          <TouchableOpacity onPress={() => openEditModal(item)} style={styles.iconBtn}>
+                            <Edit2 size={16} color="#22c55e" />
+                          </TouchableOpacity>
+                          <TouchableOpacity onPress={() => handleDeleteNg(item.id)} style={styles.iconBtn}>
+                            <Trash2 size={16} color="#ef4444" />
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    ))}
                   </View>
                 </View>
               ))
+            ) : (
+              // --- Un mois précis choisi : liste simple, pas besoin de regrouper ---
+              <View style={tableStyles.calamityTableWrapper}>
+                <View style={tableStyles.calamityTableHeaderRow}>
+                  <View style={[{ flex: 2 }, tableStyles.calamityHeaderCellBox]}>
+                    <Text style={tableStyles.calamityTableHeaderCell}>Kategori Kes</Text>
+                  </View>
+                  <View style={[{ flex: 1 }, tableStyles.calamityHeaderCellBox]}>
+                    <Text style={tableStyles.calamityTableHeaderCell}>Tarikh</Text>
+                  </View>
+                  <View style={[{ flex: 1 }, tableStyles.calamityHeaderCellBox]}>
+                    <Text style={tableStyles.calamityTableHeaderCell}>Jumlah</Text>
+                  </View>
+                  <View style={[{ flex: 1 }, tableStyles.calamityHeaderCellBox]}>
+                    <Text style={tableStyles.calamityTableHeaderCell}>Aksi</Text>
+                  </View>
+                </View>
+                <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 420 }}>
+                  {filteredNgData.map((item, index) => (
+                    <View key={item.id} style={[tableStyles.calamityTableRow, { backgroundColor: index % 2 === 0 ? '#ffffff' : '#f8fafc' }]}>
+                      <Text style={[tableStyles.calamityTableCell, { flex: 2, textAlign: 'left', paddingLeft: 16 }]} numberOfLines={1}>
+                        {item.kategori_kes}
+                      </Text>
+                      <Text style={[tableStyles.calamityTableCell, { flex: 1 }]}>{item.tarikh}</Text>
+                      <Text style={[tableStyles.calamityTableCell, { flex: 1, fontWeight: '800' }]}>{item.jumlah_kes || 1}</Text>
+                      <View style={[{ flex: 1 }, styles.actionBtns, { justifyContent: 'center' }]}>
+                        <TouchableOpacity onPress={() => openEditModal(item)} style={styles.iconBtn}>
+                          <Edit2 size={16} color="#22c55e" />
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => handleDeleteNg(item.id)} style={styles.iconBtn}>
+                          <Trash2 size={16} color="#ef4444" />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  ))}
+                </ScrollView>
+              </View>
             )}
           </View>
-        )}
 
       </ScrollView>
 
@@ -264,22 +365,33 @@ export default function Ng999ReportTab({ theme, userRole }) {
               placeholder="Select Category..."
               options={CATEGORY_OPTIONS}
               isOpen={categoryOpen}
-              onToggle={() => { setCategoryOpen(!categoryOpen); setMonthOpen(false); }}
+              onToggle={() => setCategoryOpen(!categoryOpen)}
               onSelect={(opt) => { setForm({ ...form, kategori_kes: opt }); setCategoryOpen(false); }}
               stackIndex={2000}
             />
 
-            <ModalSelectField
-              theme={theme}
-              label="Month"
-              value={form.month}
-              placeholder="Select Month..."
-              options={MONTH_OPTIONS}
-              isOpen={monthOpen}
-              onToggle={() => { setMonthOpen(!monthOpen); setCategoryOpen(false); }}
-              onSelect={(opt) => { setForm({ ...form, month: opt }); setMonthOpen(false); }}
-              stackIndex={1000}
-            />
+            <View style={[formStyles.inputGroup, { zIndex: 1 }]}>
+              <Text style={[formStyles.inputLabel, { color: theme.textSecondary }]}>Tarikh</Text>
+              {Platform.OS === 'web' ? (
+                createElement('input', {
+                  type: 'date',
+                  value: form.tarikh || '',
+                  onChange: (e) => setForm({ ...form, tarikh: e.target.value }),
+                  style: {
+                    width: '100%', padding: 10, borderRadius: 8, border: `1px solid ${theme.border}`,
+                    backgroundColor: theme.card, color: theme.text, fontSize: 14, boxSizing: 'border-box',
+                  },
+                })
+              ) : (
+                <TextInput
+                  style={[formStyles.inputField, { backgroundColor: theme.card, color: theme.text, borderColor: theme.border }]}
+                  placeholder="YYYY-MM-DD"
+                  placeholderTextColor={theme.textSecondary}
+                  value={form.tarikh}
+                  onChangeText={(t) => setForm({ ...form, tarikh: t })}
+                />
+              )}
+            </View>
 
             <View style={[formStyles.inputGroup, { zIndex: 1 }]}>
               <Text style={[formStyles.inputLabel, { color: theme.textSecondary }]}>Amount of Cases</Text>
@@ -294,9 +406,9 @@ export default function Ng999ReportTab({ theme, userRole }) {
             </View>
 
             <TouchableOpacity
-              style={[formStyles.saveBtn, (loadingNg || categoryOpen || monthOpen) && { opacity: 0.7 }]}
+              style={[formStyles.saveBtn, (loadingNg || categoryOpen) && { opacity: 0.7 }]}
               onPress={handleSaveNg}
-              disabled={loadingNg || categoryOpen || monthOpen}
+              disabled={loadingNg || categoryOpen}
             >
               {loadingNg ? <ActivityIndicator color="#fff" /> : <Text style={formStyles.saveBtnText}>Save Record</Text>}
             </TouchableOpacity>

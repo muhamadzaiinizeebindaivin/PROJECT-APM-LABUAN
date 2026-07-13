@@ -2,7 +2,7 @@
 import { useState, useMemo } from 'react';
 import { Alert } from 'react-native';
 import { CALAMITY_CATEGORIES } from '../constants/operasiConstants';
-import { BULAN_MS } from '../constants/bulanMonths';
+import { BULAN_MS } from '../constants/bulan';
 import { generateCalamitySummaryPdf } from '../utils/patrolHistoryPdf';
 
 /**

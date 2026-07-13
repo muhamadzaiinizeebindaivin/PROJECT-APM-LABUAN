@@ -10,7 +10,7 @@ import { usePatrolHistoryPanel } from '../../hooks/usePatrolHistoryPanel';
 import { useCalamitySummaryPanel } from '../../hooks/useCalamitySummaryPanel';
 import { buildOperasiMapHtml } from '../../mapTemplates/operasiMapTemplate';
 import { CALAMITY_CATEGORIES, getCalamityMeta } from '../../constants/operasiConstants';
-import { BULAN_MS, BULAN_OPTIONS } from '../../constants/bulanMonths';
+import { BULAN_MS, BULAN_OPTIONS } from '../../constants/bulan';
 import ModalSelectField from '../../components/ModalSelectField';
 import FullscreenViewer from '../../components/FullscreenViewer';
 import { formStyles } from '../../styles/formStyles';
