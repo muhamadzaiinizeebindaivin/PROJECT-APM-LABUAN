@@ -16,6 +16,8 @@ export function useCalamitySummaryPanel(calamityPoints) {
   const [summaryYearOpen, setSummaryYearOpen] = useState(false);
   const [summaryMonth, setSummaryMonth] = useState(null); // null = Semua Bulan (défaut)
   const [summaryMonthOpen, setSummaryMonthOpen] = useState(false);
+  const [summaryDay, setSummaryDay] = useState(null); // null = Semua Hari
+  const [summaryDayOpen, setSummaryDayOpen] = useState(false);
 
   const availableSummaryYears = useMemo(() => {
     const years = new Set(calamityPoints.filter(c => c.created_at).map(c => new Date(c.created_at).getFullYear()));
@@ -45,7 +47,37 @@ export function useCalamitySummaryPanel(calamityPoints) {
     });
   }, [calamityYearRows]);
 
+  const summaryDayOptions = useMemo(() => {
+    if (summaryMonth === null) return ['Semua Hari'];
+    const daysInMonth = new Date(summaryYear, summaryMonth + 1, 0).getDate();
+    return ['Semua Hari', ...Array.from({ length: daysInMonth }, (_, i) => String(i + 1))];
+  }, [summaryMonth, summaryYear]);
+
+  const calamityDailyBreakdownForMonth = useMemo(() => {
+    if (summaryMonth === null) return [];
+    const daysInMonth = new Date(summaryYear, summaryMonth + 1, 0).getDate();
+    return Array.from({ length: daysInMonth }, (_, i) => {
+      const day = i + 1;
+      const counts = {};
+      let total = 0;
+      CALAMITY_CATEGORIES.forEach(cat => { counts[cat.key] = 0; });
+      calamityYearRows.forEach(c => {
+        const d = new Date(c.created_at);
+        if (d.getMonth() !== summaryMonth || d.getDate() !== day) return;
+        if (counts[c.category] !== undefined) {
+          counts[c.category] += 1;
+          total += 1;
+        }
+      });
+      return { day, label: `${day} ${BULAN_MS[summaryMonth]}`, counts, total };
+    });
+  }, [calamityYearRows, summaryMonth, summaryYear]);
+
   const calamitySummaryRows = useMemo(() => {
+    if (summaryMonth !== null && summaryDay !== null) {
+      const dayRow = calamityDailyBreakdownForMonth.find(r => r.day === summaryDay);
+      return dayRow ? [{ month: dayRow.label, counts: dayRow.counts, total: dayRow.total }] : [];
+    }
     if (summaryMonth !== null) {
       return calamityMonthlyBreakdown.filter((_, idx) => idx === summaryMonth);
     }
@@ -60,11 +92,13 @@ export function useCalamitySummaryPanel(calamityPoints) {
       ...calamityMonthlyBreakdown,
       { month: 'Kumulatif', counts: cumulativeCounts, total: cumulativeTotal, isCumulative: true },
     ];
-  }, [calamityMonthlyBreakdown, summaryMonth]);
+  }, [calamityMonthlyBreakdown, summaryMonth, summaryDay, calamityDailyBreakdownForMonth]);
 
   const summaryPeriodLabel = summaryMonth === null
     ? `Tahun ${summaryYear}`
-    : `${BULAN_MS[summaryMonth]} ${summaryYear}`;
+    : summaryDay === null
+      ? `${BULAN_MS[summaryMonth]} ${summaryYear}`
+      : `${summaryDay} ${BULAN_MS[summaryMonth]} ${summaryYear}`;
 
   const [exportingSummaryPdf, setExportingSummaryPdf] = useState(false);
 
@@ -87,6 +121,7 @@ export function useCalamitySummaryPanel(calamityPoints) {
   return {
     summaryYear, setSummaryYear, summaryYearOpen, setSummaryYearOpen,
     summaryMonth, setSummaryMonth, summaryMonthOpen, setSummaryMonthOpen,
+    summaryDay, setSummaryDay, summaryDayOpen, setSummaryDayOpen, summaryDayOptions,
     availableSummaryYears, calamitySummaryRows, calamityMonthlyBreakdown,
     exportingSummaryPdf, handleExportSummaryPdf,
   };

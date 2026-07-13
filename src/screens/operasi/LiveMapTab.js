@@ -365,9 +365,13 @@ export default function LiveMapTab({ theme, userRole }) {
                 : { backgroundColor: idx % 2 === 0 ? '#ffffff' : '#f8fafc' },
             ]}
           >
-            <Text style={[styles.calamityTableCell, styles.calamityMonthColFlex, { fontWeight: '800', textAlign: 'left' }, large && { fontSize: 16 }]}>{row.month}</Text>
+            <View style={[styles.calamityMonthColFlex, styles.calamitySummaryCellBox]}>
+              <Text style={[styles.calamityTableCell, { fontWeight: '800' }, large && { fontSize: 16 }]}>{row.month}</Text>
+            </View>
             {CALAMITY_CATEGORIES.map(cat => (
-              <Text key={cat.key} style={[styles.calamityTableCell, styles.calamityCatColFlex, row.isCumulative && { fontWeight: '700' }, large && { fontSize: 16 }]}>{row.counts[cat.key] || '–'}</Text>
+              <View key={cat.key} style={[styles.calamityCatColFlex, styles.calamitySummaryCellBox]}>
+                <Text style={[styles.calamityTableCell, row.isCumulative && { fontWeight: '700' }, large && { fontSize: 16 }]}>{row.counts[cat.key] || '–'}</Text>
+              </View>
             ))}
             <View style={[styles.calamityTotalColFlex, styles.calamityTotalBadge]}>
               <Text style={[styles.calamityTotalBadgeText, large && { fontSize: 18 }]}>{row.total}</Text>
