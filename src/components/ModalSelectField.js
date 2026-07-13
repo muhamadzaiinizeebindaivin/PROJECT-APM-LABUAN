@@ -60,11 +60,10 @@ export default function ModalSelectField({
               {options.map((opt, idx) => (
                 <TouchableOpacity
                   key={idx}
-                  style={[styles.modalDropdownItem, { borderBottomColor: theme.border }]}
+                  style={[styles.modalDropdownItem, { borderBottomColor: theme.border, backgroundColor: value === opt ? '#eff6ff' : 'transparent' }]}
                   onPress={() => onSelect(opt)}
                 >
-                  <Text style={{ color: theme.text, fontSize: 13, flex: 1 }}>{opt}</Text>
-                  {value === opt && <Check size={14} color="#3b82f6" />}
+                  <Text style={{ color: value === opt ? '#1E3A8A' : theme.text, fontSize: 13, flex: 1, fontWeight: value === opt ? '700' : '400' }}>{opt}</Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
