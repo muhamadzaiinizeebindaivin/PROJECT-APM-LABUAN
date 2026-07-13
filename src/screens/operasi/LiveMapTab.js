@@ -533,7 +533,7 @@ export default function LiveMapTab({ theme, userRole }) {
                       {...(Platform.OS === 'web' ? {
                         onMouseEnter: (e) => {
                           const rect = e.currentTarget.getBoundingClientRect();
-                          setCalamityTooltip({ text: cat.key, top: rect.top, left: rect.left });
+                          setCalamityTooltip({ text: getCalamityMeta(cat.key).label, top: rect.top, left: rect.left });
                         },
                         onMouseLeave: () => setCalamityTooltip(null),
                       } : {})}

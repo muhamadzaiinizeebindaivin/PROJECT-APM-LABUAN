@@ -117,11 +117,18 @@ export default function App() {
   }, []);
 
 
+  const clearAgencySessionFlag = () => {
+    if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+      localStorage.removeItem('apm_agency_session');
+    }
+  };
+
   const handleLogout = async () => {
     if (Platform.OS === 'web') {
       const confirm = window.confirm("Adakah anda pasti mahu log keluar?");
       if (confirm) {
         await supabaseSandbox.auth.signOut();
+        clearAgencySessionFlag();
         setUserRole(null);
         setAgencyInfo(null);
       }
@@ -133,6 +140,7 @@ export default function App() {
           { text: "Batal", style: "cancel" },
           { text: "Ya", onPress: async () => {
               await supabaseSandbox.auth.signOut();
+              clearAgencySessionFlag();
               setUserRole(null);
               setAgencyInfo(null);
             }

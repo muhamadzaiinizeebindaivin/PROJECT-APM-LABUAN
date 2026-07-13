@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, FlatList, TextInput, Platform } from 'react-native';
 import * as Location from 'expo-location';
-import { Navigation, StopCircle, ArrowLeft, Search, Building2 } from 'lucide-react-native';
+import { Navigation, StopCircle, ArrowLeft, Search, Building2, LogOut } from 'lucide-react-native';
 import { supabaseSandbox as supabase } from '../supabaseSandboxClient';
 
 const STORAGE_KEY = 'apm_agency_session';
@@ -324,10 +324,7 @@ export default function AgencyTrackingScreen({ onLogout, theme }) {
           />
         )}
 
-        <TouchableOpacity onPress={onLogout} style={styles.logoutBtn}>
-          <Text style={{ color: theme?.textSecondary || '#64748b', fontWeight: 'bold' }}>Kembali</Text>
-        </TouchableOpacity>
-      </View>
+        </View>
     );
   }
 
@@ -412,10 +409,6 @@ export default function AgencyTrackingScreen({ onLogout, theme }) {
       </TouchableOpacity>
 
       {isTracking && <ActivityIndicator size="large" color={theme?.accent || '#3b82f6'} style={{ marginTop: 20 }} />}
-
-      <TouchableOpacity onPress={() => { clearSession(); onLogout(); }} style={{ marginTop: 'auto', paddingBottom: 20 }}>
-        <Text style={{ color: theme?.textSecondary || '#64748b', textDecorationLine: 'underline' }}>Log Keluar</Text>
-      </TouchableOpacity>
     </View>
   );
 }
@@ -432,6 +425,7 @@ const styles = StyleSheet.create({
   iconContainer: { width: 60, height: 60, borderRadius: 30, justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
   agencyCardText: { fontSize: 13, fontWeight: 'bold', textAlign: 'center' },
   logoutBtn: { paddingVertical: 15, marginTop: 10 },
+  topLogoutBtn: { alignSelf: 'flex-start', paddingHorizontal: 20, paddingBottom: 10 },
   backButton: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
   backText: { fontSize: 16, marginLeft: 5, fontWeight: '600' },
   statusBox: { marginBottom: 40, alignItems: 'center', padding: 20, borderWidth: 1, borderRadius: 16, width: '100%' },
