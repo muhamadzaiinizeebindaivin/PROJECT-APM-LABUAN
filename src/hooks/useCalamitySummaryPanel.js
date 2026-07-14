@@ -1,5 +1,6 @@
 // src/hooks/useCalamitySummaryPanel.js
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { supabaseSandbox } from '../supabaseSandboxClient';
 import { Alert } from 'react-native';
 import { CALAMITY_CATEGORIES } from '../constants/operasiConstants';
 import { BULAN_MS } from '../constants/bulan';
@@ -20,9 +21,31 @@ export function useCalamitySummaryPanel(calamityPoints) {
     return Array.from(years).sort((a, b) => b - a).map(String);
   }, [calamityPoints]);
 
-  const calamityYearRows = useMemo(() => {
-    return calamityPoints.filter(c => c.tarikh && new Date(c.tarikh).getFullYear() === summaryYear);
-  }, [calamityPoints, summaryYear]);
+  const [allYearRows, setAllYearRows] = useState([]);
+  const [loadingSummary, setLoadingSummary] = useState(false);
+
+  useEffect(() => {
+    const fetchAllRows = async () => {
+      setLoadingSummary(true);
+      const { data } = await supabaseSandbox
+        .from('laporan_ng999')
+        .select('id, category, kategori_kes, tarikh, jumlah_kes, status, created_at')
+        .gte('tarikh', `${summaryYear}-01-01`)
+        .lte('tarikh', `${summaryYear}-12-31`)
+        .limit(5000);
+      if (data) setAllYearRows(data);
+      setLoadingSummary(false);
+    };
+    fetchAllRows();
+
+    const sub = supabaseSandbox
+      .channel(`summary_panel_${summaryYear}`)
+      .on('postgres_changes', { event: '*', schema: 'sandbox', table: 'laporan_ng999' }, fetchAllRows)
+      .subscribe();
+    return () => supabaseSandbox.removeChannel(sub);
+  }, [summaryYear]);
+
+  const calamityYearRows = allYearRows;
 
   const calamityMonthlyBreakdown = useMemo(() => {
     return BULAN_MS.map((label, monthIndex) => {

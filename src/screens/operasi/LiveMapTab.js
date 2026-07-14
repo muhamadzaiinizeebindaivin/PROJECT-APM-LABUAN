@@ -90,6 +90,7 @@ export default function LiveMapTab({ theme, userRole }) {
       let data;
       try { data = JSON.parse(event.data); } catch (e) { return; }
       if (data.type === 'MAP_CLICKED' && activeCalamityTool) {
+        console.log('MAP_CLICKED reçu', data, 'activeCalamityTool:', activeCalamityTool);
         setPendingPlacement({ lat: data.lat, lng: data.lng });
         setCalamityModalVisible(true);
       } else if (data.type === 'DELETE_CALAMITY_REQUEST') {
@@ -105,7 +106,8 @@ export default function LiveMapTab({ theme, userRole }) {
   }, [activeCalamityTool]);
 
   useEffect(() => {
-    if (!loading && iframeRef?.current?.contentWindow) {
+    console.log('calamityPoints update:', calamityPoints.length, calamityPoints.map(c => c.id));
+    if (iframeRef?.current?.contentWindow) {
       const payload = calamityPoints
         .filter(c => c.status === 'active')
         .map(c => ({
@@ -141,6 +143,7 @@ export default function LiveMapTab({ theme, userRole }) {
       latitude: pendingPlacement.lat,
       longitude: pendingPlacement.lng,
     });
+    console.log('saveCalamity result:', error);
     if (!error) {
       setCalamityModalVisible(false);
       setCalamityDescription('');
@@ -156,26 +159,6 @@ export default function LiveMapTab({ theme, userRole }) {
 
   const activeVehicles = vehicles.filter(v => v.tracking_status === 'Patrol');
   const activeVehiclesCount = activeVehicles.length;
-
-  const [selectedChartCategories, setSelectedChartCategories] = useState(
-    CALAMITY_CATEGORIES.map(cat => cat.key)
-  );
-
-  const toggleChartCategory = (key) => {
-    setSelectedChartCategories(prev =>
-      prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
-    );
-  };
-
-  const toggleAllChartCategories = () => {
-    setSelectedChartCategories(prev =>
-      prev.length === CALAMITY_CATEGORIES.length ? [] : CALAMITY_CATEGORIES.map(cat => cat.key)
-    );
-  };
-
-  const selectedChartHasData = summary.calamityMonthlyBreakdown.some(row =>
-    selectedChartCategories.some(key => (row.counts[key] || 0) > 0)
-  );
 
   const renderHistoryTable = (large = false) => (
     <>
@@ -382,61 +365,6 @@ export default function LiveMapTab({ theme, userRole }) {
           </View>
         ))}
       </View>
-
-      {Platform.OS === 'web' ? (
-        <View style={styles.summaryChartWrapper}>
-          <Text style={styles.summaryChartTitle}>Trend Mengikut Bulan ({summary.summaryYear})</Text>
-
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
-            <TouchableOpacity
-              onPress={toggleAllChartCategories}
-              style={[styles.chartCatChip, { backgroundColor: '#1E3A8A', borderColor: '#1E3A8A' }]}
-            >
-              <Text style={[styles.chartCatChipText, { color: '#fff' }]}>
-                {selectedChartCategories.length === CALAMITY_CATEGORIES.length ? 'Kosongkan' : 'Semua'}
-              </Text>
-            </TouchableOpacity>
-            {CALAMITY_CATEGORIES.map(cat => {
-              const isSelected = selectedChartCategories.includes(cat.key);
-              return (
-                <TouchableOpacity
-                  key={cat.key}
-                  onPress={() => toggleChartCategory(cat.key)}
-                  style={[
-                    styles.chartCatChip,
-                    { borderColor: cat.color, backgroundColor: isSelected ? cat.color : '#fff' },
-                  ]}
-                >
-                  <Text style={[styles.chartCatChipText, { color: isSelected ? '#fff' : cat.color }]}>{cat.key}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-
-          <ResponsiveContainer width="100%" height={280}>
-            <LineChart data={summary.calamityMonthlyBreakdown} margin={{ top: 10, right: 20, left: 0, bottom: 10 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis dataKey="month" tick={{ fontSize: 10 }} />
-              <YAxis allowDecimals={false} tick={{ fontSize: 10 }} />
-              <Tooltip content={<CompactTooltip />} />
-              <Legend wrapperStyle={{ fontSize: 11 }} />
-              {CALAMITY_CATEGORIES.filter(cat => selectedChartCategories.includes(cat.key)).map(cat => (
-                <Line
-                  key={cat.key}
-                  type="monotone"
-                  dataKey={(row) => row.counts[cat.key]}
-                  name={cat.key}
-                  stroke={cat.color}
-                  strokeWidth={2}
-                  dot={{ r: 2 }}
-                />
-              ))}
-            </LineChart>
-          </ResponsiveContainer>
-        </View>
-      ) : (
-        <Text style={styles.waypointEmptyText}>Carta trend hanya tersedia di versi web.</Text>
-      )}
     </ScrollView>
   );
 

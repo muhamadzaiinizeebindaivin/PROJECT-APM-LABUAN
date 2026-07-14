@@ -1,11 +1,10 @@
 // src/screens/operasi/PertolonganCemasTab.js
 import React, { useState, useEffect, useCallback, createElement } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Modal, TextInput, ActivityIndicator, Alert, Platform } from 'react-native';
-import { Plus, X, Edit2, Trash2, Calendar, MapPin, Users, Truck, Package, Pill, FileText, Clock } from 'lucide-react-native';
+import { View, Text, TouchableOpacity, ScrollView, Modal, TextInput, ActivityIndicator, Alert, Platform, Image } from 'react-native';
+import { Plus, X, Edit2, Trash2, Calendar, MapPin, Users, Truck, Package, Pill, FileText, Clock, Camera, Image as ImageIcon } from 'lucide-react-native';
 import { supabaseSandbox } from '../../supabaseSandboxClient';
 import { formStyles } from '../../styles/formStyles';
 import { reportStyles as styles } from './reportStyles';
-import { mapStyles as tableStyles } from './mapStyles';
 
 const STATUS_OPTIONS = ['aktif', 'selesai', 'dibatal'];
 const STATUS_COLORS = {
@@ -29,6 +28,8 @@ const EMPTY_FORM = {
   catatan: '',
   status: 'aktif',
 };
+
+const BUCKET = 'pertolongan-cemas-photos';
 
 function InfoRow({ icon, label, value }) {
   if (!value) return null;
@@ -55,11 +56,15 @@ export default function PertolonganCemasTab({ theme, userRole }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterYear, setFilterYear] = useState(new Date().getFullYear());
 
+  // Photos
+  const [pendingFiles, setPendingFiles] = useState([]);
+  const [photoViewer, setPhotoViewer] = useState(null); // { photos, index }
+
   const fetchEvents = useCallback(async () => {
     setLoading(true);
     const { data, error } = await supabaseSandbox
       .from('pertolongan_cemas')
-      .select('*')
+      .select('*, pertolongan_cemas_photos(id, photo_url)')
       .order('tarikh', { ascending: false });
     if (data) setEvents(data);
     if (error) console.error(error);
@@ -68,12 +73,61 @@ export default function PertolonganCemasTab({ theme, userRole }) {
 
   useEffect(() => {
     fetchEvents();
-    const sub = supabaseSandbox
+    const sub1 = supabaseSandbox
       .channel('pertolongan_cemas_changes')
       .on('postgres_changes', { event: '*', schema: 'sandbox', table: 'pertolongan_cemas' }, fetchEvents)
       .subscribe();
-    return () => supabaseSandbox.removeChannel(sub);
+    const sub2 = supabaseSandbox
+      .channel('pertolongan_cemas_photos_changes')
+      .on('postgres_changes', { event: '*', schema: 'sandbox', table: 'pertolongan_cemas_photos' }, fetchEvents)
+      .subscribe();
+    return () => { supabaseSandbox.removeChannel(sub1); supabaseSandbox.removeChannel(sub2); };
   }, [fetchEvents]);
+
+  const uploadPhoto = async (file) => {
+    const ext = file.name.split('.').pop();
+    const fileName = `${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+    const { error } = await supabaseSandbox.storage.from(BUCKET).upload(fileName, file, { contentType: file.type });
+    if (error) return { url: null, error };
+    const { data } = supabaseSandbox.storage.from(BUCKET).getPublicUrl(fileName);
+    return { url: data.publicUrl, error: null };
+  };
+
+  const deletePhoto = async (photoId, photoUrl) => {
+    if (photoUrl) {
+      const fileName = photoUrl.split('/').pop();
+      await supabaseSandbox.storage.from(BUCKET).remove([fileName]);
+    }
+    await supabaseSandbox.from('pertolongan_cemas_photos').delete().eq('id', photoId);
+    fetchEvents();
+  };
+
+  const addPhotosToEvent = async (acara_id, files) => {
+    const urls = [];
+    for (const file of files) {
+      const { url, error } = await uploadPhoto(file);
+      if (!error && url) urls.push(url);
+    }
+    if (urls.length > 0) {
+      await supabaseSandbox.from('pertolongan_cemas_photos').insert(
+        urls.map(photo_url => ({ acara_id, photo_url }))
+      );
+    }
+    await fetchEvents();
+  };
+
+  const handlePickPhotos = () => {
+    if (Platform.OS !== 'web') return;
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.jpg,.jpeg,.png,.gif,.webp,.heic';
+    input.multiple = true;
+    input.onchange = (e) => {
+      const files = Array.from(e.target.files);
+      setPendingFiles(prev => [...prev, ...files.map(f => ({ file: f, preview: URL.createObjectURL(f) }))]);
+    };
+    input.click();
+  };
 
   const handleSave = async () => {
     if (!form.nama_acara || !form.lokasi || !form.tarikh || !form.masa_mula || !form.masa_tamat) {
@@ -95,20 +149,31 @@ export default function PertolonganCemasTab({ theme, userRole }) {
       catatan: form.catatan.trim() || null,
       status: form.status,
     };
-    let error;
+    let error, recordId = form.id;
     if (form.id) {
       ({ error } = await supabaseSandbox.from('pertolongan_cemas').update(payload).eq('id', form.id));
     } else {
-      ({ error } = await supabaseSandbox.from('pertolongan_cemas').insert([payload]));
+      const { data, error: insertError } = await supabaseSandbox.from('pertolongan_cemas').insert([payload]).select('id').single();
+      error = insertError;
+      if (data) recordId = data.id;
     }
-    if (!error) { fetchEvents(); closeModal(); }
-    else Alert.alert('Ralat', 'Gagal menyimpan. Sila cuba lagi.');
+    if (!error) {
+      if (pendingFiles.length > 0) await addPhotosToEvent(recordId, pendingFiles.map(p => p.file));
+      else await fetchEvents();
+      closeModal();
+    } else Alert.alert('Ralat', 'Gagal menyimpan. Sila cuba lagi.');
     setSaving(false);
   };
 
   const handleDelete = async (id) => {
     const confirmed = Platform.OS === 'web' ? window.confirm('Padam acara ini?') : true;
     if (!confirmed) return;
+    // Supprimer les photos du bucket
+    const event = events.find(e => e.id === id);
+    if (event?.pertolongan_cemas_photos?.length > 0) {
+      const fileNames = event.pertolongan_cemas_photos.map(p => p.photo_url.split('/').pop());
+      await supabaseSandbox.storage.from(BUCKET).remove(fileNames);
+    }
     await supabaseSandbox.from('pertolongan_cemas').delete().eq('id', id);
     fetchEvents();
   };
@@ -129,12 +194,14 @@ export default function PertolonganCemasTab({ theme, userRole }) {
       catatan: event.catatan || '',
       status: event.status || 'aktif',
     });
+    setPendingFiles([]);
     setModalVisible(true);
   };
 
   const closeModal = () => {
     setModalVisible(false);
     setForm(EMPTY_FORM);
+    setPendingFiles([]);
   };
 
   const availableYears = [...new Set(events.map(e => new Date(e.tarikh).getFullYear()))].sort((a, b) => b - a);
@@ -146,18 +213,15 @@ export default function PertolonganCemasTab({ theme, userRole }) {
     return true;
   });
 
-  const inputStyle = [formStyles.inputField, {
-    backgroundColor: theme.card, color: theme.text,
-    borderColor: theme.border, marginBottom: 0,
-  }];
-
+  const inputStyle = [formStyles.inputField, { backgroundColor: theme.card, color: theme.text, borderColor: theme.border, marginBottom: 0 }];
   const labelStyle = { fontSize: 12, fontWeight: '700', color: theme.textSecondary, marginBottom: 4, marginTop: 12 };
+
+  const existingPhotos = form.id ? (events.find(e => e.id === form.id)?.pertolongan_cemas_photos || []) : [];
 
   return (
     <>
       <ScrollView style={styles.reportContainer} showsVerticalScrollIndicator={false}>
 
-        {/* Header */}
         <View style={styles.reportHeader}>
           <Text style={[styles.reportTitle, { color: theme.text }]}>Pertolongan Cemas</Text>
           <Text style={{ color: theme.textSecondary, fontWeight: '600' }}>Pengurusan Acara & Penyebaran</Text>
@@ -180,14 +244,12 @@ export default function PertolonganCemasTab({ theme, userRole }) {
 
         {/* Toolbar */}
         <View style={{ marginBottom: 12, gap: 10 }}>
-          {/* Ligne 1 : Recherche + Tambah */}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
             <TextInput
               style={[formStyles.inputField, { flex: 1, backgroundColor: theme.background, color: theme.text, borderColor: '#94a3b8', borderWidth: 2, outlineStyle: 'none', marginBottom: 0 }]}
               placeholder="Cari nama acara atau lokasi..."
               placeholderTextColor={theme.textSecondary}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
+              value={searchQuery} onChangeText={setSearchQuery}
             />
             {canManage && (
               <TouchableOpacity style={styles.addBtn} onPress={() => setModalVisible(true)}>
@@ -196,19 +258,11 @@ export default function PertolonganCemasTab({ theme, userRole }) {
               </TouchableOpacity>
             )}
           </View>
-
-          {/* Ligne 2 : Filtre statut */}
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <View style={{ flexDirection: 'row', gap: 8 }}>
               {['semua', ...STATUS_OPTIONS].map(s => (
-                <TouchableOpacity
-                  key={s}
-                  onPress={() => setFilterStatus(s)}
-                  style={{
-                    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8,
-                    backgroundColor: filterStatus === s ? '#1E3A8A' : '#f1f5f9',
-                  }}
-                >
+                <TouchableOpacity key={s} onPress={() => setFilterStatus(s)}
+                  style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, backgroundColor: filterStatus === s ? '#1E3A8A' : '#f1f5f9' }}>
                   <Text style={{ fontSize: 12, fontWeight: '700', color: filterStatus === s ? '#fff' : '#64748b', textTransform: 'capitalize' }}>
                     {s === 'semua' ? 'Semua' : s}
                   </Text>
@@ -216,19 +270,11 @@ export default function PertolonganCemasTab({ theme, userRole }) {
               ))}
             </View>
           </ScrollView>
-
-          {/* Ligne 3 : Tahun */}
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <View style={{ flexDirection: 'row', gap: 8 }}>
               {(availableYears.length > 0 ? availableYears : [new Date().getFullYear()]).map(y => (
-                <TouchableOpacity
-                  key={y}
-                  onPress={() => setFilterYear(y)}
-                  style={{
-                    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8,
-                    backgroundColor: filterYear === y ? '#1E3A8A' : '#f1f5f9',
-                  }}
-                >
+                <TouchableOpacity key={y} onPress={() => setFilterYear(y)}
+                  style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, backgroundColor: filterYear === y ? '#1E3A8A' : '#f1f5f9' }}>
                   <Text style={{ fontSize: 12, fontWeight: '700', color: filterYear === y ? '#fff' : '#64748b' }}>{y}</Text>
                 </TouchableOpacity>
               ))}
@@ -236,7 +282,7 @@ export default function PertolonganCemasTab({ theme, userRole }) {
           </ScrollView>
         </View>
 
-        {/* Liste des événements */}
+        {/* Liste */}
         {loading ? (
           <ActivityIndicator size="small" color="#3b82f6" style={{ marginVertical: 20 }} />
         ) : filteredEvents.length === 0 ? (
@@ -244,13 +290,13 @@ export default function PertolonganCemasTab({ theme, userRole }) {
         ) : (
           filteredEvents.map(event => {
             const sc = STATUS_COLORS[event.status] || STATUS_COLORS.aktif;
+            const photos = event.pertolongan_cemas_photos || [];
             return (
               <View key={event.id} style={{
                 backgroundColor: theme.card, borderRadius: 16, padding: 18, marginBottom: 12,
                 borderWidth: 1, borderColor: theme.border,
                 shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 6, elevation: 2,
               }}>
-                {/* Header carte */}
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
                   <View style={{ flex: 1 }}>
                     <Text style={{ fontSize: 16, fontWeight: '900', color: theme.text }}>{event.nama_acara}</Text>
@@ -265,10 +311,8 @@ export default function PertolonganCemasTab({ theme, userRole }) {
                     </View>
                     {canManage && (
                       <>
-                        <TouchableOpacity
-                          onPress={() => setStatusModalId(event.id)}
-                          style={{ backgroundColor: '#f1f5f9', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 }}
-                        >
+                        <TouchableOpacity onPress={() => setStatusModalId(event.id)}
+                          style={{ backgroundColor: '#f1f5f9', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 }}>
                           <Text style={{ fontSize: 11, fontWeight: '700', color: '#475569' }}>Status</Text>
                         </TouchableOpacity>
                         <TouchableOpacity onPress={() => openEdit(event)} style={styles.iconBtn}>
@@ -282,7 +326,6 @@ export default function PertolonganCemasTab({ theme, userRole }) {
                   </View>
                 </View>
 
-                {/* Infos */}
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 16 }}>
                   <View style={{ flex: 1, minWidth: 200 }}>
                     <InfoRow icon={<Calendar size={14} color="#94a3b8" />} label="Tarikh" value={event.tarikh} />
@@ -296,6 +339,26 @@ export default function PertolonganCemasTab({ theme, userRole }) {
                     <InfoRow icon={<FileText size={14} color="#94a3b8" />} label="Catatan" value={event.catatan} />
                   </View>
                 </View>
+
+                {/* Photos */}
+                <View style={{ marginTop: 12 }}>
+                  <Text style={{ fontSize: 11, color: '#94a3b8', fontWeight: '600', marginBottom: 8 }}>
+                    FOTO {photos.length > 0 ? `(${photos.length})` : ''}
+                  </Text>
+                  {photos.length > 0 ? (
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                      <View style={{ flexDirection: 'row', gap: 8 }}>
+                        {photos.map((photo, i) => (
+                          <TouchableOpacity key={photo.id} onPress={() => setPhotoViewer({ photos, index: i })}>
+                            <Image source={{ uri: photo.photo_url }} style={{ width: 72, height: 72, borderRadius: 10 }} resizeMode="cover" />
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    </ScrollView>
+                  ) : (
+                    <Text style={{ fontSize: 12, color: '#cbd5e1', fontStyle: 'italic' }}>Tiada gambar</Text>
+                  )}
+                </View>
               </View>
             );
           })
@@ -303,7 +366,7 @@ export default function PertolonganCemasTab({ theme, userRole }) {
 
       </ScrollView>
 
-      {/* Modal changement de statut */}
+      {/* Modal statut */}
       <Modal visible={!!statusModalId} transparent animationType="fade">
         <View style={formStyles.modalOverlay}>
           <View style={[formStyles.modalContent, { backgroundColor: theme.background }]}>
@@ -317,18 +380,12 @@ export default function PertolonganCemasTab({ theme, userRole }) {
             {STATUS_OPTIONS.map(s => {
               const sc = STATUS_COLORS[s];
               return (
-                <TouchableOpacity
-                  key={s}
+                <TouchableOpacity key={s}
                   onPress={async () => {
                     await supabaseSandbox.from('pertolongan_cemas').update({ status: s }).eq('id', statusModalId);
-                    fetchEvents();
-                    setStatusModalId(null);
+                    fetchEvents(); setStatusModalId(null);
                   }}
-                  style={{
-                    paddingVertical: 14, paddingHorizontal: 16, borderRadius: 10, marginBottom: 8,
-                    backgroundColor: sc.bg, borderWidth: 1.5, borderColor: sc.border,
-                  }}
-                >
+                  style={{ paddingVertical: 14, paddingHorizontal: 16, borderRadius: 10, marginBottom: 8, backgroundColor: sc.bg, borderWidth: 1.5, borderColor: sc.border }}>
                   <Text style={{ fontSize: 14, fontWeight: '700', color: sc.text, textTransform: 'capitalize' }}>{s}</Text>
                 </TouchableOpacity>
               );
@@ -351,17 +408,14 @@ export default function PertolonganCemasTab({ theme, userRole }) {
                 </TouchableOpacity>
               </View>
 
-              {/* Nama acara */}
               <Text style={labelStyle}>Nama Acara *</Text>
               <TextInput style={inputStyle} placeholder="Cth: Kejohanan Sukan Daerah" placeholderTextColor={theme.textSecondary}
                 value={form.nama_acara} onChangeText={v => setForm(f => ({ ...f, nama_acara: v }))} />
 
-              {/* Lokasi */}
               <Text style={labelStyle}>Lokasi *</Text>
               <TextInput style={inputStyle} placeholder="Cth: Stadium Labuan" placeholderTextColor={theme.textSecondary}
                 value={form.lokasi} onChangeText={v => setForm(f => ({ ...f, lokasi: v }))} />
 
-              {/* Tarikh */}
               <Text style={labelStyle}>Tarikh *</Text>
               {Platform.OS === 'web' ? (
                 createElement('input', {
@@ -374,7 +428,6 @@ export default function PertolonganCemasTab({ theme, userRole }) {
                   value={form.tarikh} onChangeText={v => setForm(f => ({ ...f, tarikh: v }))} />
               )}
 
-              {/* Masa */}
               <View style={{ flexDirection: 'row', gap: 12 }}>
                 <View style={{ flex: 1 }}>
                   <Text style={labelStyle}>Masa Mula *</Text>
@@ -404,7 +457,6 @@ export default function PertolonganCemasTab({ theme, userRole }) {
                 </View>
               </View>
 
-              {/* Anggota & Kenderaan */}
               <View style={{ flexDirection: 'row', gap: 12 }}>
                 <View style={{ flex: 1 }}>
                   <Text style={labelStyle}>Bilangan Anggota</Text>
@@ -420,25 +472,70 @@ export default function PertolonganCemasTab({ theme, userRole }) {
                 </View>
               </View>
 
-              {/* Jenis kenderaan */}
               <Text style={labelStyle}>Jenis Kenderaan <Text style={{ color: '#94a3b8', fontWeight: '400' }}>(pilihan)</Text></Text>
               <TextInput style={inputStyle} placeholder="Cth: Ambulans, MPV" placeholderTextColor={theme.textSecondary}
                 value={form.jenis_kenderaan} onChangeText={v => setForm(f => ({ ...f, jenis_kenderaan: v }))} />
 
-              {/* Peralatan */}
               <Text style={labelStyle}>Peralatan <Text style={{ color: '#94a3b8', fontWeight: '400' }}>(pilihan)</Text></Text>
               <TextInput style={[inputStyle, { height: 70, textAlignVertical: 'top' }]} placeholder="Senarai peralatan..." placeholderTextColor={theme.textSecondary}
                 multiline value={form.peralatan} onChangeText={v => setForm(f => ({ ...f, peralatan: v }))} />
 
-              {/* Ubatan */}
               <Text style={labelStyle}>Ubatan <Text style={{ color: '#94a3b8', fontWeight: '400' }}>(pilihan)</Text></Text>
               <TextInput style={[inputStyle, { height: 70, textAlignVertical: 'top' }]} placeholder="Senarai ubatan..." placeholderTextColor={theme.textSecondary}
                 multiline value={form.ubatan} onChangeText={v => setForm(f => ({ ...f, ubatan: v }))} />
 
-              {/* Catatan */}
               <Text style={labelStyle}>Catatan Tambahan <Text style={{ color: '#94a3b8', fontWeight: '400' }}>(pilihan)</Text></Text>
               <TextInput style={[inputStyle, { height: 80, textAlignVertical: 'top' }]} placeholder="Maklumat tambahan..." placeholderTextColor={theme.textSecondary}
                 multiline value={form.catatan} onChangeText={v => setForm(f => ({ ...f, catatan: v }))} />
+
+              {/* Section Photos */}
+              <Text style={labelStyle}>Foto <Text style={{ color: '#94a3b8', fontWeight: '400' }}>(pilihan)</Text></Text>
+
+              {/* Photos existantes */}
+              {existingPhotos.length > 0 && (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }}>
+                  <View style={{ flexDirection: 'row', gap: 8 }}>
+                    {existingPhotos.map((photo) => (
+                      <View key={photo.id} style={{ position: 'relative' }}>
+                        <TouchableOpacity onPress={() => setPhotoViewer({ photos: existingPhotos, index: existingPhotos.indexOf(photo) })}>
+                          <Image source={{ uri: photo.photo_url }} style={{ width: 80, height: 80, borderRadius: 8 }} resizeMode="cover" />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          onPress={() => { if (window.confirm('Padam foto ini?')) deletePhoto(photo.id, photo.photo_url); }}
+                          style={{ position: 'absolute', top: -6, right: -6, backgroundColor: '#ef4444', borderRadius: 10, width: 20, height: 20, justifyContent: 'center', alignItems: 'center' }}>
+                          <X size={12} color="#fff" />
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+                  </View>
+                </ScrollView>
+              )}
+
+              {/* Photos en attente */}
+              {pendingFiles.length > 0 && (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }}>
+                  <View style={{ flexDirection: 'row', gap: 8 }}>
+                    {pendingFiles.map((p, index) => (
+                      <View key={index} style={{ position: 'relative' }}>
+                        <Image source={{ uri: p.preview }} style={{ width: 80, height: 80, borderRadius: 8, opacity: 0.8 }} resizeMode="cover" />
+                        <TouchableOpacity
+                          onPress={() => setPendingFiles(prev => prev.filter((_, i) => i !== index))}
+                          style={{ position: 'absolute', top: -6, right: -6, backgroundColor: '#64748b', borderRadius: 10, width: 20, height: 20, justifyContent: 'center', alignItems: 'center' }}>
+                          <X size={12} color="#fff" />
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+                  </View>
+                </ScrollView>
+              )}
+
+              <TouchableOpacity onPress={handlePickPhotos}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#f1f5f9', borderWidth: 1, borderColor: theme.border, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 10 }}>
+                <Camera size={18} color="#64748b" />
+                <Text style={{ color: '#64748b', fontWeight: '600', fontSize: 13 }}>
+                  {existingPhotos.length + pendingFiles.length > 0 ? 'Tambah Foto Lagi' : 'Pilih Foto'}
+                </Text>
+              </TouchableOpacity>
 
               {/* Status (edit seulement) */}
               {form.id && (
@@ -447,8 +544,7 @@ export default function PertolonganCemasTab({ theme, userRole }) {
                   <View style={{ flexDirection: 'row', gap: 8 }}>
                     {STATUS_OPTIONS.map(s => (
                       <TouchableOpacity key={s} onPress={() => setForm(f => ({ ...f, status: s }))}
-                        style={{ flex: 1, paddingVertical: 10, borderRadius: 8, alignItems: 'center',
-                          backgroundColor: form.status === s ? '#1E3A8A' : '#f1f5f9' }}>
+                        style={{ flex: 1, paddingVertical: 10, borderRadius: 8, alignItems: 'center', backgroundColor: form.status === s ? '#1E3A8A' : '#f1f5f9' }}>
                         <Text style={{ fontSize: 12, fontWeight: '700', color: form.status === s ? '#fff' : '#64748b', textTransform: 'capitalize' }}>{s}</Text>
                       </TouchableOpacity>
                     ))}
@@ -456,16 +552,47 @@ export default function PertolonganCemasTab({ theme, userRole }) {
                 </>
               )}
 
-              <TouchableOpacity
-                style={[formStyles.saveBtn, saving && { opacity: 0.7 }, { marginTop: 20 }]}
-                onPress={handleSave} disabled={saving}
-              >
+              <TouchableOpacity style={[formStyles.saveBtn, saving && { opacity: 0.7 }, { marginTop: 20 }]}
+                onPress={handleSave} disabled={saving}>
                 {saving ? <ActivityIndicator color="#fff" /> : <Text style={formStyles.saveBtnText}>Simpan</Text>}
               </TouchableOpacity>
             </View>
           </ScrollView>
         </View>
       </Modal>
+
+      {/* Visionneuse photos */}
+      {photoViewer && (
+        <Modal visible={true} transparent animationType="fade">
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', alignItems: 'center' }}>
+            <TouchableOpacity onPress={() => setPhotoViewer(null)}
+              style={{ position: 'absolute', top: 40, right: 24, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 20, width: 40, height: 40, justifyContent: 'center', alignItems: 'center' }}>
+              <X size={20} color="#fff" />
+            </TouchableOpacity>
+            <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700', marginBottom: 12, opacity: 0.8 }}>
+              {photoViewer.index + 1} / {photoViewer.photos.length}
+            </Text>
+            <Image source={{ uri: photoViewer.photos[photoViewer.index].photo_url }}
+              style={{ width: '90%', height: '70%', borderRadius: 12 }} resizeMode="contain" />
+            {photoViewer.photos.length > 1 && (
+              <View style={{ flexDirection: 'row', gap: 16, marginTop: 20 }}>
+                <TouchableOpacity
+                  onPress={() => setPhotoViewer(prev => ({ ...prev, index: prev.index - 1 }))}
+                  disabled={photoViewer.index === 0}
+                  style={{ backgroundColor: photoViewer.index === 0 ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.25)', paddingHorizontal: 28, paddingVertical: 12, borderRadius: 10 }}>
+                  <Text style={{ color: photoViewer.index === 0 ? 'rgba(255,255,255,0.3)' : '#fff', fontWeight: '700' }}>← Sebelum</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => setPhotoViewer(prev => ({ ...prev, index: prev.index + 1 }))}
+                  disabled={photoViewer.index === photoViewer.photos.length - 1}
+                  style={{ backgroundColor: photoViewer.index === photoViewer.photos.length - 1 ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.25)', paddingHorizontal: 28, paddingVertical: 12, borderRadius: 10 }}>
+                  <Text style={{ color: photoViewer.index === photoViewer.photos.length - 1 ? 'rgba(255,255,255,0.3)' : '#fff', fontWeight: '700' }}>Selepas →</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        </Modal>
+      )}
     </>
   );
 }
