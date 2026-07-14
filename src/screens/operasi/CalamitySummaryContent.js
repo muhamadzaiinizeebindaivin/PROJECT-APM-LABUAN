@@ -244,8 +244,15 @@ export default function CalamitySummaryContent({ theme, large = false, mode = 't
             <TouchableOpacity onPress={summary.handleExportSummaryPdf} disabled={summary.exportingSummaryPdf}
               style={[styles.pdfExportBtn, summary.exportingSummaryPdf && styles.pdfExportBtnDisabled, { flexShrink: 0, height: 46, marginTop: 22 }]}>
               {summary.exportingSummaryPdf ? <ActivityIndicator size="small" color="#fff" /> : (
-                <><Download size={14} color="#fff" /><Text style={styles.pdfExportBtnText}>PDF</Text></>
+                <><Download size={14} color="#fff" /><Text style={styles.pdfExportBtnText}>Ringkasan</Text></>
               )}
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={summary.handleExportLaporanPdf}
+              style={[styles.pdfExportBtn, { flexShrink: 0, height: 46, marginTop: 22, marginLeft: 8 }]}
+            >
+              <Download size={14} color="#fff" />
+              <Text style={styles.pdfExportBtnText}>Laporan</Text>
             </TouchableOpacity>
           </>
         )}

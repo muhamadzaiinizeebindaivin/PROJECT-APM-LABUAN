@@ -20,7 +20,7 @@ export const CATEGORY_OPTIONS = [
 
 export const CALAMITY_CATEGORIES = [
   { key: 'KJR', label: 'Kes Kemalangan Jalan Raya', color: '#ef4444' },
-  { key: 'KM', label: 'Kes Menangkap Ular', color: '#f97316' },
+  { key: 'KMU', label: 'Kes Menangkap Ular', color: '#f97316' },
   { key: 'MMS', label: 'Memusnah Sarang Serangga', color: '#eab308' },
   { key: 'KBD', label: 'Kes Bunuh Diri', color: '#64748b' },
   { key: 'KK', label: 'Khidmat Khas', color: '#a855f7' },

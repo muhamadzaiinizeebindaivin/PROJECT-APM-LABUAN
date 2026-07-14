@@ -5,6 +5,7 @@ import { Alert } from 'react-native';
 import { CALAMITY_CATEGORIES } from '../constants/operasiConstants';
 import { BULAN_MS } from '../constants/bulan';
 import { generateCalamitySummaryPdf } from '../utils/patrolHistoryPdf';
+import { generateLaporanKecemasamPdf } from '../utils/laporanKecemasanPdf';
 
 export function useCalamitySummaryPanel(calamityPoints) {
   const now = new Date();
@@ -133,6 +134,10 @@ export function useCalamitySummaryPanel(calamityPoints) {
 
   const [exportingSummaryPdf, setExportingSummaryPdf] = useState(false);
 
+  const handleExportLaporanPdf = async () => {
+    await generateLaporanKecemasamPdf({ allYearRows });
+  };
+
   const handleExportSummaryPdf = async () => {
     setExportingSummaryPdf(true);
     try {
@@ -154,6 +159,6 @@ export function useCalamitySummaryPanel(calamityPoints) {
     summaryMonth, setSummaryMonth, summaryMonthOpen, setSummaryMonthOpen,
     summaryDay, setSummaryDay, summaryDayOpen, setSummaryDayOpen, summaryDayOptions,
     availableSummaryYears, calamitySummaryRows, calamityMonthlyBreakdown,
-    statusBreakdown, exportingSummaryPdf, handleExportSummaryPdf,
+    statusBreakdown, exportingSummaryPdf, handleExportSummaryPdf, handleExportLaporanPdf,
   };
 }
