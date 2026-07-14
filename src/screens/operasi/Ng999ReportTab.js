@@ -221,7 +221,7 @@ export default function Ng999ReportTab({ theme, userRole }) {
                 <Text style={{ fontSize: 12, fontWeight: '700', color: viewMode === 'senarai' ? '#fff' : '#64748b' }}>Senarai Penuh Kecemasan</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={() => setViewMode('trend')} style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, backgroundColor: viewMode === 'trend' ? '#1E3A8A' : '#f1f5f9' }}>
-                <Text style={{ fontSize: 12, fontWeight: '700', color: viewMode === 'trend' ? '#fff' : '#64748b' }}>Trend Mengikut Bulan</Text>
+                <Text style={{ fontSize: 12, fontWeight: '700', color: viewMode === 'trend' ? '#fff' : '#64748b' }}>Analisis & Statistik</Text>
               </TouchableOpacity>
             </View>
             {viewMode === 'senarai' && (

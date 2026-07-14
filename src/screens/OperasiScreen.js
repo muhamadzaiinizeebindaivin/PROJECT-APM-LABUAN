@@ -1,9 +1,10 @@
 // src/screens/OperasiScreen.js
 import React, { useState } from 'react';
 import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
-import { MapIcon, BarChart2 } from 'lucide-react-native';
+import { MapIcon, BarChart2, HeartPulse } from 'lucide-react-native';
 import LiveMapTab from './operasi/LiveMapTab';
 import Ng999ReportTab from './operasi/Ng999ReportTab';
+import PertolonganCemasTab from './operasi/PertolonganCemasTab';
 
 export default function OperasiScreen({ theme, userRole }) {
   const canManageOperasi = userRole === 'admin' || userRole === 'operasi';
@@ -30,11 +31,21 @@ export default function OperasiScreen({ theme, userRole }) {
             <BarChart2 size={16} color={activeTab === 'report' ? '#fff' : theme.textSecondary} />
             <Text style={[styles.toggleText, activeTab === 'report' ? styles.toggleTextActive : { color: theme.textSecondary }]}>NG999 Report</Text>
           </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.toggleBtn, activeTab === 'cemas' && styles.toggleBtnActive]}
+            onPress={() => setActiveTab('cemas')}
+            activeOpacity={0.8}
+          >
+            <HeartPulse size={16} color={activeTab === 'cemas' ? '#fff' : theme.textSecondary} />
+            <Text style={[styles.toggleText, activeTab === 'cemas' ? styles.toggleTextActive : { color: theme.textSecondary }]}>Pertolongan Cemas</Text>
+          </TouchableOpacity>
         </View>
       )}
 
       {activeTab === 'map' && <LiveMapTab theme={theme} userRole={userRole} />}
       {activeTab === 'report' && canManageOperasi && <Ng999ReportTab theme={theme} userRole={userRole} />}
+      {activeTab === 'cemas' && canManageOperasi && <PertolonganCemasTab theme={theme} userRole={userRole} />}
     </View>
   );
 }
