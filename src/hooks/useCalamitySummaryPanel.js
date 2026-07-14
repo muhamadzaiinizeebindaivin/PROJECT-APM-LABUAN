@@ -5,29 +5,23 @@ import { CALAMITY_CATEGORIES } from '../constants/operasiConstants';
 import { BULAN_MS } from '../constants/bulan';
 import { generateCalamitySummaryPdf } from '../utils/patrolHistoryPdf';
 
-/**
- * Panneau "Ringkasan Kecemasan" : filtre Tahun/Bulan, pivot mois×catégorie
- * (avec ligne "Kumulatif" quand "Semua Bulan" est choisi), et export PDF.
- * Indépendant du filtre du panneau Sejarah. Extrait de OperasiScreen.js.
- */
 export function useCalamitySummaryPanel(calamityPoints) {
   const now = new Date();
   const [summaryYear, setSummaryYear] = useState(now.getFullYear());
   const [summaryYearOpen, setSummaryYearOpen] = useState(false);
-  const [summaryMonth, setSummaryMonth] = useState(null); // null = Semua Bulan (défaut)
+  const [summaryMonth, setSummaryMonth] = useState(null);
   const [summaryMonthOpen, setSummaryMonthOpen] = useState(false);
-  const [summaryDay, setSummaryDay] = useState(null); // null = Semua Hari
+  const [summaryDay, setSummaryDay] = useState(null);
   const [summaryDayOpen, setSummaryDayOpen] = useState(false);
 
   const availableSummaryYears = useMemo(() => {
-    const years = new Set(calamityPoints.filter(c => c.created_at).map(c => new Date(c.created_at).getFullYear()));
+    const years = new Set(calamityPoints.filter(c => c.tarikh).map(c => new Date(c.tarikh).getFullYear()));
     years.add(now.getFullYear());
     return Array.from(years).sort((a, b) => b - a).map(String);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [calamityPoints]);
 
   const calamityYearRows = useMemo(() => {
-    return calamityPoints.filter(c => c.created_at && new Date(c.created_at).getFullYear() === summaryYear);
+    return calamityPoints.filter(c => c.tarikh && new Date(c.tarikh).getFullYear() === summaryYear);
   }, [calamityPoints, summaryYear]);
 
   const calamityMonthlyBreakdown = useMemo(() => {
@@ -36,11 +30,13 @@ export function useCalamitySummaryPanel(calamityPoints) {
       let total = 0;
       CALAMITY_CATEGORIES.forEach(cat => { counts[cat.key] = 0; });
       calamityYearRows.forEach(c => {
-        const d = new Date(c.created_at);
+        const d = new Date(c.tarikh);
         if (d.getMonth() !== monthIndex) return;
-        if (counts[c.category] !== undefined) {
-          counts[c.category] += 1;
-          total += 1;
+        // Supporte à la fois category (carte) et kategori_kes (rapport)
+        const cat = c.category || c.kategori_kes;
+        if (counts[cat] !== undefined) {
+          counts[cat] += (c.jumlah_kes || 1);
+          total += (c.jumlah_kes || 1);
         }
       });
       return { month: label, counts, total };
@@ -62,11 +58,12 @@ export function useCalamitySummaryPanel(calamityPoints) {
       let total = 0;
       CALAMITY_CATEGORIES.forEach(cat => { counts[cat.key] = 0; });
       calamityYearRows.forEach(c => {
-        const d = new Date(c.created_at);
+        const d = new Date(c.tarikh);
         if (d.getMonth() !== summaryMonth || d.getDate() !== day) return;
-        if (counts[c.category] !== undefined) {
-          counts[c.category] += 1;
-          total += 1;
+        const cat = c.category || c.kategori_kes;
+        if (counts[cat] !== undefined) {
+          counts[cat] += (c.jumlah_kes || 1);
+          total += (c.jumlah_kes || 1);
         }
       });
       return { day, label: `${day} ${BULAN_MS[summaryMonth]}`, counts, total };
@@ -93,6 +90,17 @@ export function useCalamitySummaryPanel(calamityPoints) {
       { month: 'Kumulatif', counts: cumulativeCounts, total: cumulativeTotal, isCumulative: true },
     ];
   }, [calamityMonthlyBreakdown, summaryMonth, summaryDay, calamityDailyBreakdownForMonth]);
+
+  const statusBreakdown = useMemo(() => {
+    const statuses = ['active', 'berjaya', 'gagal', 'batal', 'tunda', 'diambil agensi lain', 'diserah ke agensi lain'];
+    const counts = {};
+    statuses.forEach(s => { counts[s] = 0; });
+    calamityYearRows.forEach(c => {
+      const s = c.status || 'active';
+      if (counts[s] !== undefined) counts[s]++;
+    });
+    return counts;
+  }, [calamityYearRows]);
 
   const summaryPeriodLabel = summaryMonth === null
     ? `Tahun ${summaryYear}`
@@ -123,6 +131,6 @@ export function useCalamitySummaryPanel(calamityPoints) {
     summaryMonth, setSummaryMonth, summaryMonthOpen, setSummaryMonthOpen,
     summaryDay, setSummaryDay, summaryDayOpen, setSummaryDayOpen, summaryDayOptions,
     availableSummaryYears, calamitySummaryRows, calamityMonthlyBreakdown,
-    exportingSummaryPdf, handleExportSummaryPdf,
+    statusBreakdown, exportingSummaryPdf, handleExportSummaryPdf,
   };
 }

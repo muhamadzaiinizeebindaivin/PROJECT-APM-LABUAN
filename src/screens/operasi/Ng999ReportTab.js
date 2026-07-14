@@ -1,7 +1,7 @@
 // src/screens/operasi/Ng999ReportTab.js
 import React, { useState, useMemo, useRef, useEffect, createElement } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Modal, TextInput, Alert, Platform, Image } from 'react-native';
-import { AlertTriangle, Plus, Edit2, Trash2, X, Camera, Image as ImageIcon } from 'lucide-react-native';
+import { Plus, Edit2, Trash2, X, Camera, Image as ImageIcon } from 'lucide-react-native';
 import ModalSelectField from '../../components/ModalSelectField';
 import { useNg999Report } from '../../hooks/useNg999Report';
 import { CATEGORY_OPTIONS } from '../../constants/operasiConstants';
@@ -27,7 +27,7 @@ export default function Ng999ReportTab({ theme, userRole }) {
   const tableTitleRef = useRef(null);
 
   // Passer filterYear et filterMonth au hook pour fetch filtré
-  const { ngData, loadingNg, saveRecord, deleteRecord, deletePhoto, addPhotosToRecord, categories, availableYears, totalMersCases, topCaseData } = useNg999Report(filterYear, filterMonth);
+  const { ngData, loadingNg, saveRecord, deleteRecord, deletePhoto, addPhotosToRecord, availableYears } = useNg999Report(filterYear, filterMonth);
 
   // Modale
   const [modalVisible, setModalVisible] = useState(false);
@@ -37,7 +37,7 @@ export default function Ng999ReportTab({ theme, userRole }) {
   const [savingRecord, setSavingRecord] = useState(false);
 
   // Visionneuse photo
-  const [photoViewer, setPhotoViewer] = useState(null);
+  const [photoViewer, setPhotoViewer] = useState(null); // { photos: [], index: 0 }
 
   const daysInFilterMonth = new Date(filterYear, filterMonth + 1, 0).getDate();
   const dayOptions = ['Semua Hari', ...Array.from({ length: daysInFilterMonth }, (_, i) => String(i + 1))];
@@ -165,7 +165,7 @@ export default function Ng999ReportTab({ theme, userRole }) {
       return <Text style={{ fontSize: 11, color: '#94a3b8', fontWeight: '600' }}>Tiada Foto</Text>;
     }
     return (
-      <TouchableOpacity onPress={() => setPhotoViewer(photos[0].photo_url)}>
+      <TouchableOpacity onPress={() => setPhotoViewer({ photos, index: null })}>
         <Text style={{ fontSize: 11, color: '#1E3A8A', fontWeight: '700' }}>Lihat Foto ({photos.length})</Text>
       </TouchableOpacity>
     );
@@ -208,24 +208,7 @@ export default function Ng999ReportTab({ theme, userRole }) {
           <Text style={{ color: theme.textSecondary, fontWeight: '600' }}>NG 999 W.P. Labuan {now.getFullYear()}</Text>
         </View>
 
-        <View style={styles.statsRow}>
-          <View style={[styles.statBox, { backgroundColor: theme.card }]}>
-            <Text style={{ color: theme.textSecondary, fontWeight: '700', fontSize: 12 }}>Jumlah Keseluruhan</Text>
-            <Text style={[styles.statBoxValue, { color: theme.text }]}>{totalMersCases}</Text>
-            <Text style={{ color: theme.textSecondary, fontSize: 10 }}>Semua Rekod</Text>
-          </View>
-        </View>
-
-        <View style={[styles.highlightCard, { backgroundColor: '#fff7ed', borderColor: '#f97316', borderWidth: 1 }]}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-            <AlertTriangle size={24} color="#ea580c" />
-            <Text style={{ fontSize: 16, fontWeight: '800', color: '#9a3412', textTransform: 'uppercase' }}>Highest Case Overall</Text>
-          </View>
-          <Text style={{ fontSize: 28, fontWeight: '900', color: '#ea580c' }}>{topCaseData.label}</Text>
-          <Text style={{ fontSize: 14, fontWeight: '600', color: '#c2410c', marginTop: 4 }}>
-            Contributing {topCaseData.total} out of {totalMersCases} total calls.
-          </Text>
-        </View>
+        <CalamitySummaryContent theme={theme} mode="chart" statsOnly />
 
         {/* --- Barre de navigation --- */}
         <View style={[styles.crudContainer, { backgroundColor: theme.card, marginBottom: 12 }]}>
@@ -359,7 +342,7 @@ export default function Ng999ReportTab({ theme, userRole }) {
                   <View style={{ flexDirection: 'row', gap: 8 }}>
                     {existingPhotos.map((photo) => (
                       <View key={photo.id} style={{ position: 'relative' }}>
-                        <TouchableOpacity onPress={() => setPhotoViewer(photo.photo_url)}>
+                        <TouchableOpacity onPress={() => setPhotoViewer({ photos: existingPhotos, index: null })}>
                           <Image source={{ uri: photo.photo_url }} style={{ width: 80, height: 80, borderRadius: 8 }} resizeMode="cover" />
                         </TouchableOpacity>
                         <TouchableOpacity
@@ -413,16 +396,87 @@ export default function Ng999ReportTab({ theme, userRole }) {
         </View>
       </Modal>
 
-      {/* --- Visionneuse photo plein écran --- */}
+{/* Visionneuse photo plein écran avec navigation */}
       {photoViewer && (
         <Modal visible={true} transparent={true} animationType="fade">
-          <TouchableOpacity
-            style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', alignItems: 'center' }}
-            onPress={() => setPhotoViewer(null)} activeOpacity={1}
-          >
-            <Image source={{ uri: photoViewer }} style={{ width: '90%', height: '70%', borderRadius: 12 }} resizeMode="contain" />
-            <Text style={{ color: '#fff', marginTop: 16, fontSize: 13, opacity: 0.7 }}>Ketuk untuk tutup</Text>
-          </TouchableOpacity>
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', alignItems: 'center' }}>
+            {/* Bouton fermer / retour */}
+            <TouchableOpacity
+              onPress={() => {
+                if (photoViewer.index !== null) {
+                  setPhotoViewer(prev => ({ ...prev, index: null }));
+                } else {
+                  setPhotoViewer(null);
+                }
+              }}
+              style={{ position: 'absolute', top: 40, right: 24, zIndex: 10, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 20, width: 40, height: 40, justifyContent: 'center', alignItems: 'center' }}
+            >
+              <X size={20} color="#fff" />
+            </TouchableOpacity>
+
+            {/* Compteur */}
+            <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700', marginBottom: 12, opacity: 0.8 }}>
+              {photoViewer.index === null ? `${photoViewer.photos.length} foto` : `${photoViewer.index + 1} / ${photoViewer.photos.length}`}
+            </Text>
+
+            {/* Galerie */}
+            {photoViewer.index === null ? (
+              // Vue grille
+              <View style={{ width: '90%' }}>
+                <ScrollView showsVerticalScrollIndicator={false}>
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+                    {photoViewer.photos.map((photo, i) => (
+                      <TouchableOpacity
+                        key={photo.id}
+                        onPress={() => setPhotoViewer(prev => ({ ...prev, index: i }))}
+                        style={{
+                          borderRadius: 12, overflow: 'hidden',
+                          shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 8,
+                        }}
+                      >
+                        <Image
+                          source={{ uri: photo.photo_url }}
+                          style={{ width: 160, height: 160 }}
+                          resizeMode="cover"
+                        />
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </ScrollView>
+              </View>
+            ) : (
+              // Vue plein écran
+              <>
+                <Image
+                  source={{ uri: photoViewer.photos[photoViewer.index].photo_url }}
+                  style={{ width: '90%', height: '65%', borderRadius: 12 }}
+                  resizeMode="contain"
+                />
+                <View style={{ flexDirection: 'row', gap: 16, marginTop: 20 }}>
+                  <TouchableOpacity
+                    onPress={() => setPhotoViewer(prev => ({ ...prev, index: prev.index - 1 }))}
+                    disabled={photoViewer.index === 0}
+                    style={{
+                      backgroundColor: photoViewer.index === 0 ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.25)',
+                      paddingHorizontal: 28, paddingVertical: 12, borderRadius: 10,
+                    }}
+                  >
+                    <Text style={{ color: photoViewer.index === 0 ? 'rgba(255,255,255,0.3)' : '#fff', fontWeight: '700' }}>← Sebelum</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => setPhotoViewer(prev => ({ ...prev, index: prev.index + 1 }))}
+                    disabled={photoViewer.index === photoViewer.photos.length - 1}
+                    style={{
+                      backgroundColor: photoViewer.index === photoViewer.photos.length - 1 ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.25)',
+                      paddingHorizontal: 28, paddingVertical: 12, borderRadius: 10,
+                    }}
+                  >
+                    <Text style={{ color: photoViewer.index === photoViewer.photos.length - 1 ? 'rgba(255,255,255,0.3)' : '#fff', fontWeight: '700' }}>Selepas →</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
+          </View>
         </Modal>
       )}
     </>

@@ -52,6 +52,8 @@ export default function LiveMapTab({ theme, userRole }) {
   const iframeRef = useRef(null);
 
   const { calamityPoints, saveCalamity, deleteCalamity, resolveCalamity } = useCalamityPoints();
+  const [resolveModalVisible, setResolveModalVisible] = useState(false);
+  const [pendingResolveId, setPendingResolveId] = useState(null);
   const history = usePatrolHistoryPanel(calamityPoints);
   const summary = useCalamitySummaryPanel(calamityPoints);
 
@@ -93,7 +95,8 @@ export default function LiveMapTab({ theme, userRole }) {
       } else if (data.type === 'DELETE_CALAMITY_REQUEST') {
         deleteCalamity(data.id);
       } else if (data.type === 'RESOLVE_CALAMITY_REQUEST') {
-        resolveCalamity(data.id);
+        setPendingResolveId(data.id);
+        setResolveModalVisible(true);
       }
     };
     window.addEventListener('message', handleMapMessage);
@@ -104,7 +107,7 @@ export default function LiveMapTab({ theme, userRole }) {
   useEffect(() => {
     if (!loading && iframeRef?.current?.contentWindow) {
       const payload = calamityPoints
-        .filter(c => c.status !== 'resolved')
+        .filter(c => c.status === 'active')
         .map(c => ({
           id: c.id,
           category: c.category,
@@ -618,6 +621,46 @@ export default function LiveMapTab({ theme, userRole }) {
           </View>
         )}
       </View>
+
+      {/* Modal sélection statut résolution */}
+      <Modal visible={resolveModalVisible} transparent animationType="fade">
+        <View style={formStyles.modalOverlay}>
+          <View style={[formStyles.modalContent, { backgroundColor: theme.background }]}>
+            <View style={formStyles.modalHeader}>
+              <Text style={{ fontSize: 16, fontWeight: '800', color: theme.text }}>Kemaskini Status</Text>
+              <TouchableOpacity onPress={() => setResolveModalVisible(false)}>
+                <X size={22} color={theme.textSecondary} />
+              </TouchableOpacity>
+            </View>
+            <Text style={{ fontSize: 13, color: theme.textSecondary, marginBottom: 16 }}>Pilih hasil tindakan untuk titik ini:</Text>
+            {['berjaya', 'gagal', 'batal', 'tunda', 'diambil agensi lain', 'diserah ke agensi lain'].map(s => (
+              <TouchableOpacity
+                key={s}
+                onPress={() => {
+                  resolveCalamity(pendingResolveId, s);
+                  setResolveModalVisible(false);
+                  setPendingResolveId(null);
+                }}
+                style={{
+                  paddingVertical: 14, paddingHorizontal: 16,
+                  borderRadius: 10, marginBottom: 8,
+                  backgroundColor: s === 'berjaya' ? '#f0fdf4' : s === 'gagal' ? '#fef2f2' : s === 'batal' ? '#fef9c3' : '#f8fafc',
+                  borderWidth: 1,
+                  borderColor: s === 'berjaya' ? '#bbf7d0' : s === 'gagal' ? '#fecaca' : s === 'batal' ? '#fde68a' : '#e2e8f0',
+                }}
+              >
+                <Text style={{
+                  fontSize: 14, fontWeight: '700',
+                  color: s === 'berjaya' ? '#16a34a' : s === 'gagal' ? '#dc2626' : s === 'batal' ? '#d97706' : '#475569',
+                  textTransform: 'capitalize',
+                }}>
+                  {s}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      </Modal>
 
       <Modal visible={calamityModalVisible} transparent animationType="fade">
         <View style={formStyles.modalOverlay}>
