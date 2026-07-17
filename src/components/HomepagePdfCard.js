@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, createElement } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Platform, Modal } from 'react-native';
-import { FileText, Upload, Download, X, Check } from 'lucide-react-native';
+import { PALETTE } from '../constants/palette';
+import { FileText, Upload, X, Check } from 'lucide-react-native';
 import { supabaseSandbox as supabase } from '../supabaseSandboxClient';
 
 const PDFJS_VERSION = '3.11.174';
@@ -17,60 +18,186 @@ const buildPdfViewerHtml = () => `
       <meta charset="utf-8">
       <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/pdf.min.js"></script>
       <style>
-        body { margin: 0; padding: 0; background-color: #f8fafc; }
-        #pagesWrap { box-sizing: border-box; width: 100%; padding: 20px; display: flex; flex-direction: column; gap: 20px; }
-        canvas { width: 100%; display: block; box-shadow: 0 2px 8px rgba(0,0,0,0.08); border: 1px solid #e2e8f0; }
+        html, body { margin: 0; padding: 0; height: 100%; background-color: #ffffff; overflow: hidden; }
+        #viewport { width: 100%; height: 100%; overflow: hidden; position: relative; }
+        #track {
+          display: flex; height: 100%; will-change: transform; position: relative; z-index: 1;
+          opacity: 0; transition: opacity 0.2s ease;
+        }
+        #track.ready { opacity: 1; }
+        .pageSlide {
+          flex: 0 0 auto; display: flex; align-items: center; justify-content: center;
+          box-sizing: border-box; overflow: hidden; visibility: hidden;
+        }
+        .pageSlide.activeSlide { visibility: visible; }
+        canvas { display: block; }
+        #dots {
+          position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%);
+          display: flex; justify-content: center; align-items: center; gap: 6px;
+          padding: 6px 10px; border-radius: 999px;
+          background: rgba(255,255,255,0.85);
+          box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+          z-index: 5;
+        }
+        .dot {
+          width: 8px; height: 8px; border-radius: 4px;
+          background: rgba(0,0,0,0.18);
+          border: 1px solid rgba(0,0,0,0.08);
+          cursor: pointer;
+          transition: all 0.25s ease;
+        }
+        .dot.active { background: #f97316; border-color: #f97316; width: 22px; }
       </style>
     </head>
     <body>
-      <div id="pagesWrap"></div>
+      <div id="viewport">
+        <div id="track"></div>
+        <div id="dots"></div>
+      </div>
       <script>
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/pdf.worker.min.js';
 
+        var currentPdfDoc = null;
+        var currentIndex = 0;
+        var totalPages = 1;
+        var autoSlideTimer = null;
+        var slideWidthPx = 0;
+        var slideHeightPx = 0;
+        var resizeTimer = null;
+
         function renderAllPages(pdfDoc) {
-          var wrap = document.getElementById('pagesWrap');
-          wrap.innerHTML = '';
-          var padding = 40;
-          var containerWidth = (wrap.clientWidth || 800) - padding;
+          currentPdfDoc = pdfDoc;
+          totalPages = pdfDoc.numPages;
+          currentIndex = 0;
 
-          renderSinglePage(pdfDoc, 1, containerWidth, wrap).then(function() {
-            window.parent.postMessage(JSON.stringify({ type: 'FIRST_PAGE_READY', height: wrap.scrollHeight }), '*');
-            renderRemainingPages(pdfDoc, containerWidth, wrap);
+          buildDots(totalPages);
+          layoutAndRenderAll();
+          startAutoSlide();
+        }
+
+        // Recalcule les dimensions du cadre + redessine toutes les pages à la nouvelle échelle
+        function layoutAndRenderAll() {
+          if (!currentPdfDoc) return;
+
+          var track = document.getElementById('track');
+          track.classList.remove('ready'); // masque le track pendant le recalcul, évite tout flash
+
+          var viewportEl = document.getElementById('viewport');
+          slideWidthPx = viewportEl.clientWidth || 800;
+
+          track.innerHTML = '';
+          track.style.transitionProperty = 'opacity'; // pas de transition sur transform pendant le rebuild
+          track.style.width = (slideWidthPx * totalPages) + 'px';
+          track.style.transform = 'translateX(-' + (currentIndex * slideWidthPx) + 'px)';
+
+          for (var i = 0; i < totalPages; i++) {
+            var slide = document.createElement('div');
+            slide.className = 'pageSlide' + (i === currentIndex ? ' activeSlide' : '');
+            slide.style.width = slideWidthPx + 'px';
+            slide.style.height = slideHeightPx + 'px';
+            slide.dataset.pageNum = i + 1;
+            track.appendChild(slide);
+          }
+
+          window.parent.postMessage(JSON.stringify({ type: 'RENDER_START' }), '*');
+
+          renderSinglePage(currentPdfDoc, 1).then(function() {
+            window.parent.postMessage(JSON.stringify({ type: 'HEIGHT_READY', height: slideHeightPx }), '*');
+
+            var pagePromises = [];
+            for (var p = 2; p <= totalPages; p++) {
+              pagePromises.push(renderSinglePage(currentPdfDoc, p));
+            }
+            Promise.all(pagePromises).then(function() {
+              requestAnimationFrame(function() {
+                track.style.transitionProperty = 'transform, opacity';
+                track.classList.add('ready');
+              });
+              window.parent.postMessage(JSON.stringify({ type: 'ALL_PAGES_RENDERED' }), '*');
+            });
           });
         }
 
-        function renderRemainingPages(pdfDoc, containerWidth, wrap) {
-          if (pdfDoc.numPages <= 1) {
-            window.parent.postMessage(JSON.stringify({ type: 'ALL_PAGES_RENDERED', height: wrap.scrollHeight }), '*');
-            return;
-          }
-
-          var pagePromises = [];
-          for (var i = 2; i <= pdfDoc.numPages; i++) {
-            pagePromises.push(renderSinglePage(pdfDoc, i, containerWidth, wrap));
-          }
-
-          Promise.all(pagePromises).then(function() {
-            window.parent.postMessage(JSON.stringify({ type: 'ALL_PAGES_RENDERED', height: wrap.scrollHeight }), '*');
-          });
-        }
-
-        function renderSinglePage(pdfDoc, pageNum, containerWidth, wrap) {
+        function renderSinglePage(pdfDoc, pageNum) {
           return pdfDoc.getPage(pageNum).then(function(page) {
             var unscaled = page.getViewport({ scale: 1 });
-            var scale = containerWidth / unscaled.width;
+            // Échelle calée sur la largeur uniquement : la page remplit toute la largeur du cadre
+            var scale = slideWidthPx / unscaled.width;
             var viewport = page.getViewport({ scale: scale });
+
+            if (pageNum === 1) {
+              slideHeightPx = viewport.height; // hauteur du cadre = hauteur réelle de la page 1 à cette largeur
+            }
 
             var canvas = document.createElement('canvas');
             canvas.width = viewport.width;
             canvas.height = viewport.height;
-            wrap.appendChild(canvas);
 
-            return page.render({ canvasContext: canvas.getContext('2d'), viewport: viewport }).promise.then(function() {
-              window.parent.postMessage(JSON.stringify({ type: 'PROGRESS_HEIGHT', height: wrap.scrollHeight }), '*');
-            });
+            var slide = document.querySelector('.pageSlide[data-page-num="' + pageNum + '"]');
+            if (slide) {
+              slide.innerHTML = '';
+              slide.appendChild(canvas);
+              slide.style.height = viewport.height + 'px';
+            }
+
+            return page.render({ canvasContext: canvas.getContext('2d'), viewport: viewport }).promise;
           });
         }
+
+        function buildDots(count) {
+          var dotsWrap = document.getElementById('dots');
+          dotsWrap.innerHTML = '';
+          if (count <= 1) return;
+          for (var i = 0; i < count; i++) {
+            var dot = document.createElement('div');
+            dot.className = 'dot' + (i === 0 ? ' active' : '');
+            dot.addEventListener('click', (function(idx) {
+              return function() { goToSlide(idx); restartAutoSlide(); };
+            })(i));
+            dotsWrap.appendChild(dot);
+          }
+        }
+
+        function goToSlide(index) {
+          // index absolu : permet d'avancer ET de revenir en arrière en un clic
+          currentIndex = ((index % totalPages) + totalPages) % totalPages;
+          var track = document.getElementById('track');
+          track.style.transform = 'translateX(-' + (currentIndex * slideWidthPx) + 'px)';
+
+          var slides = track.children;
+          for (var s = 0; s < slides.length; s++) {
+            slides[s].classList.toggle('activeSlide', s === currentIndex);
+          }
+
+          var dots = document.getElementById('dots').children;
+          for (var i = 0; i < dots.length; i++) {
+            dots[i].className = 'dot' + (i === currentIndex ? ' active' : '');
+          }
+        }
+
+        function startAutoSlide() {
+          if (totalPages <= 1) return;
+          stopAutoSlide();
+          autoSlideTimer = setInterval(function() {
+            goToSlide(currentIndex + 1);
+          }, 5000);
+        }
+
+        function stopAutoSlide() {
+          if (autoSlideTimer) clearInterval(autoSlideTimer);
+          autoSlideTimer = null;
+        }
+
+        function restartAutoSlide() {
+          stopAutoSlide();
+          startAutoSlide();
+        }
+
+        // Redimensionnement de la fenêtre : redessine tout à la nouvelle taille, débounce 150ms
+        window.addEventListener('resize', function() {
+          clearTimeout(resizeTimer);
+          resizeTimer = setTimeout(layoutAndRenderAll, 150);
+        });
 
         window.addEventListener('message', function(event) {
           var data = event.data;
@@ -109,7 +236,7 @@ export default function HomepagePdfCard({ theme, userRole }) {
 
   const [iframeReady, setIframeReady] = useState(false);
   const [renderingPages, setRenderingPages] = useState(false);
-  const [viewerHeight, setViewerHeight] = useState(400);
+  const [pdfHeight, setPdfHeight] = useState(400);
 
   // ── État de l'aperçu avant confirmation d'upload ──
   const [previewFile, setPreviewFile] = useState(null);
@@ -143,32 +270,24 @@ export default function HomepagePdfCard({ theme, userRole }) {
       const fromPreview = event.source === previewIframeRef.current?.contentWindow;
 
       if (fromPreview) {
-        if (data.type === 'FIRST_PAGE_READY') {
+        if (data.type === 'PDF_LOADED' || data.type === 'RENDER_START') {
+          setPreviewRenderingPages(true);
+        } else if (data.type === 'HEIGHT_READY') {
+          if (data.height) setPreviewHeight(data.height);
+        } else if (data.type === 'ALL_PAGES_RENDERED') {
           setPreviewRenderingPages(false);
-          if (data.height) setPreviewHeight(data.height);
-        } else if (data.type === 'PROGRESS_HEIGHT' || data.type === 'ALL_PAGES_RENDERED') {
-          if (data.height) setPreviewHeight(data.height);
         } else if (data.type === 'PDF_ERROR') {
           setPreviewRenderingPages(false);
         }
         return;
       }
 
-      if (data.type === 'PDF_LOADED') {
-        if (!loadedPdfCache.has(pdfData?.file_url)) {
-          setRenderingPages(true);
-        }
-      } else if (data.type === 'FIRST_PAGE_READY') {
+      if (data.type === 'PDF_LOADED' || data.type === 'RENDER_START') {
+        setRenderingPages(true);
+      } else if (data.type === 'HEIGHT_READY') {
+        if (data.height) setPdfHeight(data.height);
+      } else if (data.type === 'ALL_PAGES_RENDERED') {
         setRenderingPages(false);
-        if (data.height) {
-          setViewerHeight(data.height);
-          if (pdfData?.file_url) loadedPdfCache.set(pdfData.file_url, data.height);
-        }
-      } else if (data.type === 'PROGRESS_HEIGHT' || data.type === 'ALL_PAGES_RENDERED') {
-        if (data.height) {
-          setViewerHeight(data.height);
-          if (pdfData?.file_url) loadedPdfCache.set(pdfData.file_url, data.height);
-        }
       } else if (data.type === 'PDF_ERROR') {
         setError('Gagal memuatkan dokumen PDF.');
         setRenderingPages(false);
@@ -317,21 +436,14 @@ export default function HomepagePdfCard({ theme, userRole }) {
   const canEdit = userRole === 'admin';
 
   return (
-    <View style={[styles.feedCard, { marginBottom: 30 }]}>
-      {/* ── En-tête ── */}
-      <View style={styles.feedHeader}>
-        <View style={styles.feedTagContainer}>
-          <FileText size={12} color="#3b82f6" />
-          <Text style={styles.feedTag}>DOKUMEN RASMI</Text>
-        </View>
-
-        {canEdit && (
-          <TouchableOpacity style={styles.uploadBtn} onPress={handlePickFile}>
-            <Upload size={13} color="#fff" />
-            <Text style={styles.uploadBtnText}>{hasDocument ? 'Ganti PDF' : 'Muat Naik'}</Text>
-          </TouchableOpacity>
-        )}
-      </View>
+    <View style={styles.feedCard}>
+      {/* ── Bouton admin flottant ── */}
+      {canEdit && (
+        <TouchableOpacity style={styles.uploadBtnFloating} onPress={handlePickFile}>
+          <Upload size={13} color="#fff" />
+          <Text style={styles.uploadBtnText}>{hasDocument ? 'Ganti PDF' : 'Muat Naik'}</Text>
+        </TouchableOpacity>
+      )}
 
       {error && <Text style={styles.errorText}>{error}</Text>}
 
@@ -354,27 +466,20 @@ export default function HomepagePdfCard({ theme, userRole }) {
       ) : Platform.OS !== 'web' ? (
         <EmptyState text="Paparan PDF tidak disokong pada peranti ini." />
       ) : (
-        <>
-          <View style={styles.pageContainer}>
-            {renderingPages && (
-              <View style={styles.pageLoader}>
-                <ActivityIndicator color="#1E3A8A" />
-              </View>
-            )}
-            {createElement('iframe', {
-              ref: iframeRef,
-              src: PDF_VIEWER_SRC,
-              style: { width: '100%', height: viewerHeight, border: 'none' },
-              title: 'Dokumen PDF',
-              onLoad: () => setIframeReady(true),
-            })}
-          </View>
-
-          <TouchableOpacity style={styles.downloadRow} onPress={() => window.open(pdfData.file_url, '_blank')}>
-            <Download size={12} color="#64748b" />
-            <Text style={styles.downloadText}>{pdfData.file_name} • Muat turun</Text>
-          </TouchableOpacity>
-        </>
+        <View style={[styles.pageContainer, { height: pdfHeight }]}>
+          {renderingPages && (
+            <View style={styles.pageLoader}>
+              <ActivityIndicator color="#1E3A8A" />
+            </View>
+          )}
+          {createElement('iframe', {
+            ref: iframeRef,
+            src: PDF_VIEWER_SRC,
+            style: { width: '100%', height: '100%', border: 'none', display: 'block' },
+            title: 'Dokumen PDF',
+            onLoad: () => setIframeReady(true),
+          })}
+        </View>
       )}
 
       {/* ── Modal d'aperçu avant confirmation d'upload ── */}
@@ -436,16 +541,14 @@ const EmptyState = ({ text }) => (
 
 const styles = StyleSheet.create({
   feedCard: {
-    marginHorizontal: 20, backgroundColor: '#ffffff', borderRadius: 20, overflow: 'hidden',
-    borderWidth: 1, borderColor: '#f1f5f9', shadowColor: '#000', shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.1, shadowRadius: 20, elevation: 8,
+    backgroundColor: PALETTE.cardLight, borderWidth: 1, borderColor: PALETTE.cardLightBorder,
+    overflow: 'hidden', position: 'relative', borderRadius: 18,
   },
-  feedHeader: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingHorizontal: 20, paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: '#f1f5f9', backgroundColor: '#fafaf9',
+  uploadBtnFloating: {
+    position: 'absolute', top: 12, right: 12, zIndex: 6,
+    flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#22c55e',
+    paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6,
   },
-  feedTagContainer: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  feedTag: { fontSize: 11, fontWeight: '800', color: '#64748b', letterSpacing: 1 },
 
   uploadBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#22c55e',
@@ -455,14 +558,8 @@ const styles = StyleSheet.create({
 
   errorText: { color: '#dc2626', fontSize: 11, fontWeight: '600', paddingHorizontal: 20, paddingTop: 12 },
 
-  pageContainer: { width: '100%', backgroundColor: '#f8fafc', position: 'relative' },
-  pageLoader: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center', zIndex: 2, backgroundColor: '#f8fafc' },
-
-  downloadRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    paddingHorizontal: 20, paddingVertical: 12, borderTopWidth: 1, borderTopColor: '#f1f5f9',
-  },
-  downloadText: { fontSize: 11, fontWeight: '600', color: '#64748b' },
+  pageContainer: { width: '100%', minHeight: 200, backgroundColor: PALETTE.cardLight, position: 'relative' },
+  pageLoader: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center', zIndex: 2, backgroundColor: PALETTE.cardLight },
 
   emptyContainer: {
     width: '100%', aspectRatio: 16 / 9, backgroundColor: '#f8fafc',

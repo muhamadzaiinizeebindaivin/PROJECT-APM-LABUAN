@@ -14,14 +14,14 @@ import { useExcelImport } from '../hooks/useExcelImport';
 import ExcelImportModal from '../components/ExcelImportModal';
 import * as DATA from '../../data';
 import AdminEditButton from '../components/AdminEditButton';
+import { TACTICAL_THEME, tacticalStyles } from '../styles/tacticalTheme';
+import { StatHero, SectionHeader, GradientButton, StatusBadge, AccentCard, GradientProgressBar } from '../styles/tacticalComponents';
 
-const EMPLOYEE_TABS = ['Identiti', 'Perkhidmatan', 'Insurans', 'Kenaikan Pangkat', 'Waris'];
-
+const EMPLOYEE_TABS = ['Identiti', 'Perkhidmatan', 'Kad/Insurans', 'Pangkat', 'Watikah', 'Waris', 'Sijil'];
 const FIELD_GROUPS = {
   Identiti: [
     { key: 'nama', label: 'Nama', type: 'text' },
     { key: 'ic_no', label: 'No. IC', type: 'ic' },
-    { key: 'pangkat', label: 'Pangkat', type: 'text' },
     { key: 'jantina', label: 'Jantina', type: 'jantina_picker' },
     { key: 'umur', label: 'Umur', type: 'text' },
     { key: 'contact', label: 'No. Telefon', type: 'text' },
@@ -31,25 +31,26 @@ const FIELD_GROUPS = {
     { key: 'negeri', label: 'Negeri', type: 'text' },
     { key: 'daerah', label: 'Daerah', type: 'text' },
     { key: 'no_anggota', label: 'No. Anggota', type: 'text' },
-    { key: 'akademik_tertinggi', label: 'Akademik Tertinggi', type: 'text' },
-    { key: 'tugas_hakiki', label: 'Tugas Hakiki', type: 'text' },
-    { key: 'kompeni', label: 'Kompeni', type: 'text' },
-    { key: 'senarai_hitam', label: 'Senarai Hitam', type: 'boolean' },
   ],
   Perkhidmatan: [
+    { key: 'pangkat', label: 'Pangkat', type: 'text' },
     { key: 'tarikh_lantikan', label: 'Tarikh Lantikan', type: 'date' },
     { key: 'tarikh_terima_pangkat_terkini', label: 'Tarikh Terima Pangkat Terkini', type: 'date' },
     { key: 'tarikh_menyertai_apm', label: 'Tarikh Menyertai APM', type: 'date' },
     { key: 'tempoh_berkhidmat', label: 'Tempoh Berkhidmat (Tahun)', type: 'text' },
+    { key: 'tugas_hakiki', label: 'Tugas Hakiki', type: 'text' },
+    { key: 'kompeni', label: 'Kompeni', type: 'text' },
+    { key: 'akademik_tertinggi', label: 'Akademik Tertinggi', type: 'multiline_list' },
+    { key: 'senarai_kursus', label: 'Senarai Kursus', type: 'multiline_list' },
+    { key: 'senarai_penganugerahan', label: 'Senarai Penganugerahan', type: 'text' },
+    { key: 'status_myaspa', label: 'Status MyASPA', type: 'text' },
+    { key: 'status_keaktifan', label: 'Status Keaktifan', type: 'text' },
+    { key: 'senarai_hitam', label: 'Senarai Hitam', type: 'boolean' },
+  ],
+  'Kad/Insurans': [
     { key: 'tarikh_aktif_kad', label: 'Tarikh Aktif Kad', type: 'date' },
     { key: 'tarikh_tamat_kad', label: 'Tarikh Tamat Kad', type: 'date' },
     { key: 'tempoh_baki_aktif_kad_hari', label: 'Tempoh Baki Aktif Kad (Hari)', type: 'text' },
-    { key: 'status_myaspa', label: 'Status MyASPA', type: 'text' },
-    { key: 'status_keaktifan', label: 'Status Keaktifan', type: 'text' },
-    { key: 'senarai_kursus', label: 'Senarai Kursus', type: 'text' },
-    { key: 'senarai_penganugerahan', label: 'Senarai Penganugerahan', type: 'text' },
-  ],
-  Insurans: [
     { key: 'insuran_kelompok_individu', label: 'Insuran (Kelompok/Individu)', type: 'text' },
     { key: 'insuran_aktif_tidak', label: 'Insuran (Aktif/Tidak)', type: 'text' },
     { key: 'tarikh_tamat_insuran', label: 'Tarikh Tamat Insuran', type: 'date' },
@@ -59,7 +60,7 @@ const FIELD_GROUPS = {
     { key: 'tarikh_tamat_perkeso', label: 'Tarikh Tamat Perkeso', type: 'date' },
     { key: 'tempoh_baki_caruman_perkeso_hari', label: 'Tempoh Baki Caruman Perkeso (Hari)', type: 'text' },
   ],
-  'Kenaikan Pangkat': [
+  Pangkat: [
     { key: 'no_rujukan_surat_lkpl', label: 'No. Rujukan Surat L/KPL', type: 'text' },
     { key: 'tarikh_kenaikan_pangkat_lkpl', label: 'Tarikh Kenaikan Pangkat L/KPL', type: 'date' },
     { key: 'no_rujukan_surat_kpl', label: 'No. Rujukan Surat KPL', type: 'text' },
@@ -70,6 +71,8 @@ const FIELD_GROUPS = {
     { key: 'tarikh_kenaikan_pangkat_pwi', label: 'Tarikh Kenaikan Pangkat PWI', type: 'date' },
     { key: 'no_siri_watikah_pwii', label: 'No. Siri Watikah PW II', type: 'text' },
     { key: 'tarikh_kenaikan_pangkat_pwii', label: 'Tarikh Kenaikan Pangkat PW II', type: 'date' },
+  ],
+  Watikah: [
     { key: 'no_siri_watikah_pelantikan_pertama', label: 'No. Siri Watikah Pelantikan Pertama', type: 'text' },
     { key: 'tarikh_pelantikan_pasukan_pertama', label: 'Tarikh Pelantikan Pasukan Pertama', type: 'date' },
     { key: 'tarikh_tamat_watikah_4', label: 'Tarikh Tamat Watikah 4', type: 'date' },
@@ -100,7 +103,8 @@ const emptyEmployeeForm = () => {
   return obj;
 };
 
-export default function AngkatanScreen({ theme, userRole }) {
+export default function AngkatanScreen({ theme: _appTheme, userRole }) {
+  const theme = TACTICAL_THEME;
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -124,10 +128,10 @@ export default function AngkatanScreen({ theme, userRole }) {
 
   // Form States
   const [summaryForm, setSummaryForm] = useState({});
-  const [categoryForm, setCategoryForm] = useState({ id: null, name: '', count: '', color: '#0ea5e9' });
+  const [categoryForm, setCategoryForm] = useState({ id: null, name: '', count: '', color: '#1D4E89' });
   const [rankForm, setRankForm] = useState({ id: null, rank: '', lulus: '', kenaikan: '', kbp: '', ptb: '', aktif: '', simpanan: '' });
-  const [communityForm, setCommunityForm] = useState({ id: null, category: '', label: '', detail: '', color: '#3b82f6' });
-  const [pyramidForm, setPyramidForm] = useState({ id: null, rank: '', total: '', color: '#1e40af', display_order: '' });
+  const [communityForm, setCommunityForm] = useState({ id: null, category: '', label: '', detail: '', color: '#1D4E89' });
+  const [pyramidForm, setPyramidForm] = useState({ id: null, rank: '', total: '', color: '#123456', display_order: '' });
 
   // States for Employees
   const [employees, setEmployees] = useState([]);
@@ -137,6 +141,10 @@ export default function AngkatanScreen({ theme, userRole }) {
   const [showCategoryEmployeesModal, setShowCategoryEmployeesModal] = useState(false);
   const [selectedCategoryName, setSelectedCategoryName] = useState(null);
   const [categoryEmployeesPage, setCategoryEmployeesPage] = useState(1);
+  const [showStatusEmployeesModal, setShowStatusEmployeesModal] = useState(false);
+  const [selectedStatusValue, setSelectedStatusValue] = useState(null);
+  const [selectedStatusLabel, setSelectedStatusLabel] = useState('');
+  const [statusEmployeesPage, setStatusEmployeesPage] = useState(1);
   const mapMyaspaLabel = (raw) => {
     const norm = String(raw || '').trim().toUpperCase();
     if (norm === 'MYASPA-P') return 'Pengurusan';
@@ -170,7 +178,7 @@ export default function AngkatanScreen({ theme, userRole }) {
       const [sumRes, catRes, rankRes, commRes, pyrRes] = await Promise.all([
         supabase.from('angkatan_summary').select('*').eq('id', 1).maybeSingle(),
         supabaseSandbox.from('angkatan_categories').select('*').order('id'),
-        supabase.from('angkatan_ranks').select('*').order('id'),
+        supabaseSandbox.from('angkatan_ranks').select('*').order('id'),
         supabase.from('angkatan_community').select('*').order('id'),
         supabaseSandbox.from('angkatan_pyramid').select('*').order('display_order', { ascending: true })
       ]);
@@ -277,14 +285,14 @@ export default function AngkatanScreen({ theme, userRole }) {
         rank: rankForm.rank, lulus: parseInt(rankForm.lulus), kenaikan: parseInt(rankForm.kenaikan),
         kbp: parseInt(rankForm.kbp), ptb: parseInt(rankForm.ptb), aktif: parseInt(rankForm.aktif), simpanan: parseInt(rankForm.simpanan)
       };
-      if (rankForm.id) { await supabase.from('angkatan_ranks').update(payload).eq('id', rankForm.id); }
-      else { await supabase.from('angkatan_ranks').insert([payload]); }
+      if (rankForm.id) { await supabaseSandbox.from('angkatan_ranks').update(payload).eq('id', rankForm.id); }
+      else { await supabaseSandbox.from('angkatan_ranks').insert([payload]); }
       fetchData(); setShowRankModal(false);
     } catch (error) { Alert.alert('Ralat', error.message); }
   };
 
   const handleDeleteRank = async (id) => {
-    try { await supabase.from('angkatan_ranks').delete().eq('id', id); fetchData(); }
+    try { await supabaseSandbox.from('angkatan_ranks').delete().eq('id', id); fetchData(); }
     catch (error) { Alert.alert('Ralat', error.message); }
   };
 
@@ -325,7 +333,7 @@ export default function AngkatanScreen({ theme, userRole }) {
 
       const { data: existingCategories } = await supabaseSandbox.from('angkatan_categories').select('*');
       const existingNames = (existingCategories || []).map((c) => c.name);
-      const defaultColors = ['#0ea5e9', '#f97316', '#22c55e', '#6366f1', '#db2777', '#8b5cf6'];
+      const defaultColors = ['#1D4E89', '#F4762B', '#123456', '#D62828', '#5C6773', '#E8843F'];
 
       const existingNamesUpper = existingNames.map((n) => n.toUpperCase());
       const missingValues = myaspaValues.filter((v) => !existingNamesUpper.includes(v.toUpperCase()));
@@ -349,7 +357,7 @@ export default function AngkatanScreen({ theme, userRole }) {
         'Mejar', 'Kapten', 'Leftenan', 'Leftenan Muda', 'Staf Tinggi',
         'Staf Kanan', 'Staf Muda', 'Sarjan', 'Koperal', 'Lans Koperal', 'Prebet'
       ];
-      const pyramidColors = ['#1e3a8a', '#1e40af', '#1d4ed8', '#2563eb', '#3b82f6', '#60a5fa', '#93c5fd', '#f59e0b', '#f97316', '#ea580c', '#c2410c'];
+      const pyramidColors = ['#0B1F33', '#123456', '#1D4E89', '#2E62A0', '#4278B6', '#5C90C7', '#7FA8D6', '#F4762B', '#E8672A', '#D8591F', '#C24E1D'];
       const normalizePangkat = (raw) => String(raw || '').replace(/\(PA\)/i, '').trim().toUpperCase();
 
       const { data: existingPyramid } = await supabaseSandbox.from('angkatan_pyramid').select('*');
@@ -372,6 +380,30 @@ export default function AngkatanScreen({ theme, userRole }) {
         total: data?.filter((e) => normalizePangkat(e.pangkat) === normalizePangkat(p.rank)).length || 0,
       }));
       setPyramidStats(updatedPyramid);
+      // Laluan Kerjaya : calcul automatique de KBP et PTB par pangkat
+      const { data: existingRanks } = await supabaseSandbox.from('angkatan_ranks').select('*');
+      const existingRankNames = (existingRanks || []).map((r) => normalizePangkat(r.rank));
+
+      const missingRankRows = PANGKAT_HIERARCHY.filter((r) => !existingRankNames.includes(normalizePangkat(r)));
+      if (missingRankRows.length > 0) {
+        const newRankRows = missingRankRows.map((rank) => ({ rank, lulus: 0, kenaikan: 0, kbp: 0, ptb: 0, aktif: 0, simpanan: 0 }));
+        await supabaseSandbox.from('angkatan_ranks').insert(newRankRows);
+      }
+
+      const { data: refreshedRanks } = await supabaseSandbox.from('angkatan_ranks').select('*').order('id');
+      const updatedRanks = (refreshedRanks || []).map((r) => {
+        const allEmployeesInRank = (data || []).filter((e) => normalizePangkat(e.pangkat) === normalizePangkat(r.rank));
+        const employeesInRank = allEmployeesInRank.filter((e) => {
+          const st = String(e.status_keaktifan || '').trim().toUpperCase();
+          return st === 'AKTIF' || st === 'SIMPANAN';
+        });
+        const kbpCount = employeesInRank.filter((e) => !String(e.senarai_kursus || '').toUpperCase().includes('KURSUS BAKAL PEGAWAI')).length;
+        const ptbCount = employeesInRank.filter((e) => !String(e.senarai_kursus || '').toUpperCase().includes('PTB')).length;
+        const aktifCount = employeesInRank.filter((e) => String(e.status_keaktifan || '').trim().toUpperCase() === 'AKTIF').length;
+        const simpananCount = employeesInRank.filter((e) => String(e.status_keaktifan || '').trim().toUpperCase() === 'SIMPANAN').length;
+        return { ...r, kbp: kbpCount, ptb: ptbCount, aktif: aktifCount, simpanan: simpananCount };
+      });
+      setRanks(updatedRanks);
     } catch (error) {
       console.error('Error fetching employees:', error);
     }
@@ -553,11 +585,34 @@ export default function AngkatanScreen({ theme, userRole }) {
     setCategoryEmployeesPage(1);
     setShowCategoryEmployeesModal(true);
   };
+  const statusFilteredEmployees = selectedStatusValue
+    ? employees.filter((e) => String(e.status_keaktifan || '').trim().toUpperCase() === selectedStatusValue)
+    : [];
+  const totalStatusPages = Math.max(1, Math.ceil(statusFilteredEmployees.length / EMPLOYEES_PER_PAGE));
+  const paginatedStatusEmployees = statusFilteredEmployees.slice(
+    (statusEmployeesPage - 1) * EMPLOYEES_PER_PAGE,
+    statusEmployeesPage * EMPLOYEES_PER_PAGE
+  );
+
+  const openStatusEmployees = (statusValue, label) => {
+    setSelectedStatusValue(statusValue);
+    setSelectedStatusLabel(label);
+    setStatusEmployeesPage(1);
+    setShowStatusEmployeesModal(true);
+  };
   const renderField = (f) => (
     <View key={f.key} style={[styles.inputGroup, { marginBottom: 18 }]}>
       <Text style={{ color: theme.textSecondary, marginBottom: 6, fontSize: 12, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.3 }}>{f.label}</Text>
       {isEditing ? (
-        f.type === 'date' ? (
+        f.type === 'multiline_list' ? (
+          <TextInput
+            style={[styles.modalInput, { backgroundColor: theme.background, color: theme.text, borderColor: theme.border, minHeight: 80, textAlignVertical: 'top' }]}
+            value={String(employeeForm[f.key] || '')}
+            onChangeText={(t) => setEmployeeForm({ ...employeeForm, [f.key]: t })}
+            multiline
+            placeholder="Satu item setiap baris"
+          />
+        ) : f.type === 'date' ? (
           Platform.OS === 'web' ? (
             <input
               type="date"
@@ -642,7 +697,7 @@ export default function AngkatanScreen({ theme, userRole }) {
                 onPress={() => setEmployeeForm({ ...employeeForm, [f.key]: opt.val })}
                 style={{
                   paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8,
-                  backgroundColor: employeeForm[f.key] === opt.val ? (opt.val ? '#ef4444' : theme.accent) : theme.background,
+                  backgroundColor: employeeForm[f.key] === opt.val ? (opt.val ? '#D62828' : theme.accent) : theme.background,
                   borderWidth: 1, borderColor: theme.border
                 }}
               >
@@ -656,6 +711,22 @@ export default function AngkatanScreen({ theme, userRole }) {
             value={String(employeeForm[f.key] || '')}
             onChangeText={(t) => setEmployeeForm({ ...employeeForm, [f.key]: t })}
           />
+        )
+      ) : f.type === 'multiline_list' ? (
+        String(employeeForm[f.key] || '').trim() === '' ? (
+          <Text style={{ color: theme.text, fontSize: 15, fontWeight: '600' }}>-</Text>
+        ) : (
+          <View>
+            {String(employeeForm[f.key])
+              .split(/\r?\n|(?=\d+\))/g)
+              .map((line) => line.replace(/^\d+\)\s*/, '').trim())
+              .filter((line) => line !== '')
+              .map((line, i) => (
+                <Text key={i} style={{ color: theme.text, fontSize: 14, fontWeight: '600', marginBottom: 4 }}>
+                  • {line}
+                </Text>
+              ))}
+          </View>
         )
       ) : (
         <Text style={{ color: theme.text, fontSize: 15, fontWeight: '600' }}>
@@ -698,17 +769,34 @@ export default function AngkatanScreen({ theme, userRole }) {
 
         <View style={styles.contentGrid}>
           <View style={styles.row}>
-            <View style={[styles.card, { backgroundColor: theme.card, flex: 1, width: '100%' }]}>
+            <View style={{ flex: 1 }}>
+              <StatHero
+                label="Jumlah Anggota"
+                value={summary.total_anggota}
+              />
               {isEditing ? (
                 <TouchableOpacity style={styles.editBadge} onPress={() => { setSummaryForm(summary); setShowSummaryModal(true); }}>
                   <Edit2 size={14} color="#fff" />
                 </TouchableOpacity>
               ) : null}
-              <Text style={[styles.bigNumber, { color: '#f97316' }]}>{summary.total_anggota}</Text>
-              <Text style={{ color: theme.textSecondary, fontWeight: '600' }}>Jumlah Anggota</Text>
-              <View style={styles.activeBadge}>
-                <Text style={{ color: '#22c55e', fontWeight: 'bold' }}>{summary.aktif_anggota} Aktif</Text>
-              </View>
+            </View>
+
+            <View style={[styles.card, { backgroundColor: theme.card, flex: 1 }]}>
+               {isEditing ? (
+                  <TouchableOpacity style={styles.editBadge} onPress={() => { setSummaryForm(summary); setShowSummaryModal(true); }}>
+                    <Edit2 size={14} color="#fff" />
+                  </TouchableOpacity>
+                ) : null}
+               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
+                 <ShieldCheck size={20} color={theme.accent} />
+                 <Text style={[styles.cardTitle, { color: theme.text, marginLeft: 10, marginBottom: 0 }]}>Status Anggota</Text>
+               </View>
+               <View style={styles.statusGrid}>
+                 <StatusBox label="Aktif" value={summary.status_lulus} color="#1D4E89" theme={theme} onPress={() => openStatusEmployees('AKTIF', 'Aktif')} />
+                 <StatusBox label="Tidak Aktif" value={summary.status_lantikan} color="#F4762B" theme={theme} onPress={() => openStatusEmployees('TIDAK AKTIF', 'Tidak Aktif')} />
+                 <StatusBox label="Simpanan" value={summary.status_simpanan} color="#5C6773" theme={theme} onPress={() => openStatusEmployees('SIMPANAN', 'Simpanan')} />
+                 <StatusBox label="Senarai Hitam" value={summary.status_aktif} color="#D62828" theme={theme} onPress={() => openStatusEmployees('SENARAI HITAM', 'Senarai Hitam')} />
+               </View>
             </View>
           </View>
 
@@ -717,7 +805,7 @@ export default function AngkatanScreen({ theme, userRole }) {
               <View style={styles.cardHeader}>
                 <Text style={[styles.cardTitle, { color: theme.text }]}>Penjawatan Utama</Text>
                 {isEditing ? (
-                  <TouchableOpacity onPress={() => { setCategoryForm({ id: null, name: '', count: '', color: '#0ea5e9' }); setShowCategoryModal(true); }}>
+                  <TouchableOpacity onPress={() => { setCategoryForm({ id: null, name: '', count: '', color: '#1D4E89' }); setShowCategoryModal(true); }}>
                     <Plus size={20} color={theme.accent} />
                   </TouchableOpacity>
                 ) : null}
@@ -734,10 +822,10 @@ export default function AngkatanScreen({ theme, userRole }) {
                   {isEditing ? (
                     <View style={{ flexDirection: 'row', gap: 10 }}>
                       <TouchableOpacity onPress={(e) => { e.stopPropagation?.(); setCategoryForm({ ...cat, count: String(cat.count) }); setShowCategoryModal(true); }}>
-                        <Edit2 size={16} color="#22c55e" />
+                        <Edit2 size={16} color="#F4762B" />
                       </TouchableOpacity>
                       <TouchableOpacity onPress={(e) => { e.stopPropagation?.(); handleDeleteCategory(cat.id); }}>
-                        <Trash2 size={16} color="#ef4444" />
+                        <Trash2 size={16} color="#D62828" />
                       </TouchableOpacity>
                     </View>
                   ) : null}
@@ -761,14 +849,14 @@ export default function AngkatanScreen({ theme, userRole }) {
                         <Text style={[styles.genderValue, { color: theme.text }]}>{summary.male_count}</Text>
                       </View>
                       <View style={styles.progressBarBg}>
-                        <View style={[styles.progressBarFill, { width: '66%', backgroundColor: '#3b82f6' }]} />
+                        <View style={[styles.progressBarFill, { width: '66%', backgroundColor: '#1D4E89' }]} />
                       </View>
                    </View>
                 </View>
 
                 <View style={styles.genderRow}>
-                   <View style={[styles.genderIconCircle, { backgroundColor: '#fdf2f8' }]}>
-                     <Users2 size={24} color="#db2777" />
+                   <View style={[styles.genderIconCircle, { backgroundColor: '#FBE9E9' }]}>
+                     <Users2 size={24} color="#D62828" />
                    </View>
                    <View style={{ flex: 1 }}>
                       <View style={styles.genderHeader}>
@@ -776,7 +864,7 @@ export default function AngkatanScreen({ theme, userRole }) {
                         <Text style={[styles.genderValue, { color: theme.text }]}>{summary.female_count}</Text>
                       </View>
                       <View style={styles.progressBarBg}>
-                        <View style={[styles.progressBarFill, { width: '33%', backgroundColor: '#db2777' }]} />
+                        <View style={[styles.progressBarFill, { width: '33%', backgroundColor: '#D62828' }]} />
                       </View>
                    </View>
                 </View>
@@ -795,49 +883,50 @@ export default function AngkatanScreen({ theme, userRole }) {
                <Text style={[styles.cardTitle, { color: theme.text, marginLeft: 10, marginBottom: 0 }]}>Status Anggota</Text>
              </View>
              <View style={styles.statusGrid}>
-               <StatusBox label="Aktif" value={summary.status_lulus} color="#22c55e" theme={theme} />
-               <StatusBox label="Tidak Aktif" value={summary.status_lantikan} color="#f97316" theme={theme} />
-               <StatusBox label="Simpanan" value={summary.status_simpanan} color="#6366f1" theme={theme} />
-               <StatusBox label="Senarai Hitam" value={summary.status_aktif} color="#ef4444" theme={theme} />
+               <StatusBox label="Aktif" value={summary.status_lulus} color="#1D4E89" theme={theme} onPress={() => openStatusEmployees('AKTIF', 'Aktif')} />
+               <StatusBox label="Tidak Aktif" value={summary.status_lantikan} color="#F4762B" theme={theme} onPress={() => openStatusEmployees('TIDAK AKTIF', 'Tidak Aktif')} />
+               <StatusBox label="Simpanan" value={summary.status_simpanan} color="#5C6773" theme={theme} onPress={() => openStatusEmployees('SIMPANAN', 'Simpanan')} />
+               <StatusBox label="Senarai Hitam" value={summary.status_aktif} color="#D62828" theme={theme} onPress={() => openStatusEmployees('SENARAI HITAM', 'Senarai Hitam')} />
              </View>
           </View>
 
           <View style={[styles.card, { backgroundColor: theme.card }]}>
-            <View style={styles.tableHeaderRow}>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <ListFilter size={20} color={theme.accent} />
-                <Text style={[styles.cardTitle, { color: theme.text, marginLeft: 10, marginBottom: 0 }]}>Laluan Kerjaya</Text>
-                {isEditing ? (
-                  <TouchableOpacity style={{ marginLeft: 15 }} onPress={() => { setRankForm({ id: null, rank: '', lulus: '', kenaikan: '', kbp: '', ptb: '', aktif: '', simpanan: '' }); setShowRankModal(true); }}>
-                    <View style={styles.addInlineBtn}><Plus size={16} color="#fff" /><Text style={styles.addInlineBtnText}>Tambah</Text></View>
-                  </TouchableOpacity>
-                ) : null}
-              </View>
-              <View style={[styles.searchContainer, { backgroundColor: theme.background }]}>
-                <Search size={16} color={theme.textSecondary} />
-                <TextInput placeholder="Cari Pangkat..." placeholderTextColor={theme.textSecondary} style={[styles.searchInput, { color: theme.text }]} value={searchQuery} onChangeText={setSearchQuery} />
-              </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
+              <ListFilter size={20} color={theme.accent} />
+              <Text style={[styles.cardTitle, { color: theme.text, marginLeft: 10, marginBottom: 0 }]}>Laluan Kerjaya</Text>
+              {isEditing ? (
+                <TouchableOpacity style={{ marginLeft: 15 }} onPress={() => { setRankForm({ id: null, rank: '', lulus: '', kenaikan: '', kbp: '', ptb: '', aktif: '', simpanan: '' }); setShowRankModal(true); }}>
+                  <View style={styles.addInlineBtn}><Plus size={16} color="#fff" /><Text style={styles.addInlineBtnText}>Tambah</Text></View>
+                </TouchableOpacity>
+              ) : null}
             </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={true}>
-              <View style={[styles.table, { borderColor: theme.border }]}>
-                <View style={[styles.tableRow, { backgroundColor: theme.background }]}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -28 }} contentContainerStyle={{ paddingHorizontal: 28, minWidth: '100%' }}>
+              <View style={{ borderRadius: 14, overflow: 'hidden', borderWidth: 1, borderColor: theme.border, minWidth: '100%' }}>
+                <View style={{ flexDirection: 'row', backgroundColor: theme.background }}>
                   {['PERINGKAT', 'LULUS', 'NAIK', 'KBP', 'PTB', 'AKTIF', 'SIMPANAN', ...(isEditing ? ['TINDAKAN'] : [])].map((h, i) => (
-                    <Text key={i} style={[styles.tableHeaderCell, { color: theme.text }]}>{h}</Text>
+                    <Text key={i} style={{ flex: 1, padding: 14, fontSize: 11, fontWeight: '800', color: theme.textSecondary, textAlign: i === 0 ? 'left' : 'center', letterSpacing: 0.3 }}>{h}</Text>
                   ))}
                 </View>
-                {filteredRankData.map((item) => (
-                  <View key={item.id} style={[styles.tableRow, { borderBottomColor: theme.border }]}>
-                    <Text style={[styles.tableCell, { fontWeight: '700', color: theme.text, textAlign: 'left', width: 140 }]}>{item.rank}</Text>
-                    <Text style={[styles.tableCell, { color: theme.textSecondary }]}>{item.lulus}</Text>
-                    <Text style={[styles.tableCell, { color: theme.textSecondary }]}>{item.kenaikan}</Text>
-                    <Text style={[styles.tableCell, { color: theme.textSecondary }]}>{item.kbp}</Text>
-                    <Text style={[styles.tableCell, { color: theme.textSecondary }]}>{item.ptb}</Text>
-                    <Text style={[styles.tableCell, { color: '#22c55e', fontWeight: '700' }]}>{item.aktif}</Text>
-                    <Text style={[styles.tableCell, { color: theme.accent, fontWeight: '700' }]}>{item.simpanan}</Text>
+                {ranks.map((item, i) => (
+                  <View
+                    key={item.id}
+                    style={{
+                      flexDirection: 'row', alignItems: 'center',
+                      backgroundColor: i % 2 === 0 ? theme.card : theme.background,
+                      borderTopWidth: 1, borderTopColor: theme.border
+                    }}
+                  >
+                    <Text style={{ flex: 1, padding: 14, fontWeight: '700', color: theme.text }}>{item.rank}</Text>
+                    <Text style={{ flex: 1, padding: 14, textAlign: 'center', color: theme.textSecondary }}>{item.lulus}</Text>
+                    <Text style={{ flex: 1, padding: 14, textAlign: 'center', color: theme.textSecondary }}>{item.kenaikan}</Text>
+                    <Text style={{ flex: 1, padding: 14, textAlign: 'center', color: theme.textSecondary }}>{item.kbp}</Text>
+                    <Text style={{ flex: 1, padding: 14, textAlign: 'center', color: theme.textSecondary }}>{item.ptb}</Text>
+                    <Text style={{ flex: 1, padding: 14, textAlign: 'center', color: '#1D4E89', fontWeight: '800' }}>{item.aktif}</Text>
+                    <Text style={{ flex: 1, padding: 14, textAlign: 'center', color: theme.accent, fontWeight: '800' }}>{item.simpanan}</Text>
                     {isEditing ? (
-                      <View style={[styles.tableCell, { flexDirection: 'row', justifyContent: 'center', gap: 10 }]}>
-                        <TouchableOpacity onPress={() => { setRankForm({ ...item, lulus: String(item.lulus), kenaikan: String(item.kenaikan), kbp: String(item.kbp), ptb: String(item.ptb), aktif: String(item.aktif), simpanan: String(item.simpanan) }); setShowRankModal(true); }}><Edit2 size={16} color="#22c55e" /></TouchableOpacity>
-                        <TouchableOpacity onPress={() => handleDeleteRank(item.id)}><Trash2 size={16} color="#ef4444" /></TouchableOpacity>
+                      <View style={{ flex: 1, flexDirection: 'row', justifyContent: 'center', gap: 12 }}>
+                        <TouchableOpacity onPress={() => { setRankForm({ ...item, lulus: String(item.lulus), kenaikan: String(item.kenaikan), kbp: String(item.kbp), ptb: String(item.ptb), aktif: String(item.aktif), simpanan: String(item.simpanan) }); setShowRankModal(true); }}><Edit2 size={16} color="#F4762B" /></TouchableOpacity>
+                        <TouchableOpacity onPress={() => handleDeleteRank(item.id)}><Trash2 size={16} color="#D62828" /></TouchableOpacity>
                       </View>
                     ) : null}
                   </View>
@@ -850,7 +939,7 @@ export default function AngkatanScreen({ theme, userRole }) {
             <View style={styles.cardHeader}>
               <Text style={[styles.cardTitle, { color: theme.text }]}>Program Komuniti (Pasukan APM)</Text>
               {isEditing ? (
-                <TouchableOpacity onPress={() => { setCommunityForm({ id: null, category: '', label: '', detail: '', color: '#3b82f6' }); setShowCommunityModal(true); }}>
+                <TouchableOpacity onPress={() => { setCommunityForm({ id: null, category: '', label: '', detail: '', color: '#1D4E89' }); setShowCommunityModal(true); }}>
                   <Plus size={20} color={theme.accent} />
                 </TouchableOpacity>
               ) : null}
@@ -865,8 +954,8 @@ export default function AngkatanScreen({ theme, userRole }) {
                   </View>
                   {isEditing ? (
                     <View style={{ flexDirection: 'row', gap: 15 }}>
-                      <TouchableOpacity onPress={() => { setCommunityForm(prog); setShowCommunityModal(true); }}><Edit2 size={18} color="#22c55e" /></TouchableOpacity>
-                      <TouchableOpacity onPress={() => handleDeleteCommunity(prog.id)}><Trash2 size={18} color="#ef4444" /></TouchableOpacity>
+                      <TouchableOpacity onPress={() => { setCommunityForm(prog); setShowCommunityModal(true); }}><Edit2 size={18} color="#F4762B" /></TouchableOpacity>
+                      <TouchableOpacity onPress={() => handleDeleteCommunity(prog.id)}><Trash2 size={18} color="#D62828" /></TouchableOpacity>
                     </View>
                   ) : null}
                 </View>
@@ -878,7 +967,7 @@ export default function AngkatanScreen({ theme, userRole }) {
             <View style={styles.cardHeader}>
               <Text style={[styles.cardTitle, { color: theme.text, marginBottom: 0 }]}>Struktur Pangkat & Keahlian</Text>
               {isEditing ? (
-                <TouchableOpacity onPress={() => { setPyramidForm({ id: null, rank: '', total: '', color: '#1e40af', display_order: '' }); setShowPyramidModal(true); }}>
+                <TouchableOpacity onPress={() => { setPyramidForm({ id: null, rank: '', total: '', color: '#123456', display_order: '' }); setShowPyramidModal(true); }}>
                   <Plus size={20} color={theme.accent} />
                 </TouchableOpacity>
               ) : null}
@@ -936,7 +1025,7 @@ export default function AngkatanScreen({ theme, userRole }) {
                       <View style={styles.addInlineBtn}><Plus size={16} color="#fff" /><Text style={styles.addInlineBtnText}>Tambah</Text></View>
                     </TouchableOpacity>
                     <TouchableOpacity onPress={() => setShowExcelImportModal(true)}>
-                      <View style={[styles.addInlineBtn, { backgroundColor: '#22c55e' }]}>
+                      <View style={[styles.addInlineBtn, { backgroundColor: '#F4762B' }]}>
                         <Upload size={16} color="#fff" /><Text style={styles.addInlineBtnText}>Import Excel</Text>
                       </View>
                     </TouchableOpacity>
@@ -974,14 +1063,14 @@ export default function AngkatanScreen({ theme, userRole }) {
                     <Image source={{ uri: emp.photo_url }} style={styles.employeeAvatar} />
                   ) : (
                     <View style={[styles.employeeAvatar, styles.employeeAvatarPlaceholder]}>
-                      <User size={20} color="#94a3b8" />
+                      <User size={20} color="#5C6773" />
                     </View>
                   )}
                   <View style={{ flex: 1, marginLeft: 15 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                       <Text style={{ color: theme.text, fontWeight: '700', fontSize: 15 }}>{emp.nama}</Text>
-                      <View style={[styles.employeeStatusBadge, { backgroundColor: String(emp.status_keaktifan).toUpperCase() === 'AKTIF' ? '#22c55e15' : '#f1f5f9', marginLeft: 10, paddingVertical: 3, paddingHorizontal: 8 }]}>
-                        <Text style={{ color: String(emp.status_keaktifan).toUpperCase() === 'AKTIF' ? '#22c55e' : theme.textSecondary, fontSize: 10, fontWeight: '700' }}>
+                      <View style={[styles.employeeStatusBadge, { backgroundColor: String(emp.status_keaktifan).toUpperCase() === 'AKTIF' ? '#1D4E8915' : '#EEF1F4', marginLeft: 10, paddingVertical: 3, paddingHorizontal: 8 }]}>
+                        <Text style={{ color: String(emp.status_keaktifan).toUpperCase() === 'AKTIF' ? '#1D4E89' : theme.textSecondary, fontSize: 10, fontWeight: '700' }}>
                           {emp.status_keaktifan}
                         </Text>
                       </View>
@@ -1075,7 +1164,7 @@ export default function AngkatanScreen({ theme, userRole }) {
           <TextInput placeholder="Cth: 1" keyboardType="numeric" style={[styles.modalInput, { backgroundColor: theme.background, color: theme.text, marginBottom: 10 }]} value={String(pyramidForm.display_order)} onChangeText={(t) => setPyramidForm({...pyramidForm, display_order: t})} />
           <View style={styles.modalActions}>
             {pyramidForm.id ? (
-              <TouchableOpacity onPress={() => handleDeletePyramid(pyramidForm.id)} style={[styles.modalBtn, { backgroundColor: '#ef4444', marginRight: 'auto' }]}><Text style={{ color: '#fff' }}>Padam</Text></TouchableOpacity>
+              <TouchableOpacity onPress={() => handleDeletePyramid(pyramidForm.id)} style={[styles.modalBtn, { backgroundColor: '#D62828', marginRight: 'auto' }]}><Text style={{ color: '#fff' }}>Padam</Text></TouchableOpacity>
             ) : null}
             <TouchableOpacity onPress={() => setShowPyramidModal(false)} style={styles.modalBtn}><Text style={{ color: theme.text }}>Batal</Text></TouchableOpacity>
             <TouchableOpacity onPress={handleSavePyramid} style={[styles.modalBtn, { backgroundColor: theme.accent }]}><Text style={{ color: '#fff' }}>Simpan</Text></TouchableOpacity>
@@ -1108,7 +1197,7 @@ export default function AngkatanScreen({ theme, userRole }) {
                   onPress={() => handleDeleteEmployee(employeeForm.id)}
                   style={{ padding: 6 }}
                 >
-                  <Trash2 size={20} color="#ef4444" />
+                  <Trash2 size={20} color="#D62828" />
                 </TouchableOpacity>
               ) : null}
             </View>
@@ -1122,7 +1211,7 @@ export default function AngkatanScreen({ theme, userRole }) {
                       <Image source={{ uri: employeeForm.photo_url }} style={styles.profilePhotoLarge} />
                     ) : (
                       <View style={[styles.profilePhotoLarge, styles.employeeAvatarPlaceholder]}>
-                        <User size={40} color="#94a3b8" />
+                        <User size={40} color="#5C6773" />
                       </View>
                     )}
                   </View>
@@ -1131,11 +1220,11 @@ export default function AngkatanScreen({ theme, userRole }) {
                   {employeeForm.status_keaktifan ? (
                     <View style={{
                       marginTop: 8, paddingHorizontal: 12, paddingVertical: 4, borderRadius: 20,
-                      backgroundColor: String(employeeForm.status_keaktifan).toUpperCase() === 'AKTIF' ? '#22c55e15' : '#f1f5f9'
+                      backgroundColor: String(employeeForm.status_keaktifan).toUpperCase() === 'AKTIF' ? '#1D4E8915' : '#EEF1F4'
                     }}>
                       <Text style={{
                         fontSize: 11, fontWeight: '700',
-                        color: String(employeeForm.status_keaktifan).toUpperCase() === 'AKTIF' ? '#22c55e' : theme.textSecondary
+                        color: String(employeeForm.status_keaktifan).toUpperCase() === 'AKTIF' ? '#1D4E89' : theme.textSecondary
                       }}>
                         {employeeForm.status_keaktifan}
                       </Text>
@@ -1184,33 +1273,32 @@ export default function AngkatanScreen({ theme, userRole }) {
 
               {!certOnlyMode && (isEditing || showFullDetail) ? (
                 <>
-                  <View style={{
-                    flexDirection: 'row', backgroundColor: theme.background, borderRadius: 12,
-                    padding: 4, marginBottom: 20
-                  }}>
-                    {EMPLOYEE_TABS.map((tab) => (
-                      <TouchableOpacity
-                        key={tab}
-                        onPress={() => setActiveEmployeeTab(tab)}
-                        style={{
-                          flex: 1, paddingVertical: 9, borderRadius: 9, alignItems: 'center',
-                          backgroundColor: activeEmployeeTab === tab ? theme.card : 'transparent',
-                          shadowColor: activeEmployeeTab === tab ? '#000' : 'transparent',
-                          shadowOpacity: activeEmployeeTab === tab ? 0.08 : 0,
-                          shadowRadius: 4, elevation: activeEmployeeTab === tab ? 2 : 0,
-                        }}
-                      >
-                        <Text style={{
-                          color: activeEmployeeTab === tab ? theme.accent : theme.textSecondary,
-                          fontSize: 10.5, fontWeight: activeEmployeeTab === tab ? '800' : '600', textAlign: 'center'
-                        }}>{tab}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 20 }}>
+                    <View style={{ flexDirection: 'row', backgroundColor: theme.background, borderRadius: 12, padding: 4, gap: 4 }}>
+                      {EMPLOYEE_TABS.map((tab) => (
+                        <TouchableOpacity
+                          key={tab}
+                          onPress={() => setActiveEmployeeTab(tab)}
+                          style={{
+                            paddingVertical: 9, paddingHorizontal: 16, borderRadius: 9,
+                            backgroundColor: activeEmployeeTab === tab ? theme.card : 'transparent',
+                            shadowColor: activeEmployeeTab === tab ? '#000' : 'transparent',
+                            shadowOpacity: activeEmployeeTab === tab ? 0.08 : 0,
+                            shadowRadius: 4, elevation: activeEmployeeTab === tab ? 2 : 0,
+                          }}
+                        >
+                          <Text style={{
+                            color: activeEmployeeTab === tab ? theme.accent : theme.textSecondary,
+                            fontSize: 12, fontWeight: activeEmployeeTab === tab ? '800' : '600'
+                          }}>{tab}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </ScrollView>
 
-                  {FIELD_GROUPS[activeEmployeeTab].map(renderField)}
+                  {FIELD_GROUPS[activeEmployeeTab] ? FIELD_GROUPS[activeEmployeeTab].map(renderField) : null}
 
-                  {activeEmployeeTab === 'Kenaikan Pangkat' && promotionHistoryList.length > 0 ? (
+                  {activeEmployeeTab === 'Pangkat' && promotionHistoryList.length > 0 ? (
                     <View style={{ marginTop: 15 }}>
                       <Text style={{ color: theme.text, fontWeight: '700', fontSize: 14, marginBottom: 10 }}>
                         Sejarah Pasukan
@@ -1218,21 +1306,21 @@ export default function AngkatanScreen({ theme, userRole }) {
                       {promotionHistoryList.map((p) => (
                         <View key={p.id} style={[styles.certRow, { borderBottomColor: theme.border }]}>
                           <Text style={{ color: theme.text, fontSize: 13 }}>
-                            Pasukan {p.pasukan_number}: {p.no_siri_watikah || '-'} | Kenaikan: {p.tarikh_kenaikan_pangkat || '-'} | Tamat: {p.tarikh_tamat_watikah || '-'}
+                            Pasukan {p.pasukan_number}: {p.no_siri_watikah || '-'} | Kenaikan: {p.tarikh_kenaikan_pangkat || '-'} | Tamat: {p.tarikh_tamat_watikah || '-'} | Tempoh Aktif: {p.tempoh_aktif_watikah_hari != null ? `${p.tempoh_aktif_watikah_hari} hari` : '-'}
                           </Text>
                         </View>
                       ))}
                     </View>
                   ) : null}
 
-                  {!isEditing ? (
+                  {!isEditing && activeEmployeeTab !== 'Sijil' ? (
                     <TouchableOpacity onPress={() => setShowFullDetail(false)} style={{ marginTop: 15 }}>
                       <Text style={{ color: theme.textSecondary, fontWeight: '600' }}>← Kembali ke ringkasan</Text>
                     </TouchableOpacity>
                   ) : null}
                 </>
               ) : null}
-              {employeeForm.id ? (
+              {employeeForm.id && (isEditing || showFullDetail) && activeEmployeeTab === 'Sijil' ? (
                 <View style={{ marginTop: 10 }}>
                   <View style={styles.cardHeader}>
                     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -1261,10 +1349,10 @@ export default function AngkatanScreen({ theme, userRole }) {
                       {isEditing ? (
                         <View style={{ flexDirection: 'row', gap: 12 }}>
                           <TouchableOpacity onPress={() => { setCertForm(cert); setShowCertModal(true); }}>
-                            <Edit2 size={16} color="#22c55e" />
+                            <Edit2 size={16} color="#F4762B" />
                           </TouchableOpacity>
                           <TouchableOpacity onPress={() => handleDeleteCertificate(cert.id)}>
-                            <Trash2 size={16} color="#ef4444" />
+                            <Trash2 size={16} color="#D62828" />
                           </TouchableOpacity>
                         </View>
                       ) : null}
@@ -1347,7 +1435,7 @@ export default function AngkatanScreen({ theme, userRole }) {
                     <Image source={{ uri: emp.photo_url }} style={styles.employeeAvatar} />
                   ) : (
                     <View style={[styles.employeeAvatar, styles.employeeAvatarPlaceholder]}>
-                      <User size={20} color="#94a3b8" />
+                      <User size={20} color="#5C6773" />
                     </View>
                   )}
                   <View style={{ flex: 1, marginLeft: 15 }}>
@@ -1380,15 +1468,70 @@ export default function AngkatanScreen({ theme, userRole }) {
         </View>
       </Modal>
 
+      <Modal visible={showStatusEmployeesModal} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <Text style={[styles.modalTitle, { color: theme.text, marginBottom: 0 }]}>
+                {selectedStatusLabel} ({statusFilteredEmployees.length})
+              </Text>
+              <TouchableOpacity onPress={() => setShowStatusEmployeesModal(false)}>
+                <X size={22} color={theme.text} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={{ maxHeight: 400 }}>
+              {paginatedStatusEmployees.map((emp) => (
+                <TouchableOpacity
+                  key={emp.id}
+                  style={[styles.employeeRow, { borderBottomColor: theme.border }]}
+                  onPress={() => { setShowStatusEmployeesModal(false); openEmployeeDetail(emp); }}
+                >
+                  {emp.photo_url ? (
+                    <Image source={{ uri: emp.photo_url }} style={styles.employeeAvatar} />
+                  ) : (
+                    <View style={[styles.employeeAvatar, styles.employeeAvatarPlaceholder]}>
+                      <User size={20} color="#5C6773" />
+                    </View>
+                  )}
+                  <View style={{ flex: 1, marginLeft: 15 }}>
+                    <Text style={{ color: theme.text, fontWeight: '700', fontSize: 15 }}>{emp.nama}</Text>
+                    <Text style={{ color: theme.textSecondary, fontSize: 12, marginTop: 2 }}>{emp.pangkat}</Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+            <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 15, gap: 15 }}>
+              <TouchableOpacity
+                disabled={statusEmployeesPage === 1}
+                onPress={() => setStatusEmployeesPage((p) => Math.max(1, p - 1))}
+                style={{ opacity: statusEmployeesPage === 1 ? 0.3 : 1, padding: 8 }}
+              >
+                <Text style={{ color: theme.accent, fontWeight: '700' }}>← Sebelum</Text>
+              </TouchableOpacity>
+              <Text style={{ color: theme.textSecondary, fontSize: 12 }}>
+                Muka {statusEmployeesPage} / {totalStatusPages}
+              </Text>
+              <TouchableOpacity
+                disabled={statusEmployeesPage === totalStatusPages}
+                onPress={() => setStatusEmployeesPage((p) => Math.min(totalStatusPages, p + 1))}
+                style={{ opacity: statusEmployeesPage === totalStatusPages ? 0.3 : 1, padding: 8 }}
+              >
+                <Text style={{ color: theme.accent, fontWeight: '700' }}>Seterusnya →</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
     </View>
   );
 }
 
-const StatusBox = ({ label, value, color, theme }) => (
-  <View style={[styles.statusBox, { backgroundColor: theme.background }]}>
+const StatusBox = ({ label, value, color, theme, onPress }) => (
+  <TouchableOpacity style={[styles.statusBox, { backgroundColor: theme.background }]} onPress={onPress}>
     <Text style={[styles.statusValue, { color }]}>{value}</Text>
     <Text style={[styles.statusLabel, { color: theme.textSecondary }]}>{label}</Text>
-  </View>
+  </TouchableOpacity>
 );
 
 const styles = StyleSheet.create({
@@ -1400,27 +1543,27 @@ const styles = StyleSheet.create({
   card: { padding: 28, borderRadius: 24, elevation: 2, position: 'relative' },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
   cardTitle: { fontSize: 20, fontWeight: '800' },
-  editBadge: { position: 'absolute', top: -10, right: -10, backgroundColor: '#22c55e', width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center', zIndex: 10, elevation: 4 }, // Updated to green
+  editBadge: { position: 'absolute', top: -10, right: -10, backgroundColor: '#F4762B', width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center', zIndex: 10, elevation: 4 }, // Updated to green
   bigNumber: { fontSize: 56, fontWeight: '900', letterSpacing: -2 },
-  activeBadge: { backgroundColor: '#22c55e15', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, alignSelf: 'flex-start', marginTop: 10 },
+  activeBadge: { backgroundColor: '#1D4E8915', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, alignSelf: 'flex-start', marginTop: 10 },
   barChartContainer: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-around', height: 100, marginTop: 10 },
   bar: { width: 22, borderRadius: 8 },
   listItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14 },
   dot: { width: 10, height: 10, borderRadius: 5 },
   genderContainer: { flex: 1, justifyContent: 'center', gap: 20 },
   genderRow: { flexDirection: 'row', alignItems: 'center', gap: 15 },
-  genderIconCircle: { width: 48, height: 48, borderRadius: 14, backgroundColor: '#f0f4ff', justifyContent: 'center', alignItems: 'center' },
+  genderIconCircle: { width: 48, height: 48, borderRadius: 14, backgroundColor: '#E7EEF6', justifyContent: 'center', alignItems: 'center' },
   genderHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
   genderLabel: { fontSize: 14, fontWeight: '700' },
   genderValue: { fontSize: 14, fontWeight: '800' },
-  progressBarBg: { height: 8, backgroundColor: '#f1f5f9', borderRadius: 4, overflow: 'hidden' },
+  progressBarBg: { height: 8, backgroundColor: '#EEF1F4', borderRadius: 4, overflow: 'hidden' },
   progressBarFill: { height: '100%', borderRadius: 4 },
   statusGrid: { flexDirection: 'row', gap: 15 },
   statusBox: { flex: 1, padding: 20, borderRadius: 16, alignItems: 'center' },
   statusValue: { fontSize: 24, fontWeight: '900' },
   statusLabel: { fontSize: 11, fontWeight: '700', marginTop: 4, textAlign: 'center' },
   tableHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  addInlineBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#3b82f6', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8 },
+  addInlineBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#1D4E89', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8 },
   addInlineBtnText: { color: '#fff', fontSize: 12, fontWeight: 'bold', marginLeft: 5 },
   searchContainer: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, borderRadius: 12, width: 220, height: 40 },
   searchInput: { marginLeft: 10, fontSize: 13, fontWeight: '600', flex: 1 },
@@ -1434,15 +1577,15 @@ const styles = StyleSheet.create({
   pyramidTier: { height: 48, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginBottom: 8, borderRadius: 12 },
   employeeRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1 },
   employeeAvatar: { width: 44, height: 44, borderRadius: 22 },
-  employeeAvatarPlaceholder: { backgroundColor: '#f1f5f9', justifyContent: 'center', alignItems: 'center' },
+  employeeAvatarPlaceholder: { backgroundColor: '#EEF1F4', justifyContent: 'center', alignItems: 'center' },
   employeeStatusBadge: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8 },
   profilePhotoLarge: { width: 100, height: 100, borderRadius: 50 },
-  lihatSijilBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, backgroundColor: '#f0f4ff' },
+  lihatSijilBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, backgroundColor: '#E7EEF6' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
   modalContent: { width: '90%', maxWidth: 500, padding: 24, borderRadius: 20, maxHeight: '80%' },
   modalTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: 20 },
   inputGroup: { marginBottom: 15 },
-  modalInput: { borderWidth: 1, padding: 12, borderRadius: 10, fontSize: 14, borderColor: '#ccc' },
+  modalInput: { borderWidth: 1, padding: 12, borderRadius: 10, fontSize: 14, borderColor: '#C7CDD3' },
   modalActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10, marginTop: 20 },
   modalBtn: { paddingHorizontal: 20, paddingVertical: 12, borderRadius: 10 }
 });

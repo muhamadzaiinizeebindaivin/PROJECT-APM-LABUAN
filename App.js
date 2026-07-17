@@ -3,8 +3,11 @@ import { View, StatusBar, TouchableOpacity, Alert, Platform, Text, ActivityIndic
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { LayoutDashboard, Users, CreditCard, GraduationCap, Truck, ShieldAlert, Briefcase, Info, LogOut, UserCog } from 'lucide-react-native';
+import { useFonts, Rajdhani_600SemiBold, Rajdhani_700Bold } from '@expo-google-fonts/rajdhani';
+import { Inter_400Regular, Inter_500Medium } from '@expo-google-fonts/inter';
 import { supabaseSandbox } from './src/supabaseSandboxClient';
 import { ROLE_PERMISSIONS } from './src/permissions';
+import { FONTS } from './src/styles/tacticalTheme';
 
 // Import Screens
 import AdminUserManagementScreen from './src/screens/AdminUserManagementScreen';
@@ -37,6 +40,13 @@ export default function App() {
   const [agencyInfo, setAgencyInfo] = useState(null);
   const [isCheckingSession, setIsCheckingSession] = useState(true);
   const [isInvitedUser, setIsInvitedUser] = useState(false);
+
+  const [fontsLoaded] = useFonts({
+    Rajdhani_600SemiBold,
+    Rajdhani_700Bold,
+    Inter_400Regular,
+    Inter_500Medium,
+  });
 
   useEffect(() => {
     if (Platform.OS === 'web' && typeof window !== 'undefined') {
@@ -159,13 +169,13 @@ export default function App() {
   const HeaderLogoutButton = () => (
     <TouchableOpacity onPress={handleLogout} style={{ marginLeft: 15, flexDirection: 'row', alignItems: 'center', backgroundColor: '#ef4444', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, elevation: 2 }}>
       <LogOut size={14} color="#fff" />
-      <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 11, marginLeft: 6 }}>Log Keluar</Text>
+      <Text style={{ color: '#fff', fontFamily: FONTS.bodyMedium, fontSize: 11, marginLeft: 6 }}>Log Keluar</Text>
     </TouchableOpacity>
   );
 
   const HeaderRoleBadge = () => (
     <View style={{ marginRight: 15, backgroundColor: '#f1f5f9', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, borderWidth: 1, borderColor: '#e2e8f0' }}>
-      <Text style={{ fontSize: 10, fontWeight: '900', color: '#475569', textTransform: 'uppercase', letterSpacing: 1 }}>
+      <Text style={{ fontSize: 10, fontFamily: FONTS.displayBold, color: '#475569', textTransform: 'uppercase', letterSpacing: 1 }}>
         {userRole || 'GUEST'}
       </Text>
     </View>
@@ -177,11 +187,11 @@ export default function App() {
     headerLeft: () => <HeaderLogoutButton />,
     headerRight: () => <HeaderRoleBadge />,
     headerStyle: { backgroundColor: theme.background, elevation: 0, shadowOpacity: 0 },
-    headerTitleStyle: { fontWeight: '800', color: theme.text, fontSize: 20 },
+    headerTitleStyle: { fontFamily: FONTS.displayBold, color: theme.text, fontSize: 20 },
     tabBarStyle: { backgroundColor: theme.card, borderTopWidth: 0, elevation: 10, height: 65, paddingBottom: 10, paddingTop: 10 },
     tabBarActiveTintColor: '#f97316', 
     tabBarInactiveTintColor: theme.textSecondary,
-    tabBarLabelStyle: { fontSize: 10, fontWeight: '700', marginTop: 4 },
+    tabBarLabelStyle: { fontSize: 10, fontFamily: FONTS.bodyMedium, marginTop: 4 },
     tabBarIcon: ({ color, focused }) => {
       const icons = {
         Utama: Info, Pentadbiran: LayoutDashboard, Sekretariat: Briefcase,
@@ -321,7 +331,7 @@ export default function App() {
     return <PublicNg999Form />;
   }
 
-  if (isCheckingSession) {
+  if (isCheckingSession || !fontsLoaded) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.background }}>
         <ActivityIndicator size="large" color="#f97316" />
