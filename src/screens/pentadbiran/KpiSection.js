@@ -5,8 +5,15 @@ import { PALETTE } from '../../constants/palette';
 import { pentadbiranStyles as styles } from './pentadbiranStyles';
 import SectionHeader from './SectionHeader';
 import KpiEditModal from './KpiEditModal';
+import KpiDetailModal from './KpiDetailModal';
 
-const EMPTY_DRAFT = { nama: '', tafsiran: '', sasaran: '' };
+const EMPTY_DRAFT = { nama: '', tafsiran: '', sasaran: '', status: 'kuning', pencapaian_semasa: '', analisis_tindakan: '', sub_seksyen: '' };
+const STATUS_COLORS = { hijau: '#16a34a', kuning: '#d97706', merah: '#dc2626' };
+const STATUS_LEGEND = [
+  { key: 'hijau', label: 'Hijau', color: STATUS_COLORS.hijau, desc: 'Mencapai atau melebihi sasaran.' },
+  { key: 'kuning', label: 'Kuning', color: STATUS_COLORS.kuning, desc: 'Memerlukan perhatian / hampir capai sasaran.' },
+  { key: 'merah', label: 'Merah', color: STATUS_COLORS.merah, desc: 'Di bawah sasaran / kritikal.' },
+];
 const CARD_WIDTH = 220;
 const CARD_GAP = 12;
 const PX_PER_SECOND = 40;
@@ -17,6 +24,7 @@ export default function KpiSection({ kpiItems, isEditing, updateKpiItem, addKpiI
   const [hoveredIndex, setHoveredIndex] = useState(null);
   const [modalIndex, setModalIndex] = useState(null); // null = fermé, -1 = ajout, >=0 = édition
   const [draft, setDraft] = useState(EMPTY_DRAFT);
+  const [detailIndex, setDetailIndex] = useState(null); // index de la carte consultée en lecture seule
 
   const scrollRef = useRef(null);
   const scrollXRef = useRef(0);
@@ -139,7 +147,16 @@ export default function KpiSection({ kpiItems, isEditing, updateKpiItem, addKpiI
 
   const openEdit = (index) => {
     setModalIndex(index);
-    setDraft({ nama: kpiItems[index].nama, tafsiran: kpiItems[index].tafsiran, sasaran: kpiItems[index].sasaran });
+    const item = kpiItems[index];
+    setDraft({
+      nama: item.nama,
+      tafsiran: item.tafsiran,
+      sasaran: item.sasaran,
+      status: item.status || 'kuning',
+      pencapaian_semasa: item.pencapaian_semasa || '',
+      analisis_tindakan: item.analisis_tindakan || '',
+      sub_seksyen: item.sub_seksyen || '',
+    });
   };
 
   const openAdd = () => {
@@ -167,6 +184,17 @@ export default function KpiSection({ kpiItems, isEditing, updateKpiItem, addKpiI
     <View style={styles.card}>
       <SectionHeader title="KEY PERFORMANCE INDICATOR (KPI)" Icon={Target} />
 
+      <View style={styles.kpiLegendRow}>
+        {STATUS_LEGEND.map((item) => (
+          <View key={item.key} style={styles.kpiLegendItem}>
+            <View style={[styles.statusDot, { backgroundColor: item.color }]} />
+            <Text style={styles.kpiLegendText}>
+              <Text style={styles.kpiLegendLabel}>{item.label}:</Text> {item.desc}
+            </Text>
+          </View>
+        ))}
+      </View>
+
       <View
         style={styles.kpiMarqueeViewport}
         onLayout={(e) => {
@@ -186,12 +214,32 @@ export default function KpiSection({ kpiItems, isEditing, updateKpiItem, addKpiI
           onMomentumScrollEnd={() => setTimeout(resumeAfterInteraction, 200)}
           contentContainerStyle={styles.kpiGrid}
         >
-          {kpiItems.map((item, index) => (
-            <View key={`kpi-${item.id ?? 'new'}-${index}`} style={styles.kpiCard}>
-              <View style={styles.kpiCardAccent} />
+          {kpiItems.map((item, index) => {
+            const statusColor = STATUS_COLORS[item.status] || STATUS_COLORS.kuning;
+            return (
+            <TouchableOpacity
+              activeOpacity={0.85}
+              style={[styles.kpiCard, { borderColor: statusColor }]}
+              onPress={() => setDetailIndex(index)}
+            >
               <View style={styles.kpiCardBody}>
-                <Text style={styles.kpiCardNama}>{item.nama}</Text>
+                {!!item.sub_seksyen && (
+                  <View style={styles.subSeksyenBadge}>
+                    <Text style={styles.subSeksyenBadgeText}>{item.sub_seksyen}</Text>
+                  </View>
+                )}
+                <View style={styles.kpiCardHeaderRow}>
+                  <Text style={styles.kpiCardNama}>{item.nama}</Text>
+                </View>
                 <Text style={styles.kpiCardTafsiran}>{item.tafsiran}</Text>
+                {!!item.pencapaian_semasa && (
+                  <Text style={styles.kpiCardPencapaian}>
+                    Pencapaian Semasa: <Text style={{ fontWeight: '800' }}>{item.pencapaian_semasa}</Text>
+                  </Text>
+                )}
+                {!!item.analisis_tindakan && (
+                  <Text style={styles.kpiCardAnalisis} numberOfLines={3}>{item.analisis_tindakan}</Text>
+                )}
               </View>
               <View style={styles.kpiSasaranBadge}>
                 <Text style={styles.kpiSasaranText}>{item.sasaran}</Text>
@@ -212,8 +260,9 @@ export default function KpiSection({ kpiItems, isEditing, updateKpiItem, addKpiI
                   )}
                 </TouchableOpacity>
               )}
-            </View>
-          ))}
+            </TouchableOpacity>
+            );
+          })}
         </ScrollView>
       </View>
 
@@ -256,6 +305,12 @@ export default function KpiSection({ kpiItems, isEditing, updateKpiItem, addKpiI
         onSave={handleSave}
         onDelete={handleDelete}
         onClose={closeModal}
+      />
+
+      <KpiDetailModal
+        visible={detailIndex !== null}
+        item={detailIndex !== null ? kpiItems[detailIndex] : null}
+        onClose={() => setDetailIndex(null)}
       />
     </View>
   );

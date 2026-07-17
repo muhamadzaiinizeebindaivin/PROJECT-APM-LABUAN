@@ -38,6 +38,10 @@ export function useKpiItems(section) {
         nama: initial.nama || 'KPI Baru',
         tafsiran: initial.tafsiran || '',
         sasaran: initial.sasaran || '--',
+        status: initial.status || 'kuning',
+        pencapaian_semasa: initial.pencapaian_semasa || '',
+        analisis_tindakan: initial.analisis_tindakan || '',
+        sub_seksyen: initial.sub_seksyen || '',
         display_order: prev.length,
       },
     ]);
@@ -55,7 +59,17 @@ export function useKpiItems(section) {
     }
     for (let i = 0; i < kpiItems.length; i++) {
       const item = kpiItems[i];
-      const payload = { section, nama: item.nama, tafsiran: item.tafsiran, sasaran: item.sasaran, display_order: i };
+      const payload = {
+        section,
+        nama: item.nama,
+        tafsiran: item.tafsiran,
+        sasaran: item.sasaran,
+        status: item.status || 'kuning',
+        pencapaian_semasa: item.pencapaian_semasa || '',
+        analisis_tindakan: item.analisis_tindakan || '',
+        sub_seksyen: item.sub_seksyen || '',
+        display_order: i,
+      };
       if (item.id) await supabaseSandbox.from('kpi').update(payload).eq('id', item.id);
       else await supabaseSandbox.from('kpi').insert([payload]);
     }

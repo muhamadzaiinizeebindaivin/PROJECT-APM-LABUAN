@@ -95,18 +95,82 @@ export const pentadbiranStyles = StyleSheet.create({
   },
   kpiCard: {
     width: 220, minHeight: 200, backgroundColor: PALETTE.surface, borderRadius: 14, padding: 16,
-    borderWidth: 1, borderColor: PALETTE.cardLightBorder, position: 'relative',
+    borderWidth: 2, position: 'relative',
     flexDirection: 'column', justifyContent: 'space-between',
   },
-  kpiCardAccent: { position: 'absolute', top: 0, left: 0, bottom: 0, width: 4, backgroundColor: PALETTE.orange, borderTopLeftRadius: 14, borderBottomLeftRadius: 14 },
   kpiCardBody: { flex: 1, marginLeft: 6 },
-  kpiCardNama: { fontSize: 15, fontWeight: '800', color: PALETTE.textDark, marginBottom: 8, paddingRight: 30, lineHeight: 20 },
-  kpiCardTafsiran: { fontSize: 13, color: PALETTE.textMutedDark, lineHeight: 19 },
+  kpiCardHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8, paddingRight: 30 },
+  kpiCardNama: { fontSize: 16, fontWeight: '800', color: PALETTE.textDark, lineHeight: 22, flex: 1 },
+  kpiCardTafsiran: { fontSize: 14, color: PALETTE.textMutedDark, lineHeight: 21, marginBottom: 6 },
+  kpiCardPencapaian: { fontSize: 14, color: PALETTE.textDark, marginBottom: 6 },
+  kpiCardAnalisis: { fontSize: 14, color: PALETTE.textMutedDark, lineHeight: 21, fontStyle: 'italic' },
+
+  statusDot: { width: 9, height: 9, borderRadius: 5 },
+  kpiLegendRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 16, marginBottom: 16 },
+  kpiLegendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  kpiLegendText: { fontSize: 14, color: PALETTE.textMutedDark },
+  kpiLegendLabel: { fontWeight: '800', color: PALETTE.textDark },
+
+  subSeksyenRow: { flexDirection: 'row', gap: 8, marginBottom: 4 },
+  subSeksyenChip: {
+    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999,
+    borderWidth: 1.5, borderColor: PALETTE.cardLightBorder, backgroundColor: '#fafafa',
+  },
+  subSeksyenChipSelected: { borderColor: PALETTE.orange, backgroundColor: 'rgba(249, 115, 22, 0.10)' },
+  subSeksyenChipText: { fontSize: 13, fontWeight: '700', color: PALETTE.textMutedDark },
+  subSeksyenChipTextSelected: { color: PALETTE.orange },
+
+  subSeksyenBadge: {
+    alignSelf: 'flex-start', backgroundColor: PALETTE.cardLightBorder,
+    paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, marginBottom: 8,
+  },
+  subSeksyenBadgeText: { fontSize: 12, fontWeight: '800', color: PALETTE.textMutedDark, letterSpacing: 0.5 },
+
+  kpiDetailStatusRow: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 10,
+    padding: 12, borderRadius: 10, borderWidth: 1, marginBottom: 16,
+  },
+  kpiDetailStatusLabel: { fontSize: 12, fontWeight: '800', marginBottom: 2, textTransform: 'uppercase', letterSpacing: 0.5 },
+  kpiDetailStatusDesc: { fontSize: 14, color: PALETTE.textMutedDark },
+
+  kpiDetailBox: {
+    borderWidth: 1, borderColor: PALETTE.cardLightBorder, borderRadius: 12,
+    padding: 14, backgroundColor: PALETTE.surface, marginBottom: 14,
+  },
+  kpiDetailText: { fontSize: 14, color: PALETTE.textDark, lineHeight: 21, marginTop: 4 },
+  kpiDetailRow: { flexDirection: 'row', gap: 12, marginBottom: 14 },
+  kpiDetailCol: { flex: 1, marginBottom: 0 },
+  kpiDetailValue: { fontSize: 16, fontWeight: '800', color: PALETTE.textDark, marginTop: 4 },
+  kpiModalContainer: {
+    backgroundColor: PALETTE.cardLight, borderRadius: 18, overflow: 'hidden', elevation: 5,
+    width: '100%', maxWidth: 500, maxHeight: '85%', borderWidth: 1, borderColor: PALETTE.cardLightBorder,
+  },
+  kpiModalScroll: { flexGrow: 0 },
+  kpiSectionLabel: {
+    fontSize: 11, fontWeight: '800', color: PALETTE.orange, letterSpacing: 0.8,
+    marginBottom: 10, textTransform: 'uppercase',
+  },
+  kpiDivider: { height: 1, backgroundColor: PALETTE.cardLightBorder, marginVertical: 18 },
+  kpiFieldRow: { flexDirection: 'row', gap: 12 },
+  kpiFieldCol: { flex: 1 },
+
+  kpiStatusChipRow: { flexDirection: 'row', gap: 8, marginBottom: 8 },
+  kpiStatusChip: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    paddingVertical: 10, borderRadius: 10, borderWidth: 1.5, borderColor: PALETTE.cardLightBorder,
+  },
+  kpiStatusChipLabel: { fontSize: 13, fontWeight: '700', color: PALETTE.textMutedDark },
+  kpiStatusChipDesc: { fontSize: 12, color: PALETTE.textMutedDark, textAlign: 'center' },
+
+  kpiModalFooter: {
+    flexDirection: 'row', gap: 10, padding: 20,
+    borderTopWidth: 1, borderTopColor: PALETTE.cardLightBorder,
+  },
   kpiSasaranBadge: {
     alignSelf: 'flex-start', backgroundColor: 'rgba(249, 115, 22, 0.12)', paddingHorizontal: 12, paddingVertical: 5,
     borderRadius: 999, marginLeft: 6, marginTop: 12, borderWidth: 1, borderColor: 'rgba(249, 115, 22, 0.3)',
   },
-  kpiSasaranText: { fontSize: 13, fontWeight: '800', color: PALETTE.orange },
+  kpiSasaranText: { fontSize: 16, fontWeight: '800', color: PALETTE.orange },
 
   kpiPencilBtn: {
     position: 'absolute', top: 10, right: 10, zIndex: 5,
