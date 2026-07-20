@@ -1,31 +1,30 @@
 import React from 'react';
-import { View } from 'react-native';
+import { View, Text } from 'react-native';
 import { Activity, ShieldCheck } from 'lucide-react-native';
-import StatCard from '../../components/StatCard';
 import { logistikStyles as styles } from './logistikStyles';
-import { PALETTE } from '../../constants/palette';
-
-const themeForStatCard = { card: PALETTE.cardLight, text: PALETTE.textDark, textSecondary: PALETTE.textMutedDark };
 
 export default function StatsRow({ totalAssets, readinessPercent }) {
+  const readinessColor = readinessPercent === 100 ? '#22c55e' : '#f97316';
+
   return (
     <View style={styles.row}>
-      <StatCard
-        theme={themeForStatCard}
-        icon={Activity}
-        iconColor={PALETTE.blue}
-        iconBgColor={PALETTE.blueSoft}
-        value={totalAssets}
-        label="Total Aset"
-      />
-      <StatCard
-        theme={themeForStatCard}
-        icon={ShieldCheck}
-        iconColor={readinessPercent === 100 ? '#16a34a' : PALETTE.orange}
-        iconBgColor={readinessPercent === 100 ? '#f0fdf4' : PALETTE.orangeSoft}
-        value={`${readinessPercent}%`}
-        label="Siap Siaga"
-      />
+      <View style={styles.statHeroCard}>
+        <View style={styles.statHeroGlow} />
+        <View style={[styles.statHeroIconBox, { backgroundColor: 'rgba(59, 130, 246, 0.18)' }]}>
+          <Activity size={20} color="#3b82f6" />
+        </View>
+        <Text style={styles.statHeroValue}>{totalAssets}</Text>
+        <Text style={styles.statHeroLabel}>Total Aset</Text>
+      </View>
+
+      <View style={styles.statHeroCard}>
+        <View style={styles.statHeroGlow} />
+        <View style={[styles.statHeroIconBox, { backgroundColor: `${readinessColor}30` }]}>
+          <ShieldCheck size={20} color={readinessColor} />
+        </View>
+        <Text style={styles.statHeroValue}>{readinessPercent}%</Text>
+        <Text style={styles.statHeroLabel}>Siap Siaga</Text>
+      </View>
     </View>
   );
 }

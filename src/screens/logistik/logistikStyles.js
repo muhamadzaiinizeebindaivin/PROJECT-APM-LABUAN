@@ -174,4 +174,17 @@ export const logistikStyles = StyleSheet.create({
   compactAssetType: { fontSize: 12, color: PALETTE.textMutedDark, fontWeight: '600' },
   compactAssetActions: { flexDirection: 'row', gap: 4, flexShrink: 0 },
   filterRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  statHeroCard: {
+    flex: 1, borderRadius: 18, padding: 20, overflow: 'hidden', position: 'relative',
+    backgroundColor: PALETTE.ink,
+  },
+  statHeroGlow: {
+    position: 'absolute', width: 140, height: 140, borderRadius: 70,
+    backgroundColor: PALETTE.orange, opacity: 0.22, top: -50, right: -40,
+  },
+  statHeroIconBox: {
+    width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginBottom: 12,
+  },
+  statHeroValue: { fontSize: 26, fontWeight: '900', color: '#fff' },
+  statHeroLabel: { fontSize: 13, color: 'rgba(255,255,255,0.6)', fontWeight: '600', marginTop: 2 },
 });

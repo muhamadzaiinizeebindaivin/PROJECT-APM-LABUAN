@@ -2,8 +2,9 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, ActivityIndicator, Alert } from 'react-native';
 import { X, Upload, CheckCircle } from 'lucide-react-native';
 import { supabaseSandbox } from '../supabaseSandboxClient';
+import { PALETTE } from '../constants/palette';
 
-export default function ExcelImportModal({ visible, onClose, theme, importHook, onImportComplete }) {
+export default function ExcelImportModal({ visible, onClose, importHook, onImportComplete }) {
   const { parsing, parsedRows, unmatchedHeaders, pickAndParseFile, reset } = importHook;
   const [importing, setImporting] = React.useState(false);
   const [progress, setProgress] = React.useState({ done: 0, total: 0 });
@@ -35,10 +36,7 @@ export default function ExcelImportModal({ visible, onClose, theme, importHook, 
             .delete()
             .eq('employee_id', upserted.id);
 
-          const rowsToInsert = promotionHistory.map((p) => ({
-            ...p,
-            employee_id: upserted.id,
-          }));
+          const rowsToInsert = promotionHistory.map((p) => ({ ...p, employee_id: upserted.id }));
           const { error: histError } = await supabaseSandbox
             .from('angkatan_promotion_history')
             .insert(rowsToInsert);
@@ -62,26 +60,22 @@ export default function ExcelImportModal({ visible, onClose, theme, importHook, 
   return (
     <Modal visible={visible} transparent animationType="fade">
       <View style={styles.overlay}>
-        <View style={[styles.content, { backgroundColor: theme.card }]}>
+        <View style={styles.content}>
           <View style={styles.header}>
-            <Text style={[styles.title, { color: theme.text }]}>Import Excel — Senarai Anggota</Text>
+            <Text style={styles.title}>Import Excel — Senarai Anggota</Text>
             <TouchableOpacity onPress={() => { reset(); onClose(); }}>
-              <X size={22} color={theme.text} />
+              <X size={22} color={PALETTE.textMutedDark} />
             </TouchableOpacity>
           </View>
 
           {parsedRows.length === 0 ? (
-            <TouchableOpacity
-              style={[styles.pickBtn, { borderColor: theme.accent }]}
-              onPress={pickAndParseFile}
-              disabled={parsing}
-            >
+            <TouchableOpacity style={styles.pickBtn} onPress={pickAndParseFile} disabled={parsing}>
               {parsing ? (
-                <ActivityIndicator color={theme.accent} />
+                <ActivityIndicator color={PALETTE.orange} />
               ) : (
                 <>
-                  <Upload size={20} color={theme.accent} />
-                  <Text style={{ color: theme.accent, fontWeight: '700', marginLeft: 10 }}>Pilih Fail Excel</Text>
+                  <Upload size={20} color={PALETTE.orange} />
+                  <Text style={{ color: PALETTE.orange, fontWeight: '700', marginLeft: 10 }}>Pilih Fail Excel</Text>
                 </>
               )}
             </TouchableOpacity>
@@ -89,51 +83,47 @@ export default function ExcelImportModal({ visible, onClose, theme, importHook, 
             <>
               <View style={styles.summaryBanner}>
                 <CheckCircle size={16} color="#22c55e" />
-                <Text style={{ color: '#22c55e', marginLeft: 8, fontWeight: '600' }}>
+                <Text style={{ color: '#16a34a', marginLeft: 8, fontWeight: '600' }}>
                   {parsedRows.length} rekod dikesan
                 </Text>
               </View>
 
-              {unmatchedHeaders.length > 0 ? (
-                <Text style={{ color: '#f97316', fontSize: 12, marginBottom: 10 }}>
+              {unmatchedHeaders.length > 0 && (
+                <Text style={{ color: PALETTE.orange, fontSize: 12, marginBottom: 10 }}>
                   Lajur tidak dikenali (diabaikan): {unmatchedHeaders.join(', ')}
                 </Text>
-              ) : null}
+              )}
 
-              <Text style={{ color: theme.textSecondary, fontSize: 12, marginBottom: 10 }}>
-                Aperçu (5 baris pertama):
+              <Text style={{ color: PALETTE.textMutedDark, fontSize: 12, marginBottom: 10 }}>
+                Pratonton (5 baris pertama):
               </Text>
               <ScrollView style={{ maxHeight: 280 }}>
                 {parsedRows.slice(0, 5).map((row, i) => (
-                  <View key={i} style={[styles.previewRow, { borderColor: theme.border }]}>
-                    <Text style={{ color: theme.text, fontWeight: '700' }}>{row.employee.nama || '(nama tiada)'}</Text>
-                    <Text style={{ color: theme.textSecondary, fontSize: 12 }}>
+                  <View key={i} style={styles.previewRow}>
+                    <Text style={{ color: PALETTE.textDark, fontWeight: '700' }}>{row.employee.nama || '(nama tiada)'}</Text>
+                    <Text style={{ color: PALETTE.textMutedDark, fontSize: 12 }}>
                       IC: {row.employee.ic_no || '-'} | Pangkat: {row.employee.pangkat || '-'}
                     </Text>
-                    {row.promotionHistory.length > 0 ? (
-                      <Text style={{ color: theme.accent, fontSize: 11, marginTop: 4 }}>
+                    {row.promotionHistory.length > 0 && (
+                      <Text style={{ color: PALETTE.orange, fontSize: 11, marginTop: 4 }}>
                         {row.promotionHistory.length} rekod sejarah pasukan
                       </Text>
-                    ) : null}
+                    )}
                   </View>
                 ))}
               </ScrollView>
 
-              {importing ? (
-                <Text style={{ color: theme.textSecondary, fontSize: 12, marginTop: 10, textAlign: 'center' }}>
+              {importing && (
+                <Text style={{ color: PALETTE.textMutedDark, fontSize: 12, marginTop: 10, textAlign: 'center' }}>
                   Mengimport {progress.done}/{progress.total}...
                 </Text>
-              ) : null}
+              )}
 
               <View style={styles.actions}>
                 <TouchableOpacity onPress={reset} style={styles.cancelBtn} disabled={importing}>
-                  <Text style={{ color: theme.text }}>Batal</Text>
+                  <Text style={{ color: PALETTE.textDark }}>Batal</Text>
                 </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={handleConfirmImport}
-                  disabled={importing}
-                  style={[styles.confirmBtn, { backgroundColor: theme.accent }]}
-                >
+                <TouchableOpacity onPress={handleConfirmImport} disabled={importing} style={styles.confirmBtn}>
                   {importing ? <ActivityIndicator color="#fff" /> : (
                     <Text style={{ color: '#fff', fontWeight: '700' }}>Import {parsedRows.length} Rekod</Text>
                   )}
@@ -148,14 +138,20 @@ export default function ExcelImportModal({ visible, onClose, theme, importHook, 
 }
 
 const styles = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
-  content: { width: '90%', maxWidth: 600, padding: 24, borderRadius: 20, maxHeight: '85%' },
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+  content: {
+    width: '90%', maxWidth: 600, padding: 24, borderRadius: 20, maxHeight: '85%',
+    backgroundColor: PALETTE.cardLight, borderWidth: 1, borderColor: PALETTE.cardLightBorder,
+  },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  title: { fontSize: 18, fontWeight: 'bold' },
-  pickBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 30, borderWidth: 2, borderStyle: 'dashed', borderRadius: 12 },
-  summaryBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#22c55e15', padding: 10, borderRadius: 10, marginBottom: 10 },
-  previewRow: { paddingVertical: 10, borderBottomWidth: 1 },
+  title: { fontSize: 16, fontWeight: '800', color: PALETTE.textDark },
+  pickBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 30,
+    borderWidth: 2, borderStyle: 'dashed', borderRadius: 12, borderColor: PALETTE.orange,
+  },
+  summaryBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f0fdf4', padding: 10, borderRadius: 10, marginBottom: 10 },
+  previewRow: { paddingVertical: 10, borderBottomWidth: 1, borderColor: PALETTE.cardLightBorder },
   actions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10, marginTop: 20 },
-  cancelBtn: { paddingHorizontal: 20, paddingVertical: 12, borderRadius: 10 },
-  confirmBtn: { paddingHorizontal: 20, paddingVertical: 12, borderRadius: 10 },
+  cancelBtn: { paddingHorizontal: 20, paddingVertical: 12, borderRadius: 10, backgroundColor: PALETTE.surface },
+  confirmBtn: { paddingHorizontal: 20, paddingVertical: 12, borderRadius: 10, backgroundColor: PALETTE.orange },
 });
