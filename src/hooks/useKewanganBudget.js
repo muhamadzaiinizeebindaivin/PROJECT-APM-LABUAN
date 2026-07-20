@@ -73,5 +73,28 @@ export function useKewanganBudget() {
     }
   };
 
-  return { budgetData, loading, saveBudgetItem, deleteBudgetItem };
+  // Supprime TOUS les éléments d'une catégorie d'un coup — la catégorie elle-même n'est qu'un regroupement, pas une entité en base
+  const deleteCategory = (kategori) => {
+    const itemCount = budgetData.filter((item) => item.kategori === kategori).length;
+    const executeDelete = async () => {
+      try {
+        const { error } = await supabaseSandbox.schema(SCHEMA).from('kewangan_budget').delete().eq('kategori', kategori);
+        if (error) throw error;
+        await fetchBudget();
+      } catch (error) {
+        Alert.alert('Ralat', error.message);
+      }
+    };
+    const message = `Padam kategori "${kategori}" beserta ${itemCount} perkara di dalamnya? Tindakan ini tidak boleh dibatalkan.`;
+    if (Platform.OS === 'web') {
+      if (window.confirm(message)) executeDelete();
+    } else {
+      Alert.alert('Pengesahan', message, [
+        { text: 'Batal', style: 'cancel' },
+        { text: 'Padam', style: 'destructive', onPress: executeDelete },
+      ]);
+    }
+  };
+
+  return { budgetData, loading, saveBudgetItem, deleteBudgetItem, deleteCategory };
 }

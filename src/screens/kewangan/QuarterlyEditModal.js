@@ -3,8 +3,21 @@ import { View, Text, TextInput, TouchableOpacity, Modal } from 'react-native';
 import { X, Check } from 'lucide-react-native';
 import { PALETTE } from '../../constants/palette';
 import { kewanganStyles as styles } from './kewanganStyles';
+import MonthDropdown from './MonthDropdown';
+
+function buildMonthsLabel(start, end) {
+  if (start && end) return `${start} - ${end}`;
+  return start || end || '';
+}
 
 export default function QuarterlyEditModal({ visible, isNew, draft, setDraft, onSave, onClose }) {
+  const selectStartMonth = (month) => {
+    setDraft((p) => ({ ...p, bulanMula: month, months: buildMonthsLabel(month, p.bulanAkhir) }));
+  };
+  const selectEndMonth = (month) => {
+    setDraft((p) => ({ ...p, bulanAkhir: month, months: buildMonthsLabel(p.bulanMula, month) }));
+  };
+
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.modalOverlay}>
@@ -22,15 +35,19 @@ export default function QuarterlyEditModal({ visible, isNew, draft, setDraft, on
               placeholder="Cth: SUKUAN 5"
               placeholderTextColor={PALETTE.textMutedDark}
             />
-            <Text style={styles.inputLabel}>Bulan</Text>
-            <TextInput
-              style={styles.modalInput}
-              value={draft.months}
-              onChangeText={(t) => setDraft((p) => ({ ...p, months: t }))}
-              placeholder="Cth: JAN - MAC"
-              placeholderTextColor={PALETTE.textMutedDark}
-            />
-            <Text style={styles.inputLabel}>Jumlah Belanja Kumulatif (RM)</Text>
+
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.inputLabel}>Bulan Mula</Text>
+                <MonthDropdown value={draft.bulanMula} onSelect={selectStartMonth} placeholder="Pilih bulan" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.inputLabel}>Bulan Akhir</Text>
+                <MonthDropdown value={draft.bulanAkhir} onSelect={selectEndMonth} placeholder="Pilih bulan" />
+              </View>
+            </View>
+
+            <Text style={[styles.inputLabel, { marginTop: 14 }]}>Jumlah Belanja Kumulatif (RM)</Text>
             <TextInput
               style={styles.modalInput}
               value={draft.spend}
@@ -39,6 +56,7 @@ export default function QuarterlyEditModal({ visible, isNew, draft, setDraft, on
               keyboardType="numeric"
               placeholderTextColor={PALETTE.textMutedDark}
             />
+
             <TouchableOpacity style={[styles.saveButton, { flexDirection: 'row', justifyContent: 'center', gap: 8 }]} onPress={onSave}>
               <Check size={16} color="#fff" />
               <Text style={styles.saveButtonText}>Simpan</Text>

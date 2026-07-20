@@ -2,9 +2,15 @@ import { useState, useEffect, useCallback } from 'react';
 import { Alert, Platform } from 'react-native';
 import { supabaseSandbox } from '../supabaseSandboxClient';
 import { parseCurrency } from '../utils/currency';
+import { BULAN_MS } from '../constants/bulan';
 
-// TEMPORAIRE : pointe vers "sandbox" pour tester avant de migrer vers "public".
 const SCHEMA = 'sandbox';
+
+// Déduit l'ordre chronologique à partir du mois de début (ex. "Januari" → 0, "April" → 3)
+const monthOrderFromLabel = (bulanMula) => {
+  const index = BULAN_MS.findIndex((m) => m === bulanMula);
+  return index >= 0 ? index : 999; // 999 = mois inconnu/non renseigné, relégué à la fin
+};
 
 export function useKewanganQuarterly(totalAllocation) {
   const [dataList, setDataList] = useState([]);
@@ -17,7 +23,7 @@ export function useKewanganQuarterly(totalAllocation) {
         .schema(SCHEMA)
         .from('kewangan_breakdown')
         .select('*')
-        .order('id', { ascending: true });
+        .order('display_order', { ascending: true }); // ordre chronologique explicite, pas l'ordre d'insertion
       if (error) throw error;
       if (data) setDataList(data);
     } catch (error) {
@@ -44,7 +50,13 @@ export function useKewanganQuarterly(totalAllocation) {
   });
 
   const saveQuarterlyItem = async (draft, editItem) => {
-    const payload = { q: draft.q, months: draft.months, spend: draft.spend, color: '#3b82f6' };
+    const payload = {
+      q: draft.q,
+      months: draft.months,
+      spend: draft.spend,
+      color: '#3b82f6',
+      display_order: monthOrderFromLabel(draft.bulanMula),
+    };
     try {
       if (editItem) {
         const { error } = await supabaseSandbox.schema(SCHEMA).from('kewangan_breakdown').update(payload).eq('id', editItem.id);

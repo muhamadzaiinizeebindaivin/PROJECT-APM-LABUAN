@@ -38,7 +38,7 @@ export const kewanganStyles = StyleSheet.create({
     width: 32, height: 32, borderRadius: 10,
     backgroundColor: 'rgba(249, 115, 22, 0.12)', justifyContent: 'center', alignItems: 'center',
   },
-  sectionTitle: { fontSize: 12, fontWeight: '800', letterSpacing: 0.6, color: PALETTE.orange, textTransform: 'uppercase', flex: 1 },
+  sectionTitle: { fontSize: 12, fontWeight: '800', letterSpacing: 0.6, color: PALETTE.orange, textTransform: 'uppercase' },
 
   addBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
@@ -91,7 +91,13 @@ export const kewanganStyles = StyleSheet.create({
   budgetStatLabel: { fontSize: 10.5, color: PALETTE.textMutedDark, marginBottom: 2 },
   budgetStatValue: { fontSize: 12.5, fontWeight: '700', color: PALETTE.textDark },
 
-  quarterCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
+  quarterCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 },
+  quarterHeaderRight: { alignItems: 'flex-end', gap: 8 },
+  quarterHeaderActions: { flexDirection: 'row', gap: 6 },
+
+  quarterDetailBlock: {
+    marginTop: 20, paddingTop: 20, borderTopWidth: 1, borderTopColor: PALETTE.cardLightBorder,
+  },
   quarterTitle: { fontSize: 16, fontWeight: '800', color: PALETTE.textDark },
   quarterMonths: { fontSize: 12, color: PALETTE.textMutedDark },
   statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
@@ -113,7 +119,7 @@ export const kewanganStyles = StyleSheet.create({
   deleteButtonText: { color: '#dc2626', fontSize: 12, fontWeight: '700' },
 
   footer: { marginTop: 8, alignItems: 'center' },
-  footerText: { fontSize: 11, color: PALETTE.textMutedDark, fontStyle: 'italic' },
+  footerText: { fontSize: 11, color: PALETTE.textMutedDark, fontStyle: 'italic', textAlign: 'center', lineHeight: 17 },
 
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 },
   modalContainer: {
@@ -151,7 +157,12 @@ export const kewanganStyles = StyleSheet.create({
   categoryCard: {
     paddingVertical: 16, paddingHorizontal: 14, borderRadius: 14,
     backgroundColor: PALETTE.surface, borderWidth: 1.5, borderColor: PALETTE.cardLightBorder,
-    justifyContent: 'center', alignItems: 'center',
+    justifyContent: 'center', alignItems: 'center', position: 'relative',
+  },
+  categoryDeleteBtn: {
+    position: 'absolute', top: 6, right: 6, zIndex: 5,
+    width: 22, height: 22, borderRadius: 6,
+    backgroundColor: 'rgba(255,255,255,0.7)', justifyContent: 'center', alignItems: 'center',
   },
   categoryCardCompact: { width: 170 },
   categoryCardSelected: { borderColor: PALETTE.orange, backgroundColor: 'rgba(249, 115, 22, 0.08)' },
@@ -210,4 +221,49 @@ export const kewanganStyles = StyleSheet.create({
   categoryChipSelected: { borderColor: PALETTE.orange, backgroundColor: 'rgba(249, 115, 22, 0.10)' },
   categoryChipText: { fontSize: 12.5, fontWeight: '700', color: PALETTE.textMutedDark },
   categoryChipTextSelected: { color: PALETTE.orange },
+  inputHint: { fontSize: 11, color: PALETTE.textMutedDark, marginTop: -8, marginBottom: 14, lineHeight: 16 },
+  quarterDot: { width: 8, height: 8, borderRadius: 4, marginTop: 4 },
+  monthDropdownTrigger: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    borderWidth: 1, borderColor: PALETTE.cardLightBorder, borderRadius: 10,
+    padding: 12, backgroundColor: '#fafafa',
+  },
+  monthDropdownText: { fontSize: 14, color: PALETTE.textDark, fontWeight: '600' },
+  monthDropdownPlaceholder: { color: PALETTE.textMutedDark, fontWeight: '400' },
+
+  monthDropdownOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+  monthDropdownPanel: {
+    backgroundColor: PALETTE.cardLight, borderRadius: 16, width: '100%', maxWidth: 320,
+    maxHeight: 380, overflow: 'hidden', borderWidth: 1, borderColor: PALETTE.cardLightBorder,
+  },
+  monthDropdownOption: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingVertical: 13, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: PALETTE.cardLightBorder,
+  },
+  monthDropdownOptionSelected: { backgroundColor: 'rgba(249, 115, 22, 0.06)' },
+  monthDropdownOptionText: { fontSize: 14, color: PALETTE.textDark, fontWeight: '600' },
+  monthDropdownOptionTextSelected: { color: PALETTE.orange },
+  budgetPaginationRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 16, marginTop: 16,
+  },
+  budgetPageBtn: {
+    width: 32, height: 32, borderRadius: 10,
+    backgroundColor: 'rgba(249, 115, 22, 0.10)',
+    justifyContent: 'center', alignItems: 'center',
+  },
+  budgetPageBtnDisabled: { backgroundColor: PALETTE.surface },
+  budgetPageBtnText: { fontSize: 18, fontWeight: '800', color: PALETTE.orange, lineHeight: 20 },
+  budgetPageBtnTextDisabled: { color: PALETTE.textMutedDark },
+  budgetPageIndicator: { fontSize: 13, fontWeight: '700', color: PALETTE.textDark },
+  helpSectionTitle: { fontSize: 13, fontWeight: '800', color: PALETTE.orange, marginTop: 16, marginBottom: 6 },
+  helpText: { fontSize: 13, color: PALETTE.textDark, lineHeight: 20 },
+
+  quarterHelpBtn: {
+    width: 26, height: 26, borderRadius: 13,
+    backgroundColor: 'rgba(249, 115, 22, 0.12)',
+    justifyContent: 'center', alignItems: 'center',
+    position: 'relative',
+  },
+  quarterHelpBtnText: { fontSize: 13, fontWeight: '800', color: PALETTE.orange },
 });

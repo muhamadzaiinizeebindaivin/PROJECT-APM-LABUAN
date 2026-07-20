@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, Animated, PanResponder, ScrollView } from 'react-native';
-import { Wallet, Pencil, Trash2 } from 'lucide-react-native';
+import { Wallet, Pencil, Trash2, FolderOpen } from 'lucide-react-native';
 import { PALETTE } from '../../constants/palette';
 import { formatCurrency, parseCurrency } from '../../utils/currency';
 import { kewanganStyles as styles } from './kewanganStyles';
@@ -14,12 +14,15 @@ const PX_PER_SECOND = 35;
 const SCROLLBAR_TRACK_WIDTH = 160;
 const MIN_THUMB_WIDTH = 28;
 
-export default function BudgetSection({ budgetData, loading, isEditMode, saveBudgetItem, deleteBudgetItem }) {
+const ITEMS_PER_PAGE = 5;
+
+export default function BudgetSection({ budgetData, loading, isEditMode, saveBudgetItem, deleteBudgetItem, deleteCategory }) {
   const [modalVisible, setModalVisible] = useState(false);
   const [editItem, setEditItem] = useState(null);
   const [kategori, setKategori] = useState('');
-  const [rows, setRows] = useState([EMPTY_ROW]);
+  const [rows, setRows] = useState([{ ...EMPTY_ROW }]);
   const [selectedCategory, setSelectedCategory] = useState(null);
+  const [page, setPage] = useState(0);
 
   const totalAgihan = budgetData.reduce((sum, item) => sum + parseCurrency(item.agihan), 0);
   const totalBelanja = budgetData.reduce((sum, item) => sum + parseCurrency(item.belanja), 0);
@@ -46,6 +49,13 @@ export default function BudgetSection({ budgetData, loading, isEditMode, saveBud
       setSelectedCategory(existingCategories[0] || null);
     }
   }, [existingCategories, selectedCategory]);
+
+  // Revient à la page 1 à chaque changement de catégorie sélectionnée
+  useEffect(() => { setPage(0); }, [selectedCategory]);
+
+  const categoryItems = selectedCategory ? (grouped[selectedCategory] || []) : [];
+  const totalPages = Math.max(1, Math.ceil(categoryItems.length / ITEMS_PER_PAGE));
+  const pageItems = categoryItems.slice(page * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE + ITEMS_PER_PAGE);
 
   // ── Carrousel horizontal auto-scroll (va-et-vient) ──
   const scrollRef = useRef(null);
@@ -204,6 +214,8 @@ export default function BudgetSection({ budgetData, loading, isEditMode, saveBud
             </TouchableOpacity>
           )}
 
+          <SectionHeader title="KATEGORI PERBELANJAAN" Icon={FolderOpen} />
+
           <View
             style={styles.categoryCarouselViewport}
             onLayout={(e) => {
@@ -231,6 +243,14 @@ export default function BudgetSection({ budgetData, loading, isEditMode, saveBud
                     style={[styles.categoryCard, styles.categoryCardCompact, selected && styles.categoryCardSelected]}
                     onPress={() => setSelectedCategory(kat)}
                   >
+                    {isEditMode && (
+                      <TouchableOpacity
+                        style={styles.categoryDeleteBtn}
+                        onPress={() => deleteCategory(kat)}
+                      >
+                        <Trash2 size={13} color={PALETTE.orange} />
+                      </TouchableOpacity>
+                    )}
                     <Text style={[styles.categoryCardText, selected && styles.categoryCardTextSelected]}>{kat}</Text>
                   </TouchableOpacity>
                 );
@@ -263,25 +283,9 @@ export default function BudgetSection({ budgetData, loading, isEditMode, saveBud
             </View>
           )}
 
-          {selectedCategory && (
+{selectedCategory && (
             <View>
-              <Text style={styles.categorySummaryTitle}>RINGKASAN {selectedCategory}</Text>
-              <View style={styles.categorySummaryRow}>
-                <View style={styles.categorySummaryCard}>
-                  <Text style={styles.categorySummaryLabel}>Agihan</Text>
-                  <Text style={[styles.categorySummaryValue, { color: PALETTE.blue }]}>RM {formatCurrency(categoryTotals[selectedCategory]?.agihan || 0)}</Text>
-                </View>
-                <View style={styles.categorySummaryCard}>
-                  <Text style={styles.categorySummaryLabel}>Belanja</Text>
-                  <Text style={[styles.categorySummaryValue, { color: PALETTE.orange }]}>RM {formatCurrency(categoryTotals[selectedCategory]?.belanja || 0)}</Text>
-                </View>
-                <View style={styles.categorySummaryCard}>
-                  <Text style={styles.categorySummaryLabel}>Baki</Text>
-                  <Text style={[styles.categorySummaryValue, { color: '#16a34a' }]}>RM {formatCurrency(categoryTotals[selectedCategory]?.baki || 0)}</Text>
-                </View>
-              </View>
-
-              {(grouped[selectedCategory] || []).map((item, index) => {
+              {pageItems.map((item, index) => {
                 const agihan = parseCurrency(item.agihan);
                 const belanja = parseCurrency(item.belanja);
                 const itemBaki = agihan - belanja;
@@ -317,6 +321,28 @@ export default function BudgetSection({ budgetData, loading, isEditMode, saveBud
                   </View>
                 );
               })}
+
+              {totalPages > 1 && (
+                <View style={styles.budgetPaginationRow}>
+                  <TouchableOpacity
+                    style={[styles.budgetPageBtn, page === 0 && styles.budgetPageBtnDisabled]}
+                    onPress={() => setPage((p) => Math.max(0, p - 1))}
+                    disabled={page === 0}
+                  >
+                    <Text style={[styles.budgetPageBtnText, page === 0 && styles.budgetPageBtnTextDisabled]}>‹</Text>
+                  </TouchableOpacity>
+
+                  <Text style={styles.budgetPageIndicator}>{page + 1} / {totalPages}</Text>
+
+                  <TouchableOpacity
+                    style={[styles.budgetPageBtn, page === totalPages - 1 && styles.budgetPageBtnDisabled]}
+                    onPress={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                    disabled={page === totalPages - 1}
+                  >
+                    <Text style={[styles.budgetPageBtnText, page === totalPages - 1 && styles.budgetPageBtnTextDisabled]}>›</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
             </View>
           )}
         </View>

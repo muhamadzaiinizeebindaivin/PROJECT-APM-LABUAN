@@ -40,6 +40,7 @@ export default function KewanganScreen({ userRole }) {
           isEditMode={isEditMode}
           saveBudgetItem={budget.saveBudgetItem}
           deleteBudgetItem={budget.deleteBudgetItem}
+          deleteCategory={budget.deleteCategory}
         />
 
         <QuarterlySection
