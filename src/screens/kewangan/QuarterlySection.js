@@ -40,9 +40,10 @@ export default function QuarterlySection({ processedData, loading, isEditMode, s
   const lastFrameTimeRef = useRef(null);
   const scrollX = useRef(new Animated.Value(0)).current;
   const directionRef = useRef(1);
+  const [hovered, setHovered] = useState(false);
 
   const contentWidth = Math.max(1, processedData.length * (CARD_WIDTH + CARD_GAP) - CARD_GAP);
-  const active = processedData.length > 1 && !modalVisible;
+  const active = processedData.length > 1 && !modalVisible && !hovered;
 
   const stopAutoScroll = useCallback(() => {
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
@@ -124,6 +125,23 @@ export default function QuarterlySection({ processedData, loading, isEditMode, s
     setTimeout(resumeAfterInteraction, 300);
   };
 
+  const dragStartScrollXContentRef = useRef(0);
+  const contentPanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (evt, gestureState) => Math.abs(gestureState.dx) > 3,
+      onPanResponderGrant: () => { pauseForInteraction(); dragStartScrollXContentRef.current = scrollXRef.current; },
+      onPanResponderMove: (evt, gestureState) => {
+        const x = Math.max(0, Math.min(maxScroll, dragStartScrollXContentRef.current - gestureState.dx));
+        scrollRef.current?.scrollTo({ x, animated: false });
+        scrollXRef.current = x;
+        scrollX.setValue(x);
+      },
+      onPanResponderRelease: () => resumeAfterInteraction(),
+      onPanResponderTerminate: () => resumeAfterInteraction(),
+    })
+  ).current;
+
   const openAdd = () => {
     setEditItem(null);
     setDraft(EMPTY_DRAFT);
@@ -181,16 +199,17 @@ export default function QuarterlySection({ processedData, loading, isEditMode, s
                 viewportWidthRef.current = w;
                 setViewportWidth(w);
               }}
+              onMouseEnter={() => setHovered(true)}
+              onMouseLeave={() => setHovered(false)}
+              {...contentPanResponder.panHandlers}
             >
               <ScrollView
                 ref={scrollRef}
                 horizontal
                 showsHorizontalScrollIndicator={false}
                 scrollEventThrottle={16}
+                scrollEnabled={false}
                 onScroll={handleNativeScroll}
-                onScrollBeginDrag={pauseForInteraction}
-                onScrollEndDrag={() => setTimeout(resumeAfterInteraction, 400)}
-                onMomentumScrollEnd={() => setTimeout(resumeAfterInteraction, 200)}
                 contentContainerStyle={styles.categoryCarouselTrack}
               >
                 {processedData.map((item) => {

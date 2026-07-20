@@ -15,7 +15,7 @@ export const kewanganStyles = StyleSheet.create({
     backgroundColor: PALETTE.orange, opacity: 0.25, top: -110, right: -80,
   },
   heroKicker: { color: PALETTE.orange, fontSize: 12, fontWeight: '800', letterSpacing: 1.5, marginBottom: 8 },
-  heroYear: { fontSize: 20, color: '#fff', fontWeight: '900', marginBottom: 16 },
+  heroYear: { fontSize: 22, color: '#fff', fontWeight: '900', marginBottom: 16 },
   heroTotalBox: { backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 14, padding: 14 },
   heroTotalLabel: { color: 'rgba(255,255,255,0.6)', fontSize: 12, marginBottom: 4, fontWeight: '600' },
   heroTotalAmount: { color: '#fff', fontSize: 22, fontWeight: '900', fontFamily: 'monospace' },
@@ -23,7 +23,7 @@ export const kewanganStyles = StyleSheet.create({
     flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8,
     marginTop: 16, backgroundColor: 'rgba(255,255,255,0.12)', paddingVertical: 11, borderRadius: 12,
   },
-  heroEditBtnText: { color: '#fff', fontSize: 13, fontWeight: '700' },
+  heroEditBtnText: { color: '#fff', fontSize: 12, fontWeight: '700' },
 
   // Cartes standard (mêmes conventions que Pentadbiran)
   card: {
@@ -47,7 +47,7 @@ export const kewanganStyles = StyleSheet.create({
   addBtnText: { color: '#fff', fontWeight: '700', fontSize: 12 },
 
   unitBox: { backgroundColor: PALETTE.surface, padding: 14, borderRadius: 14 },
-  boxTitle: { fontWeight: '800', marginBottom: 8, color: PALETTE.textMutedDark, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 },
+  boxTitle: { fontWeight: '800', marginBottom: 8, color: PALETTE.textMutedDark, fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.5 },
   listItem: { fontSize: 14, color: PALETTE.textDark },
 
   staffCard: {
@@ -60,8 +60,8 @@ export const kewanganStyles = StyleSheet.create({
     backgroundColor: 'rgba(249, 115, 22, 0.14)',
     justifyContent: 'center', alignItems: 'center',
   },
-  staffAvatarText: { fontSize: 13, fontWeight: '800', color: PALETTE.orange },
-  staffName: { fontSize: 13.5, fontWeight: '700', color: PALETTE.textDark, marginBottom: 2 },
+  staffAvatarText: { fontSize: 12, fontWeight: '800', color: PALETTE.orange },
+  staffName: { fontSize: 14, fontWeight: '700', color: PALETTE.textDark, marginBottom: 2 },
   staffRole: { fontSize: 12, color: PALETTE.textMutedDark },
 
   kpiRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
@@ -69,7 +69,7 @@ export const kewanganStyles = StyleSheet.create({
     flex: 1, backgroundColor: PALETTE.surface, padding: 14, borderRadius: 14,
     borderWidth: 1, borderColor: PALETTE.cardLightBorder, alignItems: 'center',
   },
-  kpiTitle: { fontSize: 10.5, color: PALETTE.textMutedDark, fontWeight: '700', marginBottom: 4, textAlign: 'center' },
+  kpiTitle: { fontSize: 12, color: PALETTE.textMutedDark, fontWeight: '700', marginBottom: 4, textAlign: 'center' },
   kpiValue: { fontSize: 14, fontWeight: '800' },
 
   kategoriHeader: {
@@ -88,8 +88,8 @@ export const kewanganStyles = StyleSheet.create({
   },
   budgetNumbersRow: { flexDirection: 'row', justifyContent: 'space-between', backgroundColor: PALETTE.softOrangeBg, padding: 10, borderRadius: 10 },
   budgetStat: { flex: 1, alignItems: 'center' },
-  budgetStatLabel: { fontSize: 10.5, color: PALETTE.textMutedDark, marginBottom: 2 },
-  budgetStatValue: { fontSize: 12.5, fontWeight: '700', color: PALETTE.textDark },
+  budgetStatLabel: { fontSize: 12, color: PALETTE.textMutedDark, marginBottom: 2 },
+  budgetStatValue: { fontSize: 12, fontWeight: '700', color: PALETTE.textDark },
 
   quarterCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 },
   quarterHeaderRight: { alignItems: 'flex-end', gap: 8 },
@@ -101,16 +101,16 @@ export const kewanganStyles = StyleSheet.create({
   quarterTitle: { fontSize: 16, fontWeight: '800', color: PALETTE.textDark },
   quarterMonths: { fontSize: 12, color: PALETTE.textMutedDark },
   statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
-  statusText: { fontSize: 10, fontWeight: '800', textTransform: 'uppercase' },
+  statusText: { fontSize: 12, fontWeight: '800', textTransform: 'uppercase' },
 
   statsRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
-  statsLabel: { fontSize: 11, color: PALETTE.textMutedDark, marginBottom: 2 },
+  statsLabel: { fontSize: 12, color: PALETTE.textMutedDark, marginBottom: 2 },
   statsValue: { fontSize: 14, fontWeight: '700', color: PALETTE.textDark },
 
   progressContainer: { height: 12, backgroundColor: PALETTE.surface, borderRadius: 6, overflow: 'hidden', position: 'relative' },
   progressBar: { height: '100%', borderRadius: 6 },
   limitLine: { position: 'absolute', right: 0, top: 0, bottom: 0, width: 2, backgroundColor: 'rgba(0,0,0,0.1)' },
-  limitLabel: { fontSize: 10, color: PALETTE.textMutedDark, textAlign: 'right', marginTop: 4 },
+  limitLabel: { fontSize: 12, color: PALETTE.textMutedDark, textAlign: 'right', marginTop: 4 },
 
   actionRow: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 16, borderTopWidth: 1, borderTopColor: PALETTE.cardLightBorder, paddingTop: 12 },
   editButton: { backgroundColor: PALETTE.orange, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10 },
@@ -119,7 +119,7 @@ export const kewanganStyles = StyleSheet.create({
   deleteButtonText: { color: '#dc2626', fontSize: 12, fontWeight: '700' },
 
   footer: { marginTop: 8, alignItems: 'center' },
-  footerText: { fontSize: 11, color: PALETTE.textMutedDark, fontStyle: 'italic', textAlign: 'center', lineHeight: 17 },
+  footerText: { fontSize: 12, color: PALETTE.textMutedDark, fontStyle: 'italic', textAlign: 'center', lineHeight: 17 },
 
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 },
   modalContainer: {
@@ -151,7 +151,7 @@ export const kewanganStyles = StyleSheet.create({
     position: 'absolute', top: -30, right: 0, zIndex: 10,
     backgroundColor: PALETTE.textDark, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6,
   },
-  kpiTooltipText: { color: '#fff', fontSize: 11, fontWeight: '700' },
+  kpiTooltipText: { color: '#fff', fontSize: 12, fontWeight: '700' },
   categoryCarouselViewport: { overflow: 'hidden', width: '100%', borderRadius: 14, marginBottom: 12 },
   categoryCarouselTrack: { flexDirection: 'row', gap: 10, paddingVertical: 4 },
   categoryCard: {
@@ -166,11 +166,11 @@ export const kewanganStyles = StyleSheet.create({
   },
   categoryCardCompact: { width: 170 },
   categoryCardSelected: { borderColor: PALETTE.orange, backgroundColor: 'rgba(249, 115, 22, 0.08)' },
-  categoryCardText: { fontSize: 13, fontWeight: '800', color: PALETTE.textMutedDark, textAlign: 'center' },
+  categoryCardText: { fontSize: 14, fontWeight: '800', color: PALETTE.textMutedDark, textAlign: 'center' },
   categoryCardTextSelected: { color: PALETTE.orange },
 
   categorySummaryTitle: {
-    fontSize: 11, fontWeight: '800', color: PALETTE.textMutedDark,
+    fontSize: 12, fontWeight: '800', color: PALETTE.textMutedDark,
     textTransform: 'uppercase', letterSpacing: 0.5,
     marginTop: 18, marginBottom: 10,
   },
@@ -180,7 +180,7 @@ export const kewanganStyles = StyleSheet.create({
     borderRadius: 14, backgroundColor: PALETTE.surface,
     borderWidth: 1, borderColor: PALETTE.cardLightBorder,
   },
-  categorySummaryLabel: { fontSize: 10.5, color: PALETTE.textMutedDark, marginBottom: 4, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.3 },
+  categorySummaryLabel: { fontSize: 12, color: PALETTE.textMutedDark, marginBottom: 4, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.3 },
   categorySummaryValue: { fontSize: 14, fontWeight: '800' },
 
   multiRowBlock: {
@@ -188,7 +188,7 @@ export const kewanganStyles = StyleSheet.create({
     padding: 12, marginBottom: 12, backgroundColor: PALETTE.surface,
   },
   multiRowHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  multiRowIndex: { fontSize: 11, fontWeight: '800', color: PALETTE.orange, textTransform: 'uppercase' },
+  multiRowIndex: { fontSize: 12, fontWeight: '800', color: PALETTE.orange, textTransform: 'uppercase' },
   multiRowDeleteBtn: {
     width: 24, height: 24, borderRadius: 7,
     backgroundColor: 'rgba(220, 38, 38, 0.10)', justifyContent: 'center', alignItems: 'center',
@@ -198,7 +198,7 @@ export const kewanganStyles = StyleSheet.create({
     borderWidth: 1.5, borderColor: PALETTE.cardLightBorder, borderStyle: 'dashed',
     borderRadius: 10, paddingVertical: 10, marginBottom: 16,
   },
-  addRowBtnText: { color: PALETTE.orange, fontWeight: '700', fontSize: 12.5 },
+  addRowBtnText: { color: PALETTE.orange, fontWeight: '700', fontSize: 12 },
 
   categoryScrollTrack: {
     width: 160, height: 4, borderRadius: 2, backgroundColor: PALETTE.cardLightBorder,
@@ -219,9 +219,9 @@ export const kewanganStyles = StyleSheet.create({
   },
   categoryChipNew: { flexDirection: 'row', alignItems: 'center', gap: 5, borderStyle: 'dashed' },
   categoryChipSelected: { borderColor: PALETTE.orange, backgroundColor: 'rgba(249, 115, 22, 0.10)' },
-  categoryChipText: { fontSize: 12.5, fontWeight: '700', color: PALETTE.textMutedDark },
+  categoryChipText: { fontSize: 12, fontWeight: '700', color: PALETTE.textMutedDark },
   categoryChipTextSelected: { color: PALETTE.orange },
-  inputHint: { fontSize: 11, color: PALETTE.textMutedDark, marginTop: -8, marginBottom: 14, lineHeight: 16 },
+  inputHint: { fontSize: 12, color: PALETTE.textMutedDark, marginTop: -8, marginBottom: 14, lineHeight: 16 },
   quarterDot: { width: 8, height: 8, borderRadius: 4, marginTop: 4 },
   monthDropdownTrigger: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
@@ -255,9 +255,9 @@ export const kewanganStyles = StyleSheet.create({
   budgetPageBtnDisabled: { backgroundColor: PALETTE.surface },
   budgetPageBtnText: { fontSize: 18, fontWeight: '800', color: PALETTE.orange, lineHeight: 20 },
   budgetPageBtnTextDisabled: { color: PALETTE.textMutedDark },
-  budgetPageIndicator: { fontSize: 13, fontWeight: '700', color: PALETTE.textDark },
-  helpSectionTitle: { fontSize: 13, fontWeight: '800', color: PALETTE.orange, marginTop: 16, marginBottom: 6 },
-  helpText: { fontSize: 13, color: PALETTE.textDark, lineHeight: 20 },
+  budgetPageIndicator: { fontSize: 12, fontWeight: '700', color: PALETTE.textDark },
+  helpSectionTitle: { fontSize: 14, fontWeight: '800', color: PALETTE.orange, marginTop: 16, marginBottom: 6 },
+  helpText: { fontSize: 14, color: PALETTE.textDark, lineHeight: 20 },
 
   quarterHelpBtn: {
     width: 26, height: 26, borderRadius: 13,
@@ -265,7 +265,7 @@ export const kewanganStyles = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center',
     position: 'relative',
   },
-  quarterHelpBtnText: { fontSize: 13, fontWeight: '800', color: PALETTE.orange },
+  quarterHelpBtnText: { fontSize: 12, fontWeight: '800', color: PALETTE.orange },
   staffReorderGroup: { gap: 2 },
   staffReorderBtn: {
     width: 20, height: 16, borderRadius: 4,

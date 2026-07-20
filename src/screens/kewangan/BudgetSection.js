@@ -13,7 +13,6 @@ const CARD_GAP = 10;
 const PX_PER_SECOND = 35;
 const SCROLLBAR_TRACK_WIDTH = 160;
 const MIN_THUMB_WIDTH = 28;
-
 const ITEMS_PER_PAGE = 5;
 
 export default function BudgetSection({ budgetData, loading, isEditMode, saveBudgetItem, deleteBudgetItem, deleteCategory }) {
@@ -50,7 +49,6 @@ export default function BudgetSection({ budgetData, loading, isEditMode, saveBud
     }
   }, [existingCategories, selectedCategory]);
 
-  // Revient à la page 1 à chaque changement de catégorie sélectionnée
   useEffect(() => { setPage(0); }, [selectedCategory]);
 
   const categoryItems = selectedCategory ? (grouped[selectedCategory] || []) : [];
@@ -66,9 +64,10 @@ export default function BudgetSection({ budgetData, loading, isEditMode, saveBud
   const lastFrameTimeRef = useRef(null);
   const scrollX = useRef(new Animated.Value(0)).current;
   const directionRef = useRef(1);
+  const [hovered, setHovered] = useState(false);
 
   const contentWidth = Math.max(1, existingCategories.length * (CARD_WIDTH + CARD_GAP) - CARD_GAP);
-  const active = existingCategories.length > 1 && !modalVisible;
+  const active = existingCategories.length > 1 && !modalVisible && !hovered;
 
   const stopAutoScroll = useCallback(() => {
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
@@ -150,7 +149,23 @@ export default function BudgetSection({ budgetData, loading, isEditMode, saveBud
     setTimeout(resumeAfterInteraction, 300);
   };
 
-  // ── CRUD modal ──
+  const dragStartScrollXContentRef = useRef(0);
+  const contentPanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (evt, gestureState) => Math.abs(gestureState.dx) > 3,
+      onPanResponderGrant: () => { pauseForInteraction(); dragStartScrollXContentRef.current = scrollXRef.current; },
+      onPanResponderMove: (evt, gestureState) => {
+        const x = Math.max(0, Math.min(maxScroll, dragStartScrollXContentRef.current - gestureState.dx));
+        scrollRef.current?.scrollTo({ x, animated: false });
+        scrollXRef.current = x;
+        scrollX.setValue(x);
+      },
+      onPanResponderRelease: () => resumeAfterInteraction(),
+      onPanResponderTerminate: () => resumeAfterInteraction(),
+    })
+  ).current;
+
   const openAdd = () => {
     setEditItem(null);
     setKategori(selectedCategory || '');
@@ -169,11 +184,9 @@ export default function BudgetSection({ budgetData, loading, isEditMode, saveBud
     if (validRows.length === 0) return;
 
     if (editItem) {
-      // Édition : une seule ligne
       const ok = await saveBudgetItem({ kategori, ...validRows[0] }, editItem);
       if (ok) { setSelectedCategory(kategori); setModalVisible(false); }
     } else {
-      // Ajout : sauvegarde chaque ligne l'une après l'autre
       let allOk = true;
       for (const row of validRows) {
         const ok = await saveBudgetItem({ kategori, ...row }, null);
@@ -223,16 +236,17 @@ export default function BudgetSection({ budgetData, loading, isEditMode, saveBud
               viewportWidthRef.current = w;
               setViewportWidth(w);
             }}
+            onMouseEnter={() => setHovered(true)}
+            onMouseLeave={() => setHovered(false)}
+            {...contentPanResponder.panHandlers}
           >
             <ScrollView
               ref={scrollRef}
               horizontal
               showsHorizontalScrollIndicator={false}
               scrollEventThrottle={16}
+              scrollEnabled={false}
               onScroll={handleNativeScroll}
-              onScrollBeginDrag={pauseForInteraction}
-              onScrollEndDrag={() => setTimeout(resumeAfterInteraction, 400)}
-              onMomentumScrollEnd={() => setTimeout(resumeAfterInteraction, 200)}
               contentContainerStyle={styles.categoryCarouselTrack}
             >
               {existingCategories.map((kat) => {
@@ -283,7 +297,7 @@ export default function BudgetSection({ budgetData, loading, isEditMode, saveBud
             </View>
           )}
 
-{selectedCategory && (
+          {selectedCategory && (
             <View>
               {pageItems.map((item, index) => {
                 const agihan = parseCurrency(item.agihan);

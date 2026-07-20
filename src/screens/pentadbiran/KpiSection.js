@@ -25,6 +25,7 @@ export default function KpiSection({ kpiItems, isEditing, updateKpiItem, addKpiI
   const [modalIndex, setModalIndex] = useState(null); // null = fermé, -1 = ajout, >=0 = édition
   const [draft, setDraft] = useState(EMPTY_DRAFT);
   const [detailIndex, setDetailIndex] = useState(null); // index de la carte consultée en lecture seule
+  const [hovered, setHovered] = useState(false);
 
   const scrollRef = useRef(null);
   const scrollXRef = useRef(0);
@@ -38,7 +39,7 @@ export default function KpiSection({ kpiItems, isEditing, updateKpiItem, addKpiI
   const directionRef = useRef(1); // 1 = vers la droite, -1 = vers la gauche
 
   const contentWidth = Math.max(1, kpiItems.length * (CARD_WIDTH + CARD_GAP) - CARD_GAP);
-  const active = kpiItems.length > 0 && !isEditing && modalIndex === null;
+  const active = kpiItems.length > 0 && !isEditing && modalIndex === null && detailIndex === null && !hovered;
 
   // ── Auto-scroll fluide via requestAnimationFrame, va-et-vient (ping-pong), pause pendant toute interaction ──
   const stopAutoScroll = useCallback(() => {
@@ -145,6 +146,23 @@ export default function KpiSection({ kpiItems, isEditing, updateKpiItem, addKpiI
     setTimeout(resumeAfterInteraction, 300);
   };
 
+  const dragStartScrollXContentRef = useRef(0);
+  const contentPanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (evt, gestureState) => Math.abs(gestureState.dx) > 3,
+      onPanResponderGrant: () => { pauseForInteraction(); dragStartScrollXContentRef.current = scrollXRef.current; },
+      onPanResponderMove: (evt, gestureState) => {
+        const x = Math.max(0, Math.min(maxScroll, dragStartScrollXContentRef.current - gestureState.dx));
+        scrollRef.current?.scrollTo({ x, animated: false });
+        scrollXRef.current = x;
+        scrollX.setValue(x);
+      },
+      onPanResponderRelease: () => resumeAfterInteraction(),
+      onPanResponderTerminate: () => resumeAfterInteraction(),
+    })
+  ).current;
+
   const openEdit = (index) => {
     setModalIndex(index);
     const item = kpiItems[index];
@@ -211,16 +229,17 @@ export default function KpiSection({ kpiItems, isEditing, updateKpiItem, addKpiI
           viewportWidthRef.current = w;
           setViewportWidth(w);
         }}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        {...contentPanResponder.panHandlers}
       >
         <ScrollView
           ref={scrollRef}
           horizontal
           showsHorizontalScrollIndicator={false}
           scrollEventThrottle={16}
+          scrollEnabled={false}
           onScroll={handleNativeScroll}
-          onScrollBeginDrag={pauseForInteraction}
-          onScrollEndDrag={() => setTimeout(resumeAfterInteraction, 400)}
-          onMomentumScrollEnd={() => setTimeout(resumeAfterInteraction, 200)}
           contentContainerStyle={styles.kpiGrid}
         >
           {kpiItems.map((item, index) => {

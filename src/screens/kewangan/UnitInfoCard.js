@@ -43,7 +43,7 @@ export default function UnitInfoCard({ staffList, loading, isEditMode, saveStaff
 
   return (
     <View style={styles.card}>
-      <View style={styles.sectionHeaderRowSpaced}>
+      <View style={[styles.sectionHeaderRowSpaced, { marginBottom: 0 }]}>
         <SectionHeader title="UNIT KEWANGAN" Icon={Users} />
         {isEditMode && (
           <TouchableOpacity style={[styles.addBtn, { marginLeft: 'auto' }]} onPress={openAdd}>
