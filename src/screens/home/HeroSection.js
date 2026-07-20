@@ -1,33 +1,17 @@
 import React from 'react';
-import { View, Text, TextInput, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { PALETTE } from '../../constants/palette';
 
-export default function HeroSection({ isEditing, pageData, updateField }) {
+const WELCOME_TITLE = 'ANGKATAN PERTAHANAN AWAM MALAYSIA (APM) W.P LABUAN';
+const WELCOME_SUBTITLE = 'Pejabat Pertahanan Awam Daerah Wilayah Persekutuan Labuan.\n"Sedia, Pantas, Berintegriti"';
+
+export default function HeroSection() {
   return (
     <View style={styles.heroCard}>
       <View style={styles.glow} />
-      {isEditing ? (
-        <>
-          <TextInput
-            style={[styles.input, styles.titleInput]}
-            value={pageData.welcomeTitle}
-            onChangeText={(text) => updateField('welcomeTitle', text)}
-            multiline
-          />
-          <TextInput
-            style={[styles.input, styles.subtitleInput]}
-            value={pageData.welcomeSubtitle}
-            onChangeText={(text) => updateField('welcomeSubtitle', text)}
-            multiline
-          />
-        </>
-      ) : (
-        <>
-          <Text style={styles.kicker}>SEDIAOPS</Text>
-          <Text style={styles.title}>{pageData.welcomeTitle}</Text>
-          <Text style={styles.subtitle}>{pageData.welcomeSubtitle}</Text>
-        </>
-      )}
+      <Text style={styles.kicker}>SEDIAOPS</Text>
+      <Text style={styles.title}>{WELCOME_TITLE}</Text>
+      <Text style={styles.subtitle}>{WELCOME_SUBTITLE}</Text>
     </View>
   );
 }
@@ -38,9 +22,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     padding: 28,
     borderRadius: 24,
-    backgroundColor: PALETTE.cardLight,
-    borderWidth: 1,
-    borderColor: PALETTE.cardLightBorder,
+    backgroundColor: PALETTE.ink,
     overflow: 'hidden',
   },
   glow: {
@@ -60,20 +42,10 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 22,
     fontWeight: '900',
-    color: PALETTE.textDark,
+    color: PALETTE.white,
     letterSpacing: -0.3,
     lineHeight: 28,
     marginBottom: 12,
   },
-  subtitle: { fontSize: 14, color: PALETTE.textMutedDark, lineHeight: 21, fontWeight: '500' },
-  input: {
-    borderWidth: 1.5,
-    borderColor: PALETTE.inkBorder,
-    borderRadius: 12,
-    padding: 12,
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    color: PALETTE.white,
-  },
-  titleInput: { fontSize: 17, fontWeight: '700', marginBottom: 10 },
-  subtitleInput: { fontSize: 13 },
+  subtitle: { fontSize: 14, color: PALETTE.mutedLight, lineHeight: 21, fontWeight: '500' },
 });

@@ -20,7 +20,7 @@ const PX_PER_SECOND = 40;
 const SCROLLBAR_TRACK_WIDTH = 160;
 const MIN_THUMB_WIDTH = 28;
 
-export default function KpiSection({ kpiItems, isEditing, updateKpiItem, addKpiItem, removeKpiItem }) {
+export default function KpiSection({ kpiItems, isEditing, updateKpiItem, addKpiItem, removeKpiItem, persistKpi }) {
   const [hoveredIndex, setHoveredIndex] = useState(null);
   const [modalIndex, setModalIndex] = useState(null); // null = fermé, -1 = ajout, >=0 = édition
   const [draft, setDraft] = useState(EMPTY_DRAFT);
@@ -169,15 +169,24 @@ export default function KpiSection({ kpiItems, isEditing, updateKpiItem, addKpiI
     setDraft(EMPTY_DRAFT);
   };
 
-  const handleSave = () => {
-    if (modalIndex === -1) addKpiItem(draft);
-    else updateKpiItem(modalIndex, draft);
+  const handleSave = async () => {
+    let updatedItems;
+    if (modalIndex === -1) {
+      updatedItems = [...kpiItems, { id: null, section: kpiItems[0]?.section, ...draft, display_order: kpiItems.length }];
+      addKpiItem(draft);
+    } else {
+      updatedItems = kpiItems.map((it, i) => (i === modalIndex ? { ...it, ...draft } : it));
+      updateKpiItem(modalIndex, draft);
+    }
     closeModal();
+    if (persistKpi) await persistKpi(updatedItems);
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
+    const updatedItems = kpiItems.filter((_, i) => i !== modalIndex);
     removeKpiItem(modalIndex);
     closeModal();
+    if (persistKpi) await persistKpi(updatedItems);
   };
 
   return (

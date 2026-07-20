@@ -8,8 +8,12 @@ export const pentadbiranStyles = StyleSheet.create({
     flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center',
     paddingHorizontal: 16, paddingVertical: 12,
     backgroundColor: PALETTE.cardLight, borderBottomWidth: 1, borderBottomColor: PALETTE.cardLightBorder,
-    zIndex: 10, gap: 10,
+    zIndex: 10, gap: 10, position: 'relative',
   },
+  stickyHeaderCenter: {
+    position: 'absolute', left: 0, right: 0, alignItems: 'center', justifyContent: 'center',
+  },
+  stickyHeaderDikemaskini: { fontSize: 13, fontWeight: '700', color: PALETTE.textMutedDark },
   stickySaveBtn: { backgroundColor: PALETTE.orange, paddingVertical: 10, paddingHorizontal: 18, borderRadius: 999 },
   stickySaveBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
 
@@ -22,7 +26,14 @@ export const pentadbiranStyles = StyleSheet.create({
     shadowColor: '#c9825a', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.06, shadowRadius: 14, elevation: 2,
   },
 
-  sectionHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 16 },
+  sectionHeaderRowSpaced: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
+  sectionHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  sectionEditToggle: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: PALETTE.orange, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8,
+  },
+  sectionEditToggleActive: { backgroundColor: '#ef4444' },
+  sectionEditToggleText: { color: '#fff', fontWeight: '700', fontSize: 11 },
   sectionIconBadge: {
     width: 32, height: 32, borderRadius: 10,
     backgroundColor: 'rgba(249, 115, 22, 0.12)', justifyContent: 'center', alignItems: 'center',
@@ -34,10 +45,34 @@ export const pentadbiranStyles = StyleSheet.create({
   linkButtonText: { color: '#ffffff', fontWeight: '700', fontSize: 14 },
 
   unitContainer: { flexDirection: 'row', gap: 12 },
-  unitBox: { flex: 1, backgroundColor: PALETTE.surface, padding: 14, borderRadius: 14 },
-  boxTitle: { fontWeight: '800', marginBottom: 8, color: PALETTE.textMutedDark, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 },
-  listItem: { fontSize: 14, color: PALETTE.textDark, marginBottom: 4 },
+  unitBox: {
+    flex: 1, backgroundColor: PALETTE.surface, padding: 16, borderRadius: 14,
+    borderWidth: 1, borderColor: PALETTE.cardLightBorder,
+  },
+  unitBoxHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+  boxTitle: { fontWeight: '800', color: PALETTE.textMutedDark, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 },
+  listItem: { fontSize: 14, color: PALETTE.textDark, flex: 1, lineHeight: 20 },
   subListItem: { fontSize: 12, color: PALETTE.textMutedDark, marginLeft: 15, marginBottom: 6, fontStyle: 'italic' },
+
+  unitListItem: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 10 },
+  unitListBullet: {
+    width: 6, height: 6, borderRadius: 3, backgroundColor: PALETTE.orange,
+    marginTop: 7,
+  },
+
+  staffCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: PALETTE.cardLight, borderRadius: 12, padding: 12,
+    borderWidth: 1, borderColor: PALETTE.cardLightBorder, marginBottom: 8,
+  },
+  staffAvatar: {
+    width: 32, height: 32, borderRadius: 16,
+    backgroundColor: 'rgba(249, 115, 22, 0.14)',
+    justifyContent: 'center', alignItems: 'center',
+  },
+  staffAvatarText: { fontSize: 13, fontWeight: '800', color: PALETTE.orange },
+  staffName: { fontSize: 13.5, fontWeight: '700', color: PALETTE.textDark, marginBottom: 2 },
+  staffRole: { fontSize: 12, color: PALETTE.textMutedDark },
 
   table: { borderWidth: 1, borderColor: PALETTE.cardLightBorder, borderRadius: 14, overflow: 'hidden' },
   tableRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: PALETTE.cardLightBorder },
@@ -49,11 +84,17 @@ export const pentadbiranStyles = StyleSheet.create({
     fontSize: 14, color: PALETTE.textMutedDark,
   },
   tableCellLabel: { width: 160 },
-  tableInput: { paddingVertical: 10, paddingHorizontal: 8, backgroundColor: '#fafafa', borderWidth: 1, borderColor: PALETTE.cardLightBorder, color: PALETTE.textDark, fontSize: 14 },
+  tableInput: {
+    paddingVertical: 10, paddingHorizontal: 8, backgroundColor: '#fafafa',
+    borderWidth: 1.5, borderColor: PALETTE.cardLightBorder, color: PALETTE.textDark, fontSize: 14,
+    outlineStyle: 'none', outlineWidth: 0,
+  },
   cellHeader: { fontWeight: '800', color: PALETTE.textDark, fontSize: 12.5, letterSpacing: 0.4 },
   cellHeaderAccent: { color: PALETTE.orange },
-  rowLabel: { fontWeight: '800', backgroundColor: PALETTE.surface, color: PALETTE.textDark, fontSize: 14 },
-  boldCell: { fontWeight: '800', color: PALETTE.orange, fontSize: 15, backgroundColor: 'rgba(249, 115, 22, 0.05)' },
+  rowLabel: { fontWeight: '800', backgroundColor: 'rgba(234, 179, 8, 0.14)', color: '#854d0e', fontSize: 14 },
+  cellHeaderGred: { color: '#854d0e', backgroundColor: 'rgba(234, 179, 8, 0.22)' },
+  boldCell: { fontWeight: '800', color: '#be185d', fontSize: 15, backgroundColor: 'rgba(236, 72, 153, 0.10)' },
+  cellHeaderJumlah: { color: '#be185d', backgroundColor: 'rgba(236, 72, 153, 0.14)' },
 
   progressItem: { marginBottom: 15 },
   progressLabel: { fontSize: 14, color: PALETTE.textMutedDark, marginBottom: 5 },
@@ -178,6 +219,16 @@ export const pentadbiranStyles = StyleSheet.create({
     backgroundColor: 'rgba(249, 115, 22, 0.12)',
     justifyContent: 'center', alignItems: 'center',
   },
+  kpiPencilBtnInline: {
+    width: 26, height: 26, borderRadius: 7, position: 'relative',
+    backgroundColor: 'rgba(249, 115, 22, 0.12)',
+    justifyContent: 'center', alignItems: 'center',
+  },
+  kpiDeleteBtnInline: {
+    width: 26, height: 26, borderRadius: 7,
+    backgroundColor: 'rgba(220, 38, 38, 0.10)',
+    justifyContent: 'center', alignItems: 'center',
+  },
   kpiTooltip: {
     position: 'absolute', top: -30, right: 0, zIndex: 10,
     backgroundColor: PALETTE.textDark, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6,
@@ -240,4 +291,68 @@ export const pentadbiranStyles = StyleSheet.create({
   cancelBtn: { paddingVertical: 12, paddingHorizontal: 20, borderRadius: 10, backgroundColor: PALETTE.surface },
   cancelBtnText: { color: PALETTE.textMutedDark, fontWeight: '700' },
   confirmDeleteBtn: { paddingVertical: 12, paddingHorizontal: 20, borderRadius: 10, backgroundColor: '#dc2626', flexDirection: 'row', alignItems: 'center' },
+  orgChartWrap: {
+    borderRadius: 14, overflow: 'hidden', backgroundColor: PALETTE.surface,
+    borderWidth: 1, borderColor: PALETTE.cardLightBorder, position: 'relative',
+  },
+  orgChartImage: { width: '100%', height: 520 },
+  orgChartEmpty: {
+    height: 520, justifyContent: 'center', alignItems: 'center', gap: 8,
+  },
+  orgChartFullscreenOverlay: {
+    flex: 1, backgroundColor: 'rgba(11, 12, 14, 0.95)',
+    justifyContent: 'center', alignItems: 'center',
+  },
+  orgChartFullscreenImage: { width: '95%', height: '90%' },
+  orgChartFullscreenClose: {
+    position: 'absolute', top: 20, right: 20, zIndex: 10,
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center',
+  },
+  orgChartZoomHint: {
+    position: 'absolute', bottom: 12, right: 12,
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: 'rgba(0,0,0,0.55)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8,
+  },
+  orgChartZoomHintText: { color: '#fff', fontSize: 11, fontWeight: '600' },
+  orgChartEmptyText: { fontSize: 13, color: PALETTE.textMutedDark },
+  orgChartLoader: {
+    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+    justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.7)',
+  },
+  orgChartActions: {
+    flexDirection: 'row', gap: 10, padding: 12,
+    borderTopWidth: 1, borderTopColor: PALETTE.cardLightBorder, backgroundColor: PALETTE.cardLight,
+  },
+  orgChartActionBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: PALETTE.orange, paddingHorizontal: 14, paddingVertical: 9, borderRadius: 10,
+  },
+  orgChartActionBtnText: { color: '#fff', fontWeight: '700', fontSize: 12.5 },
+  orgChartDeleteBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: 'rgba(220, 38, 38, 0.08)', paddingHorizontal: 14, paddingVertical: 9, borderRadius: 10,
+  },
+  orgChartDeleteBtnText: { color: '#dc2626', fontWeight: '700', fontSize: 12.5 },
+  orgChartError: { fontSize: 12, color: '#dc2626', padding: 10, textAlign: 'center' },
+  sectionSaveBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: PALETTE.orange, paddingVertical: 12, borderRadius: 12, marginTop: 14,
+  },
+  sectionSaveBtnUrgent: {
+    backgroundColor: '#d97706',
+    shadowColor: '#d97706', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.4, shadowRadius: 8, elevation: 4,
+  },
+  sectionSaveBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+
+  sectionHeaderWithBadge: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  unsavedBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: 'rgba(217, 119, 6, 0.12)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999,
+    marginBottom: 12,
+  },
+  unsavedBadgeText: { fontSize: 11.5, fontWeight: '700', color: '#b45309' },
 });

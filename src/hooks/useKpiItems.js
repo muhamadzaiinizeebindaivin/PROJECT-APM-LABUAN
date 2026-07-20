@@ -53,12 +53,14 @@ export function useKpiItems(section) {
     setKpiItems((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const saveKpiItems = async () => {
+  const saveKpiItems = async (itemsOverride = null) => {
+    const itemsToSave = itemsOverride || kpiItems;
+
     if (kpiToDelete.length > 0) {
       await supabaseSandbox.from('kpi').delete().in('id', kpiToDelete);
     }
-    for (let i = 0; i < kpiItems.length; i++) {
-      const item = kpiItems[i];
+    for (let i = 0; i < itemsToSave.length; i++) {
+      const item = itemsToSave[i];
       const payload = {
         section,
         nama: item.nama,

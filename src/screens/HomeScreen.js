@@ -44,6 +44,11 @@ export default function HomeScreen({ isAuthFlow, onGuestLogin, onDriverLogin, on
     <View style={styles.container}>
       {userRole === 'admin' && (
         <View style={styles.stickyHeader}>
+          {!!pageData?.dikemaskini && (
+            <View style={styles.stickyHeaderCenter} pointerEvents="none">
+              <Text style={styles.stickyHeaderDikemaskini}>DIKEMASKINI {pageData.dikemaskini}</Text>
+            </View>
+          )}
           {isEditing && (
             <TouchableOpacity style={styles.stickySaveBtn} onPress={onSave}>
               <Text style={styles.stickySaveBtnText}>💾 Simpan Perubahan</Text>
@@ -59,7 +64,7 @@ export default function HomeScreen({ isAuthFlow, onGuestLogin, onDriverLogin, on
         scrollEventThrottle={16}
       >
         {pageData && (
-          <HeroSection isEditing={isEditing} pageData={pageData} updateField={updateField} />
+          <HeroSection />
         )}
 
         <View style={styles.mainRow}>

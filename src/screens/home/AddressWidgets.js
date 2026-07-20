@@ -1,115 +1,34 @@
-import React, { createElement } from 'react';
-import { View, Text, TextInput, StyleSheet, Platform } from 'react-native';
-import { MapPin, Phone, Mail } from 'lucide-react-native';
+import React from 'react';
+import { View, Text, TextInput, StyleSheet } from 'react-native';
+import { MapPin, Phone, Mail, Building2 } from 'lucide-react-native';
 import { PALETTE } from '../../constants/palette';
 
-const WIDGETS = [
-  {
-    key: 'addressPejabatText',
-    label: 'ALAMAT PEJABAT APM LABUAN',
-    accent: PALETTE.orange,
-    accentSoft: 'rgba(249, 115, 22, 0.10)',
-    lat: 5.2996567,
-    lng: 115.2412092,
-  },
-  {
-    key: 'addressPkodText',
-    label: 'ALAMAT PUSAT KAWALAN OPERASI DAERAH (PKOD)',
-    accent: PALETTE.blue,
-    accentSoft: 'rgba(29, 78, 216, 0.08)',
-    lat: 5.3105734,
-    lng: 115.2325376,
-  },
+const SECTIONS = [
+  { key: 'addressPejabat', label: 'ALAMAT PEJABAT APM LABUAN', accent: PALETTE.orange, accentSoft: 'rgba(249, 115, 22, 0.10)' },
+  { key: 'addressPkod', label: 'ALAMAT PUSAT KAWALAN OPERASI DAERAH (PKOD)', accent: PALETTE.blue, accentSoft: 'rgba(29, 78, 216, 0.08)' },
 ];
 
-const PHONE_REGEX = /^[\d\s/+()-]{7,}$/;
-const EMAIL_REGEX = /\S+@\S+\.\S+/;
-
-function ContactLines({ text, accent }) {
-  const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
-
+function FieldRow({ Icon, label, value, isEditing, onChangeText, multiline, placeholder, accent }) {
   return (
-    <View style={styles.contactBlock}>
-      {lines.map((line, i) => {
-        const isPhone = PHONE_REGEX.test(line);
-        const isEmail = EMAIL_REGEX.test(line);
-        const isTitle = i === 0;
-
-        if (isPhone || isEmail) {
-          const Icon = isPhone ? Phone : Mail;
-          return (
-            <View key={i} style={styles.contactRow}>
-              <View style={[styles.contactIconCircle, { backgroundColor: `${accent}1A` }]}>
-                <Icon size={13} color={accent} />
-              </View>
-              <Text style={styles.contactText}>{line}</Text>
-            </View>
-          );
-        }
-        return (
-          <Text key={i} style={isTitle ? styles.orgTitle : styles.addressLine}>
-            {line}
-          </Text>
-        );
-      })}
-    </View>
-  );
-}
-
-const buildMiniMapHtml = (lat, lng, color) => `
-  <!DOCTYPE html>
-  <html style="height: 100%; margin: 0;">
-    <head>
-      <meta charset="utf-8">
-      <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-      <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-      <style>
-        html, body, #map { height: 100%; margin: 0; padding: 0; }
-        .apm-pin {
-          width: 22px; height: 22px; border-radius: 50% 50% 50% 0;
-          transform: rotate(-45deg);
-          border: 2px solid #fff;
-          box-shadow: 0 2px 6px rgba(0,0,0,0.35);
-        }
-      </style>
-    </head>
-    <body>
-      <div id="map"></div>
-      <script>
-        var map = L.map('map', { zoomControl: true, scrollWheelZoom: true, dragging: true, touchZoom: true, doubleClickZoom: true });
-        map.setView([${lat}, ${lng}], 15);
-
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-          attribution: '',
-          maxZoom: 19,
-          subdomains: 'abcd',
-        }).addTo(map);
-
-        var icon = L.divIcon({
-          className: '',
-          html: '<div class="apm-pin" style="background:${color}"></div>',
-          iconSize: [22, 22],
-          iconAnchor: [11, 22],
-        });
-
-        L.marker([${lat}, ${lng}], { icon: icon }).addTo(map);
-      </script>
-    </body>
-  </html>
-`;
-
-function MiniMap({ lat, lng, color }) {
-  if (Platform.OS !== 'web') {
-    return <View style={styles.mapFallback} />;
-  }
-  const src = `data:text/html;charset=utf-8,${encodeURIComponent(buildMiniMapHtml(lat, lng, color))}`;
-  return (
-    <View style={styles.mapWrap}>
-      {createElement('iframe', {
-        src,
-        style: { width: '100%', height: '100%', border: 'none', display: 'block' },
-        title: 'Peta lokasi',
-      })}
+    <View style={styles.fieldRow}>
+      <View style={[styles.fieldIcon, { backgroundColor: `${accent}1A` }]}>
+        <Icon size={13} color={accent} />
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.fieldLabel}>{label}</Text>
+        {isEditing ? (
+          <TextInput
+            style={[styles.input, multiline && styles.inputMultiline]}
+            value={value}
+            onChangeText={onChangeText}
+            multiline={multiline}
+            placeholder={placeholder}
+            placeholderTextColor={PALETTE.textMutedDark}
+          />
+        ) : (
+          <Text style={styles.fieldValue}>{value || '—'}</Text>
+        )}
+      </View>
     </View>
   );
 }
@@ -117,33 +36,75 @@ function MiniMap({ lat, lng, color }) {
 export default function AddressWidgets({ isEditing, pageData, updateField }) {
   return (
     <View style={styles.row}>
-      {WIDGETS.map(({ key, label, accent, accentSoft, lat, lng }) => (
-        <View key={key} style={styles.widget}>
-          <View style={styles.infoColumn}>
+      {SECTIONS.map(({ key, label, accent, accentSoft }) => {
+        const data = pageData[key] || {};
+        const update = (field, text) => updateField(key, { ...data, [field]: text });
+
+        return (
+          <View key={key} style={styles.widget}>
+            <MapPin size={140} color={accent} style={styles.watermark} />
+
             <View style={styles.headerRow}>
               <View style={[styles.iconBadge, { backgroundColor: accentSoft }]}>
-                <MapPin size={19} color={accent} />
+                <MapPin size={17} color={accent} />
               </View>
               <Text style={[styles.label, { color: accent }]}>{label}</Text>
             </View>
 
             <View style={styles.body}>
-              {isEditing ? (
-                <TextInput
-                  style={styles.input}
-                  value={pageData[key]}
-                  onChangeText={(text) => updateField(key, text)}
-                  multiline
+              <FieldRow
+                Icon={Building2}
+                label="Nama Organisasi"
+                value={data.orgName}
+                isEditing={isEditing}
+                onChangeText={(text) => update('orgName', text)}
+                multiline
+                placeholder="Nama organisasi / jabatan"
+                accent={accent}
+              />
+              <FieldRow
+                Icon={MapPin}
+                label="Alamat"
+                value={data.address}
+                isEditing={isEditing}
+                onChangeText={(text) => update('address', text)}
+                multiline
+                placeholder="Alamat penuh"
+                accent={accent}
+              />
+              <FieldRow
+                Icon={Phone}
+                label="No. Telefon"
+                value={data.phone}
+                isEditing={isEditing}
+                onChangeText={(text) => update('phone', text)}
+                placeholder="cth. 087-425155"
+                accent={accent}
+              />
+              <FieldRow
+                Icon={Mail}
+                label="E-mel"
+                value={data.email}
+                isEditing={isEditing}
+                onChangeText={(text) => update('email', text)}
+                placeholder="cth. nama@civildefence.gov.my"
+                accent={accent}
+              />
+              {(isEditing || !!data.note) && (
+                <FieldRow
+                  Icon={MapPin}
+                  label="Catatan"
+                  value={data.note}
+                  isEditing={isEditing}
+                  onChangeText={(text) => update('note', text)}
+                  placeholder="cth. Operasi 24/7 (pilihan)"
+                  accent={accent}
                 />
-              ) : (
-                <ContactLines text={pageData[key]} accent={accent} />
               )}
             </View>
           </View>
-
-          <MiniMap lat={lat} lng={lng} color={accent} />
-        </View>
-      ))}
+        );
+      })}
     </View>
   );
 }
@@ -152,7 +113,8 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', gap: 16, paddingHorizontal: 20 },
   widget: {
     flex: 1,
-    flexDirection: 'row',
+    padding: 22,
+    paddingLeft: 24,
     borderRadius: 20,
     backgroundColor: PALETTE.cardLight,
     borderWidth: 1,
@@ -165,22 +127,11 @@ const styles = StyleSheet.create({
     shadowRadius: 16,
     elevation: 3,
   },
-  infoColumn: { flex: 1.3, padding: 22, paddingLeft: 24 },
-  mapWrap: {
-    flex: 1,
-    minWidth: 140,
-    margin: 14,
-    borderRadius: 14,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: PALETTE.cardLightBorder,
-  },
-  mapFallback: {
-    flex: 1,
-    minWidth: 140,
-    margin: 14,
-    borderRadius: 14,
-    backgroundColor: '#f1f5f9',
+  watermark: {
+    position: 'absolute',
+    right: -34,
+    bottom: -34,
+    opacity: 0.06,
   },
 
   headerRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 18 },
@@ -198,47 +149,33 @@ const styles = StyleSheet.create({
     lineHeight: 16,
   },
 
-  body: {},
-  contactBlock: { gap: 6 },
-  orgTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: PALETTE.textDark,
-    marginBottom: 7,
-    lineHeight: 22,
-  },
-  addressLine: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: PALETTE.textMutedDark,
-    lineHeight: 21,
-  },
-  contactRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginTop: 12,
-  },
-  contactIconCircle: {
-    width: 28, height: 28, borderRadius: 9,
+  body: { gap: 14 },
+  fieldRow: { flexDirection: 'row', gap: 10, alignItems: 'flex-start' },
+  fieldIcon: {
+    width: 24, height: 24, borderRadius: 7, marginTop: 2,
     justifyContent: 'center', alignItems: 'center',
   },
-  contactText: {
-    fontSize: 14,
+  fieldLabel: {
+    fontSize: 10.5,
     fontWeight: '700',
-    color: PALETTE.textDark,
+    color: PALETTE.textMutedDark,
+    marginBottom: 3,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
   },
-
+  fieldValue: {
+    fontSize: 14,
+    color: PALETTE.textDark,
+    lineHeight: 20,
+  },
   input: {
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: PALETTE.cardLightBorder,
-    borderRadius: 10,
-    padding: 10,
+    borderRadius: 8,
+    padding: 9,
     backgroundColor: '#fafafa',
     color: PALETTE.textDark,
-    fontSize: 12,
-    minHeight: 120,
-    textAlignVertical: 'top',
-    flex: 1,
+    fontSize: 13,
   },
+  inputMultiline: { minHeight: 56, textAlignVertical: 'top' },
 });
