@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
-import { Users, ListChecks, Pencil, Trash2 } from 'lucide-react-native';
+import { Users, ListChecks, Pencil, Trash2, ChevronUp, ChevronDown } from 'lucide-react-native';
 import { PALETTE } from '../../constants/palette';
 import { pentadbiranStyles as styles } from './pentadbiranStyles';
 import SectionHeader from './SectionHeader';
@@ -82,6 +82,15 @@ export default function UnitSection({ pageData, isEditing, updateField, onSave }
     closeStaffModal();
     if (onSave) await onSave({ unitPentadbiran: updated });
   };
+  const moveStaff = async (index, direction) => {
+    const targetIndex = index + direction;
+    if (targetIndex < 0 || targetIndex >= pageData.unitPentadbiran.length) return;
+
+    const reordered = [...pageData.unitPentadbiran];
+    [reordered[index], reordered[targetIndex]] = [reordered[targetIndex], reordered[index]];
+    updateField('unitPentadbiran', reordered);
+    if (onSave) await onSave({ unitPentadbiran: reordered });
+  };
   const handleStaffQuickDelete = async (index) => {
     const confirmed = window.confirm('Adakah anda pasti mahu memadam kakitangan ini?');
     if (!confirmed) return;
@@ -146,9 +155,28 @@ export default function UnitSection({ pageData, isEditing, updateField, onSave }
             <Text style={styles.boxTitle}>UNIT PENTADBIRAN</Text>
           </View>
 
-          {pageData.unitPentadbiran.map((item, index) => (
+{pageData.unitPentadbiran.map((item, index) => (
             <View key={`pentadbiran-${index}`} style={styles.editRowBlock}>
               <View style={styles.staffCard}>
+                {isEditing && (
+                  <View style={styles.staffReorderGroup}>
+                    <TouchableOpacity
+                      style={[styles.staffReorderBtn, index === 0 && styles.staffReorderBtnDisabled]}
+                      onPress={() => moveStaff(index, -1)}
+                      disabled={index === 0}
+                    >
+                      <ChevronUp size={13} color={index === 0 ? PALETTE.textMutedDark : PALETTE.orange} />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.staffReorderBtn, index === pageData.unitPentadbiran.length - 1 && styles.staffReorderBtnDisabled]}
+                      onPress={() => moveStaff(index, 1)}
+                      disabled={index === pageData.unitPentadbiran.length - 1}
+                    >
+                      <ChevronDown size={13} color={index === pageData.unitPentadbiran.length - 1 ? PALETTE.textMutedDark : PALETTE.orange} />
+                    </TouchableOpacity>
+                  </View>
+                )}
+
                 <View style={styles.staffAvatar}>
                   <Text style={styles.staffAvatarText}>{index + 1}</Text>
                 </View>
@@ -156,6 +184,7 @@ export default function UnitSection({ pageData, isEditing, updateField, onSave }
                   <Text style={styles.staffName}>{item.name}</Text>
                   <Text style={styles.staffRole}>{item.role}</Text>
                 </View>
+
                 {isEditing && (
                   <View style={{ flexDirection: 'row', gap: 6 }}>
                     <TouchableOpacity
@@ -171,10 +200,7 @@ export default function UnitSection({ pageData, isEditing, updateField, onSave }
                         </View>
                       )}
                     </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.kpiDeleteBtnInline}
-                      onPress={() => handleStaffQuickDelete(index)}
-                    >
+                    <TouchableOpacity style={styles.kpiDeleteBtnInline} onPress={() => handleStaffQuickDelete(index)}>
                       <Trash2 size={13} color="#dc2626" />
                     </TouchableOpacity>
                   </View>

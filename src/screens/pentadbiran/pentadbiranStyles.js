@@ -355,4 +355,11 @@ export const pentadbiranStyles = StyleSheet.create({
     marginBottom: 12,
   },
   unsavedBadgeText: { fontSize: 11.5, fontWeight: '700', color: '#b45309' },
+  staffReorderGroup: { gap: 2 },
+  staffReorderBtn: {
+    width: 20, height: 16, borderRadius: 4,
+    backgroundColor: 'rgba(249, 115, 22, 0.10)',
+    justifyContent: 'center', alignItems: 'center',
+  },
+  staffReorderBtnDisabled: { backgroundColor: PALETTE.surface },
 });

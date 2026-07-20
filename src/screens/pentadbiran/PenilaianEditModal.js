@@ -57,12 +57,13 @@ export default function PenilaianEditModal({ visible, isNew, draft, setDraft, on
               placeholderTextColor={PALETTE.textMutedDark}
             />
 
-            <Text style={styles.inputLabel}>Penilaian</Text>
+            <Text style={styles.inputLabel}>Tajuk Penilaian</Text>
             <TextInput
-              style={styles.modalInput}
-              value={draft.penilaian}
-              onChangeText={(text) => setDraft((prev) => ({ ...prev, penilaian: text }))}
-              placeholder="cth. 87%"
+              style={[styles.modalInput, { minHeight: 60, textAlignVertical: 'top' }]}
+              value={draft.tajukPenilaian}
+              onChangeText={(text) => setDraft((prev) => ({ ...prev, tajukPenilaian: text }))}
+              multiline
+              placeholder="Penerangan ujian yang dijalankan"
               placeholderTextColor={PALETTE.textMutedDark}
             />
 

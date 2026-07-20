@@ -266,4 +266,11 @@ export const kewanganStyles = StyleSheet.create({
     position: 'relative',
   },
   quarterHelpBtnText: { fontSize: 13, fontWeight: '800', color: PALETTE.orange },
+  staffReorderGroup: { gap: 2 },
+  staffReorderBtn: {
+    width: 20, height: 16, borderRadius: 4,
+    backgroundColor: 'rgba(249, 115, 22, 0.10)',
+    justifyContent: 'center', alignItems: 'center',
+  },
+  staffReorderBtnDisabled: { backgroundColor: PALETTE.surface },
 });

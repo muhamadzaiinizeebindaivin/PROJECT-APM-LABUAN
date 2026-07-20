@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
-import { Pencil, Trash2, ClipboardCheck } from 'lucide-react-native';
+import { Pencil } from 'lucide-react-native';
 import { PALETTE } from '../../constants/palette';
 import { pentadbiranStyles as styles } from './pentadbiranStyles';
 import SectionHeader from './SectionHeader';
 import PenilaianEditModal from './PenilaianEditModal';
 
-const EMPTY_DRAFT = { tarikh: '', agensi: '', penilaian: '' };
+const EMPTY_DRAFT = { tarikh: '', agensi: '', tajukPenilaian: '' };
 
 function formatTarikh(value) {
   if (!value) return '';
@@ -24,7 +24,11 @@ export default function ComplianceSection({ pageData, isEditing, updateField, on
   const openEdit = (index) => {
     setModalIndex(index);
     const item = pageData.pematuhan[index];
-    setDraft({ tarikh: item.tarikh || '', agensi: item.agensi || '', penilaian: item.penilaian || '' });
+    setDraft({
+      tarikh: item.tarikh || '',
+      agensi: item.agensi || '',
+      tajukPenilaian: item.tajukPenilaian || '',
+    });
   };
 
   const openAdd = () => {
@@ -55,34 +59,27 @@ export default function ComplianceSection({ pageData, isEditing, updateField, on
     closeModal();
     if (onSave) await onSave({ pematuhan: updated });
   };
-  const handleQuickDelete = async (index) => {
-    const confirmed = window.confirm('Adakah anda pasti mahu memadam penilaian ini?');
-    if (!confirmed) return;
-    const updated = pageData.pematuhan.filter((_, i) => i !== index);
-    updateField('pematuhan', updated);
-    if (onSave) await onSave({ pematuhan: updated });
-  };
 
   return (
     <View style={styles.card}>
-      <SectionHeader title="PENILAIAN SEMASA/TAHUNAN" Icon={ClipboardCheck} />
+      <SectionHeader title="PENILAIAN SEMASA/TAHUNAN" />
 
       <View style={styles.table}>
         <View style={[styles.tableRow, styles.tableHeader]}>
-          <Text style={[styles.tableCell, styles.cellHeader, { width: 130 }]}>TARIKH</Text>
+          <Text style={[styles.tableCell, styles.cellHeader, { width: 110 }]}>TARIKH</Text>
           <Text style={[styles.tableCell, styles.cellHeader, { flex: 1, textAlign: 'left' }]}>AGENSI</Text>
-          <Text style={[styles.tableCell, styles.cellHeader, { width: 110 }]}>TAJUK PENILAIAN</Text>
-          {isEditing && <Text style={[styles.tableCell, styles.cellHeader, { width: 90 }]}>TINDAKAN</Text>}
+          <Text style={[styles.tableCell, styles.cellHeader, { flex: 1, textAlign: 'left' }]}>TAJUK PENILAIAN</Text>
+          {isEditing && <Text style={[styles.tableCell, styles.cellHeader, { width: 60 }]}>UBAH</Text>}
         </View>
 
         {pageData.pematuhan.map((item, index) => (
           <View key={`pematuhan-${index}`} style={[styles.tableRow, index === pageData.pematuhan.length - 1 && styles.tableRowLast]}>
-            <Text style={[styles.tableCell, { width: 130 }]}>{formatTarikh(item.tarikh)}</Text>
+            <Text style={[styles.tableCell, { width: 110 }]}>{formatTarikh(item.tarikh)}</Text>
             <Text style={[styles.tableCell, { flex: 1, textAlign: 'left', paddingLeft: 10 }]}>{item.agensi}</Text>
-            <Text style={[styles.tableCell, styles.boldCell, { width: 110 }]}>{item.penilaian}</Text>
+            <Text style={[styles.tableCell, { flex: 1, textAlign: 'left', paddingLeft: 10 }]}>{item.tajukPenilaian}</Text>
 
             {isEditing && (
-              <View style={[styles.tableCell, { width: 90, flexDirection: 'row', gap: 6, justifyContent: 'center', alignItems: 'center' }]}>
+              <View style={[styles.tableCell, { width: 60, justifyContent: 'center', alignItems: 'center' }]}>
                 <TouchableOpacity
                   style={styles.kpiPencilBtnInline}
                   onPress={() => openEdit(index)}
@@ -95,12 +92,6 @@ export default function ComplianceSection({ pageData, isEditing, updateField, on
                       <Text style={styles.kpiTooltipText}>Ubah</Text>
                     </View>
                   )}
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.kpiDeleteBtnInline}
-                  onPress={() => handleQuickDelete(index)}
-                >
-                  <Trash2 size={14} color="#dc2626" />
                 </TouchableOpacity>
               </View>
             )}

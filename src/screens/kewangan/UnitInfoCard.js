@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { Users, Pencil, Trash2 } from 'lucide-react-native';
+import { Users, Pencil, Trash2, ChevronUp, ChevronDown } from 'lucide-react-native';
 import { PALETTE } from '../../constants/palette';
 import { kewanganStyles as styles } from './kewanganStyles';
 import SectionHeader from '../pentadbiran/SectionHeader';
@@ -8,7 +8,7 @@ import UnitEditModal from './UnitEditModal';
 
 const EMPTY_DRAFT = { name: '', role: '' };
 
-export default function UnitInfoCard({ staffList, loading, isEditMode, saveStaffItem, deleteStaffItem }) {
+export default function UnitInfoCard({ staffList, loading, isEditMode, saveStaffItem, deleteStaffItem, reorderStaff }) {
   const [hoveredIndex, setHoveredIndex] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [editItem, setEditItem] = useState(null);
@@ -32,10 +32,19 @@ export default function UnitInfoCard({ staffList, loading, isEditMode, saveStaff
     if (ok) setModalVisible(false);
   };
 
+  const moveStaff = (index, direction) => {
+    const targetIndex = index + direction;
+    if (targetIndex < 0 || targetIndex >= staffList.length) return;
+
+    const reordered = [...staffList];
+    [reordered[index], reordered[targetIndex]] = [reordered[targetIndex], reordered[index]];
+    reorderStaff(reordered);
+  };
+
   return (
     <View style={styles.card}>
       <View style={styles.sectionHeaderRowSpaced}>
-        <SectionHeader title="UNIT PENTADBIRAN" Icon={Users} />
+        <SectionHeader title="UNIT KEWANGAN" Icon={Users} />
         {isEditMode && (
           <TouchableOpacity style={[styles.addBtn, { marginLeft: 'auto' }]} onPress={openAdd}>
             <Text style={styles.addBtnText}>+ Tambah</Text>
@@ -47,6 +56,25 @@ export default function UnitInfoCard({ staffList, loading, isEditMode, saveStaff
 
       {!loading && staffList.map((item, index) => (
         <View key={item.id} style={[styles.staffCard, { marginBottom: 8 }]}>
+          {isEditMode && (
+            <View style={styles.staffReorderGroup}>
+              <TouchableOpacity
+                style={[styles.staffReorderBtn, index === 0 && styles.staffReorderBtnDisabled]}
+                onPress={() => moveStaff(index, -1)}
+                disabled={index === 0}
+              >
+                <ChevronUp size={13} color={index === 0 ? PALETTE.textMutedDark : PALETTE.orange} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.staffReorderBtn, index === staffList.length - 1 && styles.staffReorderBtnDisabled]}
+                onPress={() => moveStaff(index, 1)}
+                disabled={index === staffList.length - 1}
+              >
+                <ChevronDown size={13} color={index === staffList.length - 1 ? PALETTE.textMutedDark : PALETTE.orange} />
+              </TouchableOpacity>
+            </View>
+          )}
+
           <View style={styles.staffAvatar}>
             <Text style={styles.staffAvatarText}>{index + 1}</Text>
           </View>

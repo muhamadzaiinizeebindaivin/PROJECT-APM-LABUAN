@@ -57,6 +57,7 @@ export default function KewanganScreen({ userRole }) {
           isEditMode={isEditMode}
           saveStaffItem={unit.saveStaffItem}
           deleteStaffItem={unit.deleteStaffItem}
+          reorderStaff={unit.reorderStaff}
         />
       </ScrollView>
     </View>

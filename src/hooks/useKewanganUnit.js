@@ -71,5 +71,22 @@ export function useKewanganUnit() {
     }
   };
 
-  return { staffList, loading, saveStaffItem, deleteStaffItem };
+  const reorderStaff = async (reorderedList) => {
+    setStaffList(reorderedList); // mise à jour immédiate de l'affichage
+    try {
+      // Sauvegarde chaque display_order mis à jour selon la nouvelle position
+      for (let i = 0; i < reorderedList.length; i++) {
+        const item = reorderedList[i];
+        if (item.display_order !== i) {
+          await supabaseSandbox.schema(SCHEMA).from('kewangan_unit_staff').update({ display_order: i }).eq('id', item.id);
+        }
+      }
+      await fetchStaff();
+    } catch (error) {
+      Alert.alert('Ralat', 'Gagal menyusun semula: ' + error.message);
+      await fetchStaff(); // revert vers l'état réel en base en cas d'échec
+    }
+  };
+
+  return { staffList, loading, saveStaffItem, deleteStaffItem, reorderStaff };
 }
