@@ -225,7 +225,6 @@ export default function AngkatanScreen({ userRole }) {
           onAddNew={openAddEmployee}
           onImportExcel={() => setShowExcelImportModal(true)}
         />
-        <View style={{ height: 16 }} />
         <AngkatanUnitSection
           unitList={unitList}
           loadingUnit={loadingUnit}
