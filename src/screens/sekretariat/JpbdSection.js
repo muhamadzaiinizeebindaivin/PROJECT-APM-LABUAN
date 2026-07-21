@@ -355,7 +355,7 @@ const jpbdStyles = StyleSheet.create({
   // Panneau de détails
   detailPanel: {
     backgroundColor: PALETTE.white, borderRadius: 12, padding: 16,
-    borderWidth: 1, borderColor: PALETTE.orange,
+    borderWidth: 1, borderColor: PALETTE.cardLightBorder,
   },
   detailHeader: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 14, gap: 8 },
   detailAgency: { fontSize: 18, fontWeight: '800', color: PALETTE.textDark },
@@ -383,7 +383,7 @@ const jpbdStyles = StyleSheet.create({
   statCard: {
     flex: 1, alignItems: 'center', paddingVertical: 12,
     backgroundColor: PALETTE.softOrangeBg || '#FFF4EC',
-    borderRadius: 10, borderWidth: 1, borderColor: PALETTE.orange,
+    borderRadius: 10, borderWidth: 1, borderColor: PALETTE.cardLightBorder,
   },
   statNumber: { fontSize: 24, fontWeight: '800', color: PALETTE.orange },
   statCaption: { fontSize: 12, fontWeight: '600', color: PALETTE.textMutedDark, marginTop: 2 },
