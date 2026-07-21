@@ -88,14 +88,25 @@ export function buildSekretariatMapHtml({ theme, userRole }) {
             iconCreateFunction: makeClusterIcon('cluster-bencana')
           }).addTo(map);
 
-          var createAgencyIcon = (color) => L.divIcon({
-            className: 'custom-pin',
-            html: '<svg width="26" height="34" viewBox="0 0 26 34" style="filter: drop-shadow(0 2px 3px rgba(0,0,0,0.35));">' +
-                    '<path d="M13 0C5.8 0 0 5.8 0 13c0 9.5 13 21 13 21s13-11.5 13-21C26 5.8 20.2 0 13 0z" fill="' + color + '" fill-opacity="0.72" stroke="white" stroke-width="2"/>' +
-                    '<circle cx="13" cy="13" r="5" fill="white" fill-opacity="0.9"/>' +
-                  '</svg>',
-            iconSize: [26, 34], iconAnchor: [13, 34], popupAnchor: [0, -30]
-          });
+          var createAgencyIcon = (color, logo) => {
+            if (logo) {
+              return L.divIcon({
+                className: 'custom-pin',
+                html: '<div style="width:36px;height:36px;border-radius:8px;background:#fff;border:2px solid ' + color + ';box-shadow:0 2px 5px rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;overflow:hidden;">' +
+                        '<img src="' + logo + '" style="width:30px;height:30px;object-fit:contain;" />' +
+                      '</div>',
+                iconSize: [36, 36], iconAnchor: [18, 18], popupAnchor: [0, -20]
+              });
+            }
+            return L.divIcon({
+              className: 'custom-pin',
+              html: '<svg width="26" height="34" viewBox="0 0 26 34" style="filter: drop-shadow(0 2px 3px rgba(0,0,0,0.35));">' +
+                      '<path d="M13 0C5.8 0 0 5.8 0 13c0 9.5 13 21 13 21s13-11.5 13-21C26 5.8 20.2 0 13 0z" fill="' + color + '" fill-opacity="0.72" stroke="white" stroke-width="2"/>' +
+                      '<circle cx="13" cy="13" r="5" fill="white" fill-opacity="0.9"/>' +
+                    '</svg>',
+              iconSize: [26, 34], iconAnchor: [13, 34], popupAnchor: [0, -30]
+            });
+          };
 
           var createBencanaIcon = () => L.divIcon({
             className: 'bencana-pin',
@@ -121,8 +132,12 @@ export function buildSekretariatMapHtml({ theme, userRole }) {
           var agencyMarkers = {};
           var bencanaMarkers = {};
 
+          window.parent.postMessage(JSON.stringify({ type: 'MAP_READY' }), '*');
+
           window.addEventListener('message', function(event) {
-            var data = JSON.parse(event.data);
+            var data;
+            try { data = JSON.parse(event.data); } catch (e) { return; }
+            if (!data || !data.type) return;
 
             if (data.type === 'UPDATE_AGENCIES') {
               var currentIds = data.payload.map(function(a) { return a.id; });
@@ -134,11 +149,15 @@ export function buildSekretariatMapHtml({ theme, userRole }) {
               });
 
               data.payload.forEach(function(a) {
+                var lat = Number(a.lat), lng = Number(a.lng);
+                if (!isFinite(lat) || !isFinite(lng)) return;
+                a.lat = lat; a.lng = lng;
                 var popupContent = '<div class="custom-popup"><strong>' + a.agency + '</strong><span class="sub">' + a.name + ' — ' + a.updated + '</span></div>';
                 if (agencyMarkers[a.id]) {
                   agencyMarkers[a.id].setLatLng([a.lat, a.lng]).setPopupContent(popupContent);
+                  agencyMarkers[a.id].setIcon(createAgencyIcon(a.color, a.logo));
                 } else {
-                  agencyMarkers[a.id] = L.marker([a.lat, a.lng], { icon: createAgencyIcon(a.color) })
+                  agencyMarkers[a.id] = L.marker([a.lat, a.lng], { icon: createAgencyIcon(a.color, a.logo) })
                     .bindPopup(popupContent);
                   agencyLayer.addLayer(agencyMarkers[a.id]);
                 }

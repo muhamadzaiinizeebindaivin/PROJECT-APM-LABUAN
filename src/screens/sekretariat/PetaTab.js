@@ -1,10 +1,9 @@
 // src/screens/sekretariat/PetaTab.js
 import React, { useState, useEffect, useRef, createElement } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Platform, Modal, TextInput, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Platform, Modal, TextInput, ActivityIndicator, Alert, Image } from 'react-native';
 import { Map, History, ClipboardList, AlertTriangle, X, Plus, Download } from 'lucide-react-native';
-import { supabase } from '../../supabaseClient';
 import { supabaseSandbox } from '../../supabaseSandboxClient';
-import { buildSekretariatMapHtml } from '../../mapTemplates/sekretariatMapTemplate';
+import { buildSekretariatMapHtml } from './sekretariatMapTemplate';
 import { useOnlineAgencies } from '../../hooks/useOnlineAgencies';
 import { useBencanaPoints } from '../../hooks/useBencanaPoints';
 import { useAgencyTrackingHistory } from '../../hooks/useAgencyTrackingHistory';
@@ -29,6 +28,14 @@ const buildAgencyColorMap = (agencyList) => {
   return map;
 };
 
+// Logo de l'agence, ou pastille de couleur en fallback
+const AgencyMark = ({ logo, color, size = 18 }) => {
+  if (logo) {
+    return <Image source={{ uri: logo }} style={{ width: size, height: size, borderRadius: 4 }} resizeMode="contain" />;
+  }
+  return <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: color }} />;
+};
+
 const formatDuration = (seconds) => {
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
@@ -48,20 +55,34 @@ export default function PetaTab({ theme, userRole }) {
   const [agencyNames, setAgencyNames] = useState([]);
   useEffect(() => {
     const fetchAgencyNames = async () => {
-      const { data } = await supabase.from('jpbd_directory').select('id, agency').order('created_at', { ascending: true });
+      const { data } = await supabaseSandbox.from('jpbd_directory').select('id, agency, logo_url').order('created_at', { ascending: true });
       setAgencyNames(data || []);
     };
     fetchAgencyNames();
-    const subscription = supabase
+    const subscription = supabaseSandbox
       .channel('peta_jpbd_directory_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'jpbd_directory' }, () => {
+      .on('postgres_changes', { event: '*', schema: 'sandbox', table: 'jpbd_directory' }, () => {
         fetchAgencyNames();
       })
       .subscribe();
-    return () => { supabase.removeChannel(subscription); };
+    return () => { supabaseSandbox.removeChannel(subscription); };
   }, []);
 
   const [petaIframeLoading, setPetaIframeLoading] = useState(true);
+  const [mapReady, setMapReady] = useState(false);
+
+  // L'iframe signale quand la carte est initialisée
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    const onMessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data?.type === 'MAP_READY') setMapReady(true);
+      } catch (e) { /* messages non-JSON (HMR etc.) */ }
+    };
+    window.addEventListener('message', onMessage);
+    return () => window.removeEventListener('message', onMessage);
+  }, []);
 
   // --- Placement de bencana ---
   const [isPlacingBencana, setIsPlacingBencana] = useState(false);
@@ -126,38 +147,19 @@ export default function PetaTab({ theme, userRole }) {
 
   const agencyColorMap = buildAgencyColorMap(agencyNames);
   const getAgencyColorFromMap = (agencyName) => agencyColorMap[agencyName] || PALETTE.textMutedDark;
+  const agencyLogoMap = {};
+  agencyNames.forEach((a) => { if (a.logo_url) agencyLogoMap[a.agency] = a.logo_url; });
+  const getAgencyLogo = (agencyName) => agencyLogoMap[agencyName] || null;
 
   const petaMapHtml = buildSekretariatMapHtml({ theme, userRole });
   const petaMapSrc = `data:text/html;charset=utf-8,${encodeURIComponent(petaMapHtml)}`;
 
   const handlePetaIframeLoad = () => {
     setPetaIframeLoading(false);
-    setTimeout(() => {
-      if (petaIframeRef?.current?.contentWindow) {
-        const agencyPayload = onlineAgencies.map(a => ({
-          id: a.id,
-          name: a.member_name,
-          agency: a.jpbd_directory?.agency || '',
-          lat: a.latitude,
-          lng: a.longitude,
-          color: getAgencyColorFromMap(a.jpbd_directory?.agency || ''),
-          updated: a.last_updated ? new Date(a.last_updated).toLocaleTimeString() : ''
-        }));
-        petaIframeRef.current.contentWindow.postMessage(JSON.stringify({ type: 'UPDATE_AGENCIES', payload: agencyPayload }), '*');
-
-        const bencanaPayload = bencanaPoints
-          .filter(b => b.status !== 'resolved')
-          .map(b => ({
-            id: b.id, category: b.category, description: b.description || '',
-            lat: b.latitude, lng: b.longitude, created_at: b.created_at
-          }));
-        petaIframeRef.current.contentWindow.postMessage(JSON.stringify({ type: 'UPDATE_BENCANA', payload: bencanaPayload }), '*');
-      }
-    }, 300);
   };
 
   useEffect(() => {
-    if (petaIframeRef?.current?.contentWindow) {
+    if (mapReady && petaIframeRef?.current?.contentWindow) {
       const payload = onlineAgencies.map(a => ({
         id: a.id,
         name: a.member_name,
@@ -165,15 +167,16 @@ export default function PetaTab({ theme, userRole }) {
         lat: a.latitude,
         lng: a.longitude,
         color: getAgencyColorFromMap(a.jpbd_directory?.agency || ''),
+        logo: getAgencyLogo(a.jpbd_directory?.agency || ''),
         updated: a.last_updated ? new Date(a.last_updated).toLocaleTimeString() : ''
       }));
       petaIframeRef.current.contentWindow.postMessage(JSON.stringify({ type: 'UPDATE_AGENCIES', payload }), '*');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [onlineAgencies, agencyNames]);
+  }, [onlineAgencies, agencyNames, mapReady]);
 
   useEffect(() => {
-    if (petaIframeRef?.current?.contentWindow) {
+    if (mapReady && petaIframeRef?.current?.contentWindow) {
       const payload = bencanaPoints
         .filter(b => b.status !== 'resolved')
         .map(b => ({
@@ -182,7 +185,7 @@ export default function PetaTab({ theme, userRole }) {
         }));
       petaIframeRef.current.contentWindow.postMessage(JSON.stringify({ type: 'UPDATE_BENCANA', payload }), '*');
     }
-  }, [bencanaPoints]);
+  }, [bencanaPoints, mapReady]);
 
   useEffect(() => {
     // La carte tourne dans une <iframe> web (voir plus bas) : `window` n'existe
@@ -359,7 +362,7 @@ export default function PetaTab({ theme, userRole }) {
               {pagedHistory.map((h, index) => (
                 <View key={h.id} style={[styles.calamityTableRow, { backgroundColor: index % 2 === 0 ? PALETTE.cardLight : PALETTE.surface }]}>
                   <View style={[styles.historyAgencyColFlex, { flexDirection: 'row', alignItems: 'center', gap: 8, paddingLeft: 16, paddingVertical: 10 }]}>
-                    <View style={[styles.petaAgencyDot, { backgroundColor: getAgencyColorFromMap(h.jpbd_directory?.agency) }]} />
+                    <AgencyMark logo={getAgencyLogo(h.jpbd_directory?.agency)} color={getAgencyColorFromMap(h.jpbd_directory?.agency)} size={20} />
                     <View style={{ flex: 1 }}>
                       <Text style={[styles.tableCellAgency, large && { fontSize: 16 }]} numberOfLines={1}>{h.jpbd_directory?.agency || '-'}</Text>
                       <Text style={[styles.tableCellMember, large && { fontSize: 13 }]} numberOfLines={1}>{h.member_name}</Text>
@@ -544,10 +547,16 @@ export default function PetaTab({ theme, userRole }) {
               {onlineAgencies.map(a => (
                 <View key={a.id} style={styles.petaAgencyCard}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                    <View style={[styles.petaAgencyDot, { backgroundColor: getAgencyColorFromMap(a.jpbd_directory?.agency) }]} />
+                    <View style={styles.agencyMarkWrap}>
+                      <AgencyMark logo={getAgencyLogo(a.jpbd_directory?.agency)} color={getAgencyColorFromMap(a.jpbd_directory?.agency)} size={22} />
+                      <View style={styles.onlineBadge} />
+                    </View>
                     <View>
                       <Text style={styles.petaAgencyName} numberOfLines={1}>{a.jpbd_directory?.agency || '-'}</Text>
-                      <Text style={styles.petaAgencyUser}>{a.member_name}</Text>
+                      <View style={styles.onlineRow}>
+                        <Text style={styles.petaAgencyUser} numberOfLines={1}>{a.member_name}</Text>
+                        <Text style={styles.onlineLabel}>● Online</Text>
+                      </View>
                     </View>
                   </View>
                 </View>
@@ -561,7 +570,7 @@ export default function PetaTab({ theme, userRole }) {
             <ScrollView style={{ maxHeight: 220 }} showsVerticalScrollIndicator={false}>
               {agencyNames.map(a => (
                 <View key={a.id} style={styles.agencyLegendRow}>
-                  <View style={[styles.agencyLegendDot, { backgroundColor: getAgencyColorFromMap(a.agency) }]} />
+                  <AgencyMark logo={getAgencyLogo(a.agency)} color={getAgencyColorFromMap(a.agency)} size={20} />
                   <Text style={styles.agencyLegendLabel} numberOfLines={1}>{a.agency}</Text>
                 </View>
               ))}

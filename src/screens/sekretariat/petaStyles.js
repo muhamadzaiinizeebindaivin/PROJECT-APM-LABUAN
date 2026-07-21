@@ -21,7 +21,16 @@ export const petaStyles = StyleSheet.create({
   petaAgencyCard: { padding: 12, borderRadius: 12, backgroundColor: PALETTE.cardLight, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 5, elevation: 3, minWidth: 160 },
   petaAgencyDot: { width: 10, height: 10, borderRadius: 5 },
   petaAgencyName: { fontSize: 12, fontWeight: '700', color: PALETTE.textDark, maxWidth: 120 },
-  petaAgencyUser: { fontSize: 10, color: PALETTE.textMutedDark },
+  petaAgencyUser: { fontSize: 10, color: PALETTE.textMutedDark, maxWidth: 80 },
+  agencyMarkWrap: { position: 'relative' },
+  onlineBadge: {
+    position: 'absolute', bottom: -2, right: -2,
+    width: 9, height: 9, borderRadius: 5,
+    backgroundColor: PALETTE.success,
+    borderWidth: 1.5, borderColor: PALETTE.cardLight,
+  },
+  onlineRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  onlineLabel: { fontSize: 9, fontWeight: '800', color: PALETTE.success },
   agencyLegendPalette: {
     position: 'absolute', top: 108, left: 16, zIndex: 10, backgroundColor: PALETTE.cardLight,
     borderRadius: 16, padding: 10, shadowColor: '#000', shadowOpacity: 0.1,
