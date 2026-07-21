@@ -1,11 +1,12 @@
 // src/hooks/useJpbdDirectory.js
 import { useState, useEffect } from 'react';
 import { Alert, Platform } from 'react-native';
-import { supabase } from '../supabaseClient';
+import { supabaseSandbox } from '../supabaseSandboxClient';
 
 /**
  * Gère la liste JPBD (répertoire d'agences) : chargement, création,
  * modification, suppression. Extrait de SekretariatScreen.js.
+ * Schéma sandbox uniquement — ne touche jamais public.
  */
 export function useJpbdDirectory() {
   const [jpbdList, setJpbdList] = useState([]);
@@ -16,31 +17,32 @@ export function useJpbdDirectory() {
   const [formJpbd, setFormJpbd] = useState({
     agency: '', officer: '', position: '', grade: '', email: '',
     address: '', office_phone: '', mobile_phone: '', fax: '',
-    officers_count: '', members_count: '', logistics_assets: ''
+    officers_count: '', members_count: '', logistics_assets: '',
+    logo_url: ''
   });
 
   const fetchJPBD = async () => {
     setLoadingJPBD(true);
-    const { data, error } = await supabase.from('jpbd_directory').select('*').order('created_at', { ascending: true });
+    const { data, error } = await supabaseSandbox.from('jpbd_directory').select('*').order('created_at', { ascending: true });
     if (!error) setJpbdList(data || []);
     setLoadingJPBD(false);
   };
 
   useEffect(() => {
     fetchJPBD();
-    const subscription = supabase
+    const subscription = supabaseSandbox
       .channel('jpbd_directory_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'jpbd_directory' }, () => {
+      .on('postgres_changes', { event: '*', schema: 'sandbox', table: 'jpbd_directory' }, () => {
         fetchJPBD();
       })
       .subscribe();
-    return () => { supabase.removeChannel(subscription); };
+    return () => { supabaseSandbox.removeChannel(subscription); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const openAddModal = () => {
     setFormModeJpbd('add');
-    setFormJpbd({ agency: '', officer: '', position: '', grade: '', email: '', address: '', office_phone: '', mobile_phone: '', fax: '', officers_count: '', members_count: '', logistics_assets: '' });
+    setFormJpbd({ agency: '', officer: '', position: '', grade: '', email: '', address: '', office_phone: '', mobile_phone: '', fax: '', officers_count: '', members_count: '', logistics_assets: '', logo_url: '' });
     setModalJpbdVisible(true);
   };
 
@@ -50,7 +52,8 @@ export function useJpbdDirectory() {
     setFormJpbd({
       ...item,
       officers_count: item.officers_count?.toString() || '',
-      members_count: item.members_count?.toString() || ''
+      members_count: item.members_count?.toString() || '',
+      logo_url: item.logo_url || ''
     });
     setModalJpbdVisible(true);
   };
@@ -60,11 +63,11 @@ export function useJpbdDirectory() {
     setLoadingJPBD(true);
 
     if (formModeJpbd === 'add') {
-      const { error } = await supabase.from('jpbd_directory').insert([formJpbd]);
+      const { error } = await supabaseSandbox.from('jpbd_directory').insert([formJpbd]);
       if (error) Alert.alert('Ralat', error.message);
       else { Alert.alert('Berjaya', 'Rekod ditambah.'); setModalJpbdVisible(false); fetchJPBD(); }
     } else {
-      const { error } = await supabase.from('jpbd_directory').update(formJpbd).eq('id', editIdJpbd);
+      const { error } = await supabaseSandbox.from('jpbd_directory').update(formJpbd).eq('id', editIdJpbd);
       if (error) Alert.alert('Ralat', error.message);
       else { Alert.alert('Berjaya', 'Rekod dikemaskini.'); setModalJpbdVisible(false); fetchJPBD(); }
     }
@@ -74,7 +77,7 @@ export function useJpbdDirectory() {
   const confirmDeleteJPBD = (id) => {
     const executeDelete = async () => {
       setLoadingJPBD(true);
-      const { error } = await supabase.from('jpbd_directory').delete().eq('id', id);
+      const { error } = await supabaseSandbox.from('jpbd_directory').delete().eq('id', id);
       if (error) {
         Platform.OS === 'web' ? alert('Ralat: ' + error.message) : Alert.alert('Ralat', error.message);
       } else {

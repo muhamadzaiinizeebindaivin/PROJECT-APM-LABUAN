@@ -1,13 +1,27 @@
 // src/screens/sekretariat/JpbdSection.js
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, TextInput, Modal, ActivityIndicator, StyleSheet } from 'react-native';
-import { Briefcase, Plus, Edit, Trash2, X } from 'lucide-react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, TextInput, Modal, ActivityIndicator, StyleSheet, Image, Platform } from 'react-native';
+import { Briefcase, Plus, Edit, Trash2, X, ImagePlus } from 'lucide-react-native';
 import { useJpbdDirectory } from '../../hooks/useJpbdDirectory';
+import { useAgencyLogo } from '../../hooks/useAgencyLogo';
 import { sharedStyles as styles } from './sharedStyles';
 import { PALETTE } from '../../constants/palette';
 
+// Scrollbar toujours visible sur web (pas seulement au survol)
+if (Platform.OS === 'web' && typeof document !== 'undefined' && !document.getElementById('jpbd-scrollbar-css')) {
+  const style = document.createElement('style');
+  style.id = 'jpbd-scrollbar-css';
+  style.textContent = `
+    .jpbd-pills-scroll::-webkit-scrollbar { height: 8px; }
+    .jpbd-pills-scroll::-webkit-scrollbar-track { background: ${'#00000010'}; border-radius: 4px; }
+    .jpbd-pills-scroll::-webkit-scrollbar-thumb { background: #F97316; border-radius: 4px; }
+    .jpbd-pills-scroll { scrollbar-width: thin; scrollbar-color: #F97316 #00000010; }
+  `;
+  document.head.appendChild(style);
+}
+
 export default function JpbdSection({ userRole, isEditMode }) {
-  const [expandedId, setExpandedId] = useState(null);
+  const [selectedId, setSelectedId] = useState(null);
   const {
     jpbdList, loadingJPBD,
     modalJpbdVisible, setModalJpbdVisible,
@@ -15,8 +29,58 @@ export default function JpbdSection({ userRole, isEditMode }) {
     openAddModal, openEditModal,
     handleSaveJPBD, confirmDeleteJPBD,
   } = useJpbdDirectory();
+  const { pickAndUploadLogo, uploadingLogo } = useAgencyLogo();
 
-  const toggleExpand = (id) => setExpandedId(expandedId === id ? null : id);
+  // Sélectionne automatiquement la 1re agence au chargement
+  useEffect(() => {
+    if (!selectedId && jpbdList.length > 0) setSelectedId(jpbdList[0].id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jpbdList]);
+
+  const selected = jpbdList.find((i) => i.id === selectedId) || null;
+
+  const handlePickLogo = async () => {
+    const url = await pickAndUploadLogo();
+    if (url) setFormJpbd({ ...formJpbd, logo_url: url });
+  };
+
+  // ---- Liste dynamique d'assets ----
+  const [assetRows, setAssetRows] = useState([]);
+
+  // À l'ouverture de la modale : parse "Nama : qty" ligne par ligne
+  useEffect(() => {
+    if (modalJpbdVisible) {
+      const rows = (formJpbd.logistics_assets || '')
+        .split('\n')
+        .filter((l) => l.trim())
+        .map((line) => {
+          const idx = line.lastIndexOf(':');
+          if (idx > -1) {
+            return { name: line.slice(0, idx).trim(), qty: line.slice(idx + 1).trim() };
+          }
+          return { name: line.trim(), qty: '' };
+        });
+      setAssetRows(rows.length > 0 ? rows : [{ name: '', qty: '' }]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modalJpbdVisible]);
+
+  // Toute modif des lignes est re-sérialisée dans formJpbd.logistics_assets
+  const syncAssets = (rows) => {
+    setAssetRows(rows);
+    const text = rows
+      .filter((r) => r.name.trim())
+      .map((r) => `${r.name.trim()} : ${r.qty.trim() || '1'}`)
+      .join('\n');
+    setFormJpbd((prev) => ({ ...prev, logistics_assets: text }));
+  };
+
+  const updateAssetRow = (i, field, value) => {
+    const rows = assetRows.map((r, idx) => (idx === i ? { ...r, [field]: value } : r));
+    syncAssets(rows);
+  };
+  const addAssetRow = () => syncAssets([...assetRows, { name: '', qty: '' }]);
+  const removeAssetRow = (i) => syncAssets(assetRows.filter((_, idx) => idx !== i));
 
   return (
     <View>
@@ -35,70 +99,131 @@ export default function JpbdSection({ userRole, isEditMode }) {
       ) : jpbdList.length === 0 ? (
         <Text style={styles.emptyText}>Tiada rekod dijumpai. Sila tambah agensi.</Text>
       ) : (
-        jpbdList.map((item, index) => {
-          const isExpanded = expandedId === item.id;
-          return (
-            <View key={item.id} style={styles.card}>
-              <TouchableOpacity style={styles.header} onPress={() => toggleExpand(item.id)} activeOpacity={0.7}>
-                <View style={styles.headerContent}>
-                  <Text style={jpbdStyles.agencyName}>{index + 1}. {item.agency}</Text>
-                  {item.officer ? <Text style={jpbdStyles.officerName}>{item.officer}</Text> : null}
-                </View>
-                <Briefcase size={20} color={PALETTE.orange} />
-              </TouchableOpacity>
-
-              {isExpanded ? (
-                <View style={styles.body}>
-                  {userRole === 'admin' && isEditMode ? (
-                    <View style={styles.actionRow}>
-                      <TouchableOpacity style={styles.editBtn} onPress={() => openEditModal(item)}>
-                        <Edit size={14} color={PALETTE.white} />
-                        <Text style={styles.actionText}>Kemaskini</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity style={styles.deleteBtn} onPress={() => confirmDeleteJPBD(item.id)}>
-                        <Trash2 size={14} color={PALETTE.danger} />
-                        <Text style={[styles.actionText, { color: PALETTE.danger }]}>Padam</Text>
-                      </TouchableOpacity>
+        <>
+          {/* ---- Pills horizontales ---- */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={true}
+            style={jpbdStyles.pillsScroll}
+            contentContainerStyle={jpbdStyles.pillsContent}
+            {...(Platform.OS === 'web' ? { className: 'jpbd-pills-scroll' } : {})}
+          >
+            {jpbdList.map((item) => {
+              const isSelected = item.id === selectedId;
+              return (
+                <TouchableOpacity
+                  key={item.id}
+                  style={[jpbdStyles.pill, isSelected && jpbdStyles.pillSelected]}
+                  onPress={() => setSelectedId(item.id)}
+                  activeOpacity={0.8}
+                >
+                  {item.logo_url ? (
+                    <Image source={{ uri: item.logo_url }} style={jpbdStyles.pillLogo} resizeMode="contain" />
+                  ) : (
+                    <View style={jpbdStyles.pillLogoPlaceholder}>
+                      <Briefcase size={22} color={isSelected ? PALETTE.white : PALETTE.orange} />
                     </View>
-                  ) : null}
+                  )}
+                  <Text
+                    style={[jpbdStyles.pillName, isSelected && jpbdStyles.pillNameSelected]}
+                    numberOfLines={1}
+                  >
+                    {item.agency}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
 
-                  <View style={styles.section}>
-                    <Text style={styles.label}>Jawatan: <Text style={styles.value}>{item.position || '-'}</Text></Text>
-                    <Text style={styles.label}>Email: <Text style={styles.value}>{item.email || '-'}</Text></Text>
-                    <Text style={styles.label}>Gred: <Text style={styles.value}>{item.grade || '-'}</Text></Text>
+          {/* ---- Panneau de détails ---- */}
+          {selected ? (
+            <View style={jpbdStyles.detailPanel}>
+              <View style={jpbdStyles.detailHeader}>
+                <View style={{ flex: 1 }}>
+                  <Text style={jpbdStyles.detailAgency}>{selected.agency}</Text>
+                  {selected.officer ? <Text style={jpbdStyles.detailOfficer}>{selected.officer}</Text> : null}
+                </View>
+                {userRole === 'admin' && isEditMode ? (
+                  <View style={styles.actionRow}>
+                    <TouchableOpacity style={styles.editBtn} onPress={() => openEditModal(selected)}>
+                      <Edit size={14} color={PALETTE.white} />
+                      <Text style={styles.actionText}>Kemaskini</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.deleteBtn} onPress={() => confirmDeleteJPBD(selected.id)}>
+                      <Trash2 size={14} color={PALETTE.danger} />
+                      <Text style={[styles.actionText, { color: PALETTE.danger }]}>Padam</Text>
+                    </TouchableOpacity>
                   </View>
-                  <View style={styles.divider} />
-                  <Text style={styles.sectionTitle}>Hubungan & Logistik</Text>
-                  <Text style={styles.label}>Alamat: <Text style={styles.value}>{item.address || '-'}</Text></Text>
+                ) : null}
+              </View>
 
-                  <View style={styles.row}>
-                    <View style={styles.halfCol}><Text style={styles.label}>Tel (Pejabat):</Text><Text style={styles.value}>{item.office_phone || '-'}</Text></View>
-                    <View style={styles.halfCol}><Text style={styles.label}>Tel (Bimbit):</Text><Text style={styles.value}>{item.mobile_phone || '-'}</Text></View>
+              {/* Infos principales en grille */}
+              <View style={jpbdStyles.infoGrid}>
+                <View style={jpbdStyles.infoBox}>
+                  <Text style={jpbdStyles.infoLabel}>JAWATAN</Text>
+                  <Text style={jpbdStyles.infoValue}>{selected.position || '-'}</Text>
+                </View>
+                <View style={jpbdStyles.infoBox}>
+                  <Text style={jpbdStyles.infoLabel}>GRED</Text>
+                  <Text style={jpbdStyles.infoValue}>{selected.grade || '-'}</Text>
+                </View>
+                <View style={jpbdStyles.infoBox}>
+                  <Text style={jpbdStyles.infoLabel}>E-MEL</Text>
+                  <Text style={jpbdStyles.infoValue}>{selected.email || '-'}</Text>
+                </View>
+              </View>
+
+              <Text style={jpbdStyles.groupTitle}>Hubungan & Logistik</Text>
+              <View style={jpbdStyles.infoBoxFull}>
+                <Text style={jpbdStyles.infoLabel}>ALAMAT</Text>
+                <Text style={jpbdStyles.infoValue}>{selected.address || '-'}</Text>
+              </View>
+              <View style={jpbdStyles.infoGrid}>
+                <View style={jpbdStyles.infoBox}>
+                  <Text style={jpbdStyles.infoLabel}>TEL (PEJABAT)</Text>
+                  <Text style={jpbdStyles.infoValue}>{selected.office_phone || '-'}</Text>
+                </View>
+                <View style={jpbdStyles.infoBox}>
+                  <Text style={jpbdStyles.infoLabel}>TEL (BIMBIT)</Text>
+                  <Text style={jpbdStyles.infoValue}>{selected.mobile_phone || '-'}</Text>
+                </View>
+                <View style={jpbdStyles.infoBox}>
+                  <Text style={jpbdStyles.infoLabel}>FAX</Text>
+                  <Text style={jpbdStyles.infoValue}>{selected.fax || '-'}</Text>
+                </View>
+              </View>
+
+              {(selected.officers_count || selected.members_count) ? (
+                <>
+                  <Text style={jpbdStyles.groupTitle}>Kekuatan Anggota</Text>
+                  <View style={jpbdStyles.statsRow}>
+                    <View style={jpbdStyles.statCard}>
+                      <Text style={jpbdStyles.statNumber}>{selected.officers_count || '0'}</Text>
+                      <Text style={jpbdStyles.statCaption}>Pegawai</Text>
+                    </View>
+                    <View style={jpbdStyles.statCard}>
+                      <Text style={jpbdStyles.statNumber}>{selected.members_count || '0'}</Text>
+                      <Text style={jpbdStyles.statCaption}>Anggota</Text>
+                    </View>
                   </View>
-                  <Text style={[styles.label, { marginTop: 4 }]}>Fax: <Text style={styles.value}>{item.fax || '-'}</Text></Text>
+                </>
+              ) : null}
 
-                  {(item.officers_count || item.members_count) ? (
-                    <>
-                      <View style={[styles.divider, { marginVertical: 8 }]} />
-                      <Text style={styles.subTitle}>Kekuatan Anggota</Text>
-                      <View style={styles.row}>
-                        <View style={styles.halfCol}><Text style={styles.statLabel}>Pegawai</Text><Text style={styles.statValue2}>{item.officers_count || '0'}</Text></View>
-                        <View style={styles.halfCol}><Text style={styles.statLabel}>Anggota</Text><Text style={styles.statValue2}>{item.members_count || '0'}</Text></View>
+              {selected.logistics_assets ? (
+                <>
+                  <Text style={jpbdStyles.groupTitle}>Logistik & Aset</Text>
+                  <View style={jpbdStyles.chipsWrap}>
+                    {selected.logistics_assets.split('\n').filter((l) => l.trim()).map((line, i) => (
+                      <View key={i} style={jpbdStyles.chip}>
+                        <Text style={jpbdStyles.chipText}>{line.trim()}</Text>
                       </View>
-                    </>
-                  ) : null}
-
-                  {item.logistics_assets ? (
-                    <View style={styles.logisticsBox}>
-                      <Text style={styles.subTitle}>Logistik & Aset:</Text>
-                      <Text style={styles.logItem}>{item.logistics_assets}</Text>
-                    </View>
-                  ) : null}
-                </View>
+                    ))}
+                  </View>
+                </>
               ) : null}
             </View>
-          );
-        })
+          ) : null}
+        </>
       )}
 
       <Modal visible={modalJpbdVisible} animationType="slide" transparent={true}>
@@ -109,6 +234,20 @@ export default function JpbdSection({ userRole, isEditMode }) {
               <TouchableOpacity onPress={() => setModalJpbdVisible(false)}><X size={24} color={PALETTE.textMutedDark} /></TouchableOpacity>
             </View>
             <ScrollView contentContainerStyle={styles.modalForm}>
+              <Text style={styles.inputLabel}>Logo Agensi</Text>
+              <TouchableOpacity style={jpbdStyles.logoPicker} onPress={handlePickLogo} disabled={uploadingLogo}>
+                {uploadingLogo ? (
+                  <ActivityIndicator color={PALETTE.orange} />
+                ) : formJpbd.logo_url ? (
+                  <Image source={{ uri: formJpbd.logo_url }} style={jpbdStyles.logoPreview} resizeMode="contain" />
+                ) : (
+                  <>
+                    <ImagePlus size={22} color={PALETTE.textMutedDark} />
+                    <Text style={jpbdStyles.logoPickerText}>Pilih logo</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+
               <Text style={styles.inputLabel}>Nama Agensi *</Text>
               <TextInput style={styles.input} placeholder="Contoh: PDRM" value={formJpbd.agency} onChangeText={(t) => setFormJpbd({ ...formJpbd, agency: t })} />
               <Text style={styles.inputLabel}>Nama Pegawai</Text>
@@ -149,8 +288,31 @@ export default function JpbdSection({ userRole, isEditMode }) {
                   <TextInput style={styles.input} placeholder="Cth: 30" keyboardType="number-pad" value={formJpbd.members_count} onChangeText={(t) => setFormJpbd({ ...formJpbd, members_count: t })} />
                 </View>
               </View>
-              <Text style={styles.inputLabel}>Logistik & Aset (Senaraikan)</Text>
-              <TextInput style={[styles.input, { height: 80, textAlignVertical: 'top' }]} placeholder="Cth: 3 Buah Hilux, 2 Bot Aluminium..." multiline value={formJpbd.logistics_assets} onChangeText={(t) => setFormJpbd({ ...formJpbd, logistics_assets: t })} />
+              <Text style={styles.inputLabel}>Logistik & Aset</Text>
+              {assetRows.map((row, i) => (
+                <View key={i} style={jpbdStyles.assetRow}>
+                  <TextInput
+                    style={[styles.input, jpbdStyles.assetNameInput]}
+                    placeholder="Cth: Bot Aluminium"
+                    value={row.name}
+                    onChangeText={(t) => updateAssetRow(i, 'name', t)}
+                  />
+                  <TextInput
+                    style={[styles.input, jpbdStyles.assetQtyInput]}
+                    placeholder="Bil."
+                    keyboardType="number-pad"
+                    value={row.qty}
+                    onChangeText={(t) => updateAssetRow(i, 'qty', t)}
+                  />
+                  <TouchableOpacity style={jpbdStyles.assetRemoveBtn} onPress={() => removeAssetRow(i)}>
+                    <Trash2 size={16} color={PALETTE.danger} />
+                  </TouchableOpacity>
+                </View>
+              ))}
+              <TouchableOpacity style={jpbdStyles.assetAddBtn} onPress={addAssetRow}>
+                <Plus size={14} color={PALETTE.orange} />
+                <Text style={jpbdStyles.assetAddText}>Tambah Aset</Text>
+              </TouchableOpacity>
               <TouchableOpacity style={styles.saveButton} onPress={handleSaveJPBD}>
                 {loadingJPBD ? <ActivityIndicator color={PALETTE.white} /> : <Text style={styles.saveButtonText}>Simpan Rekod</Text>}
               </TouchableOpacity>
@@ -164,6 +326,81 @@ export default function JpbdSection({ userRole, isEditMode }) {
 }
 
 const jpbdStyles = StyleSheet.create({
-  agencyName: { fontSize: 15, fontWeight: '800', color: PALETTE.textDark },
-  officerName: { fontSize: 13, color: PALETTE.textMutedDark, marginTop: 4 },
+  // Pills
+  pillsScroll: { marginBottom: 12 },
+  pillsContent: { gap: 10, paddingBottom: 10, paddingHorizontal: 2 },
+  pill: {
+    width: 150, alignItems: 'center', paddingVertical: 14, paddingHorizontal: 10,
+    borderRadius: 12, backgroundColor: PALETTE.white,
+    borderWidth: 1, borderColor: PALETTE.orange,
+  },
+  pillSelected: { backgroundColor: PALETTE.orange },
+  pillLogo: { width: 64, height: 64, marginBottom: 8, borderRadius: 10, backgroundColor: PALETTE.white },
+  pillLogoPlaceholder: { width: 64, height: 64, marginBottom: 8, alignItems: 'center', justifyContent: 'center' },
+  pillName: { fontSize: 13, fontWeight: '700', color: PALETTE.textDark, textAlign: 'center' },
+  pillNameSelected: { color: PALETTE.white },
+
+  // Panneau de détails
+  detailPanel: {
+    backgroundColor: PALETTE.white, borderRadius: 12, padding: 16,
+    borderWidth: 1, borderColor: PALETTE.orange,
+  },
+  detailHeader: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 14, gap: 8 },
+  detailAgency: { fontSize: 18, fontWeight: '800', color: PALETTE.textDark },
+  detailOfficer: { fontSize: 13, color: PALETTE.textMutedDark, marginTop: 2 },
+
+  groupTitle: {
+    fontSize: 13, fontWeight: '800', color: PALETTE.orange,
+    textTransform: 'uppercase', letterSpacing: 0.5,
+    marginTop: 14, marginBottom: 8,
+  },
+  infoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  infoBox: {
+    flexGrow: 1, flexBasis: '30%', minWidth: 150,
+    backgroundColor: PALETTE.softOrangeBg || '#FFF4EC',
+    borderRadius: 8, paddingVertical: 8, paddingHorizontal: 10,
+  },
+  infoBoxFull: {
+    backgroundColor: PALETTE.softOrangeBg || '#FFF4EC',
+    borderRadius: 8, paddingVertical: 8, paddingHorizontal: 10, marginBottom: 8,
+  },
+  infoLabel: { fontSize: 10, fontWeight: '700', color: PALETTE.textMutedDark, letterSpacing: 0.5, marginBottom: 2 },
+  infoValue: { fontSize: 14, fontWeight: '600', color: PALETTE.textDark },
+
+  statsRow: { flexDirection: 'row', gap: 8 },
+  statCard: {
+    flex: 1, alignItems: 'center', paddingVertical: 12,
+    backgroundColor: PALETTE.softOrangeBg || '#FFF4EC',
+    borderRadius: 10, borderWidth: 1, borderColor: PALETTE.orange,
+  },
+  statNumber: { fontSize: 24, fontWeight: '800', color: PALETTE.orange },
+  statCaption: { fontSize: 12, fontWeight: '600', color: PALETTE.textMutedDark, marginTop: 2 },
+
+  chipsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  chip: {
+    backgroundColor: PALETTE.softOrangeBg || '#FFF4EC',
+    borderRadius: 14, paddingVertical: 5, paddingHorizontal: 10,
+    borderWidth: 1, borderColor: '#F9731640',
+  },
+  chipText: { fontSize: 12, color: PALETTE.textDark },
+
+  // Liste dynamique d'assets (modale)
+  assetRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 },
+  assetNameInput: { flex: 1, marginBottom: 0 },
+  assetQtyInput: { width: 70, marginBottom: 0, textAlign: 'center' },
+  assetRemoveBtn: { padding: 6 },
+  assetAddBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4,
+    borderWidth: 1, borderStyle: 'dashed', borderColor: PALETTE.orange,
+    borderRadius: 8, paddingVertical: 8, marginTop: 2, marginBottom: 4,
+  },
+  assetAddText: { fontSize: 13, fontWeight: '700', color: PALETTE.orange },
+
+  // Modale logo
+  logoPicker: {
+    height: 90, borderWidth: 1, borderStyle: 'dashed', borderColor: PALETTE.textMutedDark,
+    borderRadius: 8, alignItems: 'center', justifyContent: 'center', marginBottom: 8, gap: 4,
+  },
+  logoPreview: { width: 80, height: 80 },
+  logoPickerText: { fontSize: 12, color: PALETTE.textMutedDark },
 });
