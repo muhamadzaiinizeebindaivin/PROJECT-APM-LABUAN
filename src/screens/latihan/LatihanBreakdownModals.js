@@ -4,7 +4,7 @@ import { View, Text, TouchableOpacity, ScrollView, Modal } from 'react-native';
 import { X } from 'lucide-react-native';
 import { PALETTE } from '../../constants/palette';
 import { statusMeta } from './latihanConstants';
-import { sharedStyles as shared } from '../sekretariat/sharedStyles';
+import { sharedStyles as shared } from '../sekretariat/sekretariatStyles';
 import { latihanStyles as styles } from './latihanStyles';
 
 export function PesertaModal({ visible, onClose, latihanList, totalPax }) {

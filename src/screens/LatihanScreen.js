@@ -7,7 +7,7 @@ import AdminEditButton from '../components/AdminEditButton';
 import HoverTip from '../components/HoverTip';
 import { PALETTE } from '../constants/palette';
 import { statusMeta, formatDisplayDate } from './latihan/latihanConstants';
-import { sharedStyles as shared } from './sekretariat/sharedStyles';
+import { sharedStyles as shared } from './sekretariat/sekretariatStyles';
 import { latihanStyles as styles } from './latihan/latihanStyles';
 import { AnimatedVerticalBar, AnimatedHorizontalBar, StatusDonut } from './latihan/LatihanCharts';
 import LatihanFormModal from './latihan/LatihanFormModal';

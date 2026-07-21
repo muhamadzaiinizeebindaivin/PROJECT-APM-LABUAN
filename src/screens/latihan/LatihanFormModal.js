@@ -4,7 +4,7 @@ import { View, Text, TouchableOpacity, ScrollView, TextInput, Modal, Platform } 
 import { X, CalendarDays } from 'lucide-react-native';
 import { PALETTE } from '../../constants/palette';
 import { SASARAN_OPTIONS, statusMeta } from './latihanConstants';
-import { sharedStyles as shared } from '../sekretariat/sharedStyles';
+import { sharedStyles as shared } from '../sekretariat/sekretariatStyles';
 import { latihanStyles as styles } from './latihanStyles';
 
 // Safe Require for Native Only

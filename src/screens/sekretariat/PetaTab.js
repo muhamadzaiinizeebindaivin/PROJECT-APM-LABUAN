@@ -10,7 +10,7 @@ import { useAgencyTrackingHistory } from '../../hooks/useAgencyTrackingHistory';
 import ModalSelectField from '../../components/ModalSelectField';
 import FullscreenViewer from '../../components/FullscreenViewer';
 import { generateAgencyHistoryPdf, generateBencanaHistoryPdf } from '../../utils/agencyReportsPdf';
-import { sharedStyles } from './sharedStyles';
+import { sekretariatStyles.js } from './sekretariatStyles.js';
 import { petaStyles as styles } from './petaStyles';
 import { PALETTE } from '../../constants/palette';
 
@@ -329,7 +329,7 @@ export default function PetaTab({ theme, userRole }) {
 
       <View style={{ paddingHorizontal: 16, marginBottom: 8 }}>
         <TextInput
-          style={sharedStyles.input}
+          style={sekretariatStyles.js.input}
           placeholder="Cari agensi atau ahli..."
           placeholderTextColor={PALETTE.textMutedDark}
           value={searchHistoryQuery}
@@ -436,7 +436,7 @@ export default function PetaTab({ theme, userRole }) {
 
       <View style={{ paddingHorizontal: 16, marginBottom: 8 }}>
         <TextInput
-          style={sharedStyles.input}
+          style={sekretariatStyles.js.input}
           placeholder="Cari nama bencana..."
           placeholderTextColor={PALETTE.textMutedDark}
           value={searchSummaryQuery}
@@ -647,14 +647,14 @@ export default function PetaTab({ theme, userRole }) {
               <TouchableOpacity
                 onPress={handleExportHistoryPdf}
                 disabled={exportingHistoryPdf}
-                style={[sharedStyles.pdfExportBtn, exportingHistoryPdf && sharedStyles.pdfExportBtnDisabled]}
+                style={[sekretariatStyles.js.pdfExportBtn, exportingHistoryPdf && sekretariatStyles.js.pdfExportBtnDisabled]}
               >
                 {exportingHistoryPdf ? (
                   <ActivityIndicator size="small" color={PALETTE.white} />
                 ) : (
                   <>
                     <Download size={14} color={PALETTE.white} />
-                    <Text style={sharedStyles.pdfExportBtnText}>PDF</Text>
+                    <Text style={sekretariatStyles.js.pdfExportBtnText}>PDF</Text>
                   </>
                 )}
               </TouchableOpacity>
@@ -679,14 +679,14 @@ export default function PetaTab({ theme, userRole }) {
               <TouchableOpacity
                 onPress={handleExportSummaryPdf}
                 disabled={exportingSummaryPdf}
-                style={[sharedStyles.pdfExportBtn, exportingSummaryPdf && sharedStyles.pdfExportBtnDisabled]}
+                style={[sekretariatStyles.js.pdfExportBtn, exportingSummaryPdf && sekretariatStyles.js.pdfExportBtnDisabled]}
               >
                 {exportingSummaryPdf ? (
                   <ActivityIndicator size="small" color={PALETTE.white} />
                 ) : (
                   <>
                     <Download size={14} color={PALETTE.white} />
-                    <Text style={sharedStyles.pdfExportBtnText}>PDF</Text>
+                    <Text style={sekretariatStyles.js.pdfExportBtnText}>PDF</Text>
                   </>
                 )}
               </TouchableOpacity>
@@ -701,34 +701,34 @@ export default function PetaTab({ theme, userRole }) {
       )}
 
       <Modal visible={bencanaModalVisible} transparent={true} animationType="fade">
-        <View style={sharedStyles.modalOverlay}>
-          <View style={sharedStyles.modalContainer}>
-            <View style={sharedStyles.modalHeader}>
-              <Text style={sharedStyles.modalTitle}>Tambah Titik Bencana</Text>
+        <View style={sekretariatStyles.js.modalOverlay}>
+          <View style={sekretariatStyles.js.modalContainer}>
+            <View style={sekretariatStyles.js.modalHeader}>
+              <Text style={sekretariatStyles.js.modalTitle}>Tambah Titik Bencana</Text>
               <TouchableOpacity onPress={() => { setBencanaModalVisible(false); setPendingBencanaPlacement(null); setBencanaCategory(''); setBencanaDescription(''); }}>
                 <X size={24} color={PALETTE.textMutedDark} />
               </TouchableOpacity>
             </View>
-            <View style={sharedStyles.modalForm}>
-              <Text style={sharedStyles.inputLabel}>Kategori Bencana *</Text>
+            <View style={sekretariatStyles.js.modalForm}>
+              <Text style={sekretariatStyles.js.inputLabel}>Kategori Bencana *</Text>
               <TextInput
-                style={sharedStyles.input}
+                style={sekretariatStyles.js.input}
                 placeholder="Cth: Banjir Kilat, Tanah Runtuh, Ribut..."
                 placeholderTextColor={PALETTE.textMutedDark}
                 value={bencanaCategory}
                 onChangeText={setBencanaCategory}
               />
-              <Text style={sharedStyles.inputLabel}>Keterangan (pilihan)</Text>
+              <Text style={sekretariatStyles.js.inputLabel}>Keterangan (pilihan)</Text>
               <TextInput
-                style={[sharedStyles.input, { height: 80, textAlignVertical: 'top' }]}
+                style={[sekretariatStyles.js.input, { height: 80, textAlignVertical: 'top' }]}
                 placeholder="Cth: Air naik setinggi 1 meter"
                 placeholderTextColor={PALETTE.textMutedDark}
                 multiline
                 value={bencanaDescription}
                 onChangeText={setBencanaDescription}
               />
-              <TouchableOpacity style={sharedStyles.saveButton} onPress={handleSaveBencana}>
-                <Text style={sharedStyles.saveButtonText}>Simpan Titik</Text>
+              <TouchableOpacity style={sekretariatStyles.js.saveButton} onPress={handleSaveBencana}>
+                <Text style={sekretariatStyles.js.saveButtonText}>Simpan Titik</Text>
               </TouchableOpacity>
             </View>
           </View>

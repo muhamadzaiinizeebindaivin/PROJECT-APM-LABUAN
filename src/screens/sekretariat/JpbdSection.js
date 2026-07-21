@@ -4,7 +4,7 @@ import { View, Text, TouchableOpacity, ScrollView, TextInput, Modal, ActivityInd
 import { Briefcase, Plus, Edit, Trash2, X, ImagePlus } from 'lucide-react-native';
 import { useJpbdDirectory } from '../../hooks/useJpbdDirectory';
 import { useAgencyLogo } from '../../hooks/useAgencyLogo';
-import { sharedStyles as styles } from './sharedStyles';
+import { sekretariatStyles.js as styles } from './sekretariatStyles.js';
 import { PALETTE } from '../../constants/palette';
 
 // Scrollbar toujours visible sur web (pas seulement au survol)

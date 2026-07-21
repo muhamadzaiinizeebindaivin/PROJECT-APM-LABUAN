@@ -8,7 +8,7 @@ import {
 import { usePpsList } from '../../hooks/usePpsList';
 import { usePpsCategories } from '../../hooks/usePpsCategories';
 import HoverTip from '../../components/HoverTip';
-import { sharedStyles as styles } from './sharedStyles';
+import { sekretariatStyles.js as styles } from './sekretariatStyles.js';
 import { PALETTE } from '../../constants/palette';
 
 // Scrollbar toujours visible sur web

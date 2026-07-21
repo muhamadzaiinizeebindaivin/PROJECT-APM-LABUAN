@@ -11,7 +11,7 @@ import {
 } from 'lucide-react-native';
 import { useHotspots } from '../../hooks/useHotspots';
 import { useHotspotCategories } from '../../hooks/useHotspotCategories';
-import { sharedStyles as styles } from './sharedStyles';
+import { sekretariatStyles.js as styles } from './sekretariatStyles.js';
 import { PALETTE } from '../../constants/palette';
 
 // Scrollbar toujours visible sur web
