@@ -8,14 +8,16 @@ import { useVehicles } from '../../hooks/useVehicles';
 import { useCalamityPoints } from '../../hooks/useCalamityPoints';
 import { usePatrolHistoryPanel } from '../../hooks/usePatrolHistoryPanel';
 import { useCalamitySummaryPanel } from '../../hooks/useCalamitySummaryPanel';
-import { buildOperasiMapHtml } from '../../mapTemplates/operasiMapTemplate';
-import { CALAMITY_CATEGORIES, getCalamityMeta } from '../../constants/operasiConstants';
+import { buildOperasiMapHtml } from './operasiMapTemplate';
+import { CALAMITY_CATEGORIES, getCalamityMeta, getCalamityLogoUrl } from '../../constants/operasiConstants';
 import { BULAN_MS, BULAN_OPTIONS } from '../../constants/bulan';
 import ModalSelectField from '../../components/ModalSelectField';
 import FullscreenViewer from '../../components/FullscreenViewer';
 import { formStyles } from '../../styles/formStyles';
 import VehicleCard from './VehicleCard';
 import { mapStyles as styles } from './mapStyles';
+console.log('SUPABASE_URL:', process.env.EXPO_PUBLIC_SUPABASE_URL);
+console.log('logo test:', getCalamityLogoUrl('KJR'));
 
 function CompactTooltip({ active, payload, label }) {
   if (!active || !payload || payload.length === 0) return null;
@@ -118,6 +120,7 @@ export default function LiveMapTab({ theme, userRole }) {
           lng: c.longitude,
           color: getCalamityMeta(c.category).color,
           label: getCalamityMeta(c.category).label,
+          logo: getCalamityLogoUrl(c.category),
           created_at: c.created_at
         }));
       iframeRef.current.contentWindow.postMessage(JSON.stringify({ type: 'UPDATE_CALAMITIES', payload }), '*');

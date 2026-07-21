@@ -37,6 +37,13 @@ export function buildSekretariatMapHtml({ theme, userRole }) {
 
           .cluster-badge { display: flex; align-items: center; justify-content: center; border-radius: 50%; color: #fff; font-weight: 800; font-family: sans-serif; box-shadow: 0 2px 6px rgba(0,0,0,0.35); border: 2px solid white; }
           .cluster-bencana { background-color: #ea580c; }
+
+          @keyframes pulse-ring {
+            0% { transform: scale(1); opacity: 0.8; }
+            100% { transform: scale(2.2); opacity: 0; }
+          }
+          .pulse-wrap { position: relative; display: flex; align-items: center; justify-content: center; }
+          .pulse-ring { position: absolute; width: 100%; height: 100%; border-radius: 50%; animation: pulse-ring 1.4s ease-out infinite; }
         </style>
       </head>
       <body>
@@ -108,15 +115,20 @@ export function buildSekretariatMapHtml({ theme, userRole }) {
             });
           };
 
-          var createBencanaIcon = () => L.divIcon({
-            className: 'bencana-pin',
-            html: '<svg width="28" height="36" viewBox="0 0 28 36" style="filter: drop-shadow(0 2px 3px rgba(0,0,0,0.35));">' +
-                    '<path d="M14 0C6.3 0 0 6.3 0 14c0 10.5 14 22 14 22s14-11.5 14-22C28 6.3 21.7 0 14 0z" fill="#ea580c" stroke="white" stroke-width="2"/>' +
-                    '<polygon points="14,7 20,18 8,18" fill="white"/>' +
-                    '<text x="14" y="17" text-anchor="middle" font-size="9" font-weight="900" fill="#ea580c" font-family="sans-serif">!</text>' +
-                  '</svg>',
-            iconSize: [28, 36], iconAnchor: [14, 36], popupAnchor: [0, -34]
-          });
+          var createBencanaIcon = function() {
+            return L.divIcon({
+              className: 'bencana-pin',
+              html: '<div class="pulse-wrap" style="width:44px;height:44px;">' +
+                      '<div class="pulse-ring" style="background:#ea580c;opacity:0.4;"></div>' +
+                      '<svg width="28" height="36" viewBox="0 0 28 36" style="filter:drop-shadow(0 2px 3px rgba(0,0,0,0.35));position:relative;">' +
+                        '<path d="M14 0C6.3 0 0 6.3 0 14c0 10.5 14 22 14 22s14-11.5 14-22C28 6.3 21.7 0 14 0z" fill="#ea580c" stroke="white" stroke-width="2"/>' +
+                        '<polygon points="14,7 20,18 8,18" fill="white"/>' +
+                        '<text x="14" y="17" text-anchor="middle" font-size="9" font-weight="900" fill="#ea580c" font-family="sans-serif">!</text>' +
+                      '</svg>' +
+                    '</div>',
+              iconSize: [44, 44], iconAnchor: [22, 44], popupAnchor: [0, -44]
+            });
+          };
 
           var formatTimeAgo = (iso) => {
             if (!iso) return '';

@@ -39,6 +39,10 @@ export const CALAMITY_CATEGORIES = [
 export const getCalamityMeta = (key) =>
   CALAMITY_CATEGORIES.find(c => c.key === key) || CALAMITY_CATEGORIES[10];
 
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL;
+export const getCalamityLogoUrl = (key) =>
+  key ? `${SUPABASE_URL}/storage/v1/object/public/logo/${key}.png` : null;
+
 export const getCategoryColor = (id) => {
   const colors = {
     "KJR": "#ef4444", "KMU": "#f97316", "MSS": "#eab308", "ML": "#3b82f6",

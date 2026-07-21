@@ -1,5 +1,5 @@
 // src/screen/operasiMapTemplate.js
-import { VEHICLE_GLYPHS } from '../constants/vehicleGlyphs';
+import { VEHICLE_GLYPHS } from '../../constants/vehicleGlyphs';
 
 /**
  * Builds the Leaflet map HTML shown inside the web <iframe>.
@@ -47,6 +47,13 @@ export function buildOperasiMapHtml({ theme, userRole }) {
           .cluster-badge { display: flex; align-items: center; justify-content: center; border-radius: 50%; color: #fff; font-weight: 800; font-family: sans-serif; box-shadow: 0 2px 6px rgba(0,0,0,0.35); border: 2px solid white; }
           .cluster-vehicle { background-color: #2563eb; }
           .cluster-calamity { background-color: #ea580c; }
+
+          @keyframes pulse-ring {
+            0% { transform: scale(1); opacity: 0.8; }
+            100% { transform: scale(2.2); opacity: 0; }
+          }
+          .pulse-wrap { position: relative; display: flex; align-items: center; justify-content: center; }
+          .pulse-ring { position: absolute; width: 100%; height: 100%; border-radius: 50%; animation: pulse-ring 1.4s ease-out infinite; }
         </style>
       </head>
       <body>
@@ -91,13 +98,14 @@ export function buildOperasiMapHtml({ theme, userRole }) {
           var vehicleLayer = L.layerGroup().addTo(map);
 
           var calamityCluster = L.markerClusterGroup({
-            maxClusterRadius: 60,
+            maxClusterRadius: 30,
             spiderfyOnMaxZoom: true,
+            disableClusteringAtZoom: 16,
             iconCreateFunction: makeClusterIcon('cluster-calamity')
           }).addTo(map);
 
           // ---- Vehicle type -> inner glyph, mirrors utils/vehicleIcons.js "operasi" preset ----
-          var VEHICLE_GLYPHS = ${JSON.stringify(VEHICLE_GLYPHS)};
+          var VEHICLE_GLYPHS = { car: '', lori: '', motor: '', bot: '' };
 
           function vehicleGlyph(iconKey, color) {
             if (iconKey === 'ambulans') {
@@ -117,15 +125,32 @@ export function buildOperasiMapHtml({ theme, userRole }) {
             iconSize: [26, 34], iconAnchor: [13, 34], popupAnchor: [0, -30]
           });
 
-          var createCalamityIcon = (color, category) => L.divIcon({
-            className: 'calamity-pin',
-            html: '<svg width="28" height="36" viewBox="0 0 28 36" style="filter: drop-shadow(0 2px 3px rgba(0,0,0,0.35));">' +
-                    '<path d="M14 0C6.3 0 0 6.3 0 14c0 10.5 14 22 14 22s14-11.5 14-22C28 6.3 21.7 0 14 0z" fill="' + color + '" stroke="white" stroke-width="2"/>' +
-                    '<polygon points="14,7 20,18 8,18" fill="white"/>' +
-                    '<text x="14" y="17" text-anchor="middle" font-size="9" font-weight="900" fill="' + color + '" font-family="sans-serif">!</text>' +
-                  '</svg>',
-            iconSize: [28, 36], iconAnchor: [14, 36], popupAnchor: [0, -34]
-          });
+          var createCalamityIcon = function(color, category, logo) {
+            if (logo) {
+              return L.divIcon({
+                className: 'calamity-pin',
+                html: '<div class="pulse-wrap" style="width:48px;height:48px;">' +
+                        '<div class="pulse-ring" style="background:' + color + ';opacity:0.4;"></div>' +
+                        '<div style="width:40px;height:40px;border-radius:8px;background:#fff;border:2px solid ' + color + ';box-shadow:0 2px 5px rgba(0,0,0,0.35);display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;gap:1px;position:relative;">' +
+                          '<img src="' + logo + '" style="width:26px;height:26px;object-fit:contain;"/>' +
+                          '<span style="font-size:7px;font-weight:900;color:' + color + ';font-family:sans-serif;line-height:1;">' + category + '</span>' +
+                        '</div>' +
+                      '</div>',
+                iconSize: [48, 48], iconAnchor: [24, 48], popupAnchor: [0, -48]
+              });
+            }
+            return L.divIcon({
+              className: 'calamity-pin',
+              html: '<div class="pulse-wrap" style="width:44px;height:44px;">' +
+                      '<div class="pulse-ring" style="background:' + color + ';opacity:0.4;border-radius:50%;"></div>' +
+                      '<svg width="28" height="36" viewBox="0 0 28 36" style="filter:drop-shadow(0 2px 3px rgba(0,0,0,0.35));position:relative;">' +
+                        '<path d="M14 0C6.3 0 0 6.3 0 14c0 10.5 14 22 14 22s14-11.5 14-22C28 6.3 21.7 0 14 0z" fill="' + color + '" stroke="white" stroke-width="2"/>' +
+                        '<text x="14" y="17" text-anchor="middle" font-size="7" font-weight="900" fill="white" font-family="sans-serif">' + category + '</text>' +
+                      '</svg>' +
+                    '</div>',
+              iconSize: [44, 44], iconAnchor: [22, 44], popupAnchor: [0, -44]
+            });
+          };
 
           var createPopupContent = (name, reg, type, status) => {
             var statusClass = status === 'Patrol' ? 'status-patrol' : 'status-idle';
@@ -251,7 +276,7 @@ export function buildOperasiMapHtml({ theme, userRole }) {
                     popupDiv.appendChild(btnEl);
                   }
 
-                  calamityMarkers[c.id] = L.marker([c.lat, c.lng], { icon: createCalamityIcon(c.color, c.category) })
+                  calamityMarkers[c.id] = L.marker([c.lat, c.lng], { icon: createCalamityIcon(c.color, c.category, c.logo) })
                     .bindPopup(popupDiv);
                   calamityCluster.addLayer(calamityMarkers[c.id]);
                 }
