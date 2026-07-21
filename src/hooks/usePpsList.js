@@ -1,12 +1,13 @@
 // src/hooks/usePpsList.js
 import { useState, useEffect } from 'react';
 import { Alert, Platform } from 'react-native';
-import { supabase } from '../supabaseClient';
+import { supabaseSandbox } from '../supabaseSandboxClient';
 
 /**
  * Gère la liste des PPS (Pusat Pemindahan Sementara) : chargement,
  * création, modification, suppression, et calcul des statistiques
  * agrégées par type. Extrait de SekretariatScreen.js.
+ * Schéma sandbox uniquement — ne touche jamais public.
  */
 export function usePpsList() {
   const [ppsList, setPpsList] = useState([]);
@@ -55,7 +56,7 @@ export function usePpsList() {
 
   const fetchPPS = async () => {
     setLoadingPPS(true);
-    const { data, error } = await supabase.from('pps_list').select('*').order('name', { ascending: true });
+    const { data, error } = await supabaseSandbox.from('pps_list').select('*').order('name', { ascending: true });
 
     if (error) {
       console.error('Error fetching PPS:', error);
@@ -68,13 +69,13 @@ export function usePpsList() {
 
   useEffect(() => {
     fetchPPS();
-    const subscription = supabase
+    const subscription = supabaseSandbox
       .channel('pps_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'pps_list' }, () => {
+      .on('postgres_changes', { event: '*', schema: 'sandbox', table: 'pps_list' }, () => {
         fetchPPS();
       })
       .subscribe();
-    return () => { supabase.removeChannel(subscription); };
+    return () => { supabaseSandbox.removeChannel(subscription); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -106,11 +107,11 @@ export function usePpsList() {
     };
 
     if (formModePps === 'add') {
-      const { error } = await supabase.from('pps_list').insert([payload]);
+      const { error } = await supabaseSandbox.from('pps_list').insert([payload]);
       if (error) Alert.alert('Ralat', error.message);
       else { Alert.alert('Berjaya', 'PPS ditambah.'); setModalPpsVisible(false); fetchPPS(); }
     } else {
-      const { error } = await supabase.from('pps_list').update(payload).eq('id', editIdPps);
+      const { error } = await supabaseSandbox.from('pps_list').update(payload).eq('id', editIdPps);
       if (error) Alert.alert('Ralat', error.message);
       else { Alert.alert('Berjaya', 'PPS dikemaskini.'); setModalPpsVisible(false); fetchPPS(); }
     }
@@ -120,7 +121,7 @@ export function usePpsList() {
   const confirmDeletePPS = (id) => {
     const executeDelete = async () => {
       setLoadingPPS(true);
-      const { error } = await supabase.from('pps_list').delete().eq('id', id);
+      const { error } = await supabaseSandbox.from('pps_list').delete().eq('id', id);
       if (error) {
         Platform.OS === 'web' ? alert('Ralat: ' + error.message) : Alert.alert('Ralat', error.message);
       } else {

@@ -44,35 +44,7 @@ const CATEGORY_MAPS = {
 
 const COLOR_CHOICES = ['#3B82F6', '#d97706', '#EA580C', '#16A34A', '#9333EA', '#DC2626', '#0891B2'];
 
-// Tooltip immédiat au survol (web uniquement)
-function HoverTip({ label, children }) {
-  const [hovered, setHovered] = React.useState(false);
-  if (Platform.OS !== 'web') return children;
-  return (
-    <View
-      style={{ position: 'relative' }}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-    >
-      {children}
-      {hovered ? (
-        <View style={tipStyles.bubble} pointerEvents="none">
-          <Text style={tipStyles.text}>{label}</Text>
-        </View>
-      ) : null}
-    </View>
-  );
-}
-
-const tipStyles = StyleSheet.create({
-  bubble: {
-    position: 'absolute', bottom: '110%', right: 0,
-    backgroundColor: '#1F2937', borderRadius: 6,
-    paddingVertical: 4, paddingHorizontal: 8,
-    zIndex: 100,
-  },
-  text: { color: '#fff', fontSize: 11, fontWeight: '600', whiteSpace: 'nowrap' },
-});
+import HoverTip from '../../components/HoverTip';
 
 export default function HotspotSection({ userRole, isEditMode }) {
   const [selectedCat, setSelectedCat] = useState(null);
