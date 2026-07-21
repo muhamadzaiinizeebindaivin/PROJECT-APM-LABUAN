@@ -12,7 +12,7 @@ const STATUS_OPTIONS = [
 
 const SUB_SEKSYEN_OPTIONS = ['BKP', 'BPP', 'BPM'];
 
-export default function KpiEditModal({ visible, isNew, draft, setDraft, onSave, onDelete, onClose }) {
+export default function KpiEditModal({ visible, isNew, draft, setDraft, onSave, onDelete, onClose, showSubSeksyen = true }) {
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.modalOverlay}>
@@ -24,6 +24,7 @@ export default function KpiEditModal({ visible, isNew, draft, setDraft, onSave, 
 
           <ScrollView style={styles.kpiModalScroll} contentContainerStyle={styles.modalBody}>
             {/* ── Section: Identiti ── */}
+            {showSubSeksyen && <>
             <Text style={styles.kpiSectionLabel}>SUB-SEKSYEN</Text>
             <View style={styles.subSeksyenRow}>
               {SUB_SEKSYEN_OPTIONS.map((opt) => {
@@ -39,6 +40,8 @@ export default function KpiEditModal({ visible, isNew, draft, setDraft, onSave, 
                 );
               })}
             </View>
+            </>}
+            
 
             <Text style={styles.inputLabel}>Nama KPI</Text>
             <TextInput

@@ -16,11 +16,11 @@ const STATUS_LEGEND = [
 ];
 const CARD_WIDTH = 220;
 const CARD_GAP = 12;
-const PX_PER_SECOND = 40;
+const PX_PER_SECOND = 20;
 const SCROLLBAR_TRACK_WIDTH = 160;
 const MIN_THUMB_WIDTH = 28;
 
-export default function KpiSection({ kpiItems, isEditing, updateKpiItem, addKpiItem, removeKpiItem, persistKpi }) {
+export default function KpiSection({ kpiItems, isEditing, updateKpiItem, addKpiItem, removeKpiItem, persistKpi, showSubSeksyen = true }) {
   const [hoveredIndex, setHoveredIndex] = useState(null);
   const [modalIndex, setModalIndex] = useState(null); // null = fermé, -1 = ajout, >=0 = édition
   const [draft, setDraft] = useState(EMPTY_DRAFT);
@@ -333,6 +333,7 @@ export default function KpiSection({ kpiItems, isEditing, updateKpiItem, addKpiI
         onSave={handleSave}
         onDelete={handleDelete}
         onClose={closeModal}
+        showSubSeksyen={showSubSeksyen}
       />
 
       <KpiDetailModal

@@ -4,13 +4,13 @@ import { View, Text, Animated, Easing, Pressable } from 'react-native';
 import { PALETTE } from '../../constants/palette';
 import { latihanStyles as styles } from './latihanStyles';
 
-export const AnimatedVerticalBar = ({ height, color, delay, isSelected, onPress, label, value, total }) => {
+export const AnimatedVerticalBar = ({ height, delay, isSelected, isCurrentMonth, onPress, label, value, total }) => {
   const animatedHeight = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    const safeHeight = Number.isFinite(height) ? height : 0;
+    const safeHeight = Number.isFinite(height) ? Math.max(height, value > 0 ? 8 : 0) : 0;
     Animated.timing(animatedHeight, {
-      toValue: safeHeight, duration: 1000, delay,
+      toValue: safeHeight, duration: 900, delay,
       easing: Easing.out(Easing.exp), useNativeDriver: false,
     }).start();
   }, [height]);
@@ -19,18 +19,28 @@ export const AnimatedVerticalBar = ({ height, color, delay, isSelected, onPress,
     <View style={styles.barWrapper}>
       {isSelected ? (
         <View style={styles.tooltip}>
-          <Text style={styles.tooltipText}>{value} ({total > 0 ? Math.round((value / total) * 100) : 0}%)</Text>
+          <Text style={styles.tooltipText}>{total > 0 ? Math.round((value / total) * 100) : 0}% daripada jumlah</Text>
         </View>
       ) : null}
+
+      {value > 0 ? (
+        <Text style={[styles.barValue, isSelected && styles.barValueSelected]}>{value}</Text>
+      ) : null}
+
       <Pressable onPress={onPress} style={styles.barTrack}>
         <Animated.View
           style={[styles.barFill, {
             height: animatedHeight,
-            backgroundColor: isSelected ? PALETTE.orange : (value > 0 ? color : PALETTE.surface),
+            backgroundColor: isSelected ? PALETTE.orangeDark : PALETTE.orange,
           }]}
         />
       </Pressable>
-      <Text style={[styles.barLabel, { fontWeight: isSelected ? '800' : '400' }]}>{label}</Text>
+
+      <Text style={[
+        styles.barLabel,
+        isCurrentMonth && styles.barLabelCurrent,
+        isSelected && { fontWeight: '800' },
+      ]}>{label}</Text>
     </View>
   );
 };

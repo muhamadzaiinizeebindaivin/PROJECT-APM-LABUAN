@@ -5,6 +5,8 @@ import { PALETTE } from '../constants/palette';
 import AdminEditButton from '../components/AdminEditButton';
 import { useLogistikData } from '../hooks/useLogistikData';
 import { useLogistikUnit } from '../hooks/useLogistikUnit';
+import { useKpi } from '../hooks/useKpi';
+import KpiSection from './pentadbiran/KpiSection';
 import { logistikStyles as styles } from './logistik/logistikStyles';
 import SectionHeader from './pentadbiran/SectionHeader';
 import StatsRow from './logistik/StatsRow';
@@ -18,6 +20,7 @@ import AssetFormModal from './logistik/AssetFormModal';
 export default function LogistikScreen({ userRole }) {
   const { logistikData, loading, saveAsset, deleteAsset } = useLogistikData();
   const unit = useLogistikUnit();
+  const { kpiList, saveKpiItem, deleteKpiItem, reorderKpi } = useKpi('logistik');
 
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('Semua');
@@ -65,6 +68,18 @@ export default function LogistikScreen({ userRole }) {
 
         <StatsRow totalAssets={totalAssets} readinessPercent={readinessPercent} />
 
+        <View style={{ marginBottom: -16 }}>
+          <KpiSection
+            kpiItems={kpiList}
+            isEditing={isEditMode}
+            updateKpiItem={(form, item) => saveKpiItem(form, item)}
+            addKpiItem={(form) => saveKpiItem(form, null)}
+            removeKpiItem={(item) => deleteKpiItem(item)}
+            persistKpi={reorderKpi}
+            showSubSeksyen={false}
+          />
+        </View>
+
         <View style={styles.card}>
           <SectionHeader title="SENARAI LOGISTIK" Icon={ClipboardList} />
 
@@ -91,6 +106,7 @@ export default function LogistikScreen({ userRole }) {
                     items={filteredSea}
                     cardWidth={210}
                     pauseAutoScroll={isEditMode}
+                    interacting={viewModalVisible || formModalVisible}
                     renderItem={(item) => (
                       <AssetCard key={item.id} item={item} isSea isEditMode={isEditMode} onView={openView} onEdit={openEdit} onDelete={deleteAsset} />
                     )}
@@ -108,6 +124,7 @@ export default function LogistikScreen({ userRole }) {
                     items={filteredLand}
                     cardWidth={210}
                     pauseAutoScroll={isEditMode}
+                    interacting={viewModalVisible || formModalVisible}
                     renderItem={(item) => (
                       <AssetCard key={item.id} item={item} isSea={false} isEditMode={isEditMode} onView={openView} onEdit={openEdit} onDelete={deleteAsset} />
                     )}

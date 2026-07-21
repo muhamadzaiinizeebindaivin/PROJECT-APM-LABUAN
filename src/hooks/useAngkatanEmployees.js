@@ -17,6 +17,7 @@ export const mapMyaspaLabel = (raw) => {
 };
 
 const normalizePangkat = (raw) => String(raw || '').replace(/\(PA\)/i, '').trim().toUpperCase();
+const norm = (v) => String(v || '').trim().toUpperCase();
 
 export function useAngkatanEmployees() {
   const [employees, setEmployees] = useState([]);
@@ -29,103 +30,92 @@ export function useAngkatanEmployees() {
   const [ranks, setRanks] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchEmployees = useCallback(async () => {
-    try {
-      const { data, error } = await supabaseSandbox
-        .from('angkatan_employees')
-        .select('*')
-        .order('nama', { ascending: true });
-      if (error) throw error;
-      setEmployees(data || []);
-
-      // ── Résumé (compté en direct depuis les employés) ──
-      const total = data?.length || 0;
-      const male = data?.filter((e) => String(e.jantina || '').toUpperCase() === 'LELAKI').length || 0;
-      const female = data?.filter((e) => String(e.jantina || '').toUpperCase() === 'PEREMPUAN').length || 0;
-      const norm = (v) => String(v || '').trim().toUpperCase();
-      const countAktif = data?.filter((e) => norm(e.status_keaktifan) === 'AKTIF').length || 0;
-      const countTidakAktif = data?.filter((e) => norm(e.status_keaktifan) === 'TIDAK AKTIF').length || 0;
-      const countSimpanan = data?.filter((e) => norm(e.status_keaktifan) === 'SIMPANAN').length || 0;
-      const countSenaraiHitam = data?.filter((e) => norm(e.status_keaktifan) === 'SENARAI HITAM').length || 0;
-      setSummary((prev) => ({
-        ...prev,
-        total_anggota: total,
-        aktif_anggota: countAktif,
-        male_count: male,
-        female_count: female,
-        status_lulus: countAktif,
-        status_lantikan: countTidakAktif,
-        status_simpanan: countSimpanan,
-        status_aktif: countSenaraiHitam,
-      }));
-
-      // ── Penjawatan Utama (basé sur status_myaspa) — auto-créé si manquant ──
-      const myaspaValues = [...new Set((data || []).map((e) => mapMyaspaLabel(e.status_myaspa)).filter(Boolean))];
-      const { data: existingCategories } = await supabaseSandbox.from('angkatan_categories').select('*');
-      const existingNamesUpper = (existingCategories || []).map((c) => c.name.toUpperCase());
-      const missingValues = myaspaValues.filter((v) => !existingNamesUpper.includes(v.toUpperCase()));
-      if (missingValues.length > 0) {
-        const newRows = missingValues.map((name, i) => ({ name, count: 0, color: CATEGORY_COLORS[i % CATEGORY_COLORS.length] }));
-        await supabaseSandbox.from('angkatan_categories').insert(newRows);
-      }
-      const { data: refreshedCategories } = await supabaseSandbox.from('angkatan_categories').select('*').order('id');
-      setCategories((refreshedCategories || []).map((cat) => ({
-        ...cat,
-        count: data?.filter((e) => mapMyaspaLabel(e.status_myaspa)?.toUpperCase() === cat.name.toUpperCase()).length || 0,
-      })));
-
-      // ── Struktur Pangkat & Keahlian (pyramide) — auto-créé si manquant ──
-      const { data: existingPyramid } = await supabaseSandbox.from('angkatan_pyramid').select('*');
-      const existingPyramidNames = (existingPyramid || []).map((p) => normalizePangkat(p.rank));
-      const missingRanks = PANGKAT_HIERARCHY.filter((r) => !existingPyramidNames.includes(normalizePangkat(r)));
-      if (missingRanks.length > 0) {
-        const newPyramidRows = missingRanks.map((rank) => ({
-          rank, total: 0,
-          color: PYRAMID_COLORS[PANGKAT_HIERARCHY.indexOf(rank) % PYRAMID_COLORS.length],
-          display_order: PANGKAT_HIERARCHY.indexOf(rank) + 1,
-        }));
-        await supabaseSandbox.from('angkatan_pyramid').insert(newPyramidRows);
-      }
-      const { data: refreshedPyramid } = await supabaseSandbox.from('angkatan_pyramid').select('*').order('display_order', { ascending: true });
-      setPyramidStats((refreshedPyramid || []).map((p) => ({
-        ...p,
-        total: data?.filter((e) => normalizePangkat(e.pangkat) === normalizePangkat(p.rank)).length || 0,
-      })));
-
-      // ── Laluan Kerjaya (ranks) — auto-créé si manquant, calculé en direct ──
-      const { data: existingRanks } = await supabaseSandbox.from('angkatan_ranks').select('*');
-      const existingRankNames = (existingRanks || []).map((r) => normalizePangkat(r.rank));
-      const missingRankRows = PANGKAT_HIERARCHY.filter((r) => !existingRankNames.includes(normalizePangkat(r)));
-      if (missingRankRows.length > 0) {
-        const newRankRows = missingRankRows.map((rank) => ({ rank, lulus: 0, kenaikan: 0, kbp: 0, ptb: 0, aktif: 0, simpanan: 0 }));
-        await supabaseSandbox.from('angkatan_ranks').insert(newRankRows);
-      }
-      const { data: refreshedRanks } = await supabaseSandbox.from('angkatan_ranks').select('*').order('id');
-      setRanks((refreshedRanks || []).map((r) => {
-        const allInRank = (data || []).filter((e) => normalizePangkat(e.pangkat) === normalizePangkat(r.rank));
-        const activeInRank = allInRank.filter((e) => {
-          const st = String(e.status_keaktifan || '').trim().toUpperCase();
-          return st === 'AKTIF' || st === 'SIMPANAN';
-        });
-        return {
-          ...r,
-          kbp: activeInRank.filter((e) => !String(e.senarai_kursus || '').toUpperCase().includes('KURSUS BAKAL PEGAWAI')).length,
-          ptb: activeInRank.filter((e) => !String(e.senarai_kursus || '').toUpperCase().includes('PTB')).length,
-          aktif: activeInRank.filter((e) => String(e.status_keaktifan || '').trim().toUpperCase() === 'AKTIF').length,
-          simpanan: activeInRank.filter((e) => String(e.status_keaktifan || '').trim().toUpperCase() === 'SIMPANAN').length,
-        };
-      }));
-    } catch (error) {
-      console.error('Error fetching employees:', error);
-    }
+  // ── Charge les tables annexes indépendamment des employés ──
+  const fetchAnnexes = useCallback(async () => {
+    const [catRes, pyrRes, rankRes] = await Promise.all([
+      supabaseSandbox.from('angkatan_categories').select('*').order('id'),
+      supabaseSandbox.from('angkatan_pyramid').select('*').order('display_order', { ascending: true }),
+      supabaseSandbox.from('angkatan_ranks').select('*').order('id'),
+    ]);
+    return {
+      cats: catRes.data || [],
+      pyramid: pyrRes.data || [],
+      rankRows: rankRes.data || [],
+    };
   }, []);
 
-  const fetchSummaryExtra = useCallback(async () => {
+  // ── Calcule les stats à partir des employés déjà en mémoire ──
+  const computeStats = useCallback((data, cats, pyramid, rankRows) => {
+    // Résumé
+    const total = data.length;
+    const male = data.filter((e) => norm(e.jantina) === 'LELAKI').length;
+    const female = data.filter((e) => norm(e.jantina) === 'PEREMPUAN').length;
+    const countAktif = data.filter((e) => norm(e.status_keaktifan) === 'AKTIF').length;
+    const countTidakAktif = data.filter((e) => norm(e.status_keaktifan) === 'TIDAK AKTIF').length;
+    const countSimpanan = data.filter((e) => norm(e.status_keaktifan) === 'SIMPANAN').length;
+    const countSenaraiHitam = data.filter((e) => norm(e.status_keaktifan) === 'SENARAI HITAM').length;
+
+    setSummary((prev) => ({
+      ...prev,
+      total_anggota: total,
+      aktif_anggota: countAktif,
+      male_count: male,
+      female_count: female,
+      status_lulus: countAktif,
+      status_lantikan: countTidakAktif,
+      status_simpanan: countSimpanan,
+      status_aktif: countSenaraiHitam,
+    }));
+
+    // Catégories
+    setCategories(cats.map((cat) => ({
+      ...cat,
+      count: data.filter((e) => mapMyaspaLabel(e.status_myaspa)?.toUpperCase() === cat.name.toUpperCase()).length,
+    })));
+
+    // Pyramide
+    setPyramidStats(pyramid.map((p) => ({
+      ...p,
+      total: data.filter((e) => normalizePangkat(e.pangkat) === normalizePangkat(p.rank)).length,
+    })));
+
+    // Rangs
+    setRanks(rankRows.map((r) => {
+      const allInRank = data.filter((e) => normalizePangkat(e.pangkat) === normalizePangkat(r.rank));
+      const activeInRank = allInRank.filter((e) => {
+        const st = norm(e.status_keaktifan);
+        return st === 'AKTIF' || st === 'SIMPANAN';
+      });
+      return {
+        ...r,
+        kbp: activeInRank.filter((e) => !String(e.senarai_kursus || '').toUpperCase().includes('KURSUS BAKAL PEGAWAI')).length,
+        ptb: activeInRank.filter((e) => !String(e.senarai_kursus || '').toUpperCase().includes('PTB')).length,
+        aktif: activeInRank.filter((e) => norm(e.status_keaktifan) === 'AKTIF').length,
+        simpanan: activeInRank.filter((e) => norm(e.status_keaktifan) === 'SIMPANAN').length,
+      };
+    }));
+  }, []);
+
+  const fetchEmployees = useCallback(async () => {
     try {
-      const { data } = await supabaseSandbox.from('angkatan_summary').select('*').eq('id', 1).maybeSingle();
-      if (data) {
+      // Employés + tables annexes en parallèle
+      const [empRes, annexes, summaryRes] = await Promise.all([
+        supabaseSandbox.from('angkatan_employees').select('*').order('nama', { ascending: true }),
+        fetchAnnexes(),
+        supabaseSandbox.from('angkatan_summary').select('*').eq('id', 1).maybeSingle(),
+      ]);
+
+      if (empRes.error) throw empRes.error;
+      const data = empRes.data || [];
+      setEmployees(data);
+
+      // Stats calculées en mémoire, zéro requête supplémentaire
+      computeStats(data, annexes.cats, annexes.pyramid, annexes.rankRows);
+
+      // Summary extra (trend, etc.)
+      if (summaryRes.data) {
         setSummary((prev) => ({
-          ...data,
+          ...summaryRes.data,
           total_anggota: prev.total_anggota,
           aktif_anggota: prev.aktif_anggota,
           male_count: prev.male_count,
@@ -137,17 +127,17 @@ export function useAngkatanEmployees() {
         }));
       }
     } catch (error) {
-      console.error('Error fetching angkatan_summary:', error);
+      console.error('Error fetching employees:', error);
     }
-  }, []);
+  }, [fetchAnnexes, computeStats]);
 
   useEffect(() => {
     (async () => {
       setLoading(true);
-      await Promise.all([fetchEmployees(), fetchSummaryExtra()]);
+      await fetchEmployees();
       setLoading(false);
     })();
-  }, [fetchEmployees, fetchSummaryExtra]);
+  }, [fetchEmployees]);
 
   const saveEmployee = async (employeeForm) => {
     try {
@@ -231,14 +221,14 @@ export function useAngkatanEmployees() {
       delete payload.id;
       const { error } = await supabaseSandbox.from('angkatan_summary').update(payload).eq('id', 1);
       if (error) throw error;
-      await fetchSummaryExtra();
+      await fetchEmployees();
       return true;
     } catch (error) {
       console.error('Error saving angkatan_summary:', error);
       return false;
     }
   };
-  
+
   return {
     loading, employees, summary, categories, pyramidStats, ranks,
     fetchEmployees, saveEmployee, deleteEmployee,

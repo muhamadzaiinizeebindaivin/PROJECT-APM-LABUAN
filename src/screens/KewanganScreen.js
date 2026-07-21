@@ -5,6 +5,8 @@ import { useKewanganSummary } from '../hooks/useKewanganSummary';
 import { useKewanganBudget } from '../hooks/useKewanganBudget';
 import { useKewanganQuarterly } from '../hooks/useKewanganQuarterly';
 import { useKewanganUnit } from '../hooks/useKewanganUnit';
+import { useKpi } from '../hooks/useKpi';
+import KpiSection from './pentadbiran/KpiSection';
 import { kewanganStyles as styles } from './kewangan/kewanganStyles';
 import SummaryCard from './kewangan/SummaryCard';
 import UnitInfoCard from './kewangan/UnitInfoCard';
@@ -18,6 +20,7 @@ export default function KewanganScreen({ userRole }) {
   const budget = useKewanganBudget();
   const quarterly = useKewanganQuarterly(summary.totalAllocation);
   const unit = useKewanganUnit();
+  const { kpiList, saveKpiItem, deleteKpiItem, reorderKpi } = useKpi('kewangan');
 
   return (
     <View style={styles.container}>
@@ -33,6 +36,18 @@ export default function KewanganScreen({ userRole }) {
           saveSummary={summary.saveSummary}
           saving={summary.saving}
         />
+
+        <View style={{ marginBottom: 4 }}>
+          <KpiSection
+            kpiItems={kpiList}
+            isEditing={isEditMode}
+            updateKpiItem={(form, item) => saveKpiItem(form, item)}
+            addKpiItem={(form) => saveKpiItem(form, null)}
+            removeKpiItem={(item) => deleteKpiItem(item)}
+            persistKpi={reorderKpi}
+            showSubSeksyen={false}
+          />
+        </View>
 
         <BudgetSection
           budgetData={budget.budgetData}

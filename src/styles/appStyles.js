@@ -1,12 +1,12 @@
-// src/screens/sekretariat/sekretariatStyles.js.js
+// src/screens/sekretariat/sekretariatStyles.js
 import { StyleSheet } from 'react-native';
-import { PALETTE } from '../../constants/palette';
+import { PALETTE } from '../constants/palette';
 
 /**
  * Styles partagés entre JpbdSection, HotspotSection et PpsSection —
  * cartes, modales, formulaires génériques, boutons d'action.
  */
-export const sekretariatStyles = StyleSheet.create({
+export const appStyles = StyleSheet.create({
   sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   sectionHeaderTitle: { fontSize: 12, fontWeight: '800', letterSpacing: 0.6, color: PALETTE.orange, textTransform: 'uppercase', marginBottom: 0 },
   addButton: { flexDirection: 'row', backgroundColor: PALETTE.orange, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, alignItems: 'center', gap: 6 },

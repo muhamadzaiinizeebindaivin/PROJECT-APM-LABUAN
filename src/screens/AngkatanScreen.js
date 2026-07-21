@@ -11,6 +11,10 @@ import { useEmployeePromotionHistory } from '../hooks/useEmployeePromotionHistor
 import { useEmployeePhoto } from '../hooks/useEmployeePhoto';
 import { angkatanStyles as styles } from './angkatan/angkatanStyles';
 import { emptyEmployeeForm } from './angkatan/employeeFieldGroups';
+import { useAngkatanUnit } from '../hooks/useAngkatanUnit';
+import AngkatanUnitSection from './angkatan/AngkatanUnitSection';
+import { useKpi } from '../hooks/useKpi';
+import KpiSection from './pentadbiran/KpiSection';
 
 import SummaryHeroCard from './angkatan/SummaryHeroCard';
 import StatusCard from './angkatan/StatusCard';
@@ -44,6 +48,8 @@ export default function AngkatanScreen({ userRole }) {
   const { promotionHistoryList, fetchPromotionHistory } = useEmployeePromotionHistory();
   const { uploadingPhoto, pickAndUploadPhoto } = useEmployeePhoto();
   const excelImportHook = useExcelImport();
+  const { unitList, loadingUnit, saveUnitItem, deleteUnitItem, reorderUnit } = useAngkatanUnit();
+  const { kpiList, saveKpiItem, deleteKpiItem, reorderKpi } = useKpi('angkatan');
 
   // ── Recherche / pagination liste principale ──
   const [employeeSearch, setEmployeeSearch] = useState('');
@@ -180,6 +186,19 @@ export default function AngkatanScreen({ userRole }) {
           <GenderCard summary={summary} isEditing={isEditing} onEdit={openSummaryModal} />
         </View>
 
+        {/* ---- KPI ---- */}
+        <View style={{ marginBottom: -16 }}>
+          <KpiSection
+            kpiItems={kpiList}
+            isEditing={isEditing}
+            updateKpiItem={(form, item) => saveKpiItem(form, item)}
+            addKpiItem={(form) => saveKpiItem(form, null)}
+            removeKpiItem={(item) => deleteKpiItem(item)}
+            persistKpi={reorderKpi}
+            showSubSeksyen={false}
+          />
+        </View>
+
         <RanksTable ranks={ranks} isEditing={isEditing} onAdd={openAddRank} onEdit={openEditRank} onDelete={handleDeleteRank} />
 
         <CommunityList
@@ -205,6 +224,15 @@ export default function AngkatanScreen({ userRole }) {
           onOpenCertificates={openCertificatesOnly}
           onAddNew={openAddEmployee}
           onImportExcel={() => setShowExcelImportModal(true)}
+        />
+        <View style={{ height: 16 }} />
+        <AngkatanUnitSection
+          unitList={unitList}
+          loadingUnit={loadingUnit}
+          isEditMode={isEditing}
+          saveUnitItem={saveUnitItem}
+          deleteUnitItem={deleteUnitItem}
+          reorderUnit={reorderUnit}
         />
       </ScrollView>
 

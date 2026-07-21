@@ -2,11 +2,11 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { View, Animated, PanResponder, ScrollView } from 'react-native';
 import { logistikStyles as styles } from './logistikStyles';
 
-const PX_PER_SECOND = 35;
+const PX_PER_SECOND = 20;
 const SCROLLBAR_TRACK_WIDTH = 160;
 const MIN_THUMB_WIDTH = 28;
 
-export default function HorizontalCarousel({ items, cardWidth, cardGap = 10, renderItem, pauseAutoScroll = false }) {
+export default function HorizontalCarousel({ items, cardWidth, cardGap = 10, renderItem, pauseAutoScroll = false, interacting = false }) {
   const scrollRef = useRef(null);
   const scrollXRef = useRef(0);
   const viewportWidthRef = useRef(1);
@@ -19,7 +19,7 @@ export default function HorizontalCarousel({ items, cardWidth, cardGap = 10, ren
   const [hovered, setHovered] = useState(false);
 
   const contentWidth = Math.max(1, items.length * (cardWidth + cardGap) - cardGap);
-  const active = items.length > 1 && !pauseAutoScroll && !hovered;
+  const active = items.length > 1 && !pauseAutoScroll && !hovered && !interacting;
 
   const stopAutoScroll = useCallback(() => {
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
@@ -57,6 +57,14 @@ export default function HorizontalCarousel({ items, cardWidth, cardGap = 10, ren
     else stopAutoScroll();
     return stopAutoScroll;
   }, [active, startAutoScroll, stopAutoScroll]);
+
+  // Quand le pop-up se ferme (interacting repasse à false), reprendre le scroll
+  useEffect(() => {
+    if (!interacting) {
+      userInteractingRef.current = false;
+      if (active) startAutoScroll();
+    }
+  }, [interacting]);
 
   const pauseForInteraction = () => { userInteractingRef.current = true; stopAutoScroll(); };
   const resumeAfterInteraction = () => { userInteractingRef.current = false; if (active) startAutoScroll(); };
@@ -136,6 +144,7 @@ export default function HorizontalCarousel({ items, cardWidth, cardGap = 10, ren
         }}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
+        onMouseDown={() => pauseForInteraction()}
         {...contentPanResponder.panHandlers}
       >
         <ScrollView

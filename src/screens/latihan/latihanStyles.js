@@ -21,7 +21,8 @@ export const latihanStyles = StyleSheet.create({
 
   // Cartes stats du haut
   topRow: { flexDirection: 'row', gap: 12, marginBottom: 16 },
-  statCard: { flex: 1, padding: 16, borderRadius: 18, elevation: 2, minHeight: 110, justifyContent: 'space-between' },
+  statCard: { flex: 1, padding: 16, borderRadius: 18, elevation: 2, minHeight: 110, justifyContent: 'space-between', overflow: 'hidden', position: 'relative' },
+  statDecorCircle: { position: 'absolute', top: -45, right: -25, width: 110, height: 110, borderRadius: 55, backgroundColor: 'rgba(255,255,255,0.10)' },
   statCardDark: {
     flex: 1, padding: 16, borderRadius: 18, elevation: 2, minHeight: 110, justifyContent: 'space-between',
     backgroundColor: PALETTE.ink, overflow: 'hidden', position: 'relative',
@@ -34,6 +35,13 @@ export const latihanStyles = StyleSheet.create({
   cardValueLight: { color: '#fff', fontSize: 22, fontWeight: '900', marginVertical: 4 },
   cardSubLight: { color: 'rgba(255,255,255,0.7)', fontSize: 10 },
 
+  // Headers de section (pattern sectionIconBadge de Kewangan)
+  sectionTitleGroup: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  sectionIconBadge: {
+    width: 32, height: 32, borderRadius: 10,
+    backgroundColor: 'rgba(249, 115, 22, 0.12)', justifyContent: 'center', alignItems: 'center',
+  },
+
   // Sous-titre + badge période
   sectionSub: { color: PALETTE.textMutedDark, fontSize: 11, marginTop: 2 },
   badgeBtn: { backgroundColor: 'rgba(249, 115, 22, 0.12)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10 },
@@ -41,8 +49,11 @@ export const latihanStyles = StyleSheet.create({
 
   // Liste des latihan (aligné sur budgetItemRow)
   listItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: PALETTE.cardLightBorder, gap: 8 },
-  dateCol: { width: 85 },
-  dateText: { fontSize: 10, fontWeight: '700', color: PALETTE.textMutedDark },
+  dateChip: {
+    width: 92, paddingVertical: 6, paddingHorizontal: 6, borderRadius: 8,
+    backgroundColor: PALETTE.surface, alignItems: 'center',
+  },
+  dateText: { fontSize: 10, fontWeight: '700', color: PALETTE.textMutedDark, textAlign: 'center' },
   itemTitle: { fontSize: 14, fontWeight: '700', color: PALETTE.textDark },
   itemSub: { fontSize: 12, color: PALETTE.textMutedDark },
   statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
@@ -50,12 +61,19 @@ export const latihanStyles = StyleSheet.create({
   itemActionBtn: { width: 28, height: 28, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
 
   // Graphique mensuel
-  chartContainer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', height: 160 },
+  chartContainer: { flexDirection: 'row', gap: 8, alignItems: 'flex-end', height: 190, paddingTop: 24 },
   barWrapper: { alignItems: 'center', flex: 1, height: '100%', justifyContent: 'flex-end' },
-  barTrack: { height: 130, width: '100%', alignItems: 'center', justifyContent: 'flex-end' },
-  barFill: { width: 12, borderRadius: 6, minHeight: 4 },
+  barValue: { fontSize: 11, fontWeight: '700', color: PALETTE.textMutedDark, marginBottom: 4 },
+  barValueSelected: { color: PALETTE.orangeDark, fontWeight: '900' },
+  barTrack: {
+    height: 120, width: '100%', maxWidth: 34, alignSelf: 'center',
+    backgroundColor: PALETTE.surface, borderRadius: 10,
+    alignItems: 'stretch', justifyContent: 'flex-end', overflow: 'hidden',
+  },
+  barFill: { width: '100%', borderRadius: 10 },
   barLabel: { fontSize: 10, marginTop: 8, color: PALETTE.textMutedDark },
-  tooltip: { position: 'absolute', top: -30, backgroundColor: PALETTE.textDark, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, zIndex: 10, elevation: 5 },
+  barLabelCurrent: { color: PALETTE.orange, fontWeight: '800' },
+  tooltip: { position: 'absolute', top: -6, backgroundColor: PALETTE.textDark, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, zIndex: 10, elevation: 5 },
   tooltipText: { color: '#fff', fontSize: 10, fontWeight: '700' },
 
   // Donut + sasaran
@@ -69,10 +87,16 @@ export const latihanStyles = StyleSheet.create({
   legendText: { fontSize: 10, color: PALETTE.textMutedDark },
   dot: { width: 8, height: 8, borderRadius: 4 },
   progressRow: { marginBottom: 16 },
-  progressLabel: { fontSize: 11, fontWeight: '600', maxWidth: '80%', color: PALETTE.textMutedDark },
-  progressPercent: { fontSize: 11, fontWeight: '800', color: PALETTE.textDark },
-  progressTrack: { height: 6, backgroundColor: PALETTE.surface, borderRadius: 3, marginTop: 6, overflow: 'hidden' },
-  progressFill: { height: '100%', borderRadius: 3 },
+  audienceRank: {
+    width: 20, height: 20, borderRadius: 6, marginRight: 8,
+    backgroundColor: 'rgba(249, 115, 22, 0.12)', justifyContent: 'center', alignItems: 'center',
+  },
+  audienceRankText: { fontSize: 10, fontWeight: '800', color: PALETTE.orange },
+  progressLabel: { fontSize: 12, fontWeight: '600', color: PALETTE.textDark, flex: 1 },
+  progressCount: { fontSize: 11, color: PALETTE.textMutedDark, marginRight: 8 },
+  progressPercent: { fontSize: 12, fontWeight: '800', color: PALETTE.textDark },
+  progressTrack: { height: 8, backgroundColor: PALETTE.surface, borderRadius: 4, marginTop: 6, overflow: 'hidden' },
+  progressFill: { height: '100%', borderRadius: 4 },
 
   // Formulaire (éléments non couverts par sharedStyles)
   dateBtn: {
@@ -82,10 +106,60 @@ export const latihanStyles = StyleSheet.create({
   dateBtnText: { color: PALETTE.textDark, fontSize: 13 },
   statusToggle: { borderWidth: 1.5, borderRadius: 10, paddingVertical: 12, alignItems: 'center', justifyContent: 'center' },
 
+  // Pop-ups
+  popWide: { maxWidth: 640 },
+  popHeader: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    padding: 16, borderBottomWidth: 1, borderBottomColor: PALETTE.cardLightBorder,
+  },
+  popIconBadge: { width: 36, height: 36, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
+  popSub: { fontSize: 11, color: PALETTE.textMutedDark, marginTop: 1 },
+  popCountPill: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
+  popCountText: { fontSize: 11, fontWeight: '800' },
+  popCloseBtn: { width: 28, height: 28, borderRadius: 8, backgroundColor: PALETTE.surface, justifyContent: 'center', alignItems: 'center' },
+  popToolbar: { flexDirection: 'row', justifyContent: 'flex-end', paddingHorizontal: 20, paddingTop: 12 },
+
   // Pecahan
   breakdownTitle: { flex: 1, fontSize: 13, color: PALETTE.textDark, fontWeight: '600' },
   breakdownPax: { fontSize: 14, color: PALETTE.blue, fontWeight: '800' },
   breakdownTotalRow: { marginTop: 15, paddingTop: 15, borderTopWidth: 1, borderTopColor: PALETTE.cardLightBorder, flexDirection: 'row', justifyContent: 'space-between' },
   breakdownTotalLabel: { fontSize: 14, color: PALETTE.textMutedDark, fontWeight: '700' },
   breakdownTotalValue: { fontSize: 16, color: PALETTE.blue, fontWeight: '900' },
+  // Section Unit
+  unitCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: PALETTE.surface, borderRadius: 12, padding: 12,
+    borderWidth: 1, borderColor: PALETTE.cardLightBorder,
+    marginBottom: 8,
+  },
+  unitAvatar: {
+    width: 32, height: 32, borderRadius: 16,
+    backgroundColor: 'rgba(249, 115, 22, 0.14)',
+    justifyContent: 'center', alignItems: 'center',
+  },
+  unitAvatarText: { fontSize: 12, fontWeight: '800', color: PALETTE.orange },
+  unitName: { fontSize: 14, fontWeight: '700', color: PALETTE.textDark, marginBottom: 2 },
+  unitRole: { fontSize: 12, color: PALETTE.textMutedDark },
+  reorderGroup: { gap: 2 },
+  reorderBtn: {
+    width: 20, height: 16, borderRadius: 4,
+    backgroundColor: 'rgba(249, 115, 22, 0.10)',
+    justifyContent: 'center', alignItems: 'center',
+  },
+  reorderBtnDisabled: { backgroundColor: PALETTE.surface },
+  unitEditBtn: {
+    width: 26, height: 26, borderRadius: 7, position: 'relative',
+    backgroundColor: 'rgba(249, 115, 22, 0.12)',
+    justifyContent: 'center', alignItems: 'center',
+  },
+  unitDeleteBtn: {
+    width: 26, height: 26, borderRadius: 7,
+    backgroundColor: 'rgba(220, 38, 38, 0.10)',
+    justifyContent: 'center', alignItems: 'center',
+  },
+  unitTooltip: {
+    position: 'absolute', top: -30, right: 0, zIndex: 10,
+    backgroundColor: PALETTE.textDark, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6,
+  },
+  unitTooltipText: { color: '#fff', fontSize: 12, fontWeight: '700' },
 });

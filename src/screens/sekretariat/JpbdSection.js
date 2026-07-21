@@ -4,7 +4,9 @@ import { View, Text, TouchableOpacity, ScrollView, TextInput, Modal, ActivityInd
 import { Briefcase, Plus, Edit, Trash2, X, ImagePlus } from 'lucide-react-native';
 import { useJpbdDirectory } from '../../hooks/useJpbdDirectory';
 import { useAgencyLogo } from '../../hooks/useAgencyLogo';
-import { sekretariatStyles.js as styles } from './sekretariatStyles.js';
+import { useKpi } from '../../hooks/useKpi';
+import KpiSection from '../pentadbiran/KpiSection';
+import { appStyles as styles } from '../../styles/appStyles';
 import { PALETTE } from '../../constants/palette';
 
 // Scrollbar toujours visible sur web (pas seulement au survol)
@@ -30,6 +32,7 @@ export default function JpbdSection({ userRole, isEditMode }) {
     handleSaveJPBD, confirmDeleteJPBD,
   } = useJpbdDirectory();
   const { pickAndUploadLogo, uploadingLogo } = useAgencyLogo();
+  const { kpiList, saveKpiItem, deleteKpiItem, reorderKpi } = useKpi('sekretariat');
 
   // Sélectionne automatiquement la 1re agence au chargement
   useEffect(() => {
@@ -47,7 +50,6 @@ export default function JpbdSection({ userRole, isEditMode }) {
   // ---- Liste dynamique d'assets ----
   const [assetRows, setAssetRows] = useState([]);
 
-  // À l'ouverture de la modale : parse "Nama : qty" ligne par ligne
   useEffect(() => {
     if (modalJpbdVisible) {
       const rows = (formJpbd.logistics_assets || '')
@@ -65,7 +67,6 @@ export default function JpbdSection({ userRole, isEditMode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [modalJpbdVisible]);
 
-  // Toute modif des lignes est re-sérialisée dans formJpbd.logistics_assets
   const syncAssets = (rows) => {
     setAssetRows(rows);
     const text = rows
@@ -84,6 +85,18 @@ export default function JpbdSection({ userRole, isEditMode }) {
 
   return (
     <View>
+      {/* ---- KPI ---- */}
+      <KpiSection
+        kpiItems={kpiList}
+        isEditing={isEditMode}
+        updateKpiItem={(form, item) => saveKpiItem(form, item)}
+        addKpiItem={(form) => saveKpiItem(form, null)}
+        removeKpiItem={(item) => deleteKpiItem(item)}
+        persistKpi={reorderKpi}
+        showSubSeksyen={false}
+      />
+
+      <View style={{ height: 16 }} />
       <View style={styles.sectionHeaderRow}>
         <Text style={styles.sectionHeaderTitle}>Direktori Agensi (JPBD)</Text>
         {userRole === 'admin' && isEditMode ? (
@@ -157,7 +170,6 @@ export default function JpbdSection({ userRole, isEditMode }) {
                 ) : null}
               </View>
 
-              {/* Infos principales en grille */}
               <View style={jpbdStyles.infoGrid}>
                 <View style={jpbdStyles.infoBox}>
                   <Text style={jpbdStyles.infoLabel}>JAWATAN</Text>
