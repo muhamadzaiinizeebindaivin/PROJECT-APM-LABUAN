@@ -8,7 +8,7 @@ import KpiEditModal from './KpiEditModal';
 import KpiDetailModal from './KpiDetailModal';
 
 const EMPTY_DRAFT = { nama: '', tafsiran: '', sasaran: '', status: 'kuning', pencapaian_semasa: '', analisis_tindakan: '', sub_seksyen: '' };
-const STATUS_COLORS = { hijau: '#16a34a', kuning: '#d97706', merah: '#dc2626' };
+const STATUS_COLORS = { hijau: '#16a34a', kuning: '#eab308', merah: '#dc2626' };
 const STATUS_LEGEND = [
   { key: 'hijau', label: 'Hijau', color: STATUS_COLORS.hijau, desc: 'Mencapai atau melebihi sasaran.' },
   { key: 'kuning', label: 'Kuning', color: STATUS_COLORS.kuning, desc: 'Memerlukan perhatian / hampir capai sasaran.' },

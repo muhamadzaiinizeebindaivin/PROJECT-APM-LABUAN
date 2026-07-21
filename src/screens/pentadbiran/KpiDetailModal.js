@@ -6,7 +6,7 @@ import { pentadbiranStyles as styles } from './pentadbiranStyles';
 
 const STATUS_LABELS = {
   hijau: { label: 'Hijau', color: '#16a34a', desc: 'Mencapai atau melebihi sasaran.' },
-  kuning: { label: 'Kuning', color: '#d97706', desc: 'Memerlukan perhatian / hampir capai sasaran.' },
+  kuning: { label: 'Kuning', color: '#eab308', desc: 'Memerlukan perhatian / hampir capai sasaran.' },
   merah: { label: 'Merah', color: '#dc2626', desc: 'Di bawah sasaran / kritikal.' },
 };
 
