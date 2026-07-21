@@ -1,11 +1,12 @@
 // src/hooks/useHotspots.js
 import { useState, useEffect } from 'react';
 import { Alert, Platform } from 'react-native';
-import { supabase } from '../supabaseClient';
+import { supabaseSandbox } from '../supabaseSandboxClient';
 
 /**
  * Gère la liste des hotspots (banjir/pantai/cerun) : chargement, création,
  * modification, suppression. Extrait de SekretariatScreen.js.
+ * Schéma sandbox uniquement — ne touche jamais public.
  */
 export function useHotspots() {
   const [hotspotList, setHotspotList] = useState([]);
@@ -19,20 +20,20 @@ export function useHotspots() {
 
   const fetchHotspots = async () => {
     setLoadingHotspot(true);
-    const { data, error } = await supabase.from('hotspots').select('*').order('created_at', { ascending: true });
+    const { data, error } = await supabaseSandbox.from('hotspots').select('*').order('created_at', { ascending: true });
     if (!error) setHotspotList(data || []);
     setLoadingHotspot(false);
   };
 
   useEffect(() => {
     fetchHotspots();
-    const subscription = supabase
+    const subscription = supabaseSandbox
       .channel('hotspots_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'hotspots' }, () => {
+      .on('postgres_changes', { event: '*', schema: 'sandbox', table: 'hotspots' }, () => {
         fetchHotspots();
       })
       .subscribe();
-    return () => { supabase.removeChannel(subscription); };
+    return () => { supabaseSandbox.removeChannel(subscription); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -56,11 +57,11 @@ export function useHotspots() {
 
     setLoadingHotspot(true);
     if (formModeHotspot === 'add') {
-      const { error } = await supabase.from('hotspots').insert([formHotspot]);
+      const { error } = await supabaseSandbox.from('hotspots').insert([formHotspot]);
       if (error) Alert.alert('Ralat', error.message);
       else { Alert.alert('Berjaya', 'Hotspot ditambah.'); setModalHotspotVisible(false); fetchHotspots(); }
     } else {
-      const { error } = await supabase.from('hotspots').update(formHotspot).eq('id', editIdHotspot);
+      const { error } = await supabaseSandbox.from('hotspots').update(formHotspot).eq('id', editIdHotspot);
       if (error) Alert.alert('Ralat', error.message);
       else { Alert.alert('Berjaya', 'Hotspot dikemaskini.'); setModalHotspotVisible(false); fetchHotspots(); }
     }
@@ -70,7 +71,7 @@ export function useHotspots() {
   const confirmDeleteHotspot = (id) => {
     const executeDelete = async () => {
       setLoadingHotspot(true);
-      const { error } = await supabase.from('hotspots').delete().eq('id', id);
+      const { error } = await supabaseSandbox.from('hotspots').delete().eq('id', id);
       if (error) {
         Platform.OS === 'web' ? alert('Ralat: ' + error.message) : Alert.alert('Ralat', error.message);
       } else {

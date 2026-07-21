@@ -1,12 +1,81 @@
 // src/screens/sekretariat/HotspotSection.js
-import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView, TextInput, Modal, ActivityIndicator, Image, StyleSheet } from 'react-native';
-import { Droplets, Mountain, Plus, Edit, Trash2, X } from 'lucide-react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, TextInput, Modal, ActivityIndicator, Image, StyleSheet, Platform } from 'react-native';
+import {
+  Droplets, Waves, Mountain, MapPin, Plus, Edit, Trash2, X,
+  Flame, Wind, Tornado, CloudRain, CloudLightning, CloudFog, Zap,
+  Sun, Snowflake, Umbrella, TreePine, Trees, Globe, Bug,
+  AlertTriangle, Biohazard, Radiation, Siren, ShieldAlert, LifeBuoy,
+  Factory, Building2, Home, Tent, Warehouse, Landmark,
+  Ship, Anchor, Truck, Car, Plane, Fuel,
+} from 'lucide-react-native';
 import { useHotspots } from '../../hooks/useHotspots';
+import { useHotspotCategories } from '../../hooks/useHotspotCategories';
 import { sharedStyles as styles } from './sharedStyles';
 import { PALETTE } from '../../constants/palette';
 
+// Scrollbar toujours visible sur web
+if (Platform.OS === 'web' && typeof document !== 'undefined' && !document.getElementById('hotspot-scrollbar-css')) {
+  const style = document.createElement('style');
+  style.id = 'hotspot-scrollbar-css';
+  style.textContent = `
+    .hotspot-pills-scroll::-webkit-scrollbar { height: 8px; }
+    .hotspot-pills-scroll::-webkit-scrollbar-track { background: #00000010; border-radius: 4px; }
+    .hotspot-pills-scroll::-webkit-scrollbar-thumb { background: #F97316; border-radius: 4px; }
+    .hotspot-pills-scroll { scrollbar-width: thin; scrollbar-color: #F97316 #00000010; }
+  `;
+  document.head.appendChild(style);
+}
+
+// Registre d'icônes sélectionnables (nom stocké en base → composant)
+const ICONS = {
+  MapPin, Droplets, Waves, Mountain,
+  Flame, Wind, Tornado, CloudRain, CloudLightning, CloudFog, Zap,
+  Sun, Snowflake, Umbrella, TreePine, Trees, Globe, Bug,
+  AlertTriangle, Biohazard, Radiation, Siren, ShieldAlert, LifeBuoy,
+  Factory, Building2, Home, Tent, Warehouse, Landmark,
+  Ship, Anchor, Truck, Car, Plane, Fuel,
+};
+const resolveIcon = (cat) => ICONS[cat?.icon] || MapPin;
+const CATEGORY_MAPS = {
+  banjir: { source: require('../../../assets/map_banjir.png'), caption: 'Peta Taburan Hotspot Banjir' },
+  cerun: { source: require('../../../assets/map_landslide.png'), caption: 'Lokasi Cerun Kritikal (Landslide)' },
+};
+
+const COLOR_CHOICES = ['#3B82F6', '#d97706', '#EA580C', '#16A34A', '#9333EA', '#DC2626', '#0891B2'];
+
+// Tooltip immédiat au survol (web uniquement)
+function HoverTip({ label, children }) {
+  const [hovered, setHovered] = React.useState(false);
+  if (Platform.OS !== 'web') return children;
+  return (
+    <View
+      style={{ position: 'relative' }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      {children}
+      {hovered ? (
+        <View style={tipStyles.bubble} pointerEvents="none">
+          <Text style={tipStyles.text}>{label}</Text>
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+const tipStyles = StyleSheet.create({
+  bubble: {
+    position: 'absolute', bottom: '110%', right: 0,
+    backgroundColor: '#1F2937', borderRadius: 6,
+    paddingVertical: 4, paddingHorizontal: 8,
+    zIndex: 100,
+  },
+  text: { color: '#fff', fontSize: 11, fontWeight: '600', whiteSpace: 'nowrap' },
+});
+
 export default function HotspotSection({ userRole, isEditMode }) {
+  const [selectedCat, setSelectedCat] = useState(null);
   const {
     hotspotList, loadingHotspot,
     modalHotspotVisible, setModalHotspotVisible,
@@ -14,15 +83,53 @@ export default function HotspotSection({ userRole, isEditMode }) {
     openAddModal, openEditModal,
     handleSaveHotspot, confirmDeleteHotspot,
   } = useHotspots();
+  const { categories, loadingCategories, addCategory, deleteCategory } = useHotspotCategories();
 
-  const banjirData = hotspotList.filter(h => h.category === 'banjir');
-  const cerunData = hotspotList.filter(h => h.category === 'cerun');
-  const pantaiData = hotspotList.filter(h => h.category === 'pantai');
+  // ---- Modale de gestion de catégorie ----
+  const [modalCatVisible, setModalCatVisible] = useState(false);
+  const [formCat, setFormCat] = useState({ label: '', sub: '', color: COLOR_CHOICES[0], prefix: 'ID', icon: 'MapPin' });
 
-  const renderHotspotItem = (item, badgeColor, prefixText = 'NO.') => (
+  // Sélectionne la 1re catégorie au chargement
+  useEffect(() => {
+    if (!selectedCat && categories.length > 0) setSelectedCat(categories[0].key);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [categories]);
+
+  const currentCat = categories.find((c) => c.key === selectedCat) || null;
+  const currentColor = currentCat?.color || PALETTE.orange;
+  const currentData = currentCat ? hotspotList.filter((h) => h.category === currentCat.key) : [];
+  const CurrentIcon = resolveIcon(currentCat);
+  const currentMap = currentCat ? CATEGORY_MAPS[currentCat.key] : null;
+
+  const handleSaveCategory = async () => {
+    const ok = await addCategory(formCat);
+    if (ok) {
+      setModalCatVisible(false);
+      setFormCat({ label: '', sub: '', color: COLOR_CHOICES[0], prefix: 'ID', icon: 'MapPin' });
+    }
+  };
+
+  const handleDeleteCategory = async (cat) => {
+    const doDelete = async () => {
+      const ok = await deleteCategory(cat);
+      if (ok && selectedCat === cat.key) setSelectedCat(null);
+    };
+    if (Platform.OS === 'web') {
+      if (window.confirm(`Padam kategori "${cat.label}"?`)) doDelete();
+    } else {
+      import('react-native').then(({ Alert }) =>
+        Alert.alert('Pengesahan Padam', `Padam kategori "${cat.label}"?`, [
+          { text: 'Batal', style: 'cancel' },
+          { text: 'Padam', style: 'destructive', onPress: doDelete },
+        ])
+      );
+    }
+  };
+
+  const renderHotspotItem = (item, badgeColor, prefixText) => (
     <View key={item.id} style={hotspotStyles.hotspotCard}>
-      <View style={[hotspotStyles.hotspotBadge, { backgroundColor: badgeColor }]}>
-        <Text style={hotspotStyles.hotspotBadgeText}>{prefixText} {item.ref_no || '-'}</Text>
+      <View style={[hotspotStyles.hotspotBadge, { backgroundColor: badgeColor + '18', borderColor: badgeColor }]}>
+        <Text style={[hotspotStyles.hotspotBadgeText, { color: badgeColor }]}>{prefixText} {item.ref_no || '-'}</Text>
       </View>
 
       <View style={{ flex: 1 }}>
@@ -31,81 +138,123 @@ export default function HotspotSection({ userRole, isEditMode }) {
       </View>
 
       {userRole === 'admin' && isEditMode ? (
-        <View style={styles.ppsActions}>
-          <TouchableOpacity onPress={() => openEditModal(item)} style={styles.iconBtn}>
-            <Edit size={16} color={PALETTE.orange} />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => confirmDeleteHotspot(item.id)} style={styles.iconBtn}>
-            <Trash2 size={16} color={PALETTE.danger} />
-          </TouchableOpacity>
+        <View style={hotspotStyles.itemActions}>
+          <HoverTip label="Kemaskini titik ini">
+            <TouchableOpacity onPress={() => openEditModal(item)} style={[hotspotStyles.itemActionBtn, { backgroundColor: PALETTE.orange + '18' }]}>
+              <Edit size={15} color={PALETTE.orange} />
+            </TouchableOpacity>
+          </HoverTip>
+          <HoverTip label="Padam titik ini">
+            <TouchableOpacity onPress={() => confirmDeleteHotspot(item.id)} style={[hotspotStyles.itemActionBtn, { backgroundColor: PALETTE.danger + '18' }]}>
+              <Trash2 size={15} color={PALETTE.danger} />
+            </TouchableOpacity>
+          </HoverTip>
         </View>
       ) : null}
     </View>
   );
 
+  const isLoading = (loadingHotspot || loadingCategories) && hotspotList.length === 0 && categories.length === 0;
+
   return (
     <View>
       <View style={styles.sectionHeaderRow}>
         <Text style={styles.sectionHeaderTitle}>Senarai Hotspot Bencana</Text>
-        {userRole === 'admin' && isEditMode ? (
-          <TouchableOpacity style={styles.addButton} onPress={openAddModal}>
-            <Plus size={16} color={PALETTE.white} />
-            <Text style={styles.addButtonText}>Tambah</Text>
-          </TouchableOpacity>
-        ) : null}
       </View>
 
-      {loadingHotspot && hotspotList.length === 0 ? (
+      {isLoading ? (
         <ActivityIndicator size="large" color={PALETTE.orange} style={{ marginTop: 20 }} />
-      ) : hotspotList.length === 0 ? (
-        <Text style={styles.emptyText}>Tiada data hotspot dijumpai.</Text>
+      ) : categories.length === 0 ? (
+        <Text style={styles.emptyText}>Tiada kategori dijumpai. Sila tambah kategori.</Text>
       ) : (
         <>
-          <View style={[hotspotStyles.hotspotHeader, { backgroundColor: PALETTE.blueSoft, borderColor: PALETTE.blue }]}>
-            <Droplets size={24} color={PALETTE.blue} />
-            <View>
-              <Text style={[hotspotStyles.hotspotTitle, { color: PALETTE.blueDark }]}>HOTSPOT BANJIR</Text>
-              <Text style={hotspotStyles.hotspotSub}>Kawasan berisiko banjir</Text>
-            </View>
-          </View>
+          {/* ---- Onglets de catégorie ---- */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={true}
+            style={hotspotStyles.pillsScroll}
+            contentContainerStyle={hotspotStyles.pillsContent}
+            {...(Platform.OS === 'web' ? { className: 'hotspot-pills-scroll' } : {})}
+          >
+            {categories.map((cat) => {
+              const isSelected = cat.key === selectedCat;
+              const count = hotspotList.filter((h) => h.category === cat.key).length;
+              const IconCmp = resolveIcon(cat);
+              return (
+                <TouchableOpacity
+                  key={cat.id}
+                  style={[
+                    hotspotStyles.pill,
+                    { borderColor: cat.color },
+                    isSelected && { backgroundColor: cat.color },
+                  ]}
+                  onPress={() => setSelectedCat(cat.key)}
+                  activeOpacity={0.8}
+                >
+                  <IconCmp size={22} color={isSelected ? PALETTE.white : cat.color} />
+                  <Text style={[hotspotStyles.pillLabel, { color: isSelected ? PALETTE.white : cat.color }]}>
+                    {cat.label}
+                  </Text>
+                  <Text style={[hotspotStyles.pillCount, { color: isSelected ? PALETTE.white : PALETTE.textMutedDark }]}>
+                    {count} lokasi
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
 
-          <View style={hotspotStyles.mapCard}>
-            <Image source={require('../../../assets/map_banjir.png')} style={hotspotStyles.mapImage} resizeMode="contain" />
-            <Text style={hotspotStyles.mapCaption}>Rajah 1: Peta Taburan Hotspot Banjir</Text>
-          </View>
+            {/* Pill "ajouter une catégorie" (admin + édition) */}
+            {userRole === 'admin' && isEditMode ? (
+              <TouchableOpacity style={hotspotStyles.pillAdd} onPress={() => setModalCatVisible(true)} activeOpacity={0.8}>
+                <Plus size={22} color={PALETTE.orange} />
+                <Text style={hotspotStyles.pillAddText}>Kategori Baru</Text>
+              </TouchableOpacity>
+            ) : null}
+          </ScrollView>
 
-          {banjirData.map(item => renderHotspotItem(item, PALETTE.blue, 'NO.'))}
-
-          {pantaiData.length > 0 ? (
-            <View style={{ marginTop: 25 }}>
-              <View style={[hotspotStyles.hotspotHeader, { backgroundColor: '#fef3c7', borderColor: '#f59e0b' }]}>
-                <Droplets size={24} color="#d97706" />
-                <View>
-                  <Text style={[hotspotStyles.hotspotTitle, { color: '#92400e' }]}>HOTSPOT PANTAI</Text>
-                  <Text style={hotspotStyles.hotspotSub}>Kawasan hakisan pantai / ombak besar</Text>
-                </View>
+          {currentCat ? (
+            <>
+              {/* ---- Bandeau info de la catégorie ---- */}
+              <View style={[hotspotStyles.catBanner, { backgroundColor: currentColor + '14', borderColor: currentColor + '40' }]}>
+                <CurrentIcon size={16} color={currentColor} />
+                <Text style={[hotspotStyles.catBannerText, { color: currentColor }]}>{currentCat.sub || currentCat.label}</Text>
+                <Text style={[hotspotStyles.catBannerCount, { color: currentColor }]}>{currentData.length} lokasi</Text>
+                {userRole === 'admin' && isEditMode ? (
+                  <HoverTip label="Padam kategori ini">
+                    <TouchableOpacity onPress={() => handleDeleteCategory(currentCat)} style={hotspotStyles.catDeleteBtn}>
+                      <Trash2 size={15} color={PALETTE.danger} />
+                    </TouchableOpacity>
+                  </HoverTip>
+                ) : null}
               </View>
-              {pantaiData.map(item => renderHotspotItem(item, '#f59e0b', 'ID'))}
-            </View>
+
+              {/* ---- Carte (Rajah) ---- */}
+              {currentMap ? (
+                <View style={hotspotStyles.mapCard}>
+                  <Image source={currentMap.source} style={hotspotStyles.mapImage} resizeMode="contain" />
+                  <Text style={hotspotStyles.mapCaption}>{currentMap.caption}</Text>
+                </View>
+              ) : null}
+
+              {/* ---- Bouton Tambah ---- */}
+              {userRole === 'admin' && isEditMode ? (
+                <TouchableOpacity style={[styles.addButton, hotspotStyles.addBtnBeforeList]} onPress={openAddModal}>
+                  <Plus size={16} color={PALETTE.white} />
+                  <Text style={styles.addButtonText}>Tambah</Text>
+                </TouchableOpacity>
+              ) : null}
+
+              {/* ---- Liste ---- */}
+              {currentData.length === 0 ? (
+                <Text style={styles.emptyText}>Tiada rekod untuk kategori ini.</Text>
+              ) : (
+                currentData.map((item) => renderHotspotItem(item, currentColor, currentCat.prefix))
+              )}
+            </>
           ) : null}
-
-          <View style={[hotspotStyles.hotspotHeader, { backgroundColor: PALETTE.orangeSoft, borderColor: PALETTE.orange, marginTop: 25 }]}>
-            <Mountain size={24} color={PALETTE.orangeDark} />
-            <View>
-              <Text style={[hotspotStyles.hotspotTitle, { color: PALETTE.orangeDark }]}>HOTSPOT TANAH RUNTUH</Text>
-              <Text style={hotspotStyles.hotspotSub}>Cerun Kritikal & Berisiko</Text>
-            </View>
-          </View>
-
-          <View style={hotspotStyles.mapCard}>
-            <Image source={require('../../../assets/map_landslide.png')} style={hotspotStyles.mapImage} resizeMode="contain" />
-            <Text style={hotspotStyles.mapCaption}>Rajah 2: Lokasi Cerun Kritikal (Landslide)</Text>
-          </View>
-
-          {cerunData.map(item => renderHotspotItem(item, PALETTE.orangeDark, 'ID'))}
         </>
       )}
 
+      {/* ---- Modale hotspot ---- */}
       <Modal visible={modalHotspotVisible} animationType="fade" transparent={true}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
@@ -116,14 +265,14 @@ export default function HotspotSection({ userRole, isEditMode }) {
             <ScrollView contentContainerStyle={styles.modalForm}>
               <Text style={styles.inputLabel}>Kategori Hotspot</Text>
               <View style={styles.categoryWrap}>
-                {['banjir', 'pantai', 'cerun'].map(cat => (
+                {categories.map(cat => (
                   <TouchableOpacity
-                    key={cat}
-                    style={[styles.categoryBtn, formHotspot.category === cat ? styles.categoryBtnActive : null]}
-                    onPress={() => setFormHotspot({ ...formHotspot, category: cat })}
+                    key={cat.id}
+                    style={[styles.categoryBtn, formHotspot.category === cat.key ? styles.categoryBtnActive : null]}
+                    onPress={() => setFormHotspot({ ...formHotspot, category: cat.key })}
                   >
-                    <Text style={[styles.categoryBtnText, formHotspot.category === cat ? styles.categoryBtnTextActive : null]}>
-                      {cat.toUpperCase()}
+                    <Text style={[styles.categoryBtnText, formHotspot.category === cat.key ? styles.categoryBtnTextActive : null]}>
+                      {cat.label}
                     </Text>
                   </TouchableOpacity>
                 ))}
@@ -142,20 +291,111 @@ export default function HotspotSection({ userRole, isEditMode }) {
           </View>
         </View>
       </Modal>
+
+      {/* ---- Modale nouvelle catégorie ---- */}
+      <Modal visible={modalCatVisible} animationType="fade" transparent={true}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Tambah Kategori</Text>
+              <TouchableOpacity onPress={() => setModalCatVisible(false)}><X size={24} color={PALETTE.textMutedDark} /></TouchableOpacity>
+            </View>
+            <ScrollView contentContainerStyle={styles.modalForm}>
+              <Text style={styles.inputLabel}>Nama Kategori *</Text>
+              <TextInput style={styles.input} placeholder="Cth: HOTSPOT RIBUT" value={formCat.label} onChangeText={(t) => setFormCat({ ...formCat, label: t })} />
+              <Text style={styles.inputLabel}>Keterangan</Text>
+              <TextInput style={styles.input} placeholder="Cth: Kawasan berisiko ribut kencang" value={formCat.sub} onChangeText={(t) => setFormCat({ ...formCat, sub: t })} />
+              <Text style={styles.inputLabel}>Prefix Rujukan</Text>
+              <TextInput style={styles.input} placeholder="Cth: ID atau NO." value={formCat.prefix} onChangeText={(t) => setFormCat({ ...formCat, prefix: t })} />
+              <Text style={styles.inputLabel}>Ikon</Text>
+              <View style={hotspotStyles.iconGrid}>
+                {Object.entries(ICONS).map(([name, IconCmp]) => {
+                  const isSelected = formCat.icon === name;
+                  return (
+                    <TouchableOpacity
+                      key={name}
+                      style={[
+                        hotspotStyles.iconCell,
+                        isSelected && { backgroundColor: formCat.color + '18', borderColor: formCat.color },
+                      ]}
+                      onPress={() => setFormCat({ ...formCat, icon: name })}
+                    >
+                      <IconCmp size={20} color={isSelected ? formCat.color : PALETTE.textMutedDark} />
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              <Text style={styles.inputLabel}>Warna</Text>
+              <View style={hotspotStyles.colorRow}>
+                {COLOR_CHOICES.map((c) => (
+                  <TouchableOpacity
+                    key={c}
+                    style={[hotspotStyles.colorSwatch, { backgroundColor: c }, formCat.color === c && hotspotStyles.colorSwatchSelected]}
+                    onPress={() => setFormCat({ ...formCat, color: c })}
+                  />
+                ))}
+              </View>
+              <TouchableOpacity style={styles.saveButton} onPress={handleSaveCategory}>
+                <Text style={styles.saveButtonText}>Simpan Kategori</Text>
+              </TouchableOpacity>
+              <View style={{ height: 20 }} />
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
 
 const hotspotStyles = StyleSheet.create({
-  hotspotHeader: { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 14, borderWidth: 1, marginBottom: 15, gap: 12 },
-  hotspotTitle: { fontSize: 16, fontWeight: '800' },
-  hotspotSub: { fontSize: 12, color: PALETTE.textMutedDark },
+  // Onglets
+  pillsScroll: { marginBottom: 10 },
+  pillsContent: { gap: 10, paddingBottom: 10, paddingHorizontal: 2 },
+  pill: {
+    width: 160, alignItems: 'center', paddingVertical: 14, paddingHorizontal: 10,
+    borderRadius: 12, backgroundColor: PALETTE.cardLight, borderWidth: 1, gap: 4,
+  },
+  pillLabel: { fontSize: 12, fontWeight: '800', textAlign: 'center' },
+  pillCount: { fontSize: 11, fontWeight: '600' },
+  pillAdd: {
+    width: 120, alignItems: 'center', justifyContent: 'center', paddingVertical: 14, paddingHorizontal: 10,
+    borderRadius: 12, borderWidth: 1, borderStyle: 'dashed', borderColor: PALETTE.orange, gap: 4,
+  },
+  pillAddText: { fontSize: 12, fontWeight: '700', color: PALETTE.orange, textAlign: 'center' },
+
+  // Bandeau catégorie
+  catBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    borderRadius: 10, borderWidth: 1,
+    paddingVertical: 8, paddingHorizontal: 12, marginBottom: 12,
+  },
+  catBannerText: { flex: 1, fontSize: 13, fontWeight: '700' },
+  catBannerCount: { fontSize: 12, fontWeight: '800' },
+  catDeleteBtn: { marginLeft: 6, padding: 4 },
+
+  // Cartes d'items
   hotspotCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: PALETTE.cardLight, padding: 12, borderRadius: 10, marginBottom: 8, borderWidth: 1, borderColor: PALETTE.cardLightBorder, gap: 12 },
-  hotspotBadge: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, width: 75, alignItems: 'center', justifyContent: 'center' },
-  hotspotBadgeText: { color: '#fff', fontSize: 10, fontWeight: '800' },
+  hotspotBadge: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, width: 80, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
+  hotspotBadgeText: { fontSize: 10, fontWeight: '800' },
   hotspotRiver: { fontSize: 11, color: PALETTE.textMutedDark, fontWeight: '700', textTransform: 'uppercase' },
   hotspotArea: { fontSize: 14, color: PALETTE.textDark, fontWeight: '600' },
+  itemActions: { flexDirection: 'row', gap: 6 },
+  addBtnBeforeList: { alignSelf: 'flex-end', marginBottom: 8 },
+  itemActionBtn: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
+
+  // Carte (Rajah)
   mapCard: { backgroundColor: PALETTE.cardLight, borderRadius: 14, marginBottom: 15, borderWidth: 1, borderColor: PALETTE.cardLightBorder, padding: 10, alignItems: 'center' },
   mapImage: { width: '100%', height: 420, borderRadius: 8, backgroundColor: PALETTE.surface },
-  mapCaption: { fontSize: 12, color: PALETTE.textMutedDark, marginTop: 8, fontWeight: '600', fontStyle: 'italic' },
+  mapCaption: { fontSize: 12, color: PALETTE.textMutedDark, marginTop: 8, fontWeight: '600' },
+
+  // Modale catégorie
+  iconGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 12 },
+  iconCell: {
+    width: 40, height: 40, borderRadius: 8, alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: PALETTE.cardLightBorder, backgroundColor: PALETTE.cardLight,
+  },
+  colorRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
+  colorSwatch: { width: 34, height: 34, borderRadius: 17 },
+  colorSwatchSelected: { borderWidth: 3, borderColor: PALETTE.textDark },
 });
