@@ -24,4 +24,10 @@ export const PALETTE = {
   cardLightBorder: '#f3ddc9',
   textDark: '#1f1a16',
   textMutedDark: '#7a6a5c',
+
+  // ── Sémantique (statuts, alertes) ──
+  success: '#22c55e',
+  successSoft: '#dcfce7',
+  danger: '#ef4444',
+  dangerSoft: 'rgba(220, 38, 38, 0.10)',
 };

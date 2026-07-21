@@ -4,6 +4,7 @@ import { View, Text, TouchableOpacity, ScrollView, TextInput, Modal, ActivityInd
 import { Home, AlertCircle, Plus, Edit, Trash2, X } from 'lucide-react-native';
 import { usePpsList } from '../../hooks/usePpsList';
 import { sharedStyles as styles } from './sharedStyles';
+import { PALETTE } from '../../constants/palette';
 
 export default function PpsSection({ userRole, isEditMode }) {
   const {
@@ -21,7 +22,7 @@ export default function PpsSection({ userRole, isEditMode }) {
           <View key={index} style={[ppsStyles.statCard, stat.type === 'TOTAL' ? ppsStyles.statCardTotal : null]}>
             <Text style={[styles.statLabel, stat.type === 'TOTAL' ? { color: 'white' } : null]}>{stat.type}</Text>
             <Text style={[ppsStyles.statValue, stat.type === 'TOTAL' ? { color: 'white' } : null]}>{stat.qty}</Text>
-            <Text style={[ppsStyles.statSub, stat.type === 'TOTAL' ? { color: '#bfdbfe' } : null]}>{stat.capacity} pax</Text>
+            <Text style={[ppsStyles.statSub, stat.type === 'TOTAL' ? { color: 'rgba(255,255,255,0.7)' } : null]}>{stat.capacity} pax</Text>
           </View>
         ))}
       </View>
@@ -30,22 +31,22 @@ export default function PpsSection({ userRole, isEditMode }) {
         <Text style={styles.sectionHeaderTitle}>Senarai & Status PPS</Text>
         {userRole === 'admin' && isEditMode ? (
           <TouchableOpacity style={styles.addButton} onPress={openAddModal}>
-            <Plus size={16} color="#fff" />
+            <Plus size={16} color={PALETTE.white} />
             <Text style={styles.addButtonText}>Tambah PPS</Text>
           </TouchableOpacity>
         ) : null}
       </View>
 
       {loadingPPS && ppsList.length === 0 ? (
-        <ActivityIndicator size="large" color="#1E3A8A" style={{ marginTop: 20 }} />
+        <ActivityIndicator size="large" color={PALETTE.orange} style={{ marginTop: 20 }} />
       ) : ppsList.length === 0 ? (
         <Text style={styles.emptyText}>Tiada data PPS dijumpai.</Text>
       ) : (
         ppsList.map((pps) => (
           <View key={pps.id} style={ppsStyles.ppsCard}>
             <View style={ppsStyles.ppsHeader}>
-              <View style={[ppsStyles.ppsIconBox, pps.status !== 'OK' && { backgroundColor: '#ef4444' }]}>
-                <Home size={18} color="#fff" />
+              <View style={[ppsStyles.ppsIconBox, pps.status !== 'OK' && { backgroundColor: PALETTE.danger }]}>
+                <Home size={18} color={PALETTE.white} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={ppsStyles.ppsName}>{pps.name}</Text>
@@ -59,10 +60,10 @@ export default function PpsSection({ userRole, isEditMode }) {
               {userRole === 'admin' && isEditMode ? (
                 <View style={styles.ppsActions}>
                   <TouchableOpacity onPress={() => openEditModal(pps)} style={styles.iconBtn}>
-                    <Edit size={16} color="#22c55e" />
+                    <Edit size={16} color={PALETTE.orange} />
                   </TouchableOpacity>
                   <TouchableOpacity onPress={() => confirmDeletePPS(pps.id)} style={styles.iconBtn}>
-                    <Trash2 size={16} color="#ef4444" />
+                    <Trash2 size={16} color={PALETTE.danger} />
                   </TouchableOpacity>
                 </View>
               ) : null}
@@ -70,7 +71,7 @@ export default function PpsSection({ userRole, isEditMode }) {
 
             {pps.status !== 'OK' ? (
               <View style={ppsStyles.alertBox}>
-                <AlertCircle size={16} color="#ef4444" />
+                <AlertCircle size={16} color={PALETTE.danger} />
                 <Text style={ppsStyles.alertText}>{pps.status}</Text>
               </View>
             ) : null}
@@ -83,7 +84,7 @@ export default function PpsSection({ userRole, isEditMode }) {
           <View style={styles.modalContainer}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>{formModePps === 'add' ? 'Tambah PPS' : 'Kemaskini PPS'}</Text>
-              <TouchableOpacity onPress={() => setModalPpsVisible(false)}><X size={24} color="#64748b" /></TouchableOpacity>
+              <TouchableOpacity onPress={() => setModalPpsVisible(false)}><X size={24} color={PALETTE.textMutedDark} /></TouchableOpacity>
             </View>
             <ScrollView contentContainerStyle={styles.modalForm}>
               <Text style={styles.inputLabel}>Nama Pusat Pemindahan (PPS) *</Text>
@@ -113,7 +114,7 @@ export default function PpsSection({ userRole, isEditMode }) {
               <Text style={styles.inputLabel}>Status Kesediaan</Text>
               <TextInput style={[styles.input, { height: 60, textAlignVertical: 'top' }]} placeholder="OK (Atau nyatakan kerosakan)" multiline value={formPps.status} onChangeText={(t) => setFormPps({ ...formPps, status: t })} />
               <TouchableOpacity style={styles.saveButton} onPress={handleSavePPS}>
-                {loadingPPS ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveButtonText}>Simpan PPS</Text>}
+                {loadingPPS ? <ActivityIndicator color={PALETTE.white} /> : <Text style={styles.saveButtonText}>Simpan PPS</Text>}
               </TouchableOpacity>
               <View style={{ height: 20 }} />
             </ScrollView>
@@ -126,19 +127,19 @@ export default function PpsSection({ userRole, isEditMode }) {
 
 const ppsStyles = StyleSheet.create({
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  statCard: { width: '48%', backgroundColor: '#fff', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: '#e2e8f0' },
-  statCardTotal: { width: '100%', backgroundColor: '#2563eb', borderColor: '#2563eb' },
-  statValue: { fontSize: 24, fontWeight: '900', color: '#0f172a', marginVertical: 4 },
-  statSub: { fontSize: 12, color: '#94a3b8', fontWeight: '600' },
-  ppsCard: { backgroundColor: '#fff', borderRadius: 12, marginBottom: 12, overflow: 'hidden', borderWidth: 1, borderColor: '#e2e8f0' },
+  statCard: { width: '48%', backgroundColor: PALETTE.cardLight, padding: 12, borderRadius: 14, borderWidth: 1, borderColor: PALETTE.cardLightBorder },
+  statCardTotal: { width: '100%', backgroundColor: PALETTE.orange, borderColor: PALETTE.orange },
+  statValue: { fontSize: 24, fontWeight: '900', color: PALETTE.textDark, marginVertical: 4 },
+  statSub: { fontSize: 12, color: PALETTE.textMutedDark, fontWeight: '600' },
+  ppsCard: { backgroundColor: PALETTE.cardLight, borderRadius: 14, marginBottom: 12, overflow: 'hidden', borderWidth: 1, borderColor: PALETTE.cardLightBorder },
   ppsHeader: { flexDirection: 'row', padding: 16, gap: 12, alignItems: 'center' },
-  ppsIconBox: { width: 40, height: 40, backgroundColor: '#22c55e', borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
-  ppsName: { fontSize: 14, fontWeight: '800', color: '#0f172a', marginBottom: 6 },
+  ppsIconBox: { width: 40, height: 40, backgroundColor: PALETTE.orange, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
+  ppsName: { fontSize: 14, fontWeight: '800', color: PALETTE.textDark, marginBottom: 6 },
   ppsTags: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
-  tagZone: { backgroundColor: '#f1f5f9', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
-  tagCap: { backgroundColor: '#dcfce7', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
-  tagType: { backgroundColor: '#fef3c7', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
-  tagText: { fontSize: 10, fontWeight: '700', color: '#475569' },
-  alertBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fef2f2', padding: 10, gap: 8, borderTopWidth: 1, borderTopColor: '#fee2e2' },
-  alertText: { fontSize: 11, color: '#ef4444', fontWeight: '700', flex: 1 },
+  tagZone: { backgroundColor: PALETTE.surface, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
+  tagCap: { backgroundColor: PALETTE.successSoft, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
+  tagType: { backgroundColor: PALETTE.orangeSoft, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
+  tagText: { fontSize: 10, fontWeight: '700', color: PALETTE.textMutedDark },
+  alertBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: PALETTE.dangerSoft, padding: 10, gap: 8, borderTopWidth: 1, borderTopColor: PALETTE.cardLightBorder },
+  alertText: { fontSize: 11, color: PALETTE.danger, fontWeight: '700', flex: 1 },
 });

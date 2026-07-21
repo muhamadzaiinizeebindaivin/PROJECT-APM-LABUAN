@@ -4,6 +4,7 @@ import { View, Text, TouchableOpacity, ScrollView, TextInput, Modal, ActivityInd
 import { Briefcase, Plus, Edit, Trash2, X } from 'lucide-react-native';
 import { useJpbdDirectory } from '../../hooks/useJpbdDirectory';
 import { sharedStyles as styles } from './sharedStyles';
+import { PALETTE } from '../../constants/palette';
 
 export default function JpbdSection({ userRole, isEditMode }) {
   const [expandedId, setExpandedId] = useState(null);
@@ -23,14 +24,14 @@ export default function JpbdSection({ userRole, isEditMode }) {
         <Text style={styles.sectionHeaderTitle}>Direktori Agensi (JPBD)</Text>
         {userRole === 'admin' && isEditMode ? (
           <TouchableOpacity style={styles.addButton} onPress={openAddModal}>
-            <Plus size={16} color="#fff" />
+            <Plus size={16} color={PALETTE.white} />
             <Text style={styles.addButtonText}>Tambah</Text>
           </TouchableOpacity>
         ) : null}
       </View>
 
       {loadingJPBD && jpbdList.length === 0 ? (
-        <ActivityIndicator size="large" color="#1E3A8A" style={{ marginTop: 20 }} />
+        <ActivityIndicator size="large" color={PALETTE.orange} style={{ marginTop: 20 }} />
       ) : jpbdList.length === 0 ? (
         <Text style={styles.emptyText}>Tiada rekod dijumpai. Sila tambah agensi.</Text>
       ) : (
@@ -43,7 +44,7 @@ export default function JpbdSection({ userRole, isEditMode }) {
                   <Text style={jpbdStyles.agencyName}>{index + 1}. {item.agency}</Text>
                   {item.officer ? <Text style={jpbdStyles.officerName}>{item.officer}</Text> : null}
                 </View>
-                <Briefcase size={20} color="#1E3A8A" />
+                <Briefcase size={20} color={PALETTE.orange} />
               </TouchableOpacity>
 
               {isExpanded ? (
@@ -51,12 +52,12 @@ export default function JpbdSection({ userRole, isEditMode }) {
                   {userRole === 'admin' && isEditMode ? (
                     <View style={styles.actionRow}>
                       <TouchableOpacity style={styles.editBtn} onPress={() => openEditModal(item)}>
-                        <Edit size={14} color="#fff" />
+                        <Edit size={14} color={PALETTE.white} />
                         <Text style={styles.actionText}>Kemaskini</Text>
                       </TouchableOpacity>
                       <TouchableOpacity style={styles.deleteBtn} onPress={() => confirmDeleteJPBD(item.id)}>
-                        <Trash2 size={14} color="#fff" />
-                        <Text style={styles.actionText}>Padam</Text>
+                        <Trash2 size={14} color={PALETTE.danger} />
+                        <Text style={[styles.actionText, { color: PALETTE.danger }]}>Padam</Text>
                       </TouchableOpacity>
                     </View>
                   ) : null}
@@ -105,7 +106,7 @@ export default function JpbdSection({ userRole, isEditMode }) {
           <View style={styles.modalContainer}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>{formModeJpbd === 'add' ? 'Tambah Agensi' : 'Kemaskini Agensi'}</Text>
-              <TouchableOpacity onPress={() => setModalJpbdVisible(false)}><X size={24} color="#64748b" /></TouchableOpacity>
+              <TouchableOpacity onPress={() => setModalJpbdVisible(false)}><X size={24} color={PALETTE.textMutedDark} /></TouchableOpacity>
             </View>
             <ScrollView contentContainerStyle={styles.modalForm}>
               <Text style={styles.inputLabel}>Nama Agensi *</Text>
@@ -151,7 +152,7 @@ export default function JpbdSection({ userRole, isEditMode }) {
               <Text style={styles.inputLabel}>Logistik & Aset (Senaraikan)</Text>
               <TextInput style={[styles.input, { height: 80, textAlignVertical: 'top' }]} placeholder="Cth: 3 Buah Hilux, 2 Bot Aluminium..." multiline value={formJpbd.logistics_assets} onChangeText={(t) => setFormJpbd({ ...formJpbd, logistics_assets: t })} />
               <TouchableOpacity style={styles.saveButton} onPress={handleSaveJPBD}>
-                {loadingJPBD ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveButtonText}>Simpan Rekod</Text>}
+                {loadingJPBD ? <ActivityIndicator color={PALETTE.white} /> : <Text style={styles.saveButtonText}>Simpan Rekod</Text>}
               </TouchableOpacity>
               <View style={{ height: 20 }} />
             </ScrollView>
@@ -163,6 +164,6 @@ export default function JpbdSection({ userRole, isEditMode }) {
 }
 
 const jpbdStyles = StyleSheet.create({
-  agencyName: { fontSize: 15, fontWeight: '800', color: '#0f172a' },
-  officerName: { fontSize: 13, color: '#64748b', marginTop: 4 },
+  agencyName: { fontSize: 15, fontWeight: '800', color: PALETTE.textDark },
+  officerName: { fontSize: 13, color: PALETTE.textMutedDark, marginTop: 4 },
 });

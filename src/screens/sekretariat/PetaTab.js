@@ -13,6 +13,7 @@ import FullscreenViewer from '../../components/FullscreenViewer';
 import { generateAgencyHistoryPdf, generateBencanaHistoryPdf } from '../../utils/agencyReportsPdf';
 import { sharedStyles } from './sharedStyles';
 import { petaStyles as styles } from './petaStyles';
+import { PALETTE } from '../../constants/palette';
 
 const BULAN_MS = ['Januari', 'Februari', 'Mac', 'April', 'Mei', 'Jun', 'Julai', 'Ogos', 'September', 'Oktober', 'November', 'Disember'];
 const BULAN_OPTIONS = ['Semua Bulan', ...BULAN_MS];
@@ -124,7 +125,7 @@ export default function PetaTab({ theme, userRole }) {
   };
 
   const agencyColorMap = buildAgencyColorMap(agencyNames);
-  const getAgencyColorFromMap = (agencyName) => agencyColorMap[agencyName] || '#64748b';
+  const getAgencyColorFromMap = (agencyName) => agencyColorMap[agencyName] || PALETTE.textMutedDark;
 
   const petaMapHtml = buildSekretariatMapHtml({ theme, userRole });
   const petaMapSrc = `data:text/html;charset=utf-8,${encodeURIComponent(petaMapHtml)}`;
@@ -184,6 +185,10 @@ export default function PetaTab({ theme, userRole }) {
   }, [bencanaPoints]);
 
   useEffect(() => {
+    // La carte tourne dans une <iframe> web (voir plus bas) : `window` n'existe
+    // pas sur mobile natif, donc on ne branche ce listener que sur le web.
+    if (Platform.OS !== 'web') return undefined;
+
     const handleMapMessage = (event) => {
       if (event.source !== petaIframeRef.current?.contentWindow) return;
       try {
@@ -323,14 +328,14 @@ export default function PetaTab({ theme, userRole }) {
         <TextInput
           style={sharedStyles.input}
           placeholder="Cari agensi atau ahli..."
-          placeholderTextColor="#94a3b8"
+          placeholderTextColor={PALETTE.textMutedDark}
           value={searchHistoryQuery}
           onChangeText={setSearchHistoryQuery}
         />
       </View>
 
       {loadingHistory ? (
-        <ActivityIndicator size="small" color="#1E3A8A" style={{ marginTop: 20 }} />
+        <ActivityIndicator size="small" color={PALETTE.orange} style={{ marginTop: 20 }} />
       ) : pagedHistory.length === 0 ? (
         <Text style={styles.emptyText}>Tiada rekod sejarah untuk tempoh ini.</Text>
       ) : (
@@ -352,7 +357,7 @@ export default function PetaTab({ theme, userRole }) {
             </View>
             <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 380 }}>
               {pagedHistory.map((h, index) => (
-                <View key={h.id} style={[styles.calamityTableRow, { backgroundColor: index % 2 === 0 ? '#ffffff' : '#f8fafc' }]}>
+                <View key={h.id} style={[styles.calamityTableRow, { backgroundColor: index % 2 === 0 ? PALETTE.cardLight : PALETTE.surface }]}>
                   <View style={[styles.historyAgencyColFlex, { flexDirection: 'row', alignItems: 'center', gap: 8, paddingLeft: 16, paddingVertical: 10 }]}>
                     <View style={[styles.petaAgencyDot, { backgroundColor: getAgencyColorFromMap(h.jpbd_directory?.agency) }]} />
                     <View style={{ flex: 1 }}>
@@ -430,7 +435,7 @@ export default function PetaTab({ theme, userRole }) {
         <TextInput
           style={sharedStyles.input}
           placeholder="Cari nama bencana..."
-          placeholderTextColor="#94a3b8"
+          placeholderTextColor={PALETTE.textMutedDark}
           value={searchSummaryQuery}
           onChangeText={setSearchSummaryQuery}
         />
@@ -454,14 +459,14 @@ export default function PetaTab({ theme, userRole }) {
             </View>
             <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 380 }}>
               {pagedBencanaSummary.map((b, index) => (
-                <View key={b.id} style={[styles.calamityTableRow, { backgroundColor: index % 2 === 0 ? '#ffffff' : '#f8fafc' }]}>
+                <View key={b.id} style={[styles.calamityTableRow, { backgroundColor: index % 2 === 0 ? PALETTE.cardLight : PALETTE.surface }]}>
                   <Text style={[styles.calamityTableCell, styles.historyAgencyColFlex, { textAlign: 'left', paddingLeft: 16, fontWeight: '700' }, large && { fontSize: 16 }]} numberOfLines={1}>
                     {b.category}
                   </Text>
                   <Text style={[styles.calamityTableCell, styles.calamityTotalColFlex, large && { fontSize: 16 }]}>
                     {new Date(b.created_at).toLocaleDateString('ms-MY')}
                   </Text>
-                  <Text style={[styles.calamityTableCell, styles.calamityTotalColFlex, !b.resolved_at && { fontStyle: 'italic', color: '#ea580c' }, large && { fontSize: 16 }]}>
+                  <Text style={[styles.calamityTableCell, styles.calamityTotalColFlex, !b.resolved_at && { fontStyle: 'italic', color: PALETTE.orangeDark }, large && { fontSize: 16 }]}>
                     {b.resolved_at ? new Date(b.resolved_at).toLocaleDateString('ms-MY') : 'Bencana Belum Selesai'}
                   </Text>
                 </View>
@@ -506,27 +511,27 @@ export default function PetaTab({ theme, userRole }) {
               onLoad: handlePetaIframeLoad
             })
           ) : (
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme?.card || '#fff' }}>
-              <Map size={48} color={theme?.textSecondary || '#64748b'} />
-              <Text style={{ marginTop: 12, color: theme?.textSecondary || '#64748b', fontWeight: '600' }}>
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme?.card || PALETTE.cardLight }}>
+              <Map size={48} color={theme?.textSecondary || PALETTE.textMutedDark} />
+              <Text style={{ marginTop: 12, color: theme?.textSecondary || PALETTE.textMutedDark, fontWeight: '600' }}>
                 Peta memerlukan 'react-native-webview' pada peranti mudah alih.
               </Text>
             </View>
           )}
           {petaIframeLoading && Platform.OS === 'web' && (
-            <View style={[styles.loader, { backgroundColor: theme?.background || '#f8fafc' }]}>
-              <ActivityIndicator size="large" color="#1E3A8A" />
+            <View style={[styles.loader, { backgroundColor: theme?.background || PALETTE.softOrangeBg }]}>
+              <ActivityIndicator size="large" color={PALETTE.orange} />
             </View>
           )}
         </View>
 
         <View style={styles.petaHeaderCard}>
-          <View style={styles.petaIconCircle}><Map color="#fff" size={20} /></View>
+          <View style={styles.petaIconCircle}><Map color={PALETTE.white} size={20} /></View>
           <View>
             <Text style={styles.petaHeaderTitle}>Peta Agensi</Text>
             <View style={styles.liveTagContainer}>
               {onlineAgencies.length > 0 && <View style={styles.liveDot} />}
-              <Text style={[styles.liveText, { color: onlineAgencies.length > 0 ? '#22c55e' : '#94a3b8' }]}>
+              <Text style={[styles.liveText, { color: onlineAgencies.length > 0 ? PALETTE.success : PALETTE.textMutedDark }]}>
                 {onlineAgencies.length} AGENSI ONLINE
               </Text>
             </View>
@@ -572,7 +577,7 @@ export default function PetaTab({ theme, userRole }) {
             onMouseLeave: () => setHistoryBtnHovered(false),
           } : {})}
         >
-          <History size={18} color="#1E3A8A" />
+          <History size={18} color={PALETTE.orange} />
           {historyBtnHovered && (
             <View style={styles.historyTooltip}>
               <Text style={styles.historyTooltipText}>Sejarah Patrol Agensi</Text>
@@ -588,7 +593,7 @@ export default function PetaTab({ theme, userRole }) {
             onMouseLeave: () => setSummaryBtnHovered(false),
           } : {})}
         >
-          <ClipboardList size={18} color="#1E3A8A" />
+          <ClipboardList size={18} color={PALETTE.orange} />
           {summaryBtnHovered && (
             <View style={styles.historyTooltip}>
               <Text style={styles.historyTooltipText}>Ringkasan Bencana</Text>
@@ -606,9 +611,9 @@ export default function PetaTab({ theme, userRole }) {
             } : {})}
           >
             {isPlacingBencana ? (
-              <X size={18} color="#fff" />
+              <X size={18} color={PALETTE.white} />
             ) : (
-              <Plus size={18} color="#ea580c" />
+              <Plus size={18} color={PALETTE.orange} />
             )}
             {addBencanaBtnHovered && !isPlacingBencana && (
               <View style={styles.historyTooltip}>
@@ -636,16 +641,16 @@ export default function PetaTab({ theme, userRole }) {
                 style={[sharedStyles.pdfExportBtn, exportingHistoryPdf && sharedStyles.pdfExportBtnDisabled]}
               >
                 {exportingHistoryPdf ? (
-                  <ActivityIndicator size="small" color="#fff" />
+                  <ActivityIndicator size="small" color={PALETTE.white} />
                 ) : (
                   <>
-                    <Download size={14} color="#fff" />
+                    <Download size={14} color={PALETTE.white} />
                     <Text style={sharedStyles.pdfExportBtnText}>PDF</Text>
                   </>
                 )}
               </TouchableOpacity>
               <TouchableOpacity onPress={() => setSidePanel('none')} style={styles.panelCloseBtn}>
-                <X size={16} color="#64748b" />
+                <X size={16} color={PALETTE.textMutedDark} />
               </TouchableOpacity>
             </View>
           </View>
@@ -668,16 +673,16 @@ export default function PetaTab({ theme, userRole }) {
                 style={[sharedStyles.pdfExportBtn, exportingSummaryPdf && sharedStyles.pdfExportBtnDisabled]}
               >
                 {exportingSummaryPdf ? (
-                  <ActivityIndicator size="small" color="#fff" />
+                  <ActivityIndicator size="small" color={PALETTE.white} />
                 ) : (
                   <>
-                    <Download size={14} color="#fff" />
+                    <Download size={14} color={PALETTE.white} />
                     <Text style={sharedStyles.pdfExportBtnText}>PDF</Text>
                   </>
                 )}
               </TouchableOpacity>
               <TouchableOpacity onPress={() => setSidePanel('none')} style={styles.panelCloseBtn}>
-                <X size={16} color="#64748b" />
+                <X size={16} color={PALETTE.textMutedDark} />
               </TouchableOpacity>
             </View>
           </View>
@@ -692,7 +697,7 @@ export default function PetaTab({ theme, userRole }) {
             <View style={sharedStyles.modalHeader}>
               <Text style={sharedStyles.modalTitle}>Tambah Titik Bencana</Text>
               <TouchableOpacity onPress={() => { setBencanaModalVisible(false); setPendingBencanaPlacement(null); setBencanaCategory(''); setBencanaDescription(''); }}>
-                <X size={24} color="#64748b" />
+                <X size={24} color={PALETTE.textMutedDark} />
               </TouchableOpacity>
             </View>
             <View style={sharedStyles.modalForm}>
@@ -700,7 +705,7 @@ export default function PetaTab({ theme, userRole }) {
               <TextInput
                 style={sharedStyles.input}
                 placeholder="Cth: Banjir Kilat, Tanah Runtuh, Ribut..."
-                placeholderTextColor="#94a3b8"
+                placeholderTextColor={PALETTE.textMutedDark}
                 value={bencanaCategory}
                 onChangeText={setBencanaCategory}
               />
@@ -708,7 +713,7 @@ export default function PetaTab({ theme, userRole }) {
               <TextInput
                 style={[sharedStyles.input, { height: 80, textAlignVertical: 'top' }]}
                 placeholder="Cth: Air naik setinggi 1 meter"
-                placeholderTextColor="#94a3b8"
+                placeholderTextColor={PALETTE.textMutedDark}
                 multiline
                 value={bencanaDescription}
                 onChangeText={setBencanaDescription}

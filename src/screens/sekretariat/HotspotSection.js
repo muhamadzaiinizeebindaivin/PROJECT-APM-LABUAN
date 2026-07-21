@@ -4,6 +4,7 @@ import { View, Text, TouchableOpacity, ScrollView, TextInput, Modal, ActivityInd
 import { Droplets, Mountain, Plus, Edit, Trash2, X } from 'lucide-react-native';
 import { useHotspots } from '../../hooks/useHotspots';
 import { sharedStyles as styles } from './sharedStyles';
+import { PALETTE } from '../../constants/palette';
 
 export default function HotspotSection({ userRole, isEditMode }) {
   const {
@@ -32,10 +33,10 @@ export default function HotspotSection({ userRole, isEditMode }) {
       {userRole === 'admin' && isEditMode ? (
         <View style={styles.ppsActions}>
           <TouchableOpacity onPress={() => openEditModal(item)} style={styles.iconBtn}>
-            <Edit size={16} color="#22c55e" />
+            <Edit size={16} color={PALETTE.orange} />
           </TouchableOpacity>
           <TouchableOpacity onPress={() => confirmDeleteHotspot(item.id)} style={styles.iconBtn}>
-            <Trash2 size={16} color="#ef4444" />
+            <Trash2 size={16} color={PALETTE.danger} />
           </TouchableOpacity>
         </View>
       ) : null}
@@ -48,22 +49,22 @@ export default function HotspotSection({ userRole, isEditMode }) {
         <Text style={styles.sectionHeaderTitle}>Senarai Hotspot Bencana</Text>
         {userRole === 'admin' && isEditMode ? (
           <TouchableOpacity style={styles.addButton} onPress={openAddModal}>
-            <Plus size={16} color="#fff" />
+            <Plus size={16} color={PALETTE.white} />
             <Text style={styles.addButtonText}>Tambah</Text>
           </TouchableOpacity>
         ) : null}
       </View>
 
       {loadingHotspot && hotspotList.length === 0 ? (
-        <ActivityIndicator size="large" color="#1E3A8A" style={{ marginTop: 20 }} />
+        <ActivityIndicator size="large" color={PALETTE.orange} style={{ marginTop: 20 }} />
       ) : hotspotList.length === 0 ? (
         <Text style={styles.emptyText}>Tiada data hotspot dijumpai.</Text>
       ) : (
         <>
-          <View style={[hotspotStyles.hotspotHeader, { backgroundColor: '#eff6ff', borderColor: '#3b82f6' }]}>
-            <Droplets size={24} color="#2563eb" />
+          <View style={[hotspotStyles.hotspotHeader, { backgroundColor: PALETTE.blueSoft, borderColor: PALETTE.blue }]}>
+            <Droplets size={24} color={PALETTE.blue} />
             <View>
-              <Text style={[hotspotStyles.hotspotTitle, { color: '#1e3a8a' }]}>HOTSPOT BANJIR</Text>
+              <Text style={[hotspotStyles.hotspotTitle, { color: PALETTE.blueDark }]}>HOTSPOT BANJIR</Text>
               <Text style={hotspotStyles.hotspotSub}>Kawasan berisiko banjir</Text>
             </View>
           </View>
@@ -73,7 +74,7 @@ export default function HotspotSection({ userRole, isEditMode }) {
             <Text style={hotspotStyles.mapCaption}>Rajah 1: Peta Taburan Hotspot Banjir</Text>
           </View>
 
-          {banjirData.map(item => renderHotspotItem(item, '#2563eb', 'NO.'))}
+          {banjirData.map(item => renderHotspotItem(item, PALETTE.blue, 'NO.'))}
 
           {pantaiData.length > 0 ? (
             <View style={{ marginTop: 25 }}>
@@ -88,10 +89,10 @@ export default function HotspotSection({ userRole, isEditMode }) {
             </View>
           ) : null}
 
-          <View style={[hotspotStyles.hotspotHeader, { backgroundColor: '#fff7ed', borderColor: '#f97316', marginTop: 25 }]}>
-            <Mountain size={24} color="#ea580c" />
+          <View style={[hotspotStyles.hotspotHeader, { backgroundColor: PALETTE.orangeSoft, borderColor: PALETTE.orange, marginTop: 25 }]}>
+            <Mountain size={24} color={PALETTE.orangeDark} />
             <View>
-              <Text style={[hotspotStyles.hotspotTitle, { color: '#9a3412' }]}>HOTSPOT TANAH RUNTUH</Text>
+              <Text style={[hotspotStyles.hotspotTitle, { color: PALETTE.orangeDark }]}>HOTSPOT TANAH RUNTUH</Text>
               <Text style={hotspotStyles.hotspotSub}>Cerun Kritikal & Berisiko</Text>
             </View>
           </View>
@@ -101,7 +102,7 @@ export default function HotspotSection({ userRole, isEditMode }) {
             <Text style={hotspotStyles.mapCaption}>Rajah 2: Lokasi Cerun Kritikal (Landslide)</Text>
           </View>
 
-          {cerunData.map(item => renderHotspotItem(item, '#ea580c', 'ID'))}
+          {cerunData.map(item => renderHotspotItem(item, PALETTE.orangeDark, 'ID'))}
         </>
       )}
 
@@ -110,7 +111,7 @@ export default function HotspotSection({ userRole, isEditMode }) {
           <View style={styles.modalContainer}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>{formModeHotspot === 'add' ? 'Tambah Hotspot' : 'Kemaskini Hotspot'}</Text>
-              <TouchableOpacity onPress={() => setModalHotspotVisible(false)}><X size={24} color="#64748b" /></TouchableOpacity>
+              <TouchableOpacity onPress={() => setModalHotspotVisible(false)}><X size={24} color={PALETTE.textMutedDark} /></TouchableOpacity>
             </View>
             <ScrollView contentContainerStyle={styles.modalForm}>
               <Text style={styles.inputLabel}>Kategori Hotspot</Text>
@@ -134,7 +135,7 @@ export default function HotspotSection({ userRole, isEditMode }) {
               <Text style={styles.inputLabel}>Kawasan Terjejas *</Text>
               <TextInput style={[styles.input, { height: 60, textAlignVertical: 'top' }]} placeholder="Cth: Kg Rancha-Rancha / Slope ID 17/4" multiline value={formHotspot.area} onChangeText={(t) => setFormHotspot({ ...formHotspot, area: t })} />
               <TouchableOpacity style={styles.saveButton} onPress={handleSaveHotspot}>
-                {loadingHotspot ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveButtonText}>Simpan Hotspot</Text>}
+                {loadingHotspot ? <ActivityIndicator color={PALETTE.white} /> : <Text style={styles.saveButtonText}>Simpan Hotspot</Text>}
               </TouchableOpacity>
               <View style={{ height: 20 }} />
             </ScrollView>
@@ -146,15 +147,15 @@ export default function HotspotSection({ userRole, isEditMode }) {
 }
 
 const hotspotStyles = StyleSheet.create({
-  hotspotHeader: { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 12, borderWidth: 1, marginBottom: 15, gap: 12 },
+  hotspotHeader: { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 14, borderWidth: 1, marginBottom: 15, gap: 12 },
   hotspotTitle: { fontSize: 16, fontWeight: '800' },
-  hotspotSub: { fontSize: 12, color: '#64748b' },
-  hotspotCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', padding: 12, borderRadius: 10, marginBottom: 8, borderWidth: 1, borderColor: '#e2e8f0', gap: 12 },
-  hotspotBadge: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 6, width: 75, alignItems: 'center', justifyContent: 'center' },
+  hotspotSub: { fontSize: 12, color: PALETTE.textMutedDark },
+  hotspotCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: PALETTE.cardLight, padding: 12, borderRadius: 10, marginBottom: 8, borderWidth: 1, borderColor: PALETTE.cardLightBorder, gap: 12 },
+  hotspotBadge: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, width: 75, alignItems: 'center', justifyContent: 'center' },
   hotspotBadgeText: { color: '#fff', fontSize: 10, fontWeight: '800' },
-  hotspotRiver: { fontSize: 11, color: '#64748b', fontWeight: '700', textTransform: 'uppercase' },
-  hotspotArea: { fontSize: 14, color: '#1e293b', fontWeight: '600' },
-  mapCard: { backgroundColor: '#fff', borderRadius: 12, marginBottom: 15, borderWidth: 1, borderColor: '#cbd5e1', padding: 10, alignItems: 'center' },
-  mapImage: { width: '100%', height: 420, borderRadius: 8, backgroundColor: '#f1f5f9' },
-  mapCaption: { fontSize: 12, color: '#64748b', marginTop: 8, fontWeight: '600', fontStyle: 'italic' },
+  hotspotRiver: { fontSize: 11, color: PALETTE.textMutedDark, fontWeight: '700', textTransform: 'uppercase' },
+  hotspotArea: { fontSize: 14, color: PALETTE.textDark, fontWeight: '600' },
+  mapCard: { backgroundColor: PALETTE.cardLight, borderRadius: 14, marginBottom: 15, borderWidth: 1, borderColor: PALETTE.cardLightBorder, padding: 10, alignItems: 'center' },
+  mapImage: { width: '100%', height: 420, borderRadius: 8, backgroundColor: PALETTE.surface },
+  mapCaption: { fontSize: 12, color: PALETTE.textMutedDark, marginTop: 8, fontWeight: '600', fontStyle: 'italic' },
 });
