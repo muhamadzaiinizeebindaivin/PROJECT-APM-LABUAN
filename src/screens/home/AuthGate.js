@@ -3,7 +3,12 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { ShieldCheck, User, Truck, Building2 } from 'lucide-react-native';
 import { PALETTE } from '../../constants/palette';
 
-export default function AuthGate({ navigation, onDriverLogin, onAgencyLogin, onGuestLogin, onLoginPress }) {
+export default function AuthGate({
+  onDriverLogin,
+  onAgencyLogin,
+  onGuestLogin,
+  onLoginPress,
+}) {
   return (
     <View style={styles.container}>
       <View style={styles.glowOrange} />
@@ -14,7 +19,7 @@ export default function AuthGate({ navigation, onDriverLogin, onAgencyLogin, onG
 
         <Text style={styles.heroTitle}>
           Sedia Bertindak{'\n'}
-          Untuk <Text style={styles.heroAccent}>Semua</Text>
+          <Text style={styles.heroAccent}>Untuk Semua</Text>
         </Text>
 
         <Text style={styles.heroSubtitle}>
@@ -22,10 +27,11 @@ export default function AuthGate({ navigation, onDriverLogin, onAgencyLogin, onG
         </Text>
 
         <View style={styles.actions}>
-          <TouchableOpacity style={styles.pillPrimary} onPress={onLoginPress || (() => navigation.navigate('Login'))}>
+          <TouchableOpacity style={styles.pillPrimary} onPress={onLoginPress}>
             <ShieldCheck size={18} color="#fff" />
             <Text style={styles.pillPrimaryText}>Log Masuk</Text>
           </TouchableOpacity>
+
           <TouchableOpacity style={styles.pillOutline} onPress={onGuestLogin}>
             <User size={18} color="#fff" />
             <Text style={styles.pillOutlineText}>Tetamu Awam</Text>
@@ -37,6 +43,7 @@ export default function AuthGate({ navigation, onDriverLogin, onAgencyLogin, onG
             <Truck size={16} color={PALETTE.mutedLight} />
             <Text style={styles.secondaryText}>Pemandu</Text>
           </TouchableOpacity>
+
           <TouchableOpacity style={styles.secondaryBtn} onPress={onAgencyLogin}>
             <Building2 size={16} color={PALETTE.mutedLight} />
             <Text style={styles.secondaryText}>Agensi</Text>
@@ -51,17 +58,23 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: PALETTE.ink, overflow: 'hidden' },
   glowOrange: {
     position: 'absolute',
-    width: 420, height: 420, borderRadius: 210,
+    width: 420,
+    height: 420,
+    borderRadius: 210,
     backgroundColor: PALETTE.orange,
     opacity: 0.22,
-    top: -140, right: -120,
+    top: -140,
+    right: -120,
   },
   glowRed: {
     position: 'absolute',
-    width: 380, height: 380, borderRadius: 190,
+    width: 380,
+    height: 380,
+    borderRadius: 190,
     backgroundColor: '#dc2626',
     opacity: 0.16,
-    bottom: -120, left: -140,
+    bottom: -120,
+    left: -140,
   },
   content: { flex: 1, justifyContent: 'center', paddingHorizontal: 28 },
   kicker: {

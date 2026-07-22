@@ -32,6 +32,206 @@ import { themes } from './theme';
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator(); 
 
+// ==========================================
+// STABLE COMPONENTS (defined OUTSIDE App())
+// ------------------------------------------
+// These used to be defined inside App(). Every time App() re-rendered
+// (e.g. setLoginModalVisible(true) when tapping "Log Masuk"), each of these
+// was recreated as a brand-new function. React saw <AuthFlow/>/<GuestFlow/>/
+// <DepartmentFlow/> etc. as a NEW component type on every render, so it threw
+// away the whole Stack/Tab.Navigator subtree and remounted it from scratch —
+// that's the "page behind the form refreshes" bug. Defining them here keeps
+// their identity stable across renders; only their props change now, so
+// React just re-renders them in place instead of remounting.
+// ==========================================
+
+function HeaderRoleBadge({ userRole }) {
+  return (
+    <View style={{ marginRight: 15, backgroundColor: '#f1f5f9', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, borderWidth: 1, borderColor: '#e2e8f0' }}>
+      <Text style={{ fontSize: 10, fontFamily: FONTS.displayBold, color: '#475569', textTransform: 'uppercase', letterSpacing: 1 }}>
+        {userRole || 'GUEST'}
+      </Text>
+    </View>
+  );
+}
+
+function CustomHeader({ title, theme, userRole, onLogout, onLoginPress }) {
+  return (
+    <View style={{
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      backgroundColor: theme.background, paddingHorizontal: 16,
+      paddingVertical: 12, paddingTop: Platform.OS === 'web' ? 12 : 44,
+    }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
+        <Image
+          source={{ uri: 'https://kceeewyadcskivtmilyf.supabase.co/storage/v1/object/public/logo/apm_labuan.png' }}
+          style={{ width: 64, height: 64 }}
+          resizeMode="contain"
+        />
+        <Text style={{ fontFamily: FONTS.displayBold, color: theme.text, fontSize: 20 }} numberOfLines={1}>
+          {title}
+        </Text>
+      </View>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        {userRole === 'guest' || !userRole ? (
+          <TouchableOpacity onPress={onLoginPress} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: PALETTE.orange, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8 }}>
+            <ShieldCheck size={14} color="#fff" />
+            <Text style={{ color: '#fff', fontFamily: FONTS.bodyMedium, fontSize: 12 }}>Log Masuk</Text>
+          </TouchableOpacity>
+        ) : (
+          <>
+            <HeaderRoleBadge userRole={userRole} />
+            <TouchableOpacity onPress={onLogout} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#ef4444', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8 }}>
+              <LogOut size={14} color="#fff" />
+              <Text style={{ color: '#fff', fontFamily: FONTS.bodyMedium, fontSize: 12 }}>Log Keluar</Text>
+            </TouchableOpacity>
+          </>
+        )}
+      </View>
+    </View>
+  );
+}
+
+function AuthFlow({ theme, handleLogin }) {
+  return (
+    <Stack.Navigator>
+      <Stack.Screen name="HomeScreen" options={{ title: 'Dashboard APM Labuan', headerStyle: { backgroundColor: theme.background }, headerTitleStyle: { color: theme.text, fontWeight: 'bold' } }}>
+        {(props) => <HomeScreen {...props} theme={theme} isAuthFlow={true} onGuestLogin={() => handleLogin('guest')} onDriverLogin={() => handleLogin('driver')} onAgencyLogin={() => handleLogin('agency')} />}
+      </Stack.Screen>
+      <Stack.Screen name="Login" options={{ title: 'Log Masuk Portal', headerStyle: { backgroundColor: theme.background }, headerTitleStyle: { color: theme.text, fontWeight: 'bold' }, headerTintColor: theme.text }}>
+        {(props) => (
+          <LoginScreen
+            {...props}
+            onLogin={handleLogin}
+            theme={theme}
+            onNavigateToSignUp={() => props.navigation.navigate('SignUp')}
+          />
+        )}
+      </Stack.Screen>
+      <Stack.Screen name="SignUp" options={{ title: 'Daftar Akaun Agensi', headerStyle: { backgroundColor: theme.background }, headerTitleStyle: { color: theme.text, fontWeight: 'bold' }, headerTintColor: theme.text }}>
+        {(props) => (
+          <SignUpScreen
+            {...props}
+            theme={theme}
+            onSignUpSuccess={() => props.navigation.navigate('Login')}
+            onBackToLogin={() => props.navigation.navigate('Login')}
+          />
+        )}
+      </Stack.Screen>
+    </Stack.Navigator>
+  );
+}
+
+function DepartmentFlow({ userRole, theme, handleLogin, handleLogout, onLoginPress }) {
+  const sharedTabOptions = ({ route }) => ({
+    headerShown: true,
+    header: () => (
+      <CustomHeader
+        title={route.name === 'Utama' ? 'DASHBOARD APM' : route.name}
+        theme={theme}
+        userRole={userRole}
+        onLogout={handleLogout}
+        onLoginPress={onLoginPress}
+      />
+    ),
+    tabBarStyle: { backgroundColor: theme.card, borderTopWidth: 0, elevation: 10, height: 65, paddingBottom: 10, paddingTop: 10 },
+    tabBarActiveTintColor: '#f97316', 
+    tabBarInactiveTintColor: theme.textSecondary,
+    tabBarLabelStyle: { fontSize: 10, fontFamily: FONTS.bodyMedium, marginTop: 4 },
+    tabBarIcon: ({ color, focused }) => {
+      const icons = {
+        Utama: Info, Pentadbiran: LayoutDashboard, Sekretariat: Briefcase,
+        Angkatan: Users, Kewangan: CreditCard, Latihan: GraduationCap,
+        Logistik: Truck, Operasi: ShieldAlert,
+        'Pengurusan Akaun': UserCog,
+      };
+      const Icon = icons[route.name];
+      return Icon ? <Icon size={24} color={color} strokeWidth={focused ? 2.5 : 2} /> : null;
+    },
+  });
+
+  const TAB_CONFIG = [
+    { name: 'Utama', render: (props) => <HomeScreen {...props} theme={theme} isAuthFlow={false} userRole={userRole} onDriverLogin={() => handleLogin('driver')} onAgencyLogin={() => handleLogin('agency')} onLoginPress={onLoginPress} /> },
+    { name: 'Pentadbiran', options: { tabBarActiveTintColor: '#3b82f6' }, render: (props) => <PentadbiranScreen {...props} theme={theme} userRole={userRole} /> },
+    { name: 'Kewangan', options: { tabBarActiveTintColor: '#3b82f6' }, render: (props) => <KewanganScreen {...props} theme={theme} /> },
+    { name: 'Logistik', options: { tabBarActiveTintColor: '#3b82f6' }, render: (props) => <LogistikScreen {...props} theme={theme} /> },
+    { name: 'Angkatan', options: { tabBarActiveTintColor: '#f97316' }, render: (props) => <AngkatanScreen {...props} theme={theme} /> },
+    {
+      name: 'Sekretariat',
+      options: {
+        tabBarActiveTintColor: '#f97316',
+        unmountOnBlur: true,
+        tabBarLabel: (userRole === 'admin' || userRole === 'sekretariat') ? 'Sekretariat' : 'Peta Bencana',
+      },
+      render: (props) => <SekretariatScreen {...props} theme={theme} userRole={userRole} />
+    },
+    { name: 'Latihan', options: { tabBarActiveTintColor: '#f97316' }, render: (props) => <LatihanScreen {...props} theme={theme} /> },
+    {
+      name: 'Operasi',
+      options: {
+        tabBarActiveTintColor: '#f97316',
+        unmountOnBlur: true,
+        tabBarLabel: (userRole === 'admin' || userRole === 'operasi') ? 'Operasi' : 'Peta Kecemasan',
+      },
+      render: (props) => <OperasiScreen {...props} theme={theme} userRole={userRole} />
+    },
+    { name: 'Pengurusan Akaun', options: { tabBarActiveTintColor: '#8b5cf6' }, render: (props) => <AdminUserManagementScreen {...props} theme={theme} /> },
+  ];
+
+  const allowedTabs = ROLE_PERMISSIONS[userRole] || [];
+  const screens = TAB_CONFIG.filter(s => allowedTabs.includes(s.name));
+
+  return (
+    <Tab.Navigator
+      initialRouteName="Utama"
+      screenOptions={sharedTabOptions}
+      sceneContainerStyle={{ backgroundColor: theme.background, flex: 1 }}
+    >
+      {screens.map(s => (
+        <Tab.Screen key={s.name} name={s.name} options={s.options}>
+          {s.render}
+        </Tab.Screen>
+      ))}
+    </Tab.Navigator>
+  );
+}
+
+function DriverFlow({ theme, handleLogout }) {
+  return (
+    <Stack.Navigator>
+      <Stack.Screen name="DriverApp" options={{ header: () => <CustomHeader title="PEMANDU APM" theme={theme} userRole="driver" onLogout={handleLogout} /> }}>
+        {(props) => <DriverScreen {...props} theme={theme} onLogout={handleLogout} />}
+      </Stack.Screen>
+    </Stack.Navigator>
+  );
+}
+
+function GuestFlow({ theme, handleLogout, onLoginPress }) {
+  return (
+    <Stack.Navigator>
+      <Stack.Screen name="GuestHome" options={{ header: () => <CustomHeader title="DASHBOARD APM" theme={theme} userRole="guest" onLogout={handleLogout} onLoginPress={onLoginPress} /> }}>
+        {(props) => <HomeScreen {...props} theme={theme} isAuthFlow={false} userRole="guest" onLogout={handleLogout} onLoginPress={onLoginPress} />}
+      </Stack.Screen>
+    </Stack.Navigator>
+  );
+}
+
+function AgencyFlow({ theme, handleLogout }) {
+  return (
+    <Stack.Navigator>
+      <Stack.Screen name="AgencyApp" options={{ header: () => <CustomHeader title="AGENSI" theme={theme} userRole="agency" onLogout={handleLogout} /> }}>
+        {(props) => (
+          <AgencyTrackingScreen
+            {...props}
+            theme={theme}
+            onLogout={handleLogout}
+          />
+        )}
+      </Stack.Screen>
+    </Stack.Navigator>
+  );
+}
+
 export default function App() {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const theme = isDarkMode ? themes.dark : themes.light;
@@ -225,177 +425,9 @@ export default function App() {
     );
   };
 
-  const HeaderRoleBadge = () => (
-    <View style={{ marginRight: 15, backgroundColor: '#f1f5f9', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, borderWidth: 1, borderColor: '#e2e8f0' }}>
-      <Text style={{ fontSize: 10, fontFamily: FONTS.displayBold, color: '#475569', textTransform: 'uppercase', letterSpacing: 1 }}>
-        {userRole || 'GUEST'}
-      </Text>
-    </View>
-  );
-
-  const CustomHeader = ({ title }) => (
-    <View style={{
-      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-      backgroundColor: theme.background, paddingHorizontal: 16,
-      paddingVertical: 12, paddingTop: Platform.OS === 'web' ? 12 : 44,
-    }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
-        <Image
-          source={{ uri: 'https://kceeewyadcskivtmilyf.supabase.co/storage/v1/object/public/logo/apm_labuan.png' }}
-          style={{ width: 64, height: 64 }}
-          resizeMode="contain"
-        />
-        <Text style={{ fontFamily: FONTS.displayBold, color: theme.text, fontSize: 20 }} numberOfLines={1}>
-          {title}
-        </Text>
-      </View>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-        {userRole === 'guest' || !userRole ? (
-          <TouchableOpacity onPress={() => setLoginModalVisible(true)} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: PALETTE.orange, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8 }}>
-            <ShieldCheck size={14} color="#fff" />
-            <Text style={{ color: '#fff', fontFamily: FONTS.bodyMedium, fontSize: 12 }}>Log Masuk</Text>
-          </TouchableOpacity>
-        ) : (
-          <>
-            <HeaderRoleBadge />
-            <TouchableOpacity onPress={handleLogout} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#ef4444', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8 }}>
-              <LogOut size={14} color="#fff" />
-              <Text style={{ color: '#fff', fontFamily: FONTS.bodyMedium, fontSize: 12 }}>Log Keluar</Text>
-            </TouchableOpacity>
-          </>
-        )}
-      </View>
-    </View>
-  );
-
-  // Shared Tab Styling
-  const sharedTabOptions = ({ route }) => ({
-    headerShown: true,
-    header: () => <CustomHeader title={route.name === 'Utama' ? 'DASHBOARD APM' : route.name} />,
-    tabBarStyle: { backgroundColor: theme.card, borderTopWidth: 0, elevation: 10, height: 65, paddingBottom: 10, paddingTop: 10 },
-    tabBarActiveTintColor: '#f97316', 
-    tabBarInactiveTintColor: theme.textSecondary,
-    tabBarLabelStyle: { fontSize: 10, fontFamily: FONTS.bodyMedium, marginTop: 4 },
-    tabBarIcon: ({ color, focused }) => {
-      const icons = {
-        Utama: Info, Pentadbiran: LayoutDashboard, Sekretariat: Briefcase,
-        Angkatan: Users, Kewangan: CreditCard, Latihan: GraduationCap,
-        Logistik: Truck, Operasi: ShieldAlert,
-        'Pengurusan Akaun': UserCog,
-      };
-      const Icon = icons[route.name];
-      return Icon ? <Icon size={24} color={color} strokeWidth={focused ? 2.5 : 2} /> : null;
-    },
-  });
-
-  // ==========================================
-  // NAVIGATOR FLOWS
-  // ==========================================
-
-  const AuthFlow = () => (
-    <Stack.Navigator>
-      <Stack.Screen name="HomeScreen" options={{ title: 'Dashboard APM Labuan', headerStyle: { backgroundColor: theme.background }, headerTitleStyle: { color: theme.text, fontWeight: 'bold' } }}>
-        {(props) => <HomeScreen {...props} theme={theme} isAuthFlow={true} onGuestLogin={() => handleLogin('guest')} onDriverLogin={() => handleLogin('driver')} onAgencyLogin={() => handleLogin('agency')} />}
-      </Stack.Screen>
-      <Stack.Screen name="Login" options={{ title: 'Log Masuk Portal', headerStyle: { backgroundColor: theme.background }, headerTitleStyle: { color: theme.text, fontWeight: 'bold' }, headerTintColor: theme.text }}>
-        {(props) => (
-          <LoginScreen
-            {...props}
-            onLogin={handleLogin}
-            theme={theme}
-            onNavigateToSignUp={() => props.navigation.navigate('SignUp')}
-          />
-        )}
-      </Stack.Screen>
-      <Stack.Screen name="SignUp" options={{ title: 'Daftar Akaun Agensi', headerStyle: { backgroundColor: theme.background }, headerTitleStyle: { color: theme.text, fontWeight: 'bold' }, headerTintColor: theme.text }}>
-        {(props) => (
-          <SignUpScreen
-            {...props}
-            theme={theme}
-            onSignUpSuccess={() => props.navigation.navigate('Login')}
-            onBackToLogin={() => props.navigation.navigate('Login')}
-          />
-        )}
-      </Stack.Screen>
-    </Stack.Navigator>
-  );
-
-  const TAB_CONFIG = [
-    { name: 'Utama', render: (props) => <HomeScreen {...props} theme={theme} isAuthFlow={false} userRole={userRole} onDriverLogin={() => handleLogin('driver')} onAgencyLogin={() => handleLogin('agency')} onLoginPress={() => setLoginModalVisible(true)} /> },
-    { name: 'Pentadbiran', options: { tabBarActiveTintColor: '#3b82f6' }, render: (props) => <PentadbiranScreen {...props} theme={theme} userRole={userRole} /> },
-    { name: 'Kewangan', options: { tabBarActiveTintColor: '#3b82f6' }, render: (props) => <KewanganScreen {...props} theme={theme} /> },
-    { name: 'Logistik', options: { tabBarActiveTintColor: '#3b82f6' }, render: (props) => <LogistikScreen {...props} theme={theme} /> },
-    { name: 'Angkatan', options: { tabBarActiveTintColor: '#f97316' }, render: (props) => <AngkatanScreen {...props} theme={theme} /> },
-    {
-      name: 'Sekretariat',
-      options: {
-        tabBarActiveTintColor: '#f97316',
-        unmountOnBlur: true,
-        tabBarLabel: (userRole === 'admin' || userRole === 'sekretariat') ? 'Sekretariat' : 'Peta Bencana',
-      },
-      render: (props) => <SekretariatScreen {...props} theme={theme} userRole={userRole} />
-    },
-    { name: 'Latihan', options: { tabBarActiveTintColor: '#f97316' }, render: (props) => <LatihanScreen {...props} theme={theme} /> },
-    {
-      name: 'Operasi',
-      options: {
-        tabBarActiveTintColor: '#f97316',
-        unmountOnBlur: true,
-        tabBarLabel: (userRole === 'admin' || userRole === 'operasi') ? 'Operasi' : 'Peta Kecemasan',
-      },
-      render: (props) => <OperasiScreen {...props} theme={theme} userRole={userRole} />
-    },
-    { name: 'Pengurusan Akaun', options: { tabBarActiveTintColor: '#8b5cf6' }, render: (props) => <AdminUserManagementScreen {...props} theme={theme} /> },
-  ];
-
-  const DepartmentFlow = () => {
-    const allowedTabs = ROLE_PERMISSIONS[userRole] || [];
-    const screens = TAB_CONFIG.filter(s => allowedTabs.includes(s.name));
-
-    return (
-      <Tab.Navigator
-        initialRouteName="Utama"
-        screenOptions={sharedTabOptions}
-        sceneContainerStyle={{ backgroundColor: theme.background, flex: 1 }}
-      >
-        {screens.map(s => (
-          <Tab.Screen key={s.name} name={s.name} options={s.options}>
-            {s.render}
-          </Tab.Screen>
-        ))}
-      </Tab.Navigator>
-    );
-  };
-
-  const DriverFlow = () => (
-    <Stack.Navigator>
-      <Stack.Screen name="DriverApp" options={{ header: () => <CustomHeader title="PEMANDU APM" /> }}>
-        {(props) => <DriverScreen {...props} theme={theme} onLogout={handleLogout} />}
-      </Stack.Screen>
-    </Stack.Navigator>
-  );
-
-  const GuestFlow = () => (
-    <Stack.Navigator>
-      <Stack.Screen name="GuestHome" options={{ header: () => <CustomHeader title="DASHBOARD APM" /> }}>
-        {(props) => <HomeScreen {...props} theme={theme} isAuthFlow={false} userRole="guest" onLogout={handleLogout} onLoginPress={() => setLoginModalVisible(true)} />}
-      </Stack.Screen>
-    </Stack.Navigator>
-  );
-
-  const AgencyFlow = () => (
-    <Stack.Navigator>
-      <Stack.Screen name="AgencyApp" options={{ header: () => <CustomHeader title="AGENSI" /> }}>
-        {(props) => (
-          <AgencyTrackingScreen
-            {...props}
-            theme={theme}
-            onLogout={handleLogout}
-          />
-        )}
-      </Stack.Screen>
-    </Stack.Navigator>
-  );
+  // NOTE: AuthFlow / DepartmentFlow / DriverFlow / GuestFlow / AgencyFlow and
+  // CustomHeader now live outside App() (see above the component) so their
+  // identity stays stable across re-renders — see explanation below.
 
   if (isInvitedUser) {
     return (
@@ -528,11 +560,19 @@ export default function App() {
         </KeyboardAvoidingView>
       </Modal>
       <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} backgroundColor={theme.background} />
-      {!userRole ? <AuthFlow /> : 
-      ROLE_PERMISSIONS[userRole] ? <DepartmentFlow /> :
-      userRole === 'driver' ? <DriverFlow /> :
-      userRole === 'agency' ? <AgencyFlow /> :
-      <GuestFlow />}
+      {!userRole ? <AuthFlow theme={theme} handleLogin={handleLogin} /> :
+      ROLE_PERMISSIONS[userRole] ? (
+        <DepartmentFlow
+          userRole={userRole}
+          theme={theme}
+          handleLogin={handleLogin}
+          handleLogout={handleLogout}
+          onLoginPress={() => setLoginModalVisible(true)}
+        />
+      ) :
+      userRole === 'driver' ? <DriverFlow theme={theme} handleLogout={handleLogout} /> :
+      userRole === 'agency' ? <AgencyFlow theme={theme} handleLogout={handleLogout} /> :
+      <GuestFlow theme={theme} handleLogout={handleLogout} onLoginPress={() => setLoginModalVisible(true)} />}
     </NavigationContainer>
   );
 }
