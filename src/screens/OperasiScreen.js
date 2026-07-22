@@ -8,6 +8,8 @@ import PertolonganCemasTab from './operasi/PertolonganCemasTab';
 import AdminEditButton from '../components/AdminEditButton';
 import { useKpi } from '../hooks/useKpi';
 import KpiSection from './pentadbiran/KpiSection';
+import { useOperasiUnit } from '../hooks/useOperasiUnit';
+import AngkatanUnitSection from './angkatan/AngkatanUnitSection';
 import { PALETTE } from '../constants/palette';
 
 export default function OperasiScreen({ theme, userRole }) {
@@ -15,6 +17,7 @@ export default function OperasiScreen({ theme, userRole }) {
   const [activeTab, setActiveTab] = useState('map');
   const [isEditMode, setIsEditMode] = useState(false);
   const { kpiList, saveKpiItem, deleteKpiItem, reorderKpi } = useKpi('operasi');
+  const { unitList, loadingUnit, saveUnitItem, deleteUnitItem, reorderUnit } = useOperasiUnit();
 
   return (
     <View style={styles.container}>
@@ -67,6 +70,17 @@ export default function OperasiScreen({ theme, userRole }) {
           </View>
           {activeTab === 'report' && canManageOperasi && <Ng999ReportTab theme={theme} userRole={userRole} isEditMode={isEditMode} />}
           {activeTab === 'cemas' && canManageOperasi && <PertolonganCemasTab theme={theme} userRole={userRole} isEditMode={isEditMode} />}
+
+          <View style={{ paddingHorizontal: 16 }}>
+            <AngkatanUnitSection
+              unitList={unitList}
+              loadingUnit={loadingUnit}
+              isEditMode={isEditMode}
+              saveUnitItem={saveUnitItem}
+              deleteUnitItem={deleteUnitItem}
+              reorderUnit={reorderUnit}
+            />
+          </View>
         </ScrollView>
       )}
 
@@ -90,7 +104,7 @@ const styles = StyleSheet.create({
   toggleBtnActive: { backgroundColor: PALETTE.orange },
   toggleText: { fontSize: 13, fontWeight: '700' },
   toggleTextActive: { color: PALETTE.white },
-  contentContainer: { paddingHorizontal: 16, paddingBottom: 40 },
+  contentContainer: { paddingBottom: 40 },
   kpiWrapper: { marginBottom: -16 },
   mapKpiWrapper: { paddingHorizontal: 16, zIndex: 10 },
 });
