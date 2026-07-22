@@ -4,7 +4,6 @@ import { supabaseSandbox } from '../supabaseSandboxClient';
 import { Alert } from 'react-native';
 import { CALAMITY_CATEGORIES } from '../constants/operasiConstants';
 import { BULAN_MS } from '../constants/bulan';
-import { generateCalamitySummaryPdf } from '../utils/patrolHistoryPdf';
 import { generateLaporanKecemasamPdf } from '../utils/laporanKecemasanPdf';
 
 export function useCalamitySummaryPanel(calamityPoints) {
@@ -23,18 +22,39 @@ export function useCalamitySummaryPanel(calamityPoints) {
   }, [calamityPoints]);
 
   const [allYearRows, setAllYearRows] = useState([]);
+  const [historiqueGrid, setHistoriqueGrid] = useState({});
   const [loadingSummary, setLoadingSummary] = useState(false);
 
   useEffect(() => {
     const fetchAllRows = async () => {
       setLoadingSummary(true);
-      const { data } = await supabaseSandbox
-        .from('laporan_ng999')
-        .select('id, category, kategori_kes, tarikh, jumlah_kes, status, created_at')
-        .gte('tarikh', `${summaryYear}-01-01`)
-        .lte('tarikh', `${summaryYear}-12-31`)
-        .limit(5000);
-      if (data) setAllYearRows(data);
+
+      // Fetch données réelles + données historiques en parallèle
+      const [ngRes, histRes] = await Promise.all([
+        supabaseSandbox
+          .from('laporan_ng999')
+          .select('id, category, kategori_kes, tarikh, jumlah_kes, status, created_at')
+          .gte('tarikh', `${summaryYear}-01-01`)
+          .lte('tarikh', `${summaryYear}-12-31`)
+          .limit(5000),
+        supabaseSandbox
+          .from('ng999_historique')
+          .select('bulan, category, jumlah_kes')
+          .eq('tahun', summaryYear),
+      ]);
+
+      if (ngRes.data) setAllYearRows(ngRes.data);
+
+      // Construire la grille historique [bulan][category] = jumlah
+      const grid = {};
+      if (histRes.data) {
+        histRes.data.forEach(r => {
+          if (!grid[r.bulan]) grid[r.bulan] = {};
+          grid[r.bulan][r.category] = r.jumlah_kes;
+        });
+      }
+      setHistoriqueGrid(grid);
+
       setLoadingSummary(false);
     };
     fetchAllRows();
@@ -50,22 +70,36 @@ export function useCalamitySummaryPanel(calamityPoints) {
 
   const calamityMonthlyBreakdown = useMemo(() => {
     return BULAN_MS.map((label, monthIndex) => {
+      const bulan = monthIndex + 1;
       const counts = {};
       let total = 0;
       CALAMITY_CATEGORIES.forEach(cat => { counts[cat.key] = 0; });
+
+      // Données réelles depuis laporan_ng999
+      let hasRealData = false;
       calamityYearRows.forEach(c => {
         const d = new Date(c.tarikh);
         if (d.getMonth() !== monthIndex) return;
-        // Supporte à la fois category (carte) et kategori_kes (rapport)
         const cat = c.category || c.kategori_kes;
         if (counts[cat] !== undefined) {
           counts[cat] += (c.jumlah_kes || 1);
           total += (c.jumlah_kes || 1);
+          hasRealData = true;
         }
       });
-      return { month: label, counts, total };
+
+      // Si pas de données réelles, utiliser les données historiques
+      if (!hasRealData && historiqueGrid[bulan]) {
+        CALAMITY_CATEGORIES.forEach(cat => {
+          const val = historiqueGrid[bulan][cat.key] || 0;
+          counts[cat.key] = val;
+          total += val;
+        });
+      }
+
+      return { month: label, counts, total, fromHistorique: !hasRealData && !!historiqueGrid[bulan] };
     });
-  }, [calamityYearRows]);
+  }, [calamityYearRows, historiqueGrid]);
 
   const summaryDayOptions = useMemo(() => {
     if (summaryMonth === null) return ['Semua Hari'];
@@ -132,25 +166,16 @@ export function useCalamitySummaryPanel(calamityPoints) {
       ? `${BULAN_MS[summaryMonth]} ${summaryYear}`
       : `${summaryDay} ${BULAN_MS[summaryMonth]} ${summaryYear}`;
 
-  const [exportingSummaryPdf, setExportingSummaryPdf] = useState(false);
+  const [exportingLaporanPdf, setExportingLaporanPdf] = useState(false);
 
   const handleExportLaporanPdf = async () => {
-    await generateLaporanKecemasamPdf({ allYearRows });
-  };
-
-  const handleExportSummaryPdf = async () => {
-    setExportingSummaryPdf(true);
+    setExportingLaporanPdf(true);
     try {
-      await generateCalamitySummaryPdf({
-        rows: calamitySummaryRows,
-        categories: CALAMITY_CATEGORIES,
-        periodLabel: summaryPeriodLabel,
-      });
+      await generateLaporanKecemasamPdf({ allYearRows });
     } catch (e) {
       console.error('Gagal menjana PDF:', e);
-      Alert.alert('Ralat', 'Gagal menjana PDF. Sila cuba lagi.');
     } finally {
-      setExportingSummaryPdf(false);
+      setExportingLaporanPdf(false);
     }
   };
 
@@ -159,6 +184,6 @@ export function useCalamitySummaryPanel(calamityPoints) {
     summaryMonth, setSummaryMonth, summaryMonthOpen, setSummaryMonthOpen,
     summaryDay, setSummaryDay, summaryDayOpen, setSummaryDayOpen, summaryDayOptions,
     availableSummaryYears, calamitySummaryRows, calamityMonthlyBreakdown,
-    statusBreakdown, exportingSummaryPdf, handleExportSummaryPdf, handleExportLaporanPdf,
+    statusBreakdown, exportingLaporanPdf, handleExportLaporanPdf,
   };
 }

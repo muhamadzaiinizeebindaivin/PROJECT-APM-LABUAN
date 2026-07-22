@@ -12,7 +12,7 @@ import { mapStyles as tableStyles } from './mapStyles';
 import CalamitySummaryContent from './CalamitySummaryContent';
 import { PALETTE } from '../../constants/palette';
 
-export default function Ng999ReportTab({ theme, userRole }) {
+export default function Ng999ReportTab({ theme, userRole, isEditMode }) {
   const now = new Date();
 
   const [filterYear, setFilterYear] = useState(now.getFullYear());
@@ -228,10 +228,16 @@ export default function Ng999ReportTab({ theme, userRole }) {
                 <Text style={{ fontSize: 12, fontWeight: '700', color: viewMode === 'trend' ? PALETTE.white : PALETTE.textMutedDark }}>Analisis & Statistik</Text>
               </TouchableOpacity>
             </View>
+            {viewMode === 'ringkasan' && (
+              <TouchableOpacity style={styles.addBtn} onPress={() => { setForm({ id: null, kategori_kes: '', tarikh: '', jumlah_kes: '1' }); setPendingFiles([]); setModalVisible(true); }}>
+                <Plus size={16} color="#fff" />
+                <Text style={styles.addBtnText}>Tambah Rekod</Text>
+              </TouchableOpacity>
+            )}
             {viewMode === 'senarai' && (
               <TouchableOpacity style={styles.addBtn} onPress={() => { setForm({ id: null, kategori_kes: '', tarikh: '', jumlah_kes: '1' }); setPendingFiles([]); setModalVisible(true); }}>
                 <Plus size={16} color="#fff" />
-                <Text style={styles.addBtnText}>Tambah Baru</Text>
+                <Text style={styles.addBtnText}>Ayam Baru</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -274,9 +280,9 @@ export default function Ng999ReportTab({ theme, userRole }) {
 
         <View style={{ minHeight: 500, paddingBottom: 16 }}>
           {loadingNg ? (
-            <ActivityIndicator size="small" color="#3b82f6" style={{ marginVertical: 20 }} />
+            <ActivityIndicator size="small" color={PALETTE.orange} style={{ marginVertical: 20 }} />
           ) : viewMode === 'ringkasan' ? (
-            <CalamitySummaryContent theme={theme} mode="table" />
+            <CalamitySummaryContent theme={theme} mode="table" isEditMode={isEditMode} />
           ) : viewMode === 'trend' ? (
             <CalamitySummaryContent theme={theme} mode="chart" />
           ) : filteredNgData.length === 0 ? (

@@ -1,14 +1,17 @@
 // src/screens/operasi/CalamitySummaryContent.js
-import React, { useState, useMemo } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Platform, ActivityIndicator } from 'react-native';
+import React, { useState, useMemo, useEffect } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, Platform, ActivityIndicator, TextInput } from 'react-native';
 import { Download, TrendingUp, TrendingDown, Minus, Award, Calendar } from 'lucide-react-native';
 import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid, BarChart, Bar, Cell } from 'recharts';
 import { useCalamityPoints } from '../../hooks/useCalamityPoints';
 import { useCalamitySummaryPanel } from '../../hooks/useCalamitySummaryPanel';
 import ModalSelectField from '../../components/ModalSelectField';
 import { CALAMITY_CATEGORIES } from '../../constants/operasiConstants';
+import { PALETTE } from '../../constants/palette';
 import { BULAN_MS, BULAN_OPTIONS } from '../../constants/bulan';
 import { mapStyles as styles } from './mapStyles';
+import Ng999HistoriqueModal from './Ng999HistoriqueModal';
+import { useState as useHistState } from 'react';
 
 function CompactTooltip({ active, payload, label }) {
   if (!active || !payload || payload.length === 0) return null;
@@ -108,11 +111,11 @@ function RankRow({ rank, catKey, total, pct, color, maxTotal }) {
 // mode: 'table' -> filtres Tahun/Bulan/Hari + tableau + export PDF
 //       'chart' -> statistiques + graphiques
 // statsOnly: true -> affiche seulement les stat cards (sans filtres ni graphiques)
-export default function CalamitySummaryContent({ theme, large = false, mode = 'table', statsOnly = false }) {
+export default function CalamitySummaryContent({ theme, large = false, mode = 'table', statsOnly = false, isEditMode = false }) {
   const { calamityPoints } = useCalamityPoints();
   const summary = useCalamitySummaryPanel(calamityPoints);
-
   const [selectedChartCategories, setSelectedChartCategories] = useState(CALAMITY_CATEGORIES.map(cat => cat.key));
+  const [histModalVisible, setHistModalVisible] = useState(false);
 
   const toggleChartCategory = (key) => {
     setSelectedChartCategories(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]);
@@ -242,16 +245,20 @@ export default function CalamitySummaryContent({ theme, large = false, mode = 't
                 stackIndex={1000} />
             </View>
             <View style={{ flexDirection: 'row', gap: 8, alignSelf: 'flex-end', marginBottom: 16 }}>
-              <TouchableOpacity onPress={summary.handleExportSummaryPdf} disabled={summary.exportingSummaryPdf}
-                style={[styles.pdfExportBtn, summary.exportingSummaryPdf && styles.pdfExportBtnDisabled, { height: 50 }]}>
-                {summary.exportingSummaryPdf ? <ActivityIndicator size="small" color="#fff" /> : (
-                  <><Download size={14} color="#fff" /><Text style={styles.pdfExportBtnText}>Ringkasan</Text></>
+              <TouchableOpacity onPress={summary.handleExportLaporanPdf} disabled={summary.exportingLaporanPdf}
+                style={[styles.pdfExportBtn, summary.exportingLaporanPdf && styles.pdfExportBtnDisabled, { height: 50, opacity: summary.exportingLaporanPdf ? 0.7 : 1 }]}>
+                {summary.exportingLaporanPdf ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <ActivityIndicator size="small" color="#fff" />
+                    <Text style={styles.pdfExportBtnText}>Jana PDF...</Text>
+                  </View>
+                ) : (
+                  <><Download size={14} color="#fff" /><Text style={styles.pdfExportBtnText}>Laporan</Text></>
                 )}
               </TouchableOpacity>
-              <TouchableOpacity onPress={summary.handleExportLaporanPdf}
-                style={[styles.pdfExportBtn, { height: 50 }]}>
+              <TouchableOpacity onPress={() => setHistModalVisible(true)} style={[styles.pdfExportBtn, { height: 50, backgroundColor: PALETTE.orange }]}>
                 <Download size={14} color="#fff" />
-                <Text style={styles.pdfExportBtnText}>Laporan</Text>
+                <Text style={styles.pdfExportBtnText}>Tambah Rekod Tahun Sebelum</Text>
               </TouchableOpacity>
             </View>
           </>
@@ -260,8 +267,9 @@ export default function CalamitySummaryContent({ theme, large = false, mode = 't
 
       {/* MODE TABLE */}
       {mode === 'table' && (
+        <View>
         <View style={[styles.calamityTableWrapper, { minHeight: 400 }]}>
-          <View style={styles.calamityTableHeaderRow}>
+          <View style={[styles.calamityTableHeaderRow, { flexDirection: 'row', alignItems: 'center' }]}>
             <View style={[styles.calamityMonthColFlex, styles.calamityHeaderCellBox]}>
               <Text style={[styles.calamityTableHeaderCell, large && { fontSize: 16 }]}>Bulan</Text>
             </View>
@@ -274,21 +282,29 @@ export default function CalamitySummaryContent({ theme, large = false, mode = 't
               <Text style={[styles.calamityTableHeaderCell, large && { fontSize: 16 }]}>Jumlah</Text>
             </View>
           </View>
-          {summary.calamitySummaryRows.map((row, idx) => (
-            <View key={row.month} style={[styles.calamityTableRow, row.isCumulative ? styles.calamityCumulativeRow : { backgroundColor: idx % 2 === 0 ? '#ffffff' : '#f8fafc' }]}>
-              <View style={[styles.calamityMonthColFlex, styles.calamitySummaryCellBox]}>
-                <Text style={[styles.calamityTableCell, { fontWeight: '800' }, large && { fontSize: 16 }]}>{row.month}</Text>
-              </View>
-              {CALAMITY_CATEGORIES.map(cat => (
-                <View key={cat.key} style={[styles.calamityCatColFlex, styles.calamitySummaryCellBox]}>
-                  <Text style={[styles.calamityTableCell, row.isCumulative && { fontWeight: '700' }, large && { fontSize: 16 }]}>{row.counts[cat.key] || '–'}</Text>
+          {summary.calamitySummaryRows.map((row, idx) => {
+            const bulan = idx + 1;
+            return (
+              <View key={row.month} style={[styles.calamityTableRow, row.isCumulative ? styles.calamityCumulativeRow : { backgroundColor: idx % 2 === 0 ? '#ffffff' : '#f8fafc' }]}>
+                <View style={[styles.calamityMonthColFlex, styles.calamitySummaryCellBox]}>
+                  <Text style={[styles.calamityTableCell, { fontWeight: '800' }, large && { fontSize: 16 }]}>{row.month}</Text>
                 </View>
-              ))}
-              <View style={[styles.calamityTotalColFlex, styles.calamityTotalBadge]}>
-                <Text style={[styles.calamityTotalBadgeText, large && { fontSize: 18 }]}>{row.total}</Text>
+                {CALAMITY_CATEGORIES.map(cat => (
+                  <View key={cat.key} style={[styles.calamityCatColFlex, styles.calamitySummaryCellBox]}>
+                    {false ? null : (
+                      <Text style={[styles.calamityTableCell, row.isCumulative && { fontWeight: '700' }, row.fromHistorique && { color: PALETTE.orange }, large && { fontSize: 16 }]}>
+                        {row.counts[cat.key] || '–'}
+                      </Text>
+                    )}
+                  </View>
+                ))}
+                <View style={[styles.calamityTotalColFlex, styles.calamityTotalBadge]}>
+                  <Text style={[styles.calamityTotalBadgeText, large && { fontSize: 18 }]}>{row.total}</Text>
+                </View>
               </View>
-            </View>
-          ))}
+            );
+          })}
+        </View>
         </View>
       )}
 
@@ -397,6 +413,7 @@ export default function CalamitySummaryContent({ theme, large = false, mode = 't
       {mode === 'chart' && Platform.OS !== 'web' && (
         <Text style={styles.waypointEmptyText}>Carta trend hanya tersedia di versi web.</Text>
       )}
+      <Ng999HistoriqueModal visible={histModalVisible} onClose={() => setHistModalVisible(false)} />
     </ScrollView>
   );
 }

@@ -65,7 +65,7 @@ export default function OperasiScreen({ theme, userRole }) {
               showSubSeksyen={false}
             />
           </View>
-          {activeTab === 'report' && canManageOperasi && <Ng999ReportTab theme={theme} userRole={userRole} />}
+          {activeTab === 'report' && canManageOperasi && <Ng999ReportTab theme={theme} userRole={userRole} isEditMode={isEditMode} />}
           {activeTab === 'cemas' && canManageOperasi && <PertolonganCemasTab theme={theme} userRole={userRole} />}
         </ScrollView>
       )}
