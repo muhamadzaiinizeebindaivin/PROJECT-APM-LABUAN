@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { View, StatusBar, TouchableOpacity, Alert, Platform, Text, ActivityIndicator } from 'react-native';import { NavigationContainer } from '@react-navigation/native';
+import { View, StatusBar, TouchableOpacity, Alert, Platform, Text, ActivityIndicator, Modal, TextInput, KeyboardAvoidingView, Image } from 'react-native';import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { LayoutDashboard, Users, CreditCard, GraduationCap, Truck, ShieldAlert, Briefcase, Info, LogOut, UserCog } from 'lucide-react-native';
+import { LayoutDashboard, Users, CreditCard, GraduationCap, Truck, ShieldAlert, Briefcase, Info, LogOut, UserCog, ShieldCheck, Building2, Lock, User, ArrowRight, AlertCircle, X } from 'lucide-react-native';
+import { PALETTE } from './src/constants/palette';
 import { useFonts, Rajdhani_600SemiBold, Rajdhani_700Bold } from '@expo-google-fonts/rajdhani';
 import { Inter_400Regular, Inter_500Medium } from '@expo-google-fonts/inter';
 import { supabaseSandbox } from './src/supabaseSandboxClient';
@@ -36,10 +37,40 @@ export default function App() {
   const theme = isDarkMode ? themes.dark : themes.light;
 
   // --- AUTHENTICATION STATE ---
-  const [userRole, setUserRole] = useState(null); 
+  const [userRole, setUserRole] = useState('guest'); 
   const [agencyInfo, setAgencyInfo] = useState(null);
   const [isCheckingSession, setIsCheckingSession] = useState(true);
   const [isInvitedUser, setIsInvitedUser] = useState(false);
+  const [loginModalVisible, setLoginModalVisible] = useState(false);
+  const [loginUsername, setLoginUsername] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [loginError, setLoginError] = useState('');
+  const [loginLoading, setLoginLoading] = useState(false);
+
+  const handleModalLogin = async () => {
+    setLoginError('');
+    if (!loginUsername || !loginPassword) { setLoginError('Sila isi nama pengguna dan kata laluan.'); return; }
+    setLoginLoading(true);
+    try {
+      const email = loginUsername.toLowerCase().trim().includes('@') ? loginUsername.toLowerCase().trim() : `${loginUsername.toLowerCase().trim()}@apm-labuan.com`;
+      const { data, error } = await supabaseSandbox.auth.signInWithPassword({ email, password: loginPassword });
+      if (error) { setLoginError('Nama pengguna atau kata laluan salah.'); setLoginPassword(''); setLoginLoading(false); return; }
+      const { data: profile } = await supabaseSandbox.from('profiles').select('role').eq('id', data.session.user.id).maybeSingle();
+      if (!profile) { setLoginError('Akaun tiada peranan. Hubungi admin.'); await supabaseSandbox.auth.signOut(); setLoginPassword(''); setLoginLoading(false); return; }
+      setLoginModalVisible(false);
+      setLoginUsername('');
+      setLoginPassword('');
+      setTimeout(() => handleLogin(profile.role), 300);
+    } catch { setLoginError('Ralat sistem. Sila cuba lagi.'); }
+    finally { setLoginLoading(false); }
+  };
+
+  const closeLoginModal = () => {
+    setLoginModalVisible(false);
+    setLoginError('');
+    setLoginUsername('');
+    setLoginPassword('');
+  };
 
   const [fontsLoaded] = useFonts({
     Rajdhani_600SemiBold,
@@ -89,6 +120,7 @@ export default function App() {
       const { data: { session } } = await supabaseSandbox.auth.getSession();
 
       if (!session) {
+        setUserRole('guest');
         setIsCheckingSession(false);
         return;
       }
@@ -166,12 +198,32 @@ export default function App() {
   };
 
   // Components for Headers
-  const HeaderLogoutButton = () => (
-    <TouchableOpacity onPress={handleLogout} style={{ marginLeft: 15, flexDirection: 'row', alignItems: 'center', backgroundColor: '#ef4444', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, elevation: 2 }}>
-      <LogOut size={14} color="#fff" />
-      <Text style={{ color: '#fff', fontFamily: FONTS.bodyMedium, fontSize: 11, marginLeft: 6 }}>Log Keluar</Text>
-    </TouchableOpacity>
-  );
+  const renderHeaderLeft = () => {
+    if (userRole === 'guest') {
+      return (
+        <View style={{ marginLeft: 15, flexDirection: 'row', gap: 8 }}>
+          <TouchableOpacity onPress={() => setLoginModalVisible(true)} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: PALETTE.orange, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 }}>
+            <ShieldCheck size={14} color="#fff" />
+            <Text style={{ color: '#fff', fontFamily: FONTS.bodyMedium, fontSize: 11 }}>Log Masuk</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => handleLogin('driver')} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderColor: PALETTE.orange, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 }}>
+            <Truck size={14} color={PALETTE.orange} />
+            <Text style={{ color: PALETTE.orange, fontFamily: FONTS.bodyMedium, fontSize: 11 }}>Pemandu</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => handleLogin('agency')} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderColor: PALETTE.orange, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 }}>
+            <Building2 size={14} color={PALETTE.orange} />
+            <Text style={{ color: PALETTE.orange, fontFamily: FONTS.bodyMedium, fontSize: 11 }}>Agensi</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+    return (
+      <TouchableOpacity onPress={handleLogout} style={{ marginLeft: 15, flexDirection: 'row', alignItems: 'center', backgroundColor: '#ef4444', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, elevation: 2 }}>
+        <LogOut size={14} color="#fff" />
+        <Text style={{ color: '#fff', fontFamily: FONTS.bodyMedium, fontSize: 11, marginLeft: 6 }}>Log Keluar</Text>
+      </TouchableOpacity>
+    );
+  };
 
   const HeaderRoleBadge = () => (
     <View style={{ marginRight: 15, backgroundColor: '#f1f5f9', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, borderWidth: 1, borderColor: '#e2e8f0' }}>
@@ -181,13 +233,45 @@ export default function App() {
     </View>
   );
 
+  const CustomHeader = ({ title }) => (
+    <View style={{
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      backgroundColor: theme.background, paddingHorizontal: 16,
+      paddingVertical: 12, paddingTop: Platform.OS === 'web' ? 12 : 44,
+    }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
+        <Image
+          source={{ uri: 'https://kceeewyadcskivtmilyf.supabase.co/storage/v1/object/public/logo/apm_labuan.png' }}
+          style={{ width: 64, height: 64 }}
+          resizeMode="contain"
+        />
+        <Text style={{ fontFamily: FONTS.displayBold, color: theme.text, fontSize: 20 }} numberOfLines={1}>
+          {title}
+        </Text>
+      </View>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        {userRole === 'guest' || !userRole ? (
+          <TouchableOpacity onPress={() => setLoginModalVisible(true)} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: PALETTE.orange, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8 }}>
+            <ShieldCheck size={14} color="#fff" />
+            <Text style={{ color: '#fff', fontFamily: FONTS.bodyMedium, fontSize: 12 }}>Log Masuk</Text>
+          </TouchableOpacity>
+        ) : (
+          <>
+            <HeaderRoleBadge />
+            <TouchableOpacity onPress={handleLogout} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#ef4444', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8 }}>
+              <LogOut size={14} color="#fff" />
+              <Text style={{ color: '#fff', fontFamily: FONTS.bodyMedium, fontSize: 12 }}>Log Keluar</Text>
+            </TouchableOpacity>
+          </>
+        )}
+      </View>
+    </View>
+  );
+
   // Shared Tab Styling
   const sharedTabOptions = ({ route }) => ({
     headerShown: true,
-    headerLeft: () => <HeaderLogoutButton />,
-    headerRight: () => <HeaderRoleBadge />,
-    headerStyle: { backgroundColor: theme.background, elevation: 0, shadowOpacity: 0 },
-    headerTitleStyle: { fontFamily: FONTS.displayBold, color: theme.text, fontSize: 20 },
+    header: () => <CustomHeader title={route.name === 'Utama' ? 'DASHBOARD APM' : route.name} />,
     tabBarStyle: { backgroundColor: theme.card, borderTopWidth: 0, elevation: 10, height: 65, paddingBottom: 10, paddingTop: 10 },
     tabBarActiveTintColor: '#f97316', 
     tabBarInactiveTintColor: theme.textSecondary,
@@ -237,7 +321,7 @@ export default function App() {
   );
 
   const TAB_CONFIG = [
-    { name: 'Utama', render: (props) => <HomeScreen {...props} theme={theme} isAuthFlow={false} userRole={userRole} /> },
+    { name: 'Utama', render: (props) => <HomeScreen {...props} theme={theme} isAuthFlow={false} userRole={userRole} onDriverLogin={() => handleLogin('driver')} onAgencyLogin={() => handleLogin('agency')} onLoginPress={() => setLoginModalVisible(true)} /> },
     { name: 'Pentadbiran', options: { tabBarActiveTintColor: '#3b82f6' }, render: (props) => <PentadbiranScreen {...props} theme={theme} userRole={userRole} /> },
     { name: 'Kewangan', options: { tabBarActiveTintColor: '#3b82f6' }, render: (props) => <KewanganScreen {...props} theme={theme} /> },
     { name: 'Logistik', options: { tabBarActiveTintColor: '#3b82f6' }, render: (props) => <LogistikScreen {...props} theme={theme} /> },
@@ -285,7 +369,7 @@ export default function App() {
 
   const DriverFlow = () => (
     <Stack.Navigator>
-      <Stack.Screen name="DriverApp" options={{ title: 'Pemandu APM', headerStyle: { backgroundColor: theme.background }, headerTitleStyle: { color: theme.text, fontWeight: 'bold' }, headerLeft: () => <HeaderLogoutButton />, headerRight: () => <HeaderRoleBadge /> }}>
+      <Stack.Screen name="DriverApp" options={{ header: () => <CustomHeader title="PEMANDU APM" /> }}>
         {(props) => <DriverScreen {...props} theme={theme} onLogout={handleLogout} />}
       </Stack.Screen>
     </Stack.Navigator>
@@ -293,15 +377,15 @@ export default function App() {
 
   const GuestFlow = () => (
     <Stack.Navigator>
-      <Stack.Screen name="GuestHome" options={{ title: 'Dashboard Awam', headerStyle: { backgroundColor: theme.background }, headerTitleStyle: { color: theme.text, fontWeight: 'bold' }, headerLeft: () => <HeaderLogoutButton />, headerRight: () => <HeaderRoleBadge /> }}>
-        {(props) => <HomeScreen {...props} theme={theme} isAuthFlow={false} userRole="guest" onLogout={handleLogout} />}
+      <Stack.Screen name="GuestHome" options={{ header: () => <CustomHeader title="DASHBOARD APM" /> }}>
+        {(props) => <HomeScreen {...props} theme={theme} isAuthFlow={false} userRole="guest" onLogout={handleLogout} onLoginPress={() => setLoginModalVisible(true)} />}
       </Stack.Screen>
     </Stack.Navigator>
   );
 
   const AgencyFlow = () => (
     <Stack.Navigator>
-      <Stack.Screen name="AgencyApp" options={{ title: 'Agensi', headerStyle: { backgroundColor: theme.background }, headerTitleStyle: { color: theme.text, fontWeight: 'bold' }, headerLeft: () => <HeaderLogoutButton />, headerRight: () => <HeaderRoleBadge /> }}>
+      <Stack.Screen name="AgencyApp" options={{ header: () => <CustomHeader title="AGENSI" /> }}>
         {(props) => (
           <AgencyTrackingScreen
             {...props}
@@ -344,6 +428,105 @@ export default function App() {
   // ==========================================
   return (
     <NavigationContainer>
+      <Modal visible={loginModalVisible} transparent animationType="fade" onRequestClose={closeLoginModal}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+          <View style={{ width: '100%', maxWidth: 560, shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 20, elevation: 20, borderRadius: 24 }}>
+
+            {/* Bandeau header sombre */}
+            <View style={{ backgroundColor: '#0c0c0e', padding: 24, paddingBottom: 28, borderTopLeftRadius: 24, borderTopRightRadius: 24 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+                  <Image source={{ uri: 'https://kceeewyadcskivtmilyf.supabase.co/storage/v1/object/public/logo/apm_labuan.png' }} style={{ width: 80, height: 80 }} resizeMode="contain" />
+                  <View>
+                    <Text style={{ fontSize: 10, fontWeight: '800', color: PALETTE.orange, letterSpacing: 2, textTransform: 'uppercase' }}>SEDIAOPS • APM W.P LABUAN</Text>
+                    <Text style={{ fontSize: 20, fontWeight: '900', color: '#fff', marginTop: 3 }}>Log Masuk Portal</Text>
+                    <Text style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>Sistem Pengurusan APM W.P Labuan</Text>
+                  </View>
+                </View>
+                <TouchableOpacity onPress={closeLoginModal} style={{ width: 30, height: 30, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.08)', alignItems: 'center', justifyContent: 'center' }}>
+                  <X size={16} color="#94a3b8" />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Formulaire */}
+            <View style={{ padding: 24, gap: 14, backgroundColor: '#fff', borderBottomLeftRadius: 24, borderBottomRightRadius: 24 }}>
+              <View style={{ gap: 10 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', borderWidth: 1.5, borderColor: '#e2e8f0', borderRadius: 12, paddingHorizontal: 14, height: 52, backgroundColor: '#f8fafc' }}>
+                  <User size={17} color="#94a3b8" style={{ marginRight: 10 }} />
+                  <TextInput
+                    style={{ flex: 1, fontSize: 14, fontWeight: '600', color: '#0f172a', outlineStyle: 'none' }}
+                    placeholder="Nama Pengguna atau E-mel"
+                    placeholderTextColor="#94a3b8"
+                    value={loginUsername}
+                    onChangeText={setLoginUsername}
+                    autoCapitalize="none"
+                    editable={!loginLoading}
+                  />
+                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', borderWidth: 1.5, borderColor: '#e2e8f0', borderRadius: 12, paddingHorizontal: 14, height: 52, backgroundColor: '#f8fafc' }}>
+                  <Lock size={17} color="#94a3b8" style={{ marginRight: 10 }} />
+                  <TextInput
+                    style={{ flex: 1, fontSize: 14, fontWeight: '600', color: '#0f172a', outlineStyle: 'none' }}
+                    placeholder="Kata Laluan"
+                    placeholderTextColor="#94a3b8"
+                    value={loginPassword}
+                    onChangeText={setLoginPassword}
+                    secureTextEntry
+                    returnKeyType="done"
+                    editable={!loginLoading}
+                    onSubmitEditing={handleModalLogin}
+                  />
+                </View>
+
+                {loginError ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#fef2f2', padding: 10, borderRadius: 8, borderWidth: 1, borderColor: '#fecaca' }}>
+                    <AlertCircle size={14} color="#ef4444" />
+                    <Text style={{ color: '#ef4444', fontSize: 12, fontWeight: '700', flex: 1 }}>{loginError}</Text>
+                  </View>
+                ) : null}
+
+                <TouchableOpacity
+                  onPress={handleModalLogin}
+                  disabled={loginLoading}
+                  style={{ backgroundColor: PALETTE.orange, borderRadius: 12, height: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: loginLoading ? 0.7 : 1, marginTop: 2 }}
+                >
+                  {loginLoading
+                    ? <ActivityIndicator color="#fff" />
+                    : <><Text style={{ color: '#fff', fontSize: 15, fontWeight: '800' }}>Log Masuk</Text><ArrowRight size={18} color="#fff" /></>
+                  }
+                </TouchableOpacity>
+              </View>
+
+              {/* Divider */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <View style={{ flex: 1, height: 1, backgroundColor: '#e2e8f0' }} />
+                <Text style={{ color: '#94a3b8', fontSize: 11, fontWeight: '700', letterSpacing: 0.5 }}>ATAU MASUK SEBAGAI</Text>
+                <View style={{ flex: 1, height: 1, backgroundColor: '#e2e8f0' }} />
+              </View>
+
+              {/* Pemandu & Agensi */}
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <TouchableOpacity
+                  onPress={() => { handleLogin('driver'); setLoginModalVisible(false); }}
+                  style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#fff7ed', borderWidth: 1.5, borderColor: PALETTE.orange, borderRadius: 12, height: 48 }}
+                >
+                  <Truck size={16} color={PALETTE.orange} />
+                  <Text style={{ color: PALETTE.orange, fontWeight: '800', fontSize: 14 }}>Pemandu</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => { handleLogin('agency'); setLoginModalVisible(false); }}
+                  style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#fff7ed', borderWidth: 1.5, borderColor: PALETTE.orange, borderRadius: 12, height: 48 }}
+                >
+                  <Building2 size={16} color={PALETTE.orange} />
+                  <Text style={{ color: PALETTE.orange, fontWeight: '800', fontSize: 14 }}>Agensi</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
       <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} backgroundColor={theme.background} />
       {!userRole ? <AuthFlow /> : 
       ROLE_PERMISSIONS[userRole] ? <DepartmentFlow /> :

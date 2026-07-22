@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { ShieldCheck, User, Truck, Building2 } from 'lucide-react-native';
 import { PALETTE } from '../../constants/palette';
 
-export default function AuthGate({ navigation, onDriverLogin, onAgencyLogin, onGuestLogin }) {
+export default function AuthGate({ navigation, onDriverLogin, onAgencyLogin, onGuestLogin, onLoginPress }) {
   return (
     <View style={styles.container}>
       <View style={styles.glowOrange} />
@@ -22,7 +22,7 @@ export default function AuthGate({ navigation, onDriverLogin, onAgencyLogin, onG
         </Text>
 
         <View style={styles.actions}>
-          <TouchableOpacity style={styles.pillPrimary} onPress={() => navigation.navigate('Login')}>
+          <TouchableOpacity style={styles.pillPrimary} onPress={onLoginPress || (() => navigation.navigate('Login'))}>
             <ShieldCheck size={18} color="#fff" />
             <Text style={styles.pillPrimaryText}>Log Masuk</Text>
           </TouchableOpacity>

@@ -7,12 +7,12 @@ import AuthGate from './home/AuthGate';
 import HeroSection from './home/HeroSection';
 import InfoWidgets from './home/InfoWidgets';
 import AddressWidgets from './home/AddressWidgets';
-import AddressMap from './home/AddressMap';
 import { homeScreenStyles as styles } from './home/homeScreenStyles';
 import { useHomeData } from '../hooks/useHomeData';
 import { PALETTE } from '../constants/palette';
+import { ShieldCheck, Truck, Building2 } from 'lucide-react-native';
 
-export default function HomeScreen({ isAuthFlow, onGuestLogin, onDriverLogin, onAgencyLogin, navigation, userRole }) {
+export default function HomeScreen({ isAuthFlow, onGuestLogin, onDriverLogin, onAgencyLogin, onLoginPress, navigation, userRole, theme }) {
   const [isEditing, setIsEditing] = useState(false);
   const { loading, pageData, handleSave, updateField } = useHomeData(isAuthFlow);
 
@@ -28,6 +28,7 @@ export default function HomeScreen({ isAuthFlow, onGuestLogin, onDriverLogin, on
         onDriverLogin={onDriverLogin}
         onAgencyLogin={onAgencyLogin}
         onGuestLogin={onGuestLogin}
+        onLoginPress={onLoginPress}
       />
     );
   }
