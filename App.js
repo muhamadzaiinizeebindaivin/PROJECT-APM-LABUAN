@@ -376,7 +376,7 @@ export default function App() {
       if (confirm) {
         await supabaseSandbox.auth.signOut();
         clearAgencySessionFlag();
-        setUserRole(null);
+        setUserRole('guest');
         setAgencyInfo(null);
       }
     } else {
@@ -388,7 +388,7 @@ export default function App() {
           { text: "Ya", onPress: async () => {
               await supabaseSandbox.auth.signOut();
               clearAgencySessionFlag();
-              setUserRole(null);
+              setUserRole('guest');
               setAgencyInfo(null);
             }
           }
