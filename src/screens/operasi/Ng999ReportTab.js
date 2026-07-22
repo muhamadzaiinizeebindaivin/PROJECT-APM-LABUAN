@@ -10,6 +10,7 @@ import { formStyles } from '../../styles/formStyles';
 import { reportStyles as styles } from './reportStyles';
 import { mapStyles as tableStyles } from './mapStyles';
 import CalamitySummaryContent from './CalamitySummaryContent';
+import { PALETTE } from '../../constants/palette';
 
 export default function Ng999ReportTab({ theme, userRole }) {
   const now = new Date();
@@ -166,14 +167,14 @@ export default function Ng999ReportTab({ theme, userRole }) {
     }
     return (
       <TouchableOpacity onPress={() => setPhotoViewer({ photos, index: null })}>
-        <Text style={{ fontSize: 11, color: '#1E3A8A', fontWeight: '700' }}>Lihat Foto ({photos.length})</Text>
+        <Text style={{ fontSize: 11, color: PALETTE.orange, fontWeight: '700' }}>Lihat Foto ({photos.length})</Text>
       </TouchableOpacity>
     );
   };
 
   const renderDayGroup = (tarikh, dayItems) => (
-    <View key={tarikh} style={{ borderWidth: 2, borderColor: '#1E3A8A', borderRadius: 10, marginBottom: 12, overflow: 'hidden' }}>
-      <View style={{ backgroundColor: '#1E3A8A', paddingHorizontal: 14, paddingVertical: 8 }}>
+    <View key={tarikh} style={{ borderWidth: 1, borderColor: PALETTE.cardLightBorder, borderRadius: 10, marginBottom: 12, overflow: 'hidden' }}>
+      <View style={{ backgroundColor: PALETTE.orange, paddingHorizontal: 14, paddingVertical: 8 }}>
         <Text style={{ color: '#fff', fontWeight: '800', fontSize: 13 }}>{tarikh}</Text>
       </View>
       {dayItems.map((item, index) => (
@@ -204,24 +205,27 @@ export default function Ng999ReportTab({ theme, userRole }) {
       <ScrollView style={styles.reportContainer} showsVerticalScrollIndicator={false}>
 
         <View style={styles.reportHeader}>
-          <Text style={[styles.reportTitle, { color: theme.text }]}>Emergency Case Report</Text>
-          <Text style={{ color: theme.textSecondary, fontWeight: '600' }}>NG 999 W.P. Labuan {now.getFullYear()}</Text>
+          <Text style={styles.reportTitle}>Emergency Case Report</Text>
+          <Text style={{ color: PALETTE.textMutedDark, fontWeight: '600' }}>NG 999 W.P. Labuan {now.getFullYear()}</Text>
         </View>
 
-        <CalamitySummaryContent theme={theme} mode="chart" statsOnly />
+        <View style={[styles.crudContainer, { marginBottom: 12 }]}>
+          <CalamitySummaryContent theme={theme} mode="chart" statsOnly />
+        </View>
 
-        {/* --- Barre de navigation --- */}
-        <View style={[styles.crudContainer, { backgroundColor: theme.card, marginBottom: 12 }]}>
-          <View style={styles.crudHeader}>
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              <TouchableOpacity onPress={() => setViewMode('ringkasan')} style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, backgroundColor: viewMode === 'ringkasan' ? '#1E3A8A' : '#f1f5f9' }}>
-                <Text style={{ fontSize: 12, fontWeight: '700', color: viewMode === 'ringkasan' ? '#fff' : '#64748b' }}>Ringkasan Kecemasan</Text>
+        <View style={{ height: 12 }} />
+
+        <View style={[styles.crudContainer, { marginBottom: 12 }]}>
+          <View style={[styles.crudHeader, { flexWrap: 'wrap', gap: 8 }]}>
+            <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', flex: 1 }}>
+              <TouchableOpacity onPress={() => setViewMode('ringkasan')} style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, backgroundColor: viewMode === 'ringkasan' ? PALETTE.orange : PALETTE.surface }}>
+                <Text style={{ fontSize: 12, fontWeight: '700', color: viewMode === 'ringkasan' ? PALETTE.white : PALETTE.textMutedDark }}>Ringkasan Kecemasan</Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => setViewMode('senarai')} style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, backgroundColor: viewMode === 'senarai' ? '#1E3A8A' : '#f1f5f9' }}>
-                <Text style={{ fontSize: 12, fontWeight: '700', color: viewMode === 'senarai' ? '#fff' : '#64748b' }}>Senarai Penuh Kecemasan</Text>
+              <TouchableOpacity onPress={() => setViewMode('senarai')} style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, backgroundColor: viewMode === 'senarai' ? PALETTE.orange : PALETTE.surface }}>
+                <Text style={{ fontSize: 12, fontWeight: '700', color: viewMode === 'senarai' ? PALETTE.white : PALETTE.textMutedDark }}>Senarai Penuh Kecemasan</Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => setViewMode('trend')} style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, backgroundColor: viewMode === 'trend' ? '#1E3A8A' : '#f1f5f9' }}>
-                <Text style={{ fontSize: 12, fontWeight: '700', color: viewMode === 'trend' ? '#fff' : '#64748b' }}>Analisis & Statistik</Text>
+              <TouchableOpacity onPress={() => setViewMode('trend')} style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, backgroundColor: viewMode === 'trend' ? PALETTE.orange : PALETTE.surface }}>
+                <Text style={{ fontSize: 12, fontWeight: '700', color: viewMode === 'trend' ? PALETTE.white : PALETTE.textMutedDark }}>Analisis & Statistik</Text>
               </TouchableOpacity>
             </View>
             {viewMode === 'senarai' && (
@@ -261,8 +265,8 @@ export default function Ng999ReportTab({ theme, userRole }) {
             </View>
             <View style={{ paddingHorizontal: 16, marginBottom: 12 }}>
               <TextInput
-                style={[formStyles.inputField, { backgroundColor: theme.background, color: theme.text, borderColor: '#94a3b8', borderWidth: 2, outlineStyle: 'none' }]}
-                placeholder="Cari kategori kes..." placeholderTextColor={theme.textSecondary}
+                style={[formStyles.inputField, { backgroundColor: PALETTE.surface, color: PALETTE.textDark, borderColor: PALETTE.cardLightBorder, borderWidth: 1, outlineStyle: 'none' }]}
+                placeholder="Cari kategori kes..." placeholderTextColor={PALETTE.textMutedDark}
                 value={searchQuery} onChangeText={setSearchQuery} />
             </View>
           </>
@@ -276,7 +280,7 @@ export default function Ng999ReportTab({ theme, userRole }) {
           ) : viewMode === 'trend' ? (
             <CalamitySummaryContent theme={theme} mode="chart" />
           ) : filteredNgData.length === 0 ? (
-            <Text style={{ color: theme.textSecondary, textAlign: 'center', marginVertical: 10 }}>No records found.</Text>
+            <Text style={{ color: PALETTE.textMutedDark, textAlign: 'center', marginVertical: 10 }}>No records found.</Text>
           ) : (
             <View style={[tableStyles.calamityTableWrapper, { borderColor: '#475569' }]}>
               {tableHeader}
@@ -294,13 +298,13 @@ export default function Ng999ReportTab({ theme, userRole }) {
       {/* --- Modale ajout/modification --- */}
       <Modal visible={modalVisible} transparent={true} animationType="fade">
         <View style={formStyles.modalOverlay}>
-          <View style={[formStyles.modalContent, { backgroundColor: theme.background }]}>
+          <View style={[formStyles.modalContent, { backgroundColor: PALETTE.cardLight }]}>
             <View style={formStyles.modalHeader}>
-              <Text style={{ fontSize: 18, fontWeight: '800', color: theme.text }}>
+              <Text style={{ fontSize: 18, fontWeight: '800', color: PALETTE.textDark }}>
                 {form.id ? 'Update Record' : 'Add New Record'}
               </Text>
               <TouchableOpacity onPress={closeModal}>
-                <X size={24} color={theme.textSecondary} />
+                <X size={24} color={PALETTE.textMutedDark} />
               </TouchableOpacity>
             </View>
 
@@ -311,12 +315,12 @@ export default function Ng999ReportTab({ theme, userRole }) {
               stackIndex={2000} />
 
             <View style={[formStyles.inputGroup, { zIndex: 1 }]}>
-              <Text style={[formStyles.inputLabel, { color: theme.textSecondary }]}>Tarikh</Text>
+              <Text style={[formStyles.inputLabel, { color: PALETTE.textMutedDark }]}>Tarikh</Text>
               {Platform.OS === 'web' ? (
                 createElement('input', {
                   type: 'date', value: form.tarikh || '',
                   onChange: (e) => setForm({ ...form, tarikh: e.target.value }),
-                  style: { width: '100%', padding: 10, borderRadius: 8, border: `1px solid ${theme.border}`, backgroundColor: theme.card, color: theme.text, fontSize: 14, boxSizing: 'border-box' },
+                  style: { width: '100%', padding: 10, borderRadius: 8, border: `1px solid ${PALETTE.cardLightBorder}`, backgroundColor: PALETTE.surface, color: PALETTE.textDark, fontSize: 14, boxSizing: 'border-box' },
                 })
               ) : (
                 <TextInput style={[formStyles.inputField, { backgroundColor: theme.card, color: theme.text, borderColor: theme.border }]}
@@ -326,16 +330,16 @@ export default function Ng999ReportTab({ theme, userRole }) {
             </View>
 
             <View style={[formStyles.inputGroup, { zIndex: 1 }]}>
-              <Text style={[formStyles.inputLabel, { color: theme.textSecondary }]}>Amount of Cases</Text>
-              <TextInput style={[formStyles.inputField, { backgroundColor: theme.card, color: theme.text, borderColor: theme.border }]}
-                placeholder="E.g., 5" placeholderTextColor={theme.textSecondary}
+              <Text style={[formStyles.inputLabel, { color: PALETTE.textMutedDark }]}>Amount of Cases</Text>
+              <TextInput style={[formStyles.inputField, { backgroundColor: PALETTE.surface, color: PALETTE.textDark, borderColor: PALETTE.cardLightBorder }]}
+                placeholder="E.g., 5" placeholderTextColor={PALETTE.textMutedDark}
                 keyboardType="numeric" value={form.jumlah_kes.toString()}
                 onChangeText={(text) => setForm({ ...form, jumlah_kes: text.replace(/[^0-9]/g, '') })} />
             </View>
 
             {/* --- Section photos --- */}
             <View style={[formStyles.inputGroup, { zIndex: 1 }]}>
-              <Text style={[formStyles.inputLabel, { color: theme.textSecondary }]}>Foto</Text>
+              <Text style={[formStyles.inputLabel, { color: PALETTE.textMutedDark }]}>Foto</Text>
 
               {existingPhotos.length > 0 && (
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }}>
@@ -377,7 +381,7 @@ export default function Ng999ReportTab({ theme, userRole }) {
 
               <TouchableOpacity
                 onPress={handlePickPhotos}
-                style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#f1f5f9', borderWidth: 1, borderColor: theme.border, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 10 }}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: PALETTE.surface, borderWidth: 1, borderColor: PALETTE.cardLightBorder, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 10 }}
               >
                 <Camera size={18} color="#64748b" />
                 <Text style={{ color: '#64748b', fontWeight: '600', fontSize: 13 }}>

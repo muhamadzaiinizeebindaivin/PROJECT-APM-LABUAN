@@ -1,5 +1,6 @@
 // src/screens/operasi/mapStyles.js
 import { StyleSheet } from 'react-native';
+import { PALETTE } from '../../constants/palette';
 
 export const mapStyles = StyleSheet.create({
   container: { position: 'relative', width: '100%', overflow: 'hidden', borderRadius: 24, paddingBottom: 16 },
@@ -40,7 +41,7 @@ export const mapStyles = StyleSheet.create({
 
   historyHalf: { flex: 1, backgroundColor: '#fff', borderLeftWidth: 1, borderLeftColor: '#e2e8f0', borderTopRightRadius: 20, borderBottomRightRadius: 20, overflow: 'hidden' },
   historyHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
-  pdfExportBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#1E3A8A', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, minWidth: 60, justifyContent: 'center' },
+  pdfExportBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: PALETTE.orange, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, minWidth: 60, justifyContent: 'center' },
   pdfExportBtnDisabled: { backgroundColor: '#cbd5e1' },
   pdfExportBtnText: { color: '#fff', fontSize: 12, fontWeight: '700' },
   historyTitle: { fontSize: 14, fontWeight: '800', color: '#0f172a' },

@@ -95,7 +95,7 @@ function RankRow({ rank, catKey, total, pct, color, maxTotal }) {
         <Text style={{ fontSize: 11, fontWeight: '900', color: '#94a3b8', width: 20 }}>#{rank}</Text>
         <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: color, flexShrink: 0 }} />
         <Text style={{ fontSize: 13, fontWeight: '700', color: '#334155', flex: 1 }}>{catKey}</Text>
-        <Text style={{ fontSize: 13, fontWeight: '800', color: '#1E3A8A' }}>{total} kes</Text>
+        <Text style={{ fontSize: 13, fontWeight: '800', color: PALETTE.orange }}>{total} kes</Text>
         <Text style={{ fontSize: 11, color: '#94a3b8', width: 32, textAlign: 'right' }}>{pct}%</Text>
       </View>
       <View style={{ marginLeft: 28, height: 6, backgroundColor: '#f1f5f9', borderRadius: 3, overflow: 'hidden' }}>
@@ -205,7 +205,7 @@ export default function CalamitySummaryContent({ theme, large = false, mode = 't
   // Mode statsOnly : juste les cartes, sans ScrollView ni filtres
   if (statsOnly) {
     return (
-      <View style={{ paddingHorizontal: 16, paddingVertical: 8 }}>
+      <View style={{ paddingVertical: 8 }}>
         {statCards}
       </View>
     );
@@ -215,7 +215,7 @@ export default function CalamitySummaryContent({ theme, large = false, mode = 't
     <ScrollView showsVerticalScrollIndicator={false} style={{ marginTop: 8 }}>
 
       {/* Filtres */}
-      <View style={[styles.historyFilterRow, { alignItems: 'center', minHeight: 80 }]}>
+      <View style={[styles.historyFilterRow, { alignItems: 'flex-end', minHeight: 80, paddingBottom: 16 }]}>
         <View style={{ flex: 1 }}>
           <ModalSelectField theme={theme} label="Tahun" value={String(summary.summaryYear)} placeholder="Tahun"
             options={summary.availableSummaryYears} isOpen={summary.summaryYearOpen}
@@ -241,19 +241,19 @@ export default function CalamitySummaryContent({ theme, large = false, mode = 't
                 onSelect={(opt) => { summary.setSummaryDay(opt === 'Semua Hari' ? null : Number(opt)); summary.setSummaryDayOpen(false); }}
                 stackIndex={1000} />
             </View>
-            <TouchableOpacity onPress={summary.handleExportSummaryPdf} disabled={summary.exportingSummaryPdf}
-              style={[styles.pdfExportBtn, summary.exportingSummaryPdf && styles.pdfExportBtnDisabled, { flexShrink: 0, height: 46, marginTop: 22 }]}>
-              {summary.exportingSummaryPdf ? <ActivityIndicator size="small" color="#fff" /> : (
-                <><Download size={14} color="#fff" /><Text style={styles.pdfExportBtnText}>Ringkasan</Text></>
-              )}
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={summary.handleExportLaporanPdf}
-              style={[styles.pdfExportBtn, { flexShrink: 0, height: 46, marginTop: 22, marginLeft: 8 }]}
-            >
-              <Download size={14} color="#fff" />
-              <Text style={styles.pdfExportBtnText}>Laporan</Text>
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', gap: 8, alignSelf: 'flex-end', marginBottom: 16 }}>
+              <TouchableOpacity onPress={summary.handleExportSummaryPdf} disabled={summary.exportingSummaryPdf}
+                style={[styles.pdfExportBtn, summary.exportingSummaryPdf && styles.pdfExportBtnDisabled, { height: 50 }]}>
+                {summary.exportingSummaryPdf ? <ActivityIndicator size="small" color="#fff" /> : (
+                  <><Download size={14} color="#fff" /><Text style={styles.pdfExportBtnText}>Ringkasan</Text></>
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity onPress={summary.handleExportLaporanPdf}
+                style={[styles.pdfExportBtn, { height: 50 }]}>
+                <Download size={14} color="#fff" />
+                <Text style={styles.pdfExportBtnText}>Laporan</Text>
+              </TouchableOpacity>
+            </View>
           </>
         )}
       </View>
@@ -343,7 +343,7 @@ export default function CalamitySummaryContent({ theme, large = false, mode = 't
             <Text style={styles.summaryChartTitle}>Trend Mengikut Bulan ({summary.summaryYear})</Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
               <TouchableOpacity onPress={toggleAllChartCategories}
-                style={[styles.chartCatChip, { backgroundColor: '#1E3A8A', borderColor: '#1E3A8A' }]}>
+                style={[styles.chartCatChip, { backgroundColor: PALETTE.orange, borderColor: PALETTE.orange }]}>
                 <Text style={[styles.chartCatChipText, { color: '#fff' }]}>
                   {selectedChartCategories.length === CALAMITY_CATEGORIES.length ? 'Kosongkan' : 'Semua'}
                 </Text>
