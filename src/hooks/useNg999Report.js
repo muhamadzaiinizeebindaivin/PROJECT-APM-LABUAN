@@ -22,7 +22,8 @@ export function useNg999Report(filterYear, filterMonth) {
       .select('*, ng999_photos(id, photo_url)')
       .gte('tarikh', startDate)
       .lte('tarikh', endDate)
-      .order('tarikh', { ascending: false });
+      .order('tarikh', { ascending: false })
+      .order('created_at', { ascending: true });
 
     if (data) setNgData(data);
     if (error) console.error("Error fetching NG999 data:", error);
@@ -33,8 +34,9 @@ export function useNg999Report(filterYear, filterMonth) {
   const fetchAllNgData = useCallback(async () => {
     const { data, error } = await supabaseSandbox
       .from('laporan_ng999')
-      .select('id, tarikh, kategori_kes, jumlah_kes')
-      .order('tarikh', { ascending: false });
+      .select('id, tarikh, category, jumlah_kes')
+      .order('tarikh', { ascending: false })
+      .order('created_at', { ascending: true });
     if (data) setAllNgData(data);
     if (error) console.error("Error fetching all NG999 data:", error);
   }, []);
@@ -81,18 +83,18 @@ export function useNg999Report(filterYear, filterMonth) {
     await fetchNgData();
   }, [fetchNgData]);
 
-  const saveRecord = useCallback(async ({ id, kategori_kes, tarikh, jumlah_kes }) => {
+  const saveRecord = useCallback(async ({ id, category, tarikh, jumlah_kes, status }) => {
     setLoadingNg(true);
     let error, recordId = id;
     if (id) {
       ({ error } = await supabaseSandbox
         .from('laporan_ng999')
-        .update({ kategori_kes, tarikh, jumlah_kes })
+        .update({ category, tarikh, jumlah_kes, status })
         .eq('id', id));
     } else {
       const { data, error: insertError } = await supabaseSandbox
         .from('laporan_ng999')
-        .insert([{ kategori_kes, tarikh, jumlah_kes }])
+        .insert([{ category, tarikh, jumlah_kes, status }])
         .select('id')
         .single();
       error = insertError;
@@ -149,7 +151,7 @@ export function useNg999Report(filterYear, filterMonth) {
     let topLabel = 'No Data Available';
     categories.forEach(cat => {
       const count = allNgData
-        .filter(item => item.kategori_kes === cat.fullOption)
+        .filter(item => item.category === cat.id)
         .reduce((sum, item) => sum + (item.jumlah_kes || 1), 0);
       if (count > maxCount) { maxCount = count; topLabel = cat.label; }
     });
@@ -165,7 +167,7 @@ export function useNg999Report(filterYear, filterMonth) {
         allNgData.forEach(item => {
           const d = new Date(item.tarikh);
           if (d.getFullYear() !== year || d.getMonth() !== m) return;
-          const cat = categories.find(c => c.fullOption === item.kategori_kes);
+          const cat = categories.find(c => c.id === item.category);
           if (cat) { counts[cat.id] += (item.jumlah_kes || 1); total += (item.jumlah_kes || 1); }
         });
         return { label, counts, total };
@@ -180,7 +182,7 @@ export function useNg999Report(filterYear, filterMonth) {
       allNgData.forEach(item => {
         const d = new Date(item.tarikh);
         if (d.getFullYear() !== year || d.getMonth() !== month || d.getDate() !== day) return;
-        const cat = categories.find(c => c.fullOption === item.kategori_kes);
+        const cat = categories.find(c => c.id === item.category);
         if (cat) { counts[cat.id] += (item.jumlah_kes || 1); total += (item.jumlah_kes || 1); }
       });
       return { label: String(day), counts, total };

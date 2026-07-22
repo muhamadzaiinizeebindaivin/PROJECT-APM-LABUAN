@@ -12,6 +12,18 @@ import { mapStyles as tableStyles } from './mapStyles';
 import CalamitySummaryContent from './CalamitySummaryContent';
 import { PALETTE } from '../../constants/palette';
 
+const STATUS_LIST = [
+  { key: 'active', label: 'Aktif', color: '#3b82f6' },
+  { key: 'berjaya', label: 'Berjaya', color: '#16a34a' },
+  { key: 'gagal', label: 'Gagal', color: '#dc2626' },
+  { key: 'batal', label: 'Batal', color: '#d97706' },
+  { key: 'tunda', label: 'Tunda', color: '#7c3aed' },
+  { key: 'diambil agensi lain', label: 'Diambil Agensi Lain', color: '#0891b2' },
+  { key: 'diserah ke agensi lain', label: 'Diserah Agensi Lain', color: '#0f766e' },
+];
+const statusLabel = (key) => STATUS_LIST.find(s => s.key === key)?.label || 'Aktif';
+const statusColor = (key) => STATUS_LIST.find(s => s.key === key)?.color || '#3b82f6';
+
 export default function Ng999ReportTab({ theme, userRole, isEditMode }) {
   const now = new Date();
 
@@ -32,8 +44,9 @@ export default function Ng999ReportTab({ theme, userRole, isEditMode }) {
 
   // Modale
   const [modalVisible, setModalVisible] = useState(false);
-  const [form, setForm] = useState({ id: null, kategori_kes: '', tarikh: '', jumlah_kes: '1' });
+  const [form, setForm] = useState({ id: null, category: '', tarikh: '', jumlah_kes: '1', status: 'active' });
   const [categoryOpen, setCategoryOpen] = useState(false);
+  const [statusOpen, setStatusOpen] = useState(false);
   const [pendingFiles, setPendingFiles] = useState([]);
   const [savingRecord, setSavingRecord] = useState(false);
 
@@ -47,7 +60,7 @@ export default function Ng999ReportTab({ theme, userRole, isEditMode }) {
     const q = searchQuery.trim().toLowerCase();
     return ngData.filter(item => {
       if (filterDay !== null && new Date(item.tarikh).getDate() !== filterDay) return false;
-      if (q && !(item.kategori_kes || '').toLowerCase().includes(q)) return false;
+      if (q && !(item.category || '').toLowerCase().includes(q)) return false;
       return true;
     });
   }, [ngData, filterDay, searchQuery]);
@@ -97,7 +110,7 @@ export default function Ng999ReportTab({ theme, userRole, isEditMode }) {
   };
 
   const handleSaveNg = async () => {
-    if (!form.kategori_kes || !form.tarikh || !form.jumlah_kes) {
+    if (!form.category || !form.tarikh || !form.jumlah_kes) {
       Alert.alert('Error', 'Please fill in all fields.');
       return;
     }
@@ -107,7 +120,7 @@ export default function Ng999ReportTab({ theme, userRole, isEditMode }) {
       return;
     }
     setSavingRecord(true);
-    const { error, recordId } = await saveRecord({ id: form.id, kategori_kes: form.kategori_kes, tarikh: form.tarikh, jumlah_kes: caseAmount });
+    const { error, recordId } = await saveRecord({ id: form.id, category: form.category, tarikh: form.tarikh, jumlah_kes: caseAmount, status: form.status });
     if (!error && pendingFiles.length > 0) {
       await addPhotosToRecord(recordId, pendingFiles.map(p => p.file));
     }
@@ -127,7 +140,7 @@ export default function Ng999ReportTab({ theme, userRole, isEditMode }) {
   };
 
   const openEditModal = (record) => {
-    setForm({ id: record.id, kategori_kes: record.kategori_kes, tarikh: record.tarikh, jumlah_kes: (record.jumlah_kes || 1).toString() });
+    setForm({ id: record.id, category: record.category, tarikh: record.tarikh, jumlah_kes: (record.jumlah_kes || 1).toString(), status: record.status || 'active' });
     setPendingFiles([]);
     setModalVisible(true);
   };
@@ -135,8 +148,9 @@ export default function Ng999ReportTab({ theme, userRole, isEditMode }) {
   const closeModal = () => {
     setModalVisible(false);
     setCategoryOpen(false);
+    setStatusOpen(false);
     setPendingFiles([]);
-    setForm({ id: null, kategori_kes: '', tarikh: '', jumlah_kes: '1' });
+    setForm({ id: null, category: '', tarikh: '', jumlah_kes: '1', status: 'active' });
   };
 
   const existingPhotos = form.id ? (ngData.find(r => r.id === form.id)?.ng999_photos || []) : [];
@@ -153,11 +167,16 @@ export default function Ng999ReportTab({ theme, userRole, isEditMode }) {
         <Text style={tableStyles.calamityTableHeaderCell}>Jumlah</Text>
       </View>
       <View style={[{ flex: 1.2 }, tableStyles.calamityHeaderCellBox]}>
+        <Text style={tableStyles.calamityTableHeaderCell}>Status</Text>
+      </View>
+      <View style={[{ flex: 1.2 }, tableStyles.calamityHeaderCellBox]}>
         <Text style={tableStyles.calamityTableHeaderCell}>Foto</Text>
       </View>
-      <View style={[{ flex: 1 }, tableStyles.calamityHeaderCellBox]}>
-        <Text style={tableStyles.calamityTableHeaderCell}>Aksi</Text>
-      </View>
+      {isEditMode && (
+        <View style={[{ flex: 1 }, tableStyles.calamityHeaderCellBox]}>
+          <Text style={tableStyles.calamityTableHeaderCell}>Aksi</Text>
+        </View>
+      )}
     </View>
   );
 
@@ -180,21 +199,28 @@ export default function Ng999ReportTab({ theme, userRole, isEditMode }) {
       {dayItems.map((item, index) => (
         <View key={item.id} style={[tableStyles.calamityTableRow, { backgroundColor: index % 2 === 0 ? '#ffffff' : '#f8fafc' }]}>
           <Text style={[tableStyles.calamityTableCell, { flex: 2, textAlign: 'left', paddingLeft: 16 }]} numberOfLines={1}>
-            {item.kategori_kes}
+            {item.category}
           </Text>
           <Text style={[tableStyles.calamityTableCell, { flex: 1 }]}>{item.tarikh}</Text>
           <Text style={[tableStyles.calamityTableCell, { flex: 1, fontWeight: '800' }]}>{item.jumlah_kes || 1}</Text>
+          <View style={[{ flex: 1.2 }, tableStyles.calamitySummaryCellBox, { paddingVertical: 8, alignItems: 'center' }]}>
+            <View style={{ backgroundColor: statusColor(item.status) + '18', borderWidth: 1, borderColor: statusColor(item.status), borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>
+              <Text style={{ fontSize: 10, fontWeight: '800', color: statusColor(item.status) }}>{statusLabel(item.status)}</Text>
+            </View>
+          </View>
           <View style={[{ flex: 1.2 }, tableStyles.calamitySummaryCellBox, { paddingVertical: 8 }]}>
             {renderPhotoStrip(item.ng999_photos)}
           </View>
-          <View style={[{ flex: 1 }, styles.actionBtns, { justifyContent: 'center' }]}>
-            <TouchableOpacity onPress={() => openEditModal(item)} style={styles.iconBtn}>
-              <Edit2 size={16} color="#22c55e" />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => handleDeleteNg(item.id)} style={styles.iconBtn}>
-              <Trash2 size={16} color="#ef4444" />
-            </TouchableOpacity>
-          </View>
+          {isEditMode && (
+            <View style={[{ flex: 1 }, styles.actionBtns, { justifyContent: 'center' }]}>
+              <TouchableOpacity onPress={() => openEditModal(item)} style={styles.iconBtn}>
+                <Edit2 size={16} color="#22c55e" />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => handleDeleteNg(item.id)} style={styles.iconBtn}>
+                <Trash2 size={16} color="#ef4444" />
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
       ))}
     </View>
@@ -228,24 +254,21 @@ export default function Ng999ReportTab({ theme, userRole, isEditMode }) {
                 <Text style={{ fontSize: 12, fontWeight: '700', color: viewMode === 'trend' ? PALETTE.white : PALETTE.textMutedDark }}>Analisis & Statistik</Text>
               </TouchableOpacity>
             </View>
-            {viewMode === 'ringkasan' && (
-              <TouchableOpacity style={styles.addBtn} onPress={() => { setForm({ id: null, kategori_kes: '', tarikh: '', jumlah_kes: '1' }); setPendingFiles([]); setModalVisible(true); }}>
-                <Plus size={16} color="#fff" />
-                <Text style={styles.addBtnText}>Tambah Rekod</Text>
-              </TouchableOpacity>
-            )}
-            {viewMode === 'senarai' && (
-              <TouchableOpacity style={styles.addBtn} onPress={() => { setForm({ id: null, kategori_kes: '', tarikh: '', jumlah_kes: '1' }); setPendingFiles([]); setModalVisible(true); }}>
-                <Plus size={16} color="#fff" />
-                <Text style={styles.addBtnText}>Ayam Baru</Text>
-              </TouchableOpacity>
-            )}
+
           </View>
         </View>
 
         {/* --- Filtres Senarai --- */}
         {viewMode === 'senarai' && (
           <>
+            {isEditMode && (
+              <View style={{ paddingHorizontal: 16, marginBottom: 8, flexDirection: 'row', justifyContent: 'flex-end' }}>
+                <TouchableOpacity style={styles.addBtn} onPress={() => { setForm({ id: null, category: '', tarikh: '', jumlah_kes: '1', status: 'active' }); setPendingFiles([]); setModalVisible(true); }}>
+                  <Plus size={16} color="#fff" />
+                  <Text style={styles.addBtnText}>Tambah Rekod</Text>
+                </TouchableOpacity>
+              </View>
+            )}
             <View style={[tableStyles.historyFilterRow, { marginBottom: 4 }]}>
               <View style={{ flex: 1 }}>
                 <ModalSelectField theme={theme} label="Tahun" value={String(filterYear)} placeholder="Tahun"
@@ -275,6 +298,14 @@ export default function Ng999ReportTab({ theme, userRole, isEditMode }) {
                 placeholder="Cari kategori kes..." placeholderTextColor={PALETTE.textMutedDark}
                 value={searchQuery} onChangeText={setSearchQuery} />
             </View>
+            {isEditMode && (
+              <View style={{ paddingHorizontal: 16, marginBottom: 12, flexDirection: 'row', justifyContent: 'flex-end' }}>
+                <TouchableOpacity style={styles.addBtn} onPress={() => { setForm({ id: null, category: '', tarikh: '', jumlah_kes: '1', status: 'active' }); setPendingFiles([]); setModalVisible(true); }}>
+                  <Plus size={16} color="#fff" />
+                  <Text style={styles.addBtnText}>Tambah Rekod</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </>
         )}
 
@@ -284,7 +315,7 @@ export default function Ng999ReportTab({ theme, userRole, isEditMode }) {
           ) : viewMode === 'ringkasan' ? (
             <CalamitySummaryContent theme={theme} mode="table" isEditMode={isEditMode} />
           ) : viewMode === 'trend' ? (
-            <CalamitySummaryContent theme={theme} mode="chart" />
+            <CalamitySummaryContent theme={theme} mode="chart" isEditMode={isEditMode} />
           ) : filteredNgData.length === 0 ? (
             <Text style={{ color: PALETTE.textMutedDark, textAlign: 'center', marginVertical: 10 }}>No records found.</Text>
           ) : (
@@ -314,10 +345,10 @@ export default function Ng999ReportTab({ theme, userRole, isEditMode }) {
               </TouchableOpacity>
             </View>
 
-            <ModalSelectField theme={theme} label="Case Category" value={form.kategori_kes}
-              placeholder="Select Category..." options={CATEGORY_OPTIONS} isOpen={categoryOpen}
+            <ModalSelectField theme={theme} label="Case Category" value={form.category}
+              placeholder="Select Category..." options={CATEGORY_OPTIONS.map(o => o.split(' - ')[0])} isOpen={categoryOpen}
               onToggle={() => setCategoryOpen(!categoryOpen)}
-              onSelect={(opt) => { setForm({ ...form, kategori_kes: opt }); setCategoryOpen(false); }}
+              onSelect={(opt) => { setForm({ ...form, category: opt }); setCategoryOpen(false); }}
               stackIndex={2000} />
 
             <View style={[formStyles.inputGroup, { zIndex: 1 }]}>
@@ -342,6 +373,12 @@ export default function Ng999ReportTab({ theme, userRole, isEditMode }) {
                 keyboardType="numeric" value={form.jumlah_kes.toString()}
                 onChangeText={(text) => setForm({ ...form, jumlah_kes: text.replace(/[^0-9]/g, '') })} />
             </View>
+
+            <ModalSelectField theme={theme} label="Status" value={statusLabel(form.status)}
+              placeholder="Select Status..." options={STATUS_LIST.map(s => s.label)} isOpen={statusOpen}
+              onToggle={() => { setStatusOpen(!statusOpen); setCategoryOpen(false); }}
+              onSelect={(opt) => { setForm({ ...form, status: STATUS_LIST.find(s => s.label === opt)?.key || 'active' }); setStatusOpen(false); }}
+              stackIndex={1500} />
 
             {/* --- Section photos --- */}
             <View style={[formStyles.inputGroup, { zIndex: 1 }]}>
@@ -398,7 +435,7 @@ export default function Ng999ReportTab({ theme, userRole, isEditMode }) {
 
             <TouchableOpacity
               style={[formStyles.saveBtn, (savingRecord || categoryOpen) && { opacity: 0.7 }]}
-              onPress={handleSaveNg} disabled={savingRecord || categoryOpen}
+              onPress={handleSaveNg} disabled={savingRecord || categoryOpen || statusOpen}
             >
               {savingRecord ? <ActivityIndicator color="#fff" /> : <Text style={formStyles.saveBtnText}>Save Record</Text>}
             </TouchableOpacity>

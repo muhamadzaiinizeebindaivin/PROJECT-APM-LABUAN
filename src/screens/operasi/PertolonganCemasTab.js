@@ -44,8 +44,8 @@ function InfoRow({ icon, label, value }) {
   );
 }
 
-export default function PertolonganCemasTab({ theme, userRole }) {
-  const canManage = userRole === 'admin' || userRole === 'operasi';
+export default function PertolonganCemasTab({ theme, userRole, isEditMode }) {
+  const canManage = isEditMode && (userRole === 'admin' || userRole === 'operasi');
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
@@ -537,20 +537,16 @@ export default function PertolonganCemasTab({ theme, userRole }) {
                 </Text>
               </TouchableOpacity>
 
-              {/* Status (edit seulement) */}
-              {form.id && (
-                <>
-                  <Text style={labelStyle}>Status</Text>
-                  <View style={{ flexDirection: 'row', gap: 8 }}>
-                    {STATUS_OPTIONS.map(s => (
-                      <TouchableOpacity key={s} onPress={() => setForm(f => ({ ...f, status: s }))}
-                        style={{ flex: 1, paddingVertical: 10, borderRadius: 8, alignItems: 'center', backgroundColor: form.status === s ? '#1E3A8A' : '#f1f5f9' }}>
-                        <Text style={{ fontSize: 12, fontWeight: '700', color: form.status === s ? '#fff' : '#64748b', textTransform: 'capitalize' }}>{s}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </>
-              )}
+              {/* Status */}
+              <Text style={labelStyle}>Status</Text>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                {STATUS_OPTIONS.map(s => (
+                  <TouchableOpacity key={s} onPress={() => setForm(f => ({ ...f, status: s }))}
+                    style={{ flex: 1, paddingVertical: 10, borderRadius: 8, alignItems: 'center', backgroundColor: form.status === s ? '#1E3A8A' : '#f1f5f9' }}>
+                    <Text style={{ fontSize: 12, fontWeight: '700', color: form.status === s ? '#fff' : '#64748b', textTransform: 'capitalize' }}>{s}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
 
               <TouchableOpacity style={[formStyles.saveBtn, saving && { opacity: 0.7 }, { marginTop: 20 }]}
                 onPress={handleSave} disabled={saving}>

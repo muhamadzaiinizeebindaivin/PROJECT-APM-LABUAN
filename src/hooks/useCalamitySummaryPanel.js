@@ -26,6 +26,7 @@ export function useCalamitySummaryPanel(calamityPoints) {
 
   const [allYearRows, setAllYearRows] = useState([]);
   const [historiqueGrid, setHistoriqueGrid] = useState({});
+  const [historiqueStatus, setHistoriqueStatus] = useState({});
   const [loadingSummary, setLoadingSummary] = useState(false);
 
   useEffect(() => {
@@ -49,16 +50,20 @@ export function useCalamitySummaryPanel(calamityPoints) {
       setLoadingSummary(true);
 
       // Fetch données réelles + données historiques en parallèle
-      const [ngRes, histRes] = await Promise.all([
+      const [ngRes, histRes, statusRes] = await Promise.all([
         supabaseSandbox
           .from('laporan_ng999')
-          .select('id, category, kategori_kes, tarikh, jumlah_kes, status, created_at')
+          .select('id, category, tarikh, jumlah_kes, status, created_at')
           .gte('tarikh', `${summaryYear}-01-01`)
           .lte('tarikh', `${summaryYear}-12-31`)
           .limit(5000),
         supabaseSandbox
           .from('ng999_historique')
           .select('bulan, category, jumlah_kes')
+          .eq('tahun', summaryYear),
+        supabaseSandbox
+          .from('ng999_historique_status')
+          .select('status, jumlah')
           .eq('tahun', summaryYear),
       ]);
 
@@ -73,6 +78,10 @@ export function useCalamitySummaryPanel(calamityPoints) {
         });
       }
       setHistoriqueGrid(grid);
+
+      const st = {};
+      if (statusRes.data) statusRes.data.forEach(r => { st[r.status] = r.jumlah; });
+      setHistoriqueStatus(st);
 
       setLoadingSummary(false);
     };
@@ -100,7 +109,7 @@ export function useCalamitySummaryPanel(calamityPoints) {
       calamityYearRows.forEach(c => {
         const d = new Date(c.tarikh);
         if (d.getMonth() !== monthIndex) return;
-        const cat = c.category || c.kategori_kes;
+        const cat = c.category;
         if (counts[cat] !== undefined) {
           counts[cat] += (c.jumlah_kes || 1);
           total += (c.jumlah_kes || 1);
@@ -143,7 +152,7 @@ export function useCalamitySummaryPanel(calamityPoints) {
       calamityYearRows.forEach(c => {
         const d = new Date(c.tarikh);
         if (d.getMonth() !== summaryMonth || d.getDate() !== day) return;
-        const cat = c.category || c.kategori_kes;
+        const cat = c.category;
         if (counts[cat] !== undefined) {
           counts[cat] += (c.jumlah_kes || 1);
           total += (c.jumlah_kes || 1);
@@ -178,12 +187,16 @@ export function useCalamitySummaryPanel(calamityPoints) {
     const statuses = ['active', 'berjaya', 'gagal', 'batal', 'tunda', 'diambil agensi lain', 'diserah ke agensi lain'];
     const counts = {};
     statuses.forEach(s => { counts[s] = 0; });
-    calamityYearRows.forEach(c => {
-      const s = c.status || 'active';
-      if (counts[s] !== undefined) counts[s]++;
-    });
+    if (calamityYearRows.length > 0) {
+      calamityYearRows.forEach(c => {
+        const s = c.status || 'active';
+        if (counts[s] !== undefined) counts[s]++;
+      });
+    } else {
+      statuses.forEach(s => { counts[s] = historiqueStatus[s] || 0; });
+    }
     return counts;
-  }, [calamityYearRows]);
+  }, [calamityYearRows, historiqueStatus]);
 
   const summaryPeriodLabel = summaryMonth === null
     ? `Tahun ${summaryYear}`
@@ -204,11 +217,20 @@ export function useCalamitySummaryPanel(calamityPoints) {
     }
   };
 
+  const saveHistoriqueStatus = async (tahun, statusCounts) => {
+    const rows = Object.entries(statusCounts).map(([status, jumlah]) => ({ tahun, status, jumlah: parseInt(jumlah) || 0 }));
+    const { error } = await supabaseSandbox
+      .from('ng999_historique_status')
+      .upsert(rows, { onConflict: 'tahun,status' });
+    if (!error) setHistoriqueStatus(Object.fromEntries(rows.map(r => [r.status, r.jumlah])));
+    return !error;
+  };
+
   return {
     summaryYear, setSummaryYear, summaryYearOpen, setSummaryYearOpen,
     summaryMonth, setSummaryMonth, summaryMonthOpen, setSummaryMonthOpen,
     summaryDay, setSummaryDay, summaryDayOpen, setSummaryDayOpen, summaryDayOptions,
     availableSummaryYears, calamitySummaryRows, calamityMonthlyBreakdown, hasDailyRows,
-    statusBreakdown, exportingLaporanPdf, handleExportLaporanPdf,
+    statusBreakdown, saveHistoriqueStatus, exportingLaporanPdf, handleExportLaporanPdf,
   };
 }

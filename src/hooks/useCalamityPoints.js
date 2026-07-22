@@ -9,7 +9,7 @@ export function useCalamityPoints() {
   const fetchCalamityPoints = useCallback(async () => {
     const { data, error } = await supabaseSandbox
       .from('laporan_ng999')
-      .select('id, category, description, latitude, longitude, status, created_at, tarikh, jumlah_kes, kategori_kes')
+      .select('id, category, description, latitude, longitude, status, created_at, tarikh, jumlah_kes')
       .eq('status', 'active')
       .not('latitude', 'is', null);
     if (data) setCalamityPoints(data);
@@ -29,7 +29,6 @@ export function useCalamityPoints() {
     if (!category) return { error: true };
     const { error } = await supabaseSandbox.from('laporan_ng999').insert([{
       category,
-      kategori_kes: category,
       description: description?.trim() || null,
       latitude,
       longitude,

@@ -13,7 +13,7 @@ const BULAN_MS = ['Januari', 'Februari', 'Mac', 'April', 'Mei', 'Jun', 'Julai', 
 const CURRENT_YEAR = new Date().getFullYear();
 const yearOptions = Array.from({ length: CURRENT_YEAR - 1951 }, (_, i) => CURRENT_YEAR - i);
 
-export default function Ng999HistoriqueModal({ visible, onClose }) {
+export default function Ng999HistoriqueModal({ visible, onClose, initialYear }) {
   const { getGridForYear, saveHistoriqueRow, historiqueData } = useNg999Historique();
   const { calamityPoints } = useCalamityPoints();
   const summary = useCalamitySummaryPanel(calamityPoints);
@@ -73,7 +73,7 @@ export default function Ng999HistoriqueModal({ visible, onClose }) {
     setInitial(JSON.parse(JSON.stringify(d)));
   };
 
-  const handleOpen = () => { loadYear(String(CURRENT_YEAR - 1)); };
+  const handleOpen = () => { loadYear(String(initialYear || CURRENT_YEAR - 1)); };
 
   const handleSave = async () => {
     const y = parseInt(year);
@@ -141,6 +141,9 @@ export default function Ng999HistoriqueModal({ visible, onClose }) {
 
       /* Scroll fluide dans les listes */
       div[style*="overflow"] { scroll-behavior: smooth; }
+
+      /* Pas d'outline de focus au clic */
+      div[tabindex]:focus, input:focus { outline: none !important; }
     `;
     document.head.appendChild(style);
   }

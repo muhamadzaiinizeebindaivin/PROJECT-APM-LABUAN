@@ -116,6 +116,46 @@ export default function CalamitySummaryContent({ theme, large = false, mode = 't
   const summary = useCalamitySummaryPanel(calamityPoints);
   const [selectedChartCategories, setSelectedChartCategories] = useState(CALAMITY_CATEGORIES.map(cat => cat.key));
   const [histModalVisible, setHistModalVisible] = useState(false);
+  const [statusDraft, setStatusDraft] = useState({});
+  const [savingStatus, setSavingStatus] = useState(false);
+  const editingStatus = isEditMode && !summary.hasDailyRows;
+
+  const [gridDraft, setGridDraft] = useState({});
+  const [savingGrid, setSavingGrid] = useState(false);
+  const editingGrid = isEditMode && !summary.hasDailyRows && summary.summaryMonth === null;
+
+  useEffect(() => {
+    if (!editingGrid) return;
+    const d = {};
+    summary.calamitySummaryRows.forEach((row, idx) => {
+      if (row.isCumulative) return;
+      CALAMITY_CATEGORIES.forEach(cat => {
+        d[`${idx + 1}-${cat.key}`] = String(row.counts[cat.key] || '');
+      });
+    });
+    setGridDraft(d);
+  }, [editingGrid, summary.summaryYear]);
+
+  const liveTotals = useMemo(() => {
+    if (!editingGrid) return null;
+    const rowTotals = {};
+    const colTotals = {};
+    let grand = 0;
+    CALAMITY_CATEGORIES.forEach(cat => { colTotals[cat.key] = 0; });
+    Object.entries(gridDraft).forEach(([key, val]) => {
+      const [b, ...catParts] = key.split('-');
+      const catKey = catParts.join('-');
+      const v = parseInt(val) || 0;
+      rowTotals[b] = (rowTotals[b] || 0) + v;
+      if (colTotals[catKey] !== undefined) colTotals[catKey] += v;
+      grand += v;
+    });
+    return { rowTotals, colTotals, grand };
+  }, [editingGrid, gridDraft]);
+
+  useEffect(() => {
+    if (editingStatus) setStatusDraft({ ...(summary.statusBreakdown || {}) });
+  }, [editingStatus, summary.summaryYear]);
 
   const toggleChartCategory = (key) => {
     setSelectedChartCategories(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]);
@@ -277,6 +317,31 @@ export default function CalamitySummaryContent({ theme, large = false, mode = 't
       {/* MODE TABLE */}
       {mode === 'table' && (
         <View>
+        {isEditMode && summary.hasDailyRows && (
+          <View style={[styles.calamityTableWrapper, { minHeight: 0, backgroundColor: '#fffbeb', borderWidth: 1, borderColor: '#fde68a', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 16, marginBottom: 10 }]}>
+            <Text style={{ fontSize: 13, fontWeight: '700', color: '#b45309', textAlign: 'center' }}>
+              🔒 Tahun {summary.summaryYear} mempunyai rekod harian — jadual ini dikira secara automatik. Sila kemaskini melalui senarai penuh kecemasan.
+            </Text>
+          </View>
+        )}
+        {editingGrid && (
+          <View style={[styles.calamityTableWrapper, { minHeight: 0, backgroundColor: 'transparent', borderWidth: 0, flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 10, padding: 0, shadowOpacity: 0, elevation: 0 }]}>
+            <TouchableOpacity disabled={savingGrid}
+              onPress={async () => {
+                setSavingGrid(true);
+                const entries = [];
+                Object.entries(gridDraft).forEach(([key, val]) => {
+                  const [bulan, ...catParts] = key.split('-');
+                  entries.push({ bulan: parseInt(bulan), category: catParts.join('-'), jumlah_kes: parseInt(val) || 0 });
+                });
+                await summary.saveHistoriqueGrid(summary.summaryYear, entries);
+                setSavingGrid(false);
+              }}
+              style={{ backgroundColor: '#22c55e', paddingHorizontal: 20, paddingVertical: 9, borderRadius: 10 }}>
+              {savingGrid ? <ActivityIndicator size="small" color="#fff" /> : <Text style={{ fontSize: 13, fontWeight: '800', color: '#fff' }}>Simpan</Text>}
+            </TouchableOpacity>
+          </View>
+        )}
         <View style={[styles.calamityTableWrapper, { minHeight: 400 }]}>
           <View style={[styles.calamityTableHeaderRow, { flexDirection: 'row', alignItems: 'center' }]}>
             <View style={[styles.calamityMonthColFlex, styles.calamityHeaderCellBox]}>
@@ -300,15 +365,27 @@ export default function CalamitySummaryContent({ theme, large = false, mode = 't
                 </View>
                 {CALAMITY_CATEGORIES.map(cat => (
                   <View key={cat.key} style={[styles.calamityCatColFlex, styles.calamitySummaryCellBox]}>
-                    {false ? null : (
+                    {editingGrid && !row.isCumulative ? (
+                      <TextInput
+                        value={gridDraft[`${bulan}-${cat.key}`] ?? ''}
+                        onChangeText={v => setGridDraft(prev => ({ ...prev, [`${bulan}-${cat.key}`]: v.replace(/[^0-9]/g, '') }))}
+                        keyboardType="number-pad" maxLength={5} selectTextOnFocus
+                        placeholder="–" placeholderTextColor="#94a3b8"
+                        style={{ width: 44, height: 28, textAlign: 'center', fontSize: 13, borderWidth: 1, borderColor: '#fdba74', borderRadius: 6, color: PALETTE.orange, backgroundColor: '#fff', outlineStyle: 'none' }}
+                      />
+                    ) : (
                       <Text style={[styles.calamityTableCell, row.isCumulative && { fontWeight: '700' }, row.fromHistorique && { color: PALETTE.orange }, large && { fontSize: 16 }]}>
-                        {row.counts[cat.key] || '–'}
+                        {(editingGrid && row.isCumulative ? liveTotals?.colTotals[cat.key] : row.counts[cat.key]) || '–'}
                       </Text>
                     )}
                   </View>
                 ))}
                 <View style={[styles.calamityTotalColFlex, styles.calamityTotalBadge]}>
-                  <Text style={[styles.calamityTotalBadgeText, large && { fontSize: 18 }]}>{row.total}</Text>
+                  <Text style={[styles.calamityTotalBadgeText, large && { fontSize: 18 }]}>
+                    {editingGrid
+                      ? (row.isCumulative ? (liveTotals?.grand || 0) : (liveTotals?.rowTotals[bulan] || 0))
+                      : row.total}
+                  </Text>
                 </View>
               </View>
             );
@@ -320,6 +397,14 @@ export default function CalamitySummaryContent({ theme, large = false, mode = 't
       {/* MODE CHART */}
       {mode === 'chart' && Platform.OS === 'web' && analytics && (
         <View style={{ paddingHorizontal: 16, paddingBottom: 24, gap: 14 }}>
+
+          {isEditMode && summary.hasDailyRows && (
+            <View style={{ backgroundColor: '#fffbeb', borderWidth: 1, borderColor: '#fde68a', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 16 }}>
+              <Text style={{ fontSize: 13, fontWeight: '700', color: '#b45309', textAlign: 'center' }}>
+                🔒 Tahun {summary.summaryYear} mempunyai rekod harian — statistik dikira secara automatik. Sila kemaskini melalui senarai penuh kecemasan.
+              </Text>
+            </View>
+          )}
 
           {/* Résumé Statuts */}
           <SectionCard title="📋 Ringkasan Status">
@@ -339,10 +424,32 @@ export default function CalamitySummaryContent({ theme, large = false, mode = 't
                   minWidth: 140, flex: 1,
                 }}>
                   <Text style={{ fontSize: 11, fontWeight: '700', color: '#64748b', textTransform: 'uppercase', marginBottom: 4 }}>{s.label}</Text>
-                  <Text style={{ fontSize: 28, fontWeight: '900', color: s.color }}>{summary.statusBreakdown?.[s.key] || 0}</Text>
+                  {editingStatus ? (
+                    <TextInput
+                      value={String(statusDraft[s.key] ?? '')}
+                      onChangeText={v => setStatusDraft(prev => ({ ...prev, [s.key]: v.replace(/[^0-9]/g, '') }))}
+                      keyboardType="number-pad" maxLength={6}
+                      style={{ fontSize: 24, fontWeight: '900', color: s.color, borderBottomWidth: 2, borderBottomColor: s.color, paddingVertical: 2, outlineStyle: 'none' }}
+                    />
+                  ) : (
+                    <Text style={{ fontSize: 28, fontWeight: '900', color: s.color }}>{summary.statusBreakdown?.[s.key] || 0}</Text>
+                  )}
                 </View>
               ))}
             </View>
+            {editingStatus && (
+              <View style={{ flexDirection: 'row', gap: 8, marginTop: 12, justifyContent: 'flex-end' }}>
+                <TouchableOpacity disabled={savingStatus}
+                  onPress={async () => {
+                    setSavingStatus(true);
+                    await summary.saveHistoriqueStatus(summary.summaryYear, statusDraft);
+                    setSavingStatus(false);
+                  }}
+                  style={{ backgroundColor: '#22c55e', paddingHorizontal: 20, paddingVertical: 9, borderRadius: 10 }}>
+                  {savingStatus ? <ActivityIndicator size="small" color="#fff" /> : <Text style={{ fontSize: 13, fontWeight: '800', color: '#fff' }}>Simpan</Text>}
+                </TouchableOpacity>
+              </View>
+            )}
           </SectionCard>
 
           {/* Ranking Kategori */}
@@ -422,7 +529,7 @@ export default function CalamitySummaryContent({ theme, large = false, mode = 't
       {mode === 'chart' && Platform.OS !== 'web' && (
         <Text style={styles.waypointEmptyText}>Carta trend hanya tersedia di versi web.</Text>
       )}
-      <Ng999HistoriqueModal visible={histModalVisible} onClose={() => setHistModalVisible(false)} />
+      <Ng999HistoriqueModal visible={histModalVisible} onClose={() => setHistModalVisible(false)} initialYear={summary.summaryYear} />
     </ScrollView>
   );
 }
