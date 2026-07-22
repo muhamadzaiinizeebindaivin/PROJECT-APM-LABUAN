@@ -236,11 +236,20 @@ export default function CalamitySummaryContent({ theme, large = false, mode = 't
                 onSelect={(opt) => { summary.setSummaryMonth(opt === 'Semua Bulan' ? null : BULAN_MS.indexOf(opt)); summary.setSummaryDay(null); summary.setSummaryMonthOpen(false); }}
                 stackIndex={2000} />
             </View>
-            <View style={{ flex: 1 }}>
+            <View style={{ flex: 1, opacity: summary.hasDailyRows ? 1 : 0.5 }}>
               <ModalSelectField theme={theme} label="Hari"
-                value={summary.summaryDay === null ? 'Semua Hari' : String(summary.summaryDay)}
-                placeholder="Hari" options={summary.summaryDayOptions} isOpen={summary.summaryDayOpen}
-                onToggle={() => { summary.setSummaryDayOpen(!summary.summaryDayOpen); summary.setSummaryYearOpen(false); summary.setSummaryMonthOpen(false); }}
+                value={summary.hasDailyRows
+                  ? (summary.summaryDay === null ? 'Semua Hari' : String(summary.summaryDay))
+                  : 'Tiada rekod harian'}
+                placeholder="Hari"
+                options={summary.hasDailyRows ? summary.summaryDayOptions : []}
+                isOpen={summary.hasDailyRows && summary.summaryDayOpen}
+                onToggle={() => {
+                  if (!summary.hasDailyRows) return;
+                  summary.setSummaryDayOpen(!summary.summaryDayOpen);
+                  summary.setSummaryYearOpen(false);
+                  summary.setSummaryMonthOpen(false);
+                }}
                 onSelect={(opt) => { summary.setSummaryDay(opt === 'Semua Hari' ? null : Number(opt)); summary.setSummaryDayOpen(false); }}
                 stackIndex={1000} />
             </View>

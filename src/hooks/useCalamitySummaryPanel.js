@@ -15,15 +15,34 @@ export function useCalamitySummaryPanel(calamityPoints) {
   const [summaryDay, setSummaryDay] = useState(null);
   const [summaryDayOpen, setSummaryDayOpen] = useState(false);
 
+  const [historiqueYears, setHistoriqueYears] = useState([]);
+
   const availableSummaryYears = useMemo(() => {
     const years = new Set(calamityPoints.filter(c => c.tarikh).map(c => new Date(c.tarikh).getFullYear()));
+    historiqueYears.forEach(y => years.add(y));
     years.add(now.getFullYear());
     return Array.from(years).sort((a, b) => b - a).map(String);
-  }, [calamityPoints]);
+  }, [calamityPoints, historiqueYears]);
 
   const [allYearRows, setAllYearRows] = useState([]);
   const [historiqueGrid, setHistoriqueGrid] = useState({});
   const [loadingSummary, setLoadingSummary] = useState(false);
+
+  useEffect(() => {
+    const fetchHistoriqueYears = async () => {
+      const { data } = await supabaseSandbox
+        .from('ng999_historique')
+        .select('tahun');
+      if (data) setHistoriqueYears([...new Set(data.map(d => d.tahun))]);
+    };
+    fetchHistoriqueYears();
+
+    const sub = supabaseSandbox
+      .channel('historique_years_changes')
+      .on('postgres_changes', { event: '*', schema: 'sandbox', table: 'ng999_historique' }, fetchHistoriqueYears)
+      .subscribe();
+    return () => supabaseSandbox.removeChannel(sub);
+  }, []);
 
   useEffect(() => {
     const fetchAllRows = async () => {
@@ -62,6 +81,7 @@ export function useCalamitySummaryPanel(calamityPoints) {
     const sub = supabaseSandbox
       .channel(`summary_panel_${summaryYear}`)
       .on('postgres_changes', { event: '*', schema: 'sandbox', table: 'laporan_ng999' }, fetchAllRows)
+      .on('postgres_changes', { event: '*', schema: 'sandbox', table: 'ng999_historique' }, fetchAllRows)
       .subscribe();
     return () => supabaseSandbox.removeChannel(sub);
   }, [summaryYear]);
@@ -100,6 +120,11 @@ export function useCalamitySummaryPanel(calamityPoints) {
       return { month: label, counts, total, fromHistorique: !hasRealData && !!historiqueGrid[bulan] };
     });
   }, [calamityYearRows, historiqueGrid]);
+
+  const hasDailyRows = useMemo(
+    () => calamityMonthlyBreakdown.some(r => r.total > 0 && !r.fromHistorique),
+    [calamityMonthlyBreakdown]
+  );
 
   const summaryDayOptions = useMemo(() => {
     if (summaryMonth === null) return ['Semua Hari'];
@@ -183,7 +208,7 @@ export function useCalamitySummaryPanel(calamityPoints) {
     summaryYear, setSummaryYear, summaryYearOpen, setSummaryYearOpen,
     summaryMonth, setSummaryMonth, summaryMonthOpen, setSummaryMonthOpen,
     summaryDay, setSummaryDay, summaryDayOpen, setSummaryDayOpen, summaryDayOptions,
-    availableSummaryYears, calamitySummaryRows, calamityMonthlyBreakdown,
+    availableSummaryYears, calamitySummaryRows, calamityMonthlyBreakdown, hasDailyRows,
     statusBreakdown, exportingLaporanPdf, handleExportLaporanPdf,
   };
 }

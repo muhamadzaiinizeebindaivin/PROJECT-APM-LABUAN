@@ -4,6 +4,9 @@ import { View, Text, TouchableOpacity, ScrollView, TextInput, Modal, ActivityInd
 import { X } from 'lucide-react-native';
 import { CALAMITY_CATEGORIES } from '../../constants/operasiConstants';
 import { useNg999Historique } from '../../hooks/useNg999Historique';
+import { useCalamityPoints } from '../../hooks/useCalamityPoints';
+import { useCalamitySummaryPanel } from '../../hooks/useCalamitySummaryPanel';
+import { supabaseSandbox } from '../../supabaseSandboxClient';
 import { PALETTE } from '../../constants/palette';
 
 const BULAN_MS = ['Januari', 'Februari', 'Mac', 'April', 'Mei', 'Jun', 'Julai', 'Ogos', 'September', 'Oktober', 'November', 'Disember'];
@@ -12,6 +15,8 @@ const yearOptions = Array.from({ length: CURRENT_YEAR - 1951 }, (_, i) => CURREN
 
 export default function Ng999HistoriqueModal({ visible, onClose }) {
   const { getGridForYear, saveHistoriqueRow, historiqueData } = useNg999Historique();
+  const { calamityPoints } = useCalamityPoints();
+  const summary = useCalamitySummaryPanel(calamityPoints);
   const yearsWithData = new Set(historiqueData.map(d => d.tahun));
 
   const [year, setYear] = useState(String(CURRENT_YEAR - 1));
@@ -22,31 +27,57 @@ export default function Ng999HistoriqueModal({ visible, onClose }) {
   const [successMsg, setSuccessMsg] = useState(false);
   const [infoMsg, setInfoMsg] = useState(false);
   const [lockedMsg, setLockedMsg] = useState(false);
+  const [hasDailyData, setHasDailyData] = useState(false);
 
-  const isLocked = parseInt(year) >= CURRENT_YEAR;
+  const isLocked = parseInt(year) >= CURRENT_YEAR || hasDailyData;
 
-  const loadYear = (y) => {
+  const loadYear = async (y) => {
     const parsed = parseInt(y);
     setYear(y);
-    if (parsed && parsed <= CURRENT_YEAR) {
-      const grid = getGridForYear(parsed);
-      const d = {};
-      for (let b = 1; b <= 12; b++) {
-        d[b] = {};
-        CALAMITY_CATEGORIES.forEach(cat => {
-          d[b][cat.key] = String(grid[b]?.[cat.key] ?? '');
-        });
-      }
-      setDraft(d);
-      setInitial(JSON.parse(JSON.stringify(d)));
+    if (!parsed || parsed > CURRENT_YEAR) return;
+
+    // Vérifier si l'année a des rekod harian (kes individuels)
+    if (parsed < CURRENT_YEAR) {
+      const { count } = await supabaseSandbox
+        .from('laporan_ng999')
+        .select('id', { count: 'exact', head: true })
+        .gte('tarikh', `${parsed}-01-01`)
+        .lte('tarikh', `${parsed}-12-31`);
+      setHasDailyData((count || 0) > 0);
+    } else {
+      setHasDailyData(false);
     }
+
+    let grid;
+    if (parsed === CURRENT_YEAR) {
+      // Année en cours : même source que le tableau du Report Tab
+      grid = {};
+      (summary.calamityMonthlyBreakdown || []).forEach((row, i) => {
+        grid[i + 1] = {};
+        CALAMITY_CATEGORIES.forEach(cat => {
+          grid[i + 1][cat.key] = row.counts?.[cat.key] || 0;
+        });
+      });
+    } else {
+      grid = getGridForYear(parsed);
+    }
+
+    const d = {};
+    for (let b = 1; b <= 12; b++) {
+      d[b] = {};
+      CALAMITY_CATEGORIES.forEach(cat => {
+        d[b][cat.key] = String(grid[b]?.[cat.key] ?? '');
+      });
+    }
+    setDraft(d);
+    setInitial(JSON.parse(JSON.stringify(d)));
   };
 
   const handleOpen = () => { loadYear(String(CURRENT_YEAR - 1)); };
 
   const handleSave = async () => {
     const y = parseInt(year);
-    if (!y || y >= CURRENT_YEAR) {
+    if (!y || y >= CURRENT_YEAR || hasDailyData) {
       setLockedMsg(true);
       setTimeout(() => setLockedMsg(false), 3000);
       return;
@@ -128,9 +159,14 @@ export default function Ng999HistoriqueModal({ visible, onClose }) {
               <Text style={s.infoBannerText}>Tiada perubahan untuk disimpan.</Text>
             </View>
           )}
-          {lockedMsg && (
+          {lockedMsg && !hasDailyData && (
             <View style={s.lockedBanner}>
               <Text style={s.lockedBannerText}>🔒 Data tahun semasa tidak boleh diubah — pengiraan dibuat secara automatik.</Text>
+            </View>
+          )}
+          {hasDailyData && (
+            <View style={s.lockedBanner}>
+              <Text style={s.lockedBannerText}>🔒 Tahun {year} mempunyai rekod harian — data tidak boleh diubah di sini. Sila rujuk senarai penuh kecemasan.</Text>
             </View>
           )}
           <ScrollView
