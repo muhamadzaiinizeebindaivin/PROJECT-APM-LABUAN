@@ -65,7 +65,7 @@ function CustomHeader({ title, theme, userRole, onLogout, onLoginPress }) {
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
         <Image
           source={{ uri: 'https://kceeewyadcskivtmilyf.supabase.co/storage/v1/object/public/logo/apm_labuan.png' }}
-          style={{ width: 64, height: 64 }}
+          style={{ width: 226, height: 60 }}
           resizeMode="contain"
         />
         <Text style={{ fontFamily: FONTS.displayBold, color: theme.text, fontSize: 20 }} numberOfLines={1}>
