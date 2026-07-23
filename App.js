@@ -20,7 +20,6 @@ import LatihanScreen from './src/screens/LatihanScreen';
 import LogistikScreen from './src/screens/LogistikScreen';
 import OperasiScreen from './src/screens/OperasiScreen';
 import SekretariatScreen from './src/screens/SekretariatScreen';
-import LoginScreen from './src/screens/LoginScreen';
 import HomeScreen from './src/screens/HomeScreen'; 
 import DriverScreen from './src/screens/DriverScreen';
 import SignUpScreen from './src/screens/SignUpScreen';
@@ -59,16 +58,6 @@ function AuthFlow({ theme, handleLogin }) {
       <Stack.Screen name="HomeScreen" options={{ title: 'Dashboard APM Labuan', headerStyle: { backgroundColor: theme.background }, headerTitleStyle: { color: theme.text, fontWeight: 'bold' } }}>
         {(props) => <HomeScreen {...props} theme={theme} isAuthFlow={true} onGuestLogin={() => handleLogin('guest')} onDriverLogin={() => handleLogin('driver')} onAgencyLogin={() => handleLogin('agency')} />}
       </Stack.Screen>
-      <Stack.Screen name="Login" options={{ title: 'Log Masuk Portal', headerStyle: { backgroundColor: theme.background }, headerTitleStyle: { color: theme.text, fontWeight: 'bold' }, headerTintColor: theme.text }}>
-        {(props) => (
-          <LoginScreen
-            {...props}
-            onLogin={handleLogin}
-            theme={theme}
-            onNavigateToSignUp={() => props.navigation.navigate('SignUp')}
-          />
-        )}
-      </Stack.Screen>
       <Stack.Screen name="SignUp" options={{ title: 'Daftar Akaun Agensi', headerStyle: { backgroundColor: theme.background }, headerTitleStyle: { color: theme.text, fontWeight: 'bold' }, headerTintColor: theme.text }}>
         {(props) => (
           <SignUpScreen
@@ -95,7 +84,7 @@ function DepartmentFlow({ userRole, theme, handleLogin, handleLogout, onLoginPre
         onLoginPress={onLoginPress}
       />
     ),
-    tabBarStyle: { backgroundColor: theme.card, borderTopWidth: 0, elevation: 10, height: 65, paddingBottom: 10, paddingTop: 10 },
+    tabBarStyle: { backgroundColor: theme.card, borderTopWidth: 3, borderTopColor: '#fdba74', elevation: 10, height: 65, paddingBottom: 10, paddingTop: 10 },
     tabBarActiveTintColor: '#f97316', 
     tabBarInactiveTintColor: theme.textSecondary,
     tabBarLabelStyle: { fontSize: 10, fontFamily: FONTS.bodyMedium, marginTop: 4 },

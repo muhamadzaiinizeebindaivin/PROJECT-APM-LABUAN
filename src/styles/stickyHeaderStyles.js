@@ -5,7 +5,7 @@ export const stickyHeaderStyles = StyleSheet.create({
   stickyHeader: {
     flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center',
     paddingHorizontal: 16, paddingVertical: 10,
-    backgroundColor: PALETTE.cardLight, borderBottomWidth: 1, borderBottomColor: PALETTE.cardLightBorder,
+    backgroundColor: PALETTE.cardLight, borderBottomWidth: 3, borderBottomColor: '#fdba74',
     zIndex: 10, gap: 10, position: 'relative',
   },
   stickyHeaderCenter: {

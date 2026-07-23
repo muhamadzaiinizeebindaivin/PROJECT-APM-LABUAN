@@ -30,7 +30,7 @@ export default function CustomHeader({ title, theme, userRole, onLogout, onLogin
       style={styles.container}
     >
       <View style={styles.brandRow}>
-        <View style={[styles.logoWrapper, styles.logoBadge]}>
+        <View style={styles.logoWrapper}>
           <Image
             source={{ uri: 'https://kceeewyadcskivtmilyf.supabase.co/storage/v1/object/public/logo/apm_labuan.png' }}
             style={styles.logo}

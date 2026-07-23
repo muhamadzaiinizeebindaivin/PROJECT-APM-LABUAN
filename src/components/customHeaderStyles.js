@@ -25,12 +25,6 @@ export const customHeaderStyles = StyleSheet.create({
       },
     }),
   },
-  logoBadge: {
-    backgroundColor: 'rgba(255,255,255,0.9)',
-    borderRadius: 10,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-  },
   brandRow: {
     flexDirection: 'row',
     alignItems: 'center',

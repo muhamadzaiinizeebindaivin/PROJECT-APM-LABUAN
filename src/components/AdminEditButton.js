@@ -5,7 +5,7 @@ import { Edit2, X } from 'lucide-react-native';
 export default function AdminEditButton({ isEditMode, setIsEditMode, userRole }) {
   if (userRole && userRole !== 'admin') return null;
 
-  const accent = isEditMode ? '#ef4444' : '#16a34a';
+  const accent = '#f97316';
 
   return (
     <TouchableOpacity
@@ -30,7 +30,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 14,
     paddingLeft: 6,
-    borderRadius: 999,
+    borderRadius: 10,
     marginRight: 4,
     gap: 8,
     elevation: 3,
