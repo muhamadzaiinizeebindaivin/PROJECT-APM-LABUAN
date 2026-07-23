@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, ScrollView, Modal } from 'react-native';
 import {
-  UserPlus, CheckCircle, AlertCircle, User, Mail, Lock, ShieldCheck, Briefcase,
+  UserPlus, CheckCircle, AlertCircle, User, Mail, ShieldCheck, Briefcase,
   Trash2, Users, Search, ChevronLeft, ChevronRight, ArrowUpDown,
   LayoutDashboard, CreditCard, Truck, GraduationCap, ShieldAlert, RefreshCw
 } from 'lucide-react-native';

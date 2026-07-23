@@ -15,7 +15,7 @@ const jsonResponse = (body: Record<string, unknown>, status: number) =>
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 
-const ALLOWED_ROLES = ["admin", "pentadbiran", "kewangan", "logistik", "angkatan", "sekretariat", "latihan"];
+const ALLOWED_ROLES = ["admin", "pentadbiran", "kewangan", "logistik", "angkatan", "sekretariat", "latihan", "operasi"];
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MAX_NAME_LENGTH = 100;
 

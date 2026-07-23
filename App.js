@@ -22,7 +22,6 @@ import OperasiScreen from './src/screens/OperasiScreen';
 import SekretariatScreen from './src/screens/SekretariatScreen';
 import HomeScreen from './src/screens/HomeScreen'; 
 import DriverScreen from './src/screens/DriverScreen';
-import SignUpScreen from './src/screens/SignUpScreen';
 import AgencyTrackingScreen from './src/screens/AgencyTrackingScreen';
 import PublicNg999Form from './src/screens/PublicNg999Form';
 import SetPasswordScreen from './src/screens/SetPasswordScreen';
@@ -57,16 +56,6 @@ function AuthFlow({ theme, handleLogin }) {
     <Stack.Navigator>
       <Stack.Screen name="HomeScreen" options={{ title: 'Dashboard APM Labuan', headerStyle: { backgroundColor: theme.background }, headerTitleStyle: { color: theme.text, fontWeight: 'bold' } }}>
         {(props) => <HomeScreen {...props} theme={theme} isAuthFlow={true} onGuestLogin={() => handleLogin('guest')} onDriverLogin={() => handleLogin('driver')} onAgencyLogin={() => handleLogin('agency')} />}
-      </Stack.Screen>
-      <Stack.Screen name="SignUp" options={{ title: 'Daftar Akaun Agensi', headerStyle: { backgroundColor: theme.background }, headerTitleStyle: { color: theme.text, fontWeight: 'bold' }, headerTintColor: theme.text }}>
-        {(props) => (
-          <SignUpScreen
-            {...props}
-            theme={theme}
-            onSignUpSuccess={() => props.navigation.navigate('Login')}
-            onBackToLogin={() => props.navigation.navigate('Login')}
-          />
-        )}
       </Stack.Screen>
     </Stack.Navigator>
   );
@@ -399,7 +388,6 @@ export default function App() {
     return (
       <View style={{ flex: 1 }}>
         <SetPasswordScreen
-          theme={theme}
           onGoToLogin={() => {
             window.location.hash = '';
             setIsInvitedUser(false);
