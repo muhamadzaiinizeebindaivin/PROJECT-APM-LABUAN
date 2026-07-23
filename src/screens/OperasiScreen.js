@@ -8,7 +8,8 @@ import PertolonganCemasTab from './operasi/PertolonganCemasTab';
 import AdminEditButton from '../components/AdminEditButton';
 import { useKpi } from '../hooks/useKpi';
 import KpiSection from './pentadbiran/KpiSection';
-import { useOperasiUnit } from '../hooks/useOperasiUnit';
+import { useUnitStaff } from '../hooks/useUnitStaff';
+import { useOperasiMeta } from '../hooks/useOperasiMeta';
 import AngkatanUnitSection from './angkatan/AngkatanUnitSection';
 import { PALETTE } from '../constants/palette';
 import { stickyHeaderStyles } from '../styles/stickyHeaderStyles';
@@ -18,10 +19,33 @@ export default function OperasiScreen({ theme, userRole }) {
   const [activeTab, setActiveTab] = useState('map');
   const [isEditMode, setIsEditMode] = useState(false);
   const { kpiList, saveKpiItem, deleteKpiItem, reorderKpi } = useKpi('operasi');
-  const { unitList, loadingUnit, saveUnitItem, deleteUnitItem, reorderUnit } = useOperasiUnit();
+  const unit = useUnitStaff('operasi');
+  const { dikemaskiniRaw } = useOperasiMeta();
+
+  // Convertit un timestamp ISO (colonne updated_at) au format d'affichage DD/M/YYYY HH:MM
+  const formatTimestamp = (iso) => {
+    if (!iso) return null;
+    const d = new Date(iso);
+    const date = `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`;
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    return `${date} ${hours}:${minutes}`;
+  };
+  const dikemaskini = formatTimestamp(dikemaskiniRaw);
 
   return (
     <View style={styles.container}>
+      {userRole === 'admin' && activeTab !== 'map' && (
+        <View style={stickyHeaderStyles.stickyHeader}>
+          <View style={stickyHeaderStyles.stickyHeaderCenter} pointerEvents="none">
+            {dikemaskini ? (
+              <Text style={stickyHeaderStyles.stickyHeaderDikemaskini}>DIKEMASKINI {dikemaskini}</Text>
+            ) : null}
+          </View>
+          <AdminEditButton isEditMode={isEditMode} setIsEditMode={setIsEditMode} userRole={userRole} />
+        </View>
+      )}
+
       {/* ---- Barre d'onglets ---- */}
       {canManageOperasi && (
         <View style={styles.toggleWrapper}>
@@ -53,11 +77,10 @@ export default function OperasiScreen({ theme, userRole }) {
           </TouchableOpacity>
         </View>
       )}
-
-      {/* ---- KPI + AdminEdit (hors carte) ---- */}
+      
+      {/* ---- KPI (hors carte) ---- */}
       {activeTab !== 'map' && (
         <ScrollView contentContainerStyle={styles.contentContainer} showsVerticalScrollIndicator={false}>
-          <AdminEditButton isEditMode={isEditMode} setIsEditMode={setIsEditMode} userRole={userRole} />
           {activeTab === 'report' && (
             <View style={styles.kpiWrapper}>
               <KpiSection
@@ -76,12 +99,12 @@ export default function OperasiScreen({ theme, userRole }) {
 
           <View style={{ paddingHorizontal: 16 }}>
             <AngkatanUnitSection
-              unitList={unitList}
-              loadingUnit={loadingUnit}
+              unitList={unit.staffList}
+              loadingUnit={unit.loading}
               isEditMode={isEditMode}
-              saveUnitItem={saveUnitItem}
-              deleteUnitItem={deleteUnitItem}
-              reorderUnit={reorderUnit}
+              saveUnitItem={unit.saveStaffItem}
+              deleteUnitItem={unit.deleteStaffItem}
+              reorderUnit={unit.reorderStaff}
             />
           </View>
         </ScrollView>
