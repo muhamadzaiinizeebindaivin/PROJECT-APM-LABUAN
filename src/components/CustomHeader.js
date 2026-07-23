@@ -8,7 +8,7 @@ import { customHeaderStyles as styles } from './customHeaderStyles';
 
 // Dégradé du header : orange (marque APM) vers bleu.
 // Modifie ces deux couleurs pour ajuster le dégradé.
-const HEADER_GRADIENT = [PALETTE.orange, '#2563eb'];
+const HEADER_GRADIENT = ['#60a5fa', '#fb923c'];
 
 function HeaderRoleBadge({ userRole }) {
   return (

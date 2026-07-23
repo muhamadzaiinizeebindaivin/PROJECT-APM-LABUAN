@@ -1,9 +1,10 @@
 // src/screens/AgencyTrackingScreen.js
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, FlatList, TextInput, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, FlatList, TextInput, Platform, Image } from 'react-native';
 import * as Location from 'expo-location';
-import { Navigation, StopCircle, ArrowLeft, Search, Building2, LogOut } from 'lucide-react-native';
+import { Navigation, StopCircle, ArrowLeft, Search, Building2 } from 'lucide-react-native';
 import { supabaseSandbox as supabase } from '../supabaseSandboxClient';
+import { PALETTE } from '../constants/palette';
 
 const STORAGE_KEY = 'apm_agency_session';
 
@@ -40,7 +41,14 @@ const haversineDistanceKm = (lat1, lon1, lat2, lon2) => {
   return R * c;
 };
 
-export default function AgencyTrackingScreen({ onLogout, theme }) {
+function AgencyLogo({ url, size, fallbackSize }) {
+  if (url) {
+    return <Image source={{ uri: url }} style={{ width: size, height: size, borderRadius: size / 2 }} resizeMode="cover" />;
+  }
+  return <Building2 color={PALETTE.orange} size={fallbackSize} />;
+}
+
+export default function AgencyTrackingScreen({ onLogout }) {
   const [agencies, setAgencies] = useState([]);
   const [loadingAgencies, setLoadingAgencies] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -59,14 +67,14 @@ export default function AgencyTrackingScreen({ onLogout, theme }) {
   const lastCoordsRef = useRef(null);
   const distanceAccumRef = useRef(0);
   const wasTrackingRef = useRef(false);
-  
+
 
   useEffect(() => {
     let isMounted = true;
     const fetchAgencies = async () => {
       const { data, error } = await supabase
         .from('jpbd_directory')
-        .select('id, agency')
+        .select('id, agency, logo_url')
         .order('agency', { ascending: true });
 
       if (data && isMounted) setAgencies(data);
@@ -265,8 +273,8 @@ export default function AgencyTrackingScreen({ onLogout, theme }) {
 
   if (isRestoring) {
     return (
-      <View style={[styles.container, { backgroundColor: theme?.background || '#f8fafc', justifyContent: 'center' }]}>
-        <ActivityIndicator size="large" color={theme?.accent || '#1E3A8A'} />
+      <View style={[styles.container, { justifyContent: 'center' }]}>
+        <ActivityIndicator size="large" color={PALETTE.orange} />
       </View>
     );
   }
@@ -274,25 +282,25 @@ export default function AgencyTrackingScreen({ onLogout, theme }) {
   // VIEW 1 : Sélection de l'agence
   if (!selectedAgency) {
     return (
-      <View style={[styles.container, { backgroundColor: theme?.background || '#f8fafc' }]}>
+      <View style={styles.container}>
         <View style={styles.header}>
-          <Text style={[styles.title, { color: theme?.text || '#0f172a' }]}>Pilih Agensi</Text>
-          <Text style={{ color: theme?.textSecondary || '#64748b' }}>Sila pilih agensi anda</Text>
+          <Text style={styles.title}>Pilih Agensi</Text>
+          <Text style={styles.subtitle}>Sila pilih agensi anda</Text>
         </View>
 
-        <View style={[styles.searchContainer, { backgroundColor: theme?.card || '#fff', borderColor: theme?.border || '#ccc' }]}>
-          <Search color={theme?.textSecondary || '#64748b'} size={20} style={styles.searchIcon} />
+        <View style={styles.searchContainer}>
+          <Search color={PALETTE.textMutedDark} size={20} style={styles.searchIcon} />
           <TextInput
-            style={[styles.searchInput, { color: theme?.text || '#0f172a' }]}
+            style={styles.searchInput}
             placeholder="Cari nama agensi..."
-            placeholderTextColor={theme?.textSecondary}
+            placeholderTextColor={PALETTE.textMutedDark}
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
         </View>
 
         {loadingAgencies ? (
-          <ActivityIndicator size="large" color={theme?.accent || '#1E3A8A'} style={{ marginTop: 20 }} />
+          <ActivityIndicator size="large" color={PALETTE.orange} style={{ marginTop: 20 }} />
         ) : (
           <FlatList
             data={filteredAgencies}
@@ -304,57 +312,57 @@ export default function AgencyTrackingScreen({ onLogout, theme }) {
             contentContainerStyle={{ paddingBottom: 20 }}
             renderItem={({ item }) => (
               <TouchableOpacity
-                style={[styles.agencyCard, { borderColor: theme?.border || '#e5e7eb', backgroundColor: theme?.card || '#fff' }]}
+                style={styles.agencyCard}
                 onPress={() => setSelectedAgency(item)}
                 activeOpacity={0.7}
               >
-                <View style={[styles.iconContainer, { backgroundColor: (theme?.accent || '#1E3A8A') + '15' }]}>
-                  <Building2 color={theme?.accent || '#1E3A8A'} size={28} />
+                <View style={styles.iconContainer}>
+                  <AgencyLogo url={item.logo_url} size={44} fallbackSize={28} />
                 </View>
-                <Text style={[styles.agencyCardText, { color: theme?.text || '#0f172a' }]} numberOfLines={2}>
+                <Text style={styles.agencyCardText} numberOfLines={2}>
                   {item.agency}
                 </Text>
               </TouchableOpacity>
             )}
             ListEmptyComponent={
-              <Text style={{ color: theme?.textSecondary || '#64748b', textAlign: 'center', marginTop: 20 }}>
-                Tiada agensi dijumpai.
-              </Text>
+              <Text style={styles.emptyText}>Tiada agensi dijumpai.</Text>
             }
           />
         )}
 
-        </View>
+      </View>
     );
   }
 
   // VIEW 2 : Saisie du nom (si pas encore rejoint)
   if (!trackerId) {
     return (
-      <View style={[styles.container, { backgroundColor: theme?.background || '#f8fafc', justifyContent: 'center' }]}>
+      <View style={[styles.container, { justifyContent: 'center' }]}>
         <TouchableOpacity style={styles.backButton} onPress={() => setSelectedAgency(null)}>
-          <ArrowLeft color={theme?.text || '#0f172a'} size={24} />
-          <Text style={[styles.backText, { color: theme?.text || '#0f172a' }]}>Tukar Agensi</Text>
+          <ArrowLeft color={PALETTE.textDark} size={22} />
+          <Text style={styles.backText}>Tukar Agensi</Text>
         </TouchableOpacity>
 
         <View style={styles.header}>
-          <Building2 color={theme?.accent || '#1E3A8A'} size={48} />
-          <Text style={[styles.title, { color: theme?.text || '#0f172a', marginTop: 10 }]}>{selectedAgency.agency}</Text>
-          <Text style={{ color: theme?.textSecondary || '#64748b' }}>Masukkan nama anda untuk mula</Text>
+          <View style={styles.agencyIconWrapLarge}>
+            <AgencyLogo url={selectedAgency.logo_url} size={60} fallbackSize={40} />
+          </View>
+          <Text style={[styles.title, { marginTop: 12 }]}>{selectedAgency.agency}</Text>
+          <Text style={styles.subtitle}>Masukkan nama anda untuk mula</Text>
         </View>
 
-        <View style={[styles.searchContainer, { backgroundColor: theme?.card || '#fff', borderColor: theme?.border || '#ccc', marginBottom: 20 }]}>
+        <View style={[styles.searchContainer, { marginBottom: 20 }]}>
           <TextInput
-            style={[styles.searchInput, { color: theme?.text || '#0f172a' }]}
+            style={styles.searchInput}
             placeholder="Nama anda"
-            placeholderTextColor={theme?.textSecondary}
+            placeholderTextColor={PALETTE.textMutedDark}
             value={memberName}
             onChangeText={setMemberName}
           />
         </View>
 
         <TouchableOpacity
-          style={[styles.joinButton, { backgroundColor: theme?.accent || '#1E3A8A' }, joining && { opacity: 0.7 }]}
+          style={[styles.joinButton, joining && { opacity: 0.7 }]}
           onPress={handleJoin}
           disabled={joining}
         >
@@ -366,7 +374,7 @@ export default function AgencyTrackingScreen({ onLogout, theme }) {
 
   // VIEW 3 : Tracking
   return (
-    <View style={[styles.container, { backgroundColor: theme?.background || '#f8fafc' }]}>
+    <View style={styles.container}>
       <TouchableOpacity
         style={styles.backButton}
         onPress={() => {
@@ -380,58 +388,90 @@ export default function AgencyTrackingScreen({ onLogout, theme }) {
           setMemberName('');
         }}
       >
-        <ArrowLeft color={theme?.text || '#0f172a'} size={24} />
-        <Text style={[styles.backText, { color: theme?.text || '#0f172a' }]}>Tukar Agensi</Text>
+        <ArrowLeft color={PALETTE.textDark} size={22} />
+        <Text style={styles.backText}>Tukar Agensi</Text>
       </TouchableOpacity>
 
       <View style={styles.header}>
-        <Building2 color={theme?.accent || '#1E3A8A'} size={40} />
-        <Text style={[styles.title, { color: theme?.text || '#0f172a' }]}>{selectedAgency.agency}</Text>
-        <Text style={{ color: theme?.textSecondary || '#64748b' }}>{memberName}</Text>
+        <View style={styles.agencyIconWrapLarge}>
+          <AgencyLogo url={selectedAgency.logo_url} size={56} fallbackSize={36} />
+        </View>
+        <Text style={styles.title}>{selectedAgency.agency}</Text>
+        <Text style={styles.subtitle}>{memberName}</Text>
       </View>
 
-      <View style={[styles.statusBox, { borderColor: theme?.border || '#ccc', backgroundColor: theme?.card || '#fff' }]}>
-        <Text style={[styles.statusText, { color: theme?.text || '#0f172a' }]}>Status: {status}</Text>
+      <View style={styles.statusBox}>
+        <Text style={styles.statusText}>Status: {status}</Text>
         {location && (
-          <Text style={{ color: theme?.textSecondary || '#64748b', fontSize: 12, marginTop: 5 }}>
+          <Text style={styles.statusCoords}>
             Lat: {location.latitude.toFixed(5)} | Lng: {location.longitude.toFixed(5)}
           </Text>
         )}
       </View>
 
       <TouchableOpacity
-        style={[styles.button, { backgroundColor: isTracking ? '#ef4444' : '#22c55e' }]}
+        style={[styles.button, { backgroundColor: isTracking ? PALETTE.danger : PALETTE.success }]}
         onPress={() => setIsTracking(!isTracking)}
-        activeOpacity={0.8}
+        activeOpacity={0.85}
       >
         {isTracking ? <StopCircle color="#fff" size={36} /> : <Navigation color="#fff" size={36} />}
         <Text style={styles.btnText}>{isTracking ? 'TAMAT JEJAK' : 'MULA JEJAK'}</Text>
       </TouchableOpacity>
 
-      {isTracking && <ActivityIndicator size="large" color={theme?.accent || '#3b82f6'} style={{ marginTop: 20 }} />}
+      {isTracking && <ActivityIndicator size="large" color={PALETTE.orange} style={{ marginTop: 20 }} />}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, alignItems: 'center', padding: 20, paddingTop: 50 },
+  container: { flex: 1, alignItems: 'center', padding: 20, paddingTop: 50, backgroundColor: PALETTE.softOrangeBg },
   header: { marginBottom: 20, alignItems: 'center', width: '100%' },
-  title: { fontSize: 24, fontWeight: '900', marginBottom: 5, textAlign: 'center' },
-  searchContainer: { flexDirection: 'row', alignItems: 'center', width: '100%', paddingHorizontal: 15, borderRadius: 12, borderWidth: 1, marginBottom: 20, height: 50 },
+  title: { fontSize: 22, fontWeight: '900', color: PALETTE.textDark, marginBottom: 4, textAlign: 'center' },
+  subtitle: { fontSize: 13, color: PALETTE.textMutedDark, fontWeight: '600' },
+  emptyText: { color: PALETTE.textMutedDark, textAlign: 'center', marginTop: 20 },
+
+  searchContainer: {
+    flexDirection: 'row', alignItems: 'center', width: '100%', paddingHorizontal: 15,
+    borderRadius: 14, borderWidth: 1, borderColor: PALETTE.cardLightBorder,
+    backgroundColor: PALETTE.cardLight, marginBottom: 20, height: 50,
+  },
   searchIcon: { marginRight: 10 },
-  searchInput: { flex: 1, height: '100%', fontSize: 16 },
+  searchInput: { flex: 1, height: '100%', fontSize: 15, color: PALETTE.textDark, outlineStyle: 'none', outlineWidth: 0 },
+
   row: { justifyContent: 'space-between', marginBottom: 15 },
-  agencyCard: { width: '48%', padding: 15, borderWidth: 1, borderRadius: 16, alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 8, elevation: 3 },
-  iconContainer: { width: 60, height: 60, borderRadius: 30, justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
-  agencyCardText: { fontSize: 13, fontWeight: 'bold', textAlign: 'center' },
-  logoutBtn: { paddingVertical: 15, marginTop: 10 },
-  topLogoutBtn: { alignSelf: 'flex-start', paddingHorizontal: 20, paddingBottom: 10 },
-  backButton: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
-  backText: { fontSize: 16, marginLeft: 5, fontWeight: '600' },
-  statusBox: { marginBottom: 40, alignItems: 'center', padding: 20, borderWidth: 1, borderRadius: 16, width: '100%' },
-  statusText: { fontSize: 16, fontWeight: 'bold' },
-  button: { width: 200, height: 200, borderRadius: 100, justifyContent: 'center', alignItems: 'center', elevation: 10 },
-  btnText: { color: '#fff', fontSize: 18, fontWeight: '900', marginTop: 10, textAlign: 'center' },
-  joinButton: { width: '100%', paddingVertical: 16, borderRadius: 12, alignItems: 'center' },
-  joinButtonText: { color: '#fff', fontSize: 16, fontWeight: '800' },
+  agencyCard: {
+    width: '48%', padding: 16, borderRadius: 18, alignItems: 'center',
+    backgroundColor: PALETTE.cardLight, borderWidth: 1, borderColor: PALETTE.cardLightBorder,
+    shadowColor: '#c9825a', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.06, shadowRadius: 14, elevation: 2,
+  },
+  iconContainer: {
+    width: 60, height: 60, borderRadius: 30, justifyContent: 'center', alignItems: 'center',
+    backgroundColor: 'rgba(249, 115, 22, 0.12)', marginBottom: 12,
+  },
+  agencyCardText: { fontSize: 13, fontWeight: '800', color: PALETTE.textDark, textAlign: 'center' },
+
+  agencyIconWrapLarge: {
+    width: 76, height: 76, borderRadius: 38, justifyContent: 'center', alignItems: 'center',
+    backgroundColor: 'rgba(249, 115, 22, 0.12)',
+  },
+
+  backButton: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', marginBottom: 10, gap: 6 },
+  backText: { fontSize: 14, fontWeight: '700', color: PALETTE.textDark },
+
+  statusBox: {
+    marginBottom: 40, alignItems: 'center', padding: 18, borderRadius: 16, width: '100%',
+    backgroundColor: PALETTE.cardLight, borderWidth: 1, borderColor: PALETTE.cardLightBorder,
+    shadowColor: '#c9825a', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 10, elevation: 1,
+  },
+  statusText: { fontSize: 15, fontWeight: '800', color: PALETTE.textDark },
+  statusCoords: { color: PALETTE.textMutedDark, fontSize: 12, marginTop: 5 },
+
+  button: {
+    width: 200, height: 200, borderRadius: 100, justifyContent: 'center', alignItems: 'center',
+    elevation: 8, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 10, shadowOffset: { width: 0, height: 5 },
+  },
+  btnText: { color: '#fff', fontSize: 16, fontWeight: '900', marginTop: 10, textAlign: 'center' },
+
+  joinButton: { width: '100%', paddingVertical: 16, borderRadius: 14, alignItems: 'center', backgroundColor: PALETTE.orange },
+  joinButtonText: { color: '#fff', fontSize: 15, fontWeight: '800' },
 });

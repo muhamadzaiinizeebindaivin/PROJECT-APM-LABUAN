@@ -15,7 +15,7 @@ export default function AuthGate({
       <View style={styles.glowRed} />
 
       <View style={styles.content}>
-        <Text style={styles.kicker}>SEDIAOPS • APM W.P LABUAN</Text>
+        <Text style={styles.kicker}>APM W.P LABUAN</Text>
 
         <Text style={styles.heroTitle}>
           Sedia Bertindak{'\n'}

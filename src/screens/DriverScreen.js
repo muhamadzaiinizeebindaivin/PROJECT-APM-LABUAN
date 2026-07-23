@@ -7,8 +7,9 @@ import { getVehicleIcon } from '../utils/vehicleIcons';
 import { useAvailableVehicles } from '../hooks/useAvailableVehicles';
 import { usePatrolTracking } from '../hooks/usePatrolTracking';
 import { supabaseSandbox } from '../supabaseSandboxClient';
+import { PALETTE } from '../constants/palette';
 
-export default function DriverScreen({ onLogout, theme }) {
+export default function DriverScreen({ onLogout }) {
   const { vehicles, loading: loadingVehicles } = useAvailableVehicles();
 
   const [selectedVehicle, setSelectedVehicle] = useState(null);
@@ -96,26 +97,26 @@ export default function DriverScreen({ onLogout, theme }) {
   // View 1: Vehicle Selection Screen
   if (!selectedVehicle) {
     return (
-      <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <View style={styles.container}>
         <View style={styles.header}>
-          <Text style={[styles.title, { color: theme.text }]}>Pilih Kenderaan</Text>
-          <Text style={{ color: theme.textSecondary }}>Sila pilih kenderaan untuk syif anda</Text>
+          <Text style={styles.title}>Pilih Kenderaan</Text>
+          <Text style={styles.subtitle}>Sila pilih kenderaan untuk syif anda</Text>
         </View>
 
         {/* Search Bar */}
-        <View style={[styles.searchContainer, { backgroundColor: theme.cardBackground || '#fff', borderColor: theme.border || '#ccc' }]}>
-          <Search color={theme.textSecondary} size={20} style={styles.searchIcon} />
+        <View style={styles.searchContainer}>
+          <Search color={PALETTE.textMutedDark} size={20} style={styles.searchIcon} />
           <TextInput
-            style={[styles.searchInput, { color: theme.text }]}
+            style={styles.searchInput}
             placeholder="Cari no. plat atau jenis..."
-            placeholderTextColor={theme.textSecondary}
+            placeholderTextColor={PALETTE.textMutedDark}
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
         </View>
 
         {loadingVehicles ? (
-          <ActivityIndicator size="large" color={theme.accent || '#3b82f6'} style={{ marginTop: 20 }} />
+          <ActivityIndicator size="large" color={PALETTE.orange} style={{ marginTop: 20 }} />
         ) : (
           <FlatList
             data={filteredVehicles}
@@ -127,53 +128,47 @@ export default function DriverScreen({ onLogout, theme }) {
             contentContainerStyle={{ paddingBottom: 20 }}
             renderItem={({ item }) => (
               <TouchableOpacity
-                style={[
-                  styles.vehicleCard,
-                  { borderColor: theme.border || '#e5e7eb', backgroundColor: theme.cardBackground || '#fff' },
-                  item.isBusy && styles.vehicleCardBusy,
-                ]}
+                style={[styles.vehicleCard, item.isBusy && styles.vehicleCardBusy]}
                 onPress={() => { if (!item.isBusy) setSelectedVehicle(item); }}
                 activeOpacity={item.isBusy ? 1 : 0.7}
                 disabled={item.isBusy}
               >
-                <View style={[styles.iconContainer, { backgroundColor: (theme.accent || '#3b82f6') + '15' }, item.isBusy && { opacity: 0.4 }]}>
-                  {getVehicleIcon(item.icon_key, theme.accent || '#3b82f6', 32)}
+                <View style={[styles.iconContainer, item.isBusy && { opacity: 0.4 }]}>
+                  {getVehicleIcon(item.icon_key, PALETTE.orange, 32)}
                 </View>
 
-                <Text style={[styles.vehiclePlateText, { color: theme.text }, item.isBusy && { opacity: 0.4 }]} numberOfLines={1}>
+                <Text style={[styles.vehiclePlateText, item.isBusy && { opacity: 0.4 }]} numberOfLines={1}>
                   {item.reg || 'TIADA PLAT'}
                 </Text>
 
-                <Text style={[styles.vehicleNameText, { color: theme.textSecondary }, item.isBusy && { opacity: 0.4 }]} numberOfLines={2}>
+                <Text style={[styles.vehicleNameText, item.isBusy && { opacity: 0.4 }]} numberOfLines={2}>
                   {item.model}
                 </Text>
 
                 {item.isBusy ? (
-                  <View style={[styles.badge, { backgroundColor: '#fee2e2' }]}>
-                    <Text style={[styles.badgeText, { color: '#991b1b' }]}>Sedang Digunakan</Text>
+                  <View style={[styles.badge, { backgroundColor: PALETTE.dangerSoft }]}>
+                    <Text style={[styles.badgeText, { color: PALETTE.danger }]}>Sedang Digunakan</Text>
                   </View>
                 ) : (
-                  <View style={[styles.badge, { backgroundColor: '#dcfce7' }]}>
-                    <Text style={[styles.badgeText, { color: '#166534' }]}>Tersedia</Text>
+                  <View style={[styles.badge, { backgroundColor: PALETTE.successSoft }]}>
+                    <Text style={[styles.badgeText, { color: PALETTE.success }]}>Tersedia</Text>
                   </View>
                 )}
               </TouchableOpacity>
             )}
             ListEmptyComponent={
-              <Text style={{ color: theme.textSecondary, textAlign: 'center', marginTop: 20 }}>
-                Tiada kenderaan dijumpai.
-              </Text>
+              <Text style={styles.emptyText}>Tiada kenderaan dijumpai.</Text>
             }
           />
         )}
 
-        </View>
+      </View>
     );
   }
 
   // View 2: Tracking Screen
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
+    <View style={styles.container}>
 
       <TouchableOpacity
         style={styles.backButton}
@@ -185,27 +180,25 @@ export default function DriverScreen({ onLogout, theme }) {
           setSelectedVehicle(null);
         }}
       >
-        <ArrowLeft color={theme.text} size={24} />
-        <Text style={[styles.backText, { color: theme.text }]}>Tukar Kenderaan</Text>
+        <ArrowLeft color={PALETTE.textDark} size={22} />
+        <Text style={styles.backText}>Tukar Kenderaan</Text>
       </TouchableOpacity>
 
       <View style={styles.header}>
-        <Text style={[styles.title, { color: theme.text }]}>Pemandu</Text>
+        <Text style={styles.title}>Pemandu</Text>
         <View style={styles.activeVehicleCard}>
-          {getVehicleIcon(selectedVehicle.icon_key, theme.accent || '#3b82f6', 32)}
-          <Text style={{ color: theme.text, fontSize: 20, fontWeight: 'bold', marginTop: 10 }}>
-            {selectedVehicle.reg || 'TIADA PLAT'}
-          </Text>
-          <Text style={{ color: theme.textSecondary, fontSize: 14, textAlign: 'center', marginTop: 5 }}>
-            {selectedVehicle.model}
-          </Text>
+          <View style={styles.activeVehicleIconWrap}>
+            {getVehicleIcon(selectedVehicle.icon_key, PALETTE.orange, 32)}
+          </View>
+          <Text style={styles.activeVehiclePlate}>{selectedVehicle.reg || 'TIADA PLAT'}</Text>
+          <Text style={styles.activeVehicleModel}>{selectedVehicle.model}</Text>
         </View>
       </View>
 
-      <View style={[styles.statusBox, { borderColor: theme.border || '#ccc', backgroundColor: theme.cardBackground || '#fff' }]}>
-        <Text style={[styles.statusText, { color: theme.text }]}>Status: {status}</Text>
+      <View style={styles.statusBox}>
+        <Text style={styles.statusText}>Status: {status}</Text>
         {location && (
-          <Text style={{ color: theme.textSecondary, fontSize: 12, marginTop: 5 }}>
+          <Text style={styles.statusCoords}>
             Lat: {location.latitude.toFixed(5)} | Lng: {location.longitude.toFixed(5)}
           </Text>
         )}
@@ -216,10 +209,10 @@ export default function DriverScreen({ onLogout, theme }) {
           style={[
             styles.button,
             styles.buttonSmall,
-            { backgroundColor: isTracking ? '#ef4444' : '#22c55e' }
+            { backgroundColor: isTracking ? PALETTE.danger : PALETTE.success }
           ]}
           onPress={handleToggleTracking}
-          activeOpacity={0.8}
+          activeOpacity={0.85}
         >
           {isTracking ? <StopCircle color="#fff" size={30} /> : <Navigation color="#fff" size={30} />}
           <Text style={styles.btnTextSmall}>{isTracking ? 'TAMAT SYIF' : 'MULA SYIF'}</Text>
@@ -230,11 +223,11 @@ export default function DriverScreen({ onLogout, theme }) {
             style={[
               styles.button,
               styles.buttonSmall,
-              { backgroundColor: location ? '#f97316' : '#cbd5e1' }
+              { backgroundColor: location ? PALETTE.orange : PALETTE.cardLightBorder }
             ]}
             onPress={handleMarkPoint}
             disabled={!location}
-            activeOpacity={location ? 0.8 : 1}
+            activeOpacity={location ? 0.85 : 1}
           >
             <MapPin color="#fff" size={30} />
             <Text style={styles.btnTextSmall}>
@@ -244,36 +237,71 @@ export default function DriverScreen({ onLogout, theme }) {
         )}
       </View>
 
-      {isTracking && <ActivityIndicator size="large" color={theme.accent || '#3b82f6'} style={{ marginTop: 20 }} />}
+      {isTracking && <ActivityIndicator size="large" color={PALETTE.orange} style={{ marginTop: 20 }} />}
 
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, alignItems: 'center', padding: 20, paddingTop: 50 },
+  container: { flex: 1, alignItems: 'center', padding: 20, paddingTop: 50, backgroundColor: PALETTE.softOrangeBg },
   header: { marginBottom: 20, alignItems: 'center', width: '100%' },
-  title: { fontSize: 28, fontWeight: '900', marginBottom: 5 },
-  searchContainer: { flexDirection: 'row', alignItems: 'center', width: '100%', paddingHorizontal: 15, borderRadius: 12, borderWidth: 1, marginBottom: 20, height: 50 },
+  title: { fontSize: 26, fontWeight: '900', color: PALETTE.textDark, marginBottom: 4 },
+  subtitle: { fontSize: 13, color: PALETTE.textMutedDark, fontWeight: '600' },
+  emptyText: { color: PALETTE.textMutedDark, textAlign: 'center', marginTop: 20 },
+
+  searchContainer: {
+    flexDirection: 'row', alignItems: 'center', width: '100%', paddingHorizontal: 15,
+    borderRadius: 14, borderWidth: 1, borderColor: PALETTE.cardLightBorder,
+    backgroundColor: PALETTE.cardLight, marginBottom: 20, height: 50,
+  },
   searchIcon: { marginRight: 10 },
-  searchInput: { flex: 1, height: '100%', fontSize: 16 },
+  searchInput: { flex: 1, height: '100%', fontSize: 15, color: PALETTE.textDark, outlineStyle: 'none', outlineWidth: 0 },
+
   row: { justifyContent: 'space-between', marginBottom: 15 },
-  vehicleCard: { width: '48%', padding: 15, borderWidth: 1, borderRadius: 16, alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 3 },
-  vehicleCardBusy: { opacity: 0.7, backgroundColor: '#f8fafc' },
-  iconContainer: { width: 60, height: 60, borderRadius: 30, justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
-  vehiclePlateText: { fontSize: 16, fontWeight: 'bold', marginBottom: 4, textAlign: 'center' },
-  vehicleNameText: { fontSize: 12, textAlign: 'center', marginBottom: 10, height: 34 },
-  badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
-  badgeText: { fontSize: 10, fontWeight: 'bold' },
-  logoutBtn: { paddingVertical: 15, marginTop: 10 },
-  backButton: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
-  backText: { fontSize: 16, marginLeft: 5, fontWeight: '600' },
-  activeVehicleCard: { alignItems: 'center', marginTop: 20, padding: 20, borderRadius: 16, width: '100%' },
-  statusBox: { marginBottom: 40, alignItems: 'center', padding: 20, borderWidth: 1, borderRadius: 16, width: '100%', shadowColor: '#000', shadowOpacity: 0.03, shadowRadius: 5, elevation: 2 },
-  statusText: { fontSize: 16, fontWeight: 'bold' },
-  button: { width: 200, height: 200, borderRadius: 100, justifyContent: 'center', alignItems: 'center', elevation: 10, shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 10, shadowOffset: { width: 0, height: 5 } },
+  vehicleCard: {
+    width: '48%', padding: 16, borderRadius: 18, alignItems: 'center',
+    backgroundColor: PALETTE.cardLight, borderWidth: 1, borderColor: PALETTE.cardLightBorder,
+    shadowColor: '#c9825a', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.06, shadowRadius: 14, elevation: 2,
+  },
+  vehicleCardBusy: { opacity: 0.7, backgroundColor: PALETTE.surface },
+  iconContainer: {
+    width: 60, height: 60, borderRadius: 30, justifyContent: 'center', alignItems: 'center',
+    backgroundColor: 'rgba(249, 115, 22, 0.12)', marginBottom: 12,
+  },
+  vehiclePlateText: { fontSize: 15, fontWeight: '800', color: PALETTE.textDark, marginBottom: 4, textAlign: 'center' },
+  vehicleNameText: { fontSize: 12, color: PALETTE.textMutedDark, textAlign: 'center', marginBottom: 10, height: 34 },
+  badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
+  badgeText: { fontSize: 10, fontWeight: '800' },
+
+  backButton: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', marginBottom: 10, gap: 6 },
+  backText: { fontSize: 14, fontWeight: '700', color: PALETTE.textDark },
+
+  activeVehicleCard: {
+    alignItems: 'center', marginTop: 20, padding: 22, borderRadius: 18, width: '100%',
+    backgroundColor: PALETTE.cardLight, borderWidth: 1, borderColor: PALETTE.cardLightBorder,
+    shadowColor: '#c9825a', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.06, shadowRadius: 14, elevation: 2,
+  },
+  activeVehicleIconWrap: {
+    width: 60, height: 60, borderRadius: 30, justifyContent: 'center', alignItems: 'center',
+    backgroundColor: 'rgba(249, 115, 22, 0.12)',
+  },
+  activeVehiclePlate: { color: PALETTE.textDark, fontSize: 19, fontWeight: '900', marginTop: 12 },
+  activeVehicleModel: { color: PALETTE.textMutedDark, fontSize: 13, textAlign: 'center', marginTop: 4, fontWeight: '600' },
+
+  statusBox: {
+    marginBottom: 40, alignItems: 'center', padding: 18, borderRadius: 16, width: '100%',
+    backgroundColor: PALETTE.cardLight, borderWidth: 1, borderColor: PALETTE.cardLightBorder,
+    shadowColor: '#c9825a', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 10, elevation: 1,
+  },
+  statusText: { fontSize: 15, fontWeight: '800', color: PALETTE.textDark },
+  statusCoords: { color: PALETTE.textMutedDark, fontSize: 12, marginTop: 5 },
+
   actionRow: { flexDirection: 'row', gap: 20, alignItems: 'center', justifyContent: 'center' },
+  button: {
+    width: 200, height: 200, borderRadius: 100, justifyContent: 'center', alignItems: 'center',
+    elevation: 8, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 10, shadowOffset: { width: 0, height: 5 },
+  },
   buttonSmall: { width: 150, height: 150, borderRadius: 75 },
-  btnTextSmall: { color: '#fff', fontSize: 16, fontWeight: '900', marginTop: 8, textAlign: 'center' },
-  btnText: { color: '#fff', fontSize: 20, fontWeight: '900', marginTop: 10 }
+  btnTextSmall: { color: '#fff', fontSize: 15, fontWeight: '900', marginTop: 8, textAlign: 'center' },
 });

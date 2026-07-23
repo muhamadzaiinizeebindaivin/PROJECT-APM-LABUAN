@@ -150,7 +150,7 @@ function DriverFlow({ theme, handleLogout }) {
   return (
     <Stack.Navigator>
       <Stack.Screen name="DriverApp" options={{ header: () => <CustomHeader title="PEMANDU APM" theme={theme} userRole="driver" onLogout={handleLogout} /> }}>
-        {(props) => <DriverScreen {...props} theme={theme} onLogout={handleLogout} />}
+        {(props) => <DriverScreen {...props} onLogout={handleLogout} />}
       </Stack.Screen>
     </Stack.Navigator>
   );
@@ -173,7 +173,6 @@ function AgencyFlow({ theme, handleLogout }) {
         {(props) => (
           <AgencyTrackingScreen
             {...props}
-            theme={theme}
             onLogout={handleLogout}
           />
         )}
@@ -434,13 +433,10 @@ export default function App() {
             {/* Bandeau header sombre */}
             <View style={{ backgroundColor: '#0c0c0e', padding: 24, paddingBottom: 28, borderTopLeftRadius: 24, borderTopRightRadius: 24 }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-                  <Image source={{ uri: 'https://kceeewyadcskivtmilyf.supabase.co/storage/v1/object/public/logo/apm_labuan.png' }} style={{ width: 80, height: 80 }} resizeMode="contain" />
-                  <View>
-                    <Text style={{ fontSize: 10, fontWeight: '800', color: PALETTE.orange, letterSpacing: 2, textTransform: 'uppercase' }}>SEDIAOPS • APM W.P LABUAN</Text>
-                    <Text style={{ fontSize: 20, fontWeight: '900', color: '#fff', marginTop: 3 }}>Log Masuk Portal</Text>
-                    <Text style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>Sistem Pengurusan APM W.P Labuan</Text>
-                  </View>
+                <View>
+                  <Text style={{ fontSize: 10, fontWeight: '800', color: PALETTE.orange, letterSpacing: 2, textTransform: 'uppercase' }}>APM W.P LABUAN</Text>
+                  <Text style={{ fontSize: 20, fontWeight: '900', color: '#fff', marginTop: 3 }}>Log Masuk Portal</Text>
+                  <Text style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>Sistem Pengurusan APM W.P Labuan</Text>
                 </View>
                 <TouchableOpacity onPress={closeLoginModal} style={{ width: 30, height: 30, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.08)', alignItems: 'center', justifyContent: 'center' }}>
                   <X size={16} color="#94a3b8" />
