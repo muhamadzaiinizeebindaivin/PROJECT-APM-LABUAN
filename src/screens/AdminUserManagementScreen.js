@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, ScrollView } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, ScrollView, Modal } from 'react-native';
 import {
   UserPlus, CheckCircle, AlertCircle, User, Mail, Lock, ShieldCheck, Briefcase,
   Trash2, Users, Search, ChevronLeft, ChevronRight, ArrowUpDown,
-  LayoutDashboard, CreditCard, Truck, GraduationCap, ShieldAlert
+  LayoutDashboard, CreditCard, Truck, GraduationCap, ShieldAlert, RefreshCw
 } from 'lucide-react-native';
 import { supabaseSandbox as supabase } from '../supabaseSandboxClient';
+import { PALETTE } from '../constants/palette';
 
 const ROLES = [
   { key: 'admin', label: 'Admin', icon: ShieldCheck, color: '#1E3A8A' },
@@ -20,7 +21,7 @@ const ROLES = [
 
 const PAGE_SIZE = 20;
 
-export default function AdminUserManagementScreen({ theme }) {
+export default function AdminUserManagementScreen() {
   // --- Formulaire de création ---
   const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
@@ -39,6 +40,7 @@ export default function AdminUserManagementScreen({ theme }) {
   const [totalUsers, setTotalUsers] = useState(0);
 
   const [currentUserId, setCurrentUserId] = useState(null);
+  const [confirmModal, setConfirmModal] = useState(null); // { type: 'role'|'delete', targetId, username, newRole? }
 
   const totalPages = Math.max(1, Math.ceil(totalUsers / PAGE_SIZE));
 
@@ -99,24 +101,28 @@ export default function AdminUserManagementScreen({ theme }) {
     setPage(1);
   };
 
-  const handleChangeRole = async (targetId, newRole, username) => {
-    const confirmed = window.confirm(`Tukar peranan "${username}" kepada "${newRole}"?`);
-    if (!confirmed) return;
-  
-    const { data, error } = await supabase.functions.invoke('manage-users', {
-      body: { action: 'updateRole', targetId, newRole },
-    });
-    if (!error && !data?.error) fetchUserList();
+  const handleChangeRole = (targetId, newRole, username) => {
+    setConfirmModal({ type: 'role', targetId, username, newRole });
   };
 
-  const handleDeleteUser = async (targetId, username) => {
-    const confirmed = window.confirm(`Padam akaun "${username}"? Tindakan ini tidak boleh dibatalkan.`);
-    if (!confirmed) return;
+  const handleDeleteUser = (targetId, username) => {
+    setConfirmModal({ type: 'delete', targetId, username });
+  };
 
-    const { data, error } = await supabase.functions.invoke('manage-users', {
-      body: { action: 'delete', targetId },
-    });
-    if (!error && !data?.error) fetchUserList();
+  const executeConfirm = async () => {
+    if (!confirmModal) return;
+    if (confirmModal.type === 'role') {
+      const { data, error } = await supabase.functions.invoke('manage-users', {
+        body: { action: 'updateRole', targetId: confirmModal.targetId, newRole: confirmModal.newRole },
+      });
+      if (!error && !data?.error) fetchUserList();
+    } else {
+      const { data, error } = await supabase.functions.invoke('manage-users', {
+        body: { action: 'delete', targetId: confirmModal.targetId },
+      });
+      if (!error && !data?.error) fetchUserList();
+    }
+    setConfirmModal(null);
   };
 
   const handleCreateUser = async () => {
@@ -166,20 +172,10 @@ export default function AdminUserManagementScreen({ theme }) {
 
   return (
     <ScrollView
-      style={[styles.screen, { backgroundColor: theme?.background || '#f1f5f9' }]}
+      style={styles.screen}
       contentContainerStyle={styles.scrollContent}
       showsVerticalScrollIndicator={false}
     >
-      <View style={styles.headerBlock}>
-        <View style={styles.headerIconCircle}>
-          <UserPlus size={26} color="#fff" />
-        </View>
-        <Text style={[styles.title, { color: theme?.text || '#0f172a' }]}>Pengurusan Akaun</Text>
-        <Text style={[styles.subtitle, { color: theme?.textSecondary || '#64748b' }]}>
-          Cipta akaun baharu untuk Admin atau Sekretariat
-        </Text>
-      </View>
-
       {/* ============ CARTE 1 : CRÉATION DE COMPTE ============ */}
       <View style={styles.card}>
         <Text style={styles.sectionLabel}>MAKLUMAT AKAUN</Text>
@@ -190,9 +186,9 @@ export default function AdminUserManagementScreen({ theme }) {
             feedback.type === 'success' ? styles.feedbackSuccess : styles.feedbackError
           ]}>
             {feedback.type === 'success' ? (
-              <CheckCircle size={20} color="#16a34a" />
+              <CheckCircle size={20} color={PALETTE.success} />
             ) : (
-              <AlertCircle size={20} color="#dc2626" />
+              <AlertCircle size={20} color={PALETTE.danger} />
             )}
             <Text style={[
               styles.feedbackText,
@@ -205,12 +201,12 @@ export default function AdminUserManagementScreen({ theme }) {
 
         <View style={[styles.inputGroup, focusedField === 'name' && styles.inputGroupFocused]}>
           <View style={styles.inputIconWrap}>
-            <User size={18} color={focusedField === 'name' ? '#1E3A8A' : '#94a3b8'} />
+            <User size={18} color={focusedField === 'name' ? PALETTE.orange : PALETTE.textMutedDark} />
           </View>
           <TextInput
             style={styles.input}
             placeholder="Nama Penuh (Cth: Ahmad bin Ismail)"
-            placeholderTextColor="#94a3b8"
+            placeholderTextColor={PALETTE.textMutedDark}
             value={displayName}
             onChangeText={setDisplayName}
             onFocus={() => setFocusedField('name')}
@@ -220,12 +216,12 @@ export default function AdminUserManagementScreen({ theme }) {
 
         <View style={[styles.inputGroup, focusedField === 'email' && styles.inputGroupFocused]}>
           <View style={styles.inputIconWrap}>
-            <Mail size={18} color={focusedField === 'email' ? '#1E3A8A' : '#94a3b8'} />
+            <Mail size={18} color={focusedField === 'email' ? PALETTE.orange : PALETTE.textMutedDark} />
           </View>
           <TextInput
             style={styles.input}
             placeholder="E-mel (Cth: ahmad@gmail.com)"
-            placeholderTextColor="#94a3b8"
+            placeholderTextColor={PALETTE.textMutedDark}
             value={email}
             onChangeText={setEmail}
             autoCapitalize="none"
@@ -246,7 +242,7 @@ export default function AdminUserManagementScreen({ theme }) {
                 key={r.key}
                 style={[
                   styles.roleCard,
-                  { borderColor: isActive ? r.color : '#e2e8f0' },
+                  { borderColor: isActive ? r.color : PALETTE.cardLightBorder },
                   isActive && { backgroundColor: r.color + '0D' }
                 ]}
                 onPress={() => setRole(r.key)}
@@ -254,13 +250,13 @@ export default function AdminUserManagementScreen({ theme }) {
               >
                 <View style={[
                   styles.roleIconCircle,
-                  { backgroundColor: isActive ? r.color : '#f1f5f9' }
+                  { backgroundColor: isActive ? r.color : PALETTE.surface }
                 ]}>
-                  <RoleIcon size={20} color={isActive ? '#fff' : '#94a3b8'} />
+                  <RoleIcon size={20} color={isActive ? '#fff' : PALETTE.textMutedDark} />
                 </View>
                 <Text style={[
                   styles.roleCardText,
-                  { color: isActive ? r.color : '#64748b', fontWeight: isActive ? '800' : '600' }
+                  { color: isActive ? r.color : PALETTE.textMutedDark, fontWeight: isActive ? '800' : '600' }
                 ]}>
                   {r.label}
                 </Text>
@@ -287,18 +283,18 @@ export default function AdminUserManagementScreen({ theme }) {
       {/* ============ CARTE 2 : LISTE DES COMPTES ============ */}
       <View ref={listCardRef} style={[styles.card, { marginTop: 20 }]}>
         <View style={styles.listHeaderRow}>
-          <Users size={18} color="#1E3A8A" />
+          <Users size={18} color={PALETTE.orange} />
           <Text style={styles.sectionLabel}>SENARAI AKAUN ({totalUsers})</Text>
         </View>
 
         <View style={styles.searchBar}>
           <View style={styles.inputIconWrap}>
-            <Search size={18} color="#94a3b8" />
+            <Search size={18} color={PALETTE.textMutedDark} />
           </View>
           <TextInput
             style={styles.searchInput}
             placeholder="Cari nama atau e-mel..."
-            placeholderTextColor="#94a3b8"
+            placeholderTextColor={PALETTE.textMutedDark}
             value={searchQuery}
             onChangeText={handleSearchChange}
           />
@@ -307,16 +303,16 @@ export default function AdminUserManagementScreen({ theme }) {
         <View style={styles.sortRow}>
           {SORT_COLUMNS.map(col => (
             <TouchableOpacity key={col.key} style={styles.sortBtn} onPress={() => handleSort(col.key)}>
-              <Text style={[styles.sortBtnText, sortBy === col.key && { color: '#1E3A8A' }]}>
+              <Text style={[styles.sortBtnText, sortBy === col.key && { color: PALETTE.orange }]}>
                 {col.label}
               </Text>
-              <ArrowUpDown size={12} color={sortBy === col.key ? '#1E3A8A' : '#cbd5e1'} />
+              <ArrowUpDown size={12} color={sortBy === col.key ? PALETTE.orange : PALETTE.cardLightBorder} />
             </TouchableOpacity>
           ))}
         </View>
 
         {loadingList ? (
-          <ActivityIndicator size="small" color="#1E3A8A" style={{ marginVertical: 20 }} />
+          <ActivityIndicator size="small" color={PALETTE.orange} style={{ marginVertical: 20 }} />
         ) : userList.length === 0 ? (
           <Text style={styles.emptyListText}>Tiada akaun dijumpai.</Text>
         ) : (
@@ -356,7 +352,7 @@ export default function AdminUserManagementScreen({ theme }) {
                   >
                     <Text style={[
                       styles.userRoleBtnText,
-                      { color: u.role === r.key ? '#fff' : '#94a3b8' }
+                      { color: u.role === r.key ? '#fff' : PALETTE.textMutedDark }
                     ]}>
                       {r.label}
                     </Text>
@@ -369,7 +365,7 @@ export default function AdminUserManagementScreen({ theme }) {
                 onPress={() => handleDeleteUser(u.id, u.username)}
                 disabled={u.id === currentUserId}
               >
-                <Trash2 size={16} color={u.id === currentUserId ? '#cbd5e1' : '#ef4444'} />
+                <Trash2 size={16} color={u.id === currentUserId ? PALETTE.cardLightBorder : PALETTE.danger} />
               </TouchableOpacity>
             </View>
           ))
@@ -382,7 +378,7 @@ export default function AdminUserManagementScreen({ theme }) {
               onPress={() => setPage(p => Math.max(1, p - 1))}
               disabled={page === 1}
             >
-              <ChevronLeft size={16} color={page === 1 ? '#cbd5e1' : '#1E3A8A'} />
+              <ChevronLeft size={16} color={page === 1 ? PALETTE.cardLightBorder : PALETTE.orange} />
             </TouchableOpacity>
 
             <Text style={styles.pageIndicator}>
@@ -394,48 +390,102 @@ export default function AdminUserManagementScreen({ theme }) {
               onPress={() => setPage(p => p + 1)}
               disabled={page >= totalPages}
             >
-              <ChevronRight size={16} color={page >= totalPages ? '#cbd5e1' : '#1E3A8A'} />
+              <ChevronRight size={16} color={page >= totalPages ? PALETTE.cardLightBorder : PALETTE.orange} />
             </TouchableOpacity>
           </View>
         )}
       </View>
+
+      <Modal visible={!!confirmModal} transparent animationType="fade" onRequestClose={() => setConfirmModal(null)}>
+        <View style={styles.confirmOverlay}>
+          <View style={styles.confirmBox}>
+
+            <View style={[
+              styles.confirmBanner,
+              { backgroundColor: confirmModal?.type === 'delete' ? '#2a0f0f' : '#0c0c0e' },
+            ]}>
+              <View style={[
+                styles.confirmIconCircle,
+                { backgroundColor: confirmModal?.type === 'delete' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(249, 115, 22, 0.15)' },
+              ]}>
+                {confirmModal?.type === 'delete' ? (
+                  <Trash2 size={26} color={PALETTE.danger} />
+                ) : (
+                  <RefreshCw size={26} color={PALETTE.orange} />
+                )}
+              </View>
+              <Text style={styles.confirmTitle}>
+                {confirmModal?.type === 'delete' ? 'Padam Akaun' : 'Tukar Peranan'}
+              </Text>
+              <Text style={styles.confirmSubtitle}>
+                {confirmModal?.type === 'delete'
+                  ? `Padam akaun "${confirmModal?.username}"? Tindakan ini tidak boleh dibatalkan.`
+                  : `Tukar peranan "${confirmModal?.username}" kepada "${confirmModal?.newRole}"?`}
+              </Text>
+            </View>
+
+            <View style={styles.confirmActions}>
+              <TouchableOpacity style={styles.confirmCancelBtn} onPress={() => setConfirmModal(null)}>
+                <Text style={styles.confirmCancelText}>Batal</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.confirmConfirmBtn,
+                  { backgroundColor: confirmModal?.type === 'delete' ? PALETTE.danger : PALETTE.orange },
+                ]}
+                onPress={executeConfirm}
+              >
+                {confirmModal?.type === 'delete' ? (
+                  <Trash2 size={16} color="#fff" />
+                ) : (
+                  <RefreshCw size={16} color="#fff" />
+                )}
+                <Text style={styles.confirmConfirmText}>
+                  {confirmModal?.type === 'delete' ? 'Padam' : 'Tukar'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1 },
+  screen: { flex: 1, backgroundColor: PALETTE.softOrangeBg },
   scrollContent: { padding: 20, paddingTop: 50, paddingBottom: 60 },
 
   headerBlock: { marginBottom: 28, width: '100%' },
   headerIconCircle: {
-    width: 56, height: 56, borderRadius: 18, backgroundColor: '#1E3A8A',
+    width: 56, height: 56, borderRadius: 18, backgroundColor: PALETTE.orange,
     justifyContent: 'center', alignItems: 'center', marginBottom: 14,
-    shadowColor: '#1E3A8A', shadowOpacity: 0.3, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, elevation: 6
+    shadowColor: PALETTE.orange, shadowOpacity: 0.3, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, elevation: 6
   },
-  title: { fontSize: 22, fontWeight: '900', letterSpacing: -0.3 },
-  subtitle: { fontSize: 16, fontWeight: '600', marginTop: 6, letterSpacing: 0.2, lineHeight: 22, textAlign: 'center' },
+  title: { fontSize: 22, fontWeight: '900', letterSpacing: -0.3, color: PALETTE.textDark },
+  subtitle: { fontSize: 16, fontWeight: '600', marginTop: 6, letterSpacing: 0.2, lineHeight: 22, textAlign: 'center', color: PALETTE.textMutedDark },
 
   card: {
-    width: '100%', backgroundColor: '#fff', borderRadius: 20, padding: 24,
-    shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 20, shadowOffset: { width: 0, height: 8 }, elevation: 4,
-    borderWidth: 1, borderColor: '#f1f5f9'
+    width: '100%', backgroundColor: PALETTE.cardLight, borderRadius: 20, padding: 24,
+    shadowColor: '#c9825a', shadowOpacity: 0.06, shadowRadius: 14, shadowOffset: { width: 0, height: 6 }, elevation: 2,
+    borderWidth: 1, borderColor: PALETTE.cardLightBorder
   },
 
-  sectionLabel: { fontSize: 11, fontWeight: '800', color: '#94a3b8', letterSpacing: 1, marginBottom: 12 },
+  sectionLabel: { fontSize: 11, fontWeight: '800', color: PALETTE.textMutedDark, letterSpacing: 1, marginBottom: 12 },
 
   inputGroup: {
-    flexDirection: 'row', alignItems: 'center', borderWidth: 1.5, borderColor: '#e2e8f0',
-    borderRadius: 12, marginBottom: 12, backgroundColor: '#f8fafc', overflow: 'hidden'
+    flexDirection: 'row', alignItems: 'center', borderWidth: 1.5, borderColor: PALETTE.cardLightBorder,
+    borderRadius: 12, marginBottom: 12, backgroundColor: PALETTE.surface, overflow: 'hidden'
   },
   inputGroupFocused: {
-    borderColor: '#1E3A8A',
-    backgroundColor: '#eff6ff',
+    borderColor: PALETTE.orange,
+    backgroundColor: 'rgba(249, 115, 22, 0.06)',
   },
   inputIconWrap: { paddingHorizontal: 14, justifyContent: 'center', alignItems: 'center' },
   input: {
     flex: 1, paddingVertical: 14, paddingRight: 14, fontSize: 14, fontWeight: '600',
-    color: '#0f172a', caretColor: '#1E3A8A', outlineStyle: 'none'
+    color: PALETTE.textDark, outlineStyle: 'none'
   },
 
   roleGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 20 },
@@ -449,52 +499,72 @@ const styles = StyleSheet.create({
   feedbackBox: {
     flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14, borderRadius: 12, marginBottom: 16
   },
-  feedbackSuccess: { backgroundColor: '#f0fdf4', borderWidth: 1, borderColor: '#bbf7d0' },
-  feedbackError: { backgroundColor: '#fef2f2', borderWidth: 1, borderColor: '#fecaca' },
+  feedbackSuccess: { backgroundColor: PALETTE.successSoft, borderWidth: 1, borderColor: '#bbf7d0' },
+  feedbackError: { backgroundColor: PALETTE.dangerSoft, borderWidth: 1, borderColor: '#fecaca' },
   feedbackText: { fontSize: 13, fontWeight: '700', flex: 1, lineHeight: 18 },
 
   saveButton: {
-    flexDirection: 'row', backgroundColor: '#1E3A8A', paddingVertical: 16, borderRadius: 14,
+    flexDirection: 'row', backgroundColor: PALETTE.orange, paddingVertical: 16, borderRadius: 14,
     alignItems: 'center', justifyContent: 'center', gap: 10,
-    shadowColor: '#1E3A8A', shadowOpacity: 0.25, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 3
+    shadowColor: PALETTE.orange, shadowOpacity: 0.25, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 3
   },
   saveButtonDisabled: { opacity: 0.6 },
   saveButtonText: { color: '#fff', fontWeight: '800', fontSize: 15 },
 
   listHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 },
-  emptyListText: { color: '#94a3b8', fontStyle: 'italic', textAlign: 'center', paddingVertical: 20 },
+  emptyListText: { color: PALETTE.textMutedDark, fontStyle: 'italic', textAlign: 'center', paddingVertical: 20 },
   userRow: {
     flexDirection: 'row', alignItems: 'center', paddingVertical: 12,
-    borderBottomWidth: 1, borderBottomColor: '#f1f5f9', gap: 10
+    borderBottomWidth: 1, borderBottomColor: PALETTE.cardLightBorder, gap: 10
   },
-  userName: { fontSize: 14, fontWeight: '800', color: '#0f172a' },
-  userEmail: { fontSize: 12, color: '#94a3b8', marginTop: 2 },
-  userRoleSwitch: { flexDirection: 'row', gap: 4, backgroundColor: '#f1f5f9', borderRadius: 8, padding: 3 },
+  userName: { fontSize: 14, fontWeight: '800', color: PALETTE.textDark },
+  userEmail: { fontSize: 12, color: PALETTE.textMutedDark, marginTop: 2 },
+  userRoleSwitch: { flexDirection: 'row', gap: 4, backgroundColor: PALETTE.surface, borderRadius: 8, padding: 3 },
   userRoleBtn: { paddingVertical: 5, paddingHorizontal: 10, borderRadius: 6 },
   userRoleBtnText: { fontSize: 11, fontWeight: '700' },
-  deleteIconBtn: { padding: 8, backgroundColor: '#fef2f2', borderRadius: 8 },
+  deleteIconBtn: { padding: 8, backgroundColor: PALETTE.dangerSoft, borderRadius: 8 },
 
   searchBar: {
-    flexDirection: 'row', alignItems: 'center', borderWidth: 1.5, borderColor: '#e2e8f0',
-    borderRadius: 12, marginBottom: 12, backgroundColor: '#f8fafc', overflow: 'hidden'
+    flexDirection: 'row', alignItems: 'center', borderWidth: 1.5, borderColor: PALETTE.cardLightBorder,
+    borderRadius: 12, marginBottom: 12, backgroundColor: PALETTE.surface, overflow: 'hidden'
   },
   searchInput: {
     flex: 1, paddingVertical: 14, paddingRight: 14, fontSize: 14, fontWeight: '600',
-    color: '#0f172a', caretColor: '#1E3A8A', outlineStyle: 'none'
+    color: PALETTE.textDark, outlineStyle: 'none'
   },
   sortRow: { flexDirection: 'row', gap: 16, marginBottom: 12, paddingHorizontal: 4 },
   sortBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  sortBtnText: { fontSize: 11, fontWeight: '700', color: '#94a3b8' },
+  sortBtnText: { fontSize: 11, fontWeight: '700', color: PALETTE.textMutedDark },
   paginationRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 16, marginTop: 16 },
-  pageBtn: { padding: 8, backgroundColor: '#f1f5f9', borderRadius: 8 },
+  pageBtn: { padding: 8, backgroundColor: PALETTE.surface, borderRadius: 8 },
   pageBtnDisabled: { opacity: 0.5 },
-  pageIndicator: { fontSize: 12, fontWeight: '700', color: '#64748b' },
+  pageIndicator: { fontSize: 12, fontWeight: '700', color: PALETTE.textMutedDark },
 
-  userRowSelf: { backgroundColor: '#eff6ff', borderRadius: 10, paddingHorizontal: 10, marginHorizontal: -10 },
-  selfBadge: { backgroundColor: '#1E3A8A', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
+  userRowSelf: { backgroundColor: 'rgba(249, 115, 22, 0.06)', borderRadius: 10, paddingHorizontal: 10, marginHorizontal: -10 },
+  selfBadge: { backgroundColor: PALETTE.orange, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
   selfBadgeText: { fontSize: 9, fontWeight: '800', color: '#fff', letterSpacing: 0.5 },
   userRoleBtnDisabled: { opacity: 0.4 },
   deleteIconBtnDisabled: { opacity: 0.4 },
   pendingBadge: { backgroundColor: '#fef3c7', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, borderWidth: 1, borderColor: '#fbbf24' },
   pendingBadgeText: { fontSize: 9, fontWeight: '800', color: '#92400e', letterSpacing: 0.3 },
+
+  confirmOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 24 },
+  confirmBox: {
+    width: '100%', maxWidth: 400, borderRadius: 24, overflow: 'hidden',
+    shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 20, elevation: 20,
+  },
+  confirmBanner: { padding: 24, alignItems: 'center' },
+  confirmIconCircle: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
+  confirmTitle: { fontSize: 18, fontWeight: '900', color: '#fff' },
+  confirmSubtitle: { fontSize: 13, color: '#94a3b8', marginTop: 6, textAlign: 'center' },
+  confirmActions: { flexDirection: 'row', gap: 10, padding: 20, backgroundColor: '#fff' },
+  confirmCancelBtn: {
+    flex: 1, height: 48, borderRadius: 12, borderWidth: 1.5, borderColor: PALETTE.cardLightBorder,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  confirmCancelText: { color: PALETTE.textMutedDark, fontWeight: '800', fontSize: 14 },
+  confirmConfirmBtn: {
+    flex: 1, height: 48, borderRadius: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+  },
+  confirmConfirmText: { color: '#fff', fontWeight: '800', fontSize: 14 },
 });

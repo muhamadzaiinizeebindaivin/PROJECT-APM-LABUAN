@@ -125,7 +125,7 @@ function DepartmentFlow({ userRole, theme, handleLogin, handleLogout, onLoginPre
       },
       render: (props) => <OperasiScreen {...props} theme={theme} userRole={userRole} />
     },
-    { name: 'Pengurusan Akaun', options: { tabBarActiveTintColor: '#8b5cf6' }, render: (props) => <AdminUserManagementScreen {...props} theme={theme} /> },
+    { name: 'Pengurusan Akaun', options: { tabBarActiveTintColor: '#8b5cf6' }, render: (props) => <AdminUserManagementScreen {...props} /> },
   ];
 
   const allowedTabs = ROLE_PERMISSIONS[userRole] || [];
