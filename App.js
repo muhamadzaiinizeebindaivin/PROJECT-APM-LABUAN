@@ -9,6 +9,7 @@ import { Inter_400Regular, Inter_500Medium } from '@expo-google-fonts/inter';
 import { supabaseSandbox } from './src/supabaseSandboxClient';
 import { ROLE_PERMISSIONS } from './src/permissions';
 import { FONTS } from './src/styles/tacticalTheme';
+import CustomHeader from './src/components/CustomHeader';
 
 // Import Screens
 import AdminUserManagementScreen from './src/screens/AdminUserManagementScreen';
@@ -45,52 +46,11 @@ const Stack = createNativeStackNavigator();
 // React just re-renders them in place instead of remounting.
 // ==========================================
 
-function HeaderRoleBadge({ userRole }) {
-  return (
-    <View style={{ marginRight: 15, backgroundColor: '#f1f5f9', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, borderWidth: 1, borderColor: '#e2e8f0' }}>
-      <Text style={{ fontSize: 10, fontFamily: FONTS.displayBold, color: '#475569', textTransform: 'uppercase', letterSpacing: 1 }}>
-        {userRole || 'GUEST'}
-      </Text>
-    </View>
-  );
-}
-
-function CustomHeader({ title, theme, userRole, onLogout, onLoginPress }) {
-  return (
-    <View style={{
-      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-      backgroundColor: theme.background, paddingHorizontal: 16,
-      paddingVertical: 12, paddingTop: Platform.OS === 'web' ? 12 : 44,
-    }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
-        <Image
-          source={{ uri: 'https://kceeewyadcskivtmilyf.supabase.co/storage/v1/object/public/logo/apm_labuan.png' }}
-          style={{ width: 226, height: 60 }}
-          resizeMode="contain"
-        />
-        <Text style={{ fontFamily: FONTS.displayBold, color: theme.text, fontSize: 20 }} numberOfLines={1}>
-          {title}
-        </Text>
-      </View>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-        {userRole === 'guest' || !userRole ? (
-          <TouchableOpacity onPress={onLoginPress} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: PALETTE.orange, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8 }}>
-            <ShieldCheck size={14} color="#fff" />
-            <Text style={{ color: '#fff', fontFamily: FONTS.bodyMedium, fontSize: 12 }}>Log Masuk</Text>
-          </TouchableOpacity>
-        ) : (
-          <>
-            <HeaderRoleBadge userRole={userRole} />
-            <TouchableOpacity onPress={onLogout} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#ef4444', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8 }}>
-              <LogOut size={14} color="#fff" />
-              <Text style={{ color: '#fff', fontFamily: FONTS.bodyMedium, fontSize: 12 }}>Log Keluar</Text>
-            </TouchableOpacity>
-          </>
-        )}
-      </View>
-    </View>
-  );
-}
+// NOTE: CustomHeader (and its HeaderRoleBadge sub-component) now live in
+// ./src/components/CustomHeader.js — see the import above. Edit that file
+// (and its sibling ./src/components/customHeaderStyles.js) to change the
+// header's look; it's reused by every flow (Auth/Department/Driver/Guest/
+// Agency) so a change there applies everywhere at once.
 
 function AuthFlow({ theme, handleLogin }) {
   return (
