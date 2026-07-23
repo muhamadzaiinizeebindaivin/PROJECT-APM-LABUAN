@@ -21,6 +21,7 @@ const norm = (v) => String(v || '').trim().toUpperCase();
 
 export function useAngkatanEmployees() {
   const [employees, setEmployees] = useState([]);
+  const [dataUpdatedAt, setDataUpdatedAt] = useState(null);
   const [summary, setSummary] = useState({
     total_anggota: 0, aktif_anggota: 0, male_count: 0, female_count: 0,
     status_lulus: 0, status_lantikan: 0, status_simpanan: 0, status_aktif: 0,
@@ -126,6 +127,16 @@ export function useAngkatanEmployees() {
           status_aktif: prev.status_aktif,
         }));
       }
+
+      // Timestamp le plus récent parmi toutes les tables Angkatan chargées ici
+      const allTimestamps = [
+        ...data.map((e) => e.updated_at),
+        summaryRes.data?.updated_at,
+        ...annexes.cats.map((c) => c.updated_at),
+        ...annexes.pyramid.map((p) => p.updated_at),
+        ...annexes.rankRows.map((r) => r.updated_at),
+      ].filter(Boolean);
+      setDataUpdatedAt(allTimestamps.sort().slice(-1)[0] || null);
     } catch (error) {
       console.error('Error fetching employees:', error);
     }
@@ -230,7 +241,7 @@ export function useAngkatanEmployees() {
   };
 
   return {
-    loading, employees, summary, categories, pyramidStats, ranks,
+    loading, employees, summary, categories, pyramidStats, ranks, dataUpdatedAt,
     fetchEmployees, saveEmployee, deleteEmployee,
     saveCategory, deleteCategoryItem,
     savePyramidItem, deletePyramidItem,

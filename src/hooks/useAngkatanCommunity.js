@@ -27,5 +27,10 @@ export function useAngkatanCommunity() {
     await fetchCommunity();
   };
 
-  return { communityProgs, saveCommunityItem, deleteCommunityItem };
+  const communityUpdatedAt = communityProgs.reduce(
+    (latest, item) => (item.updated_at && (!latest || item.updated_at > latest) ? item.updated_at : latest),
+    null
+  );
+
+  return { communityProgs, saveCommunityItem, deleteCommunityItem, communityUpdatedAt };
 }

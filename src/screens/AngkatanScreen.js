@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, ScrollView, ActivityIndicator } from 'react-native';
+import { View, ScrollView, ActivityIndicator, Text } from 'react-native';
 import { PALETTE } from '../constants/palette';
 import AdminEditButton from '../components/AdminEditButton';
 import { useExcelImport } from '../hooks/useExcelImport';
@@ -11,7 +11,7 @@ import { useEmployeePromotionHistory } from '../hooks/useEmployeePromotionHistor
 import { useEmployeePhoto } from '../hooks/useEmployeePhoto';
 import { angkatanStyles as styles } from './angkatan/angkatanStyles';
 import { emptyEmployeeForm } from './angkatan/employeeFieldGroups';
-import { useAngkatanUnit } from '../hooks/useAngkatanUnit';
+import { useUnitStaff } from '../hooks/useUnitStaff';
 import AngkatanUnitSection from './angkatan/AngkatanUnitSection';
 import { useKpi } from '../hooks/useKpi';
 import KpiSection from './pentadbiran/KpiSection';
@@ -38,18 +38,32 @@ export default function AngkatanScreen({ userRole }) {
   const [isEditing, setIsEditing] = useState(false);
 
   const {
-    loading, employees, summary, categories, pyramidStats, ranks,
+    loading, employees, summary, categories, pyramidStats, ranks, dataUpdatedAt,
     fetchEmployees, saveEmployee, deleteEmployee,
     saveCategory, deleteCategoryItem, savePyramidItem, deletePyramidItem, saveRankItem, deleteRankItem,
     saveSummaryExtra,
   } = useAngkatanEmployees();
-  const { communityProgs, saveCommunityItem, deleteCommunityItem } = useAngkatanCommunity();
+  const { communityProgs, saveCommunityItem, deleteCommunityItem, communityUpdatedAt } = useAngkatanCommunity();
   const { certificates, fetchCertificates, saveCertificate, deleteCertificate, openCertificateLink } = useEmployeeCertificates();
   const { promotionHistoryList, fetchPromotionHistory } = useEmployeePromotionHistory();
   const { uploadingPhoto, pickAndUploadPhoto } = useEmployeePhoto();
   const excelImportHook = useExcelImport();
-  const { unitList, loadingUnit, saveUnitItem, deleteUnitItem, reorderUnit } = useAngkatanUnit();
-  const { kpiList, saveKpiItem, deleteKpiItem, reorderKpi } = useKpi('angkatan');
+  const unit = useUnitStaff('angkatan');
+  const { kpiList, saveKpiItem, deleteKpiItem, reorderKpi, kpiUpdatedAt } = useKpi('angkatan');
+
+  // Convertit un timestamp ISO (colonne updated_at) au format d'affichage DD/M/YYYY HH:MM
+  const formatTimestamp = (iso) => {
+    if (!iso) return null;
+    const d = new Date(iso);
+    const date = `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`;
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    return `${date} ${hours}:${minutes}`;
+  };
+
+  // DIKEMASKINI = le plus récent updated_at parmi toutes les tables qui composent la page
+  const latestRaw = [dataUpdatedAt, communityUpdatedAt, unit.staffUpdatedAt, kpiUpdatedAt].filter(Boolean).sort().slice(-1)[0] || null;
+  const dikemaskini = formatTimestamp(latestRaw);
 
   // ── Recherche / pagination liste principale ──
   const [employeeSearch, setEmployeeSearch] = useState('');
@@ -166,9 +180,18 @@ export default function AngkatanScreen({ userRole }) {
 
   return (
     <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.contentGrid} showsVerticalScrollIndicator={false}>
-        <AdminEditButton isEditMode={isEditing} setIsEditMode={setIsEditing} userRole={userRole} />
+      {userRole === 'admin' && (
+        <View style={styles.stickyHeader}>
+          <View style={styles.stickyHeaderCenter} pointerEvents="none">
+            {dikemaskini ? (
+              <Text style={styles.stickyHeaderDikemaskini}>DIKEMASKINI {dikemaskini}</Text>
+            ) : null}
+          </View>
+          <AdminEditButton isEditMode={isEditing} setIsEditMode={setIsEditing} userRole={userRole} />
+        </View>
+      )}
 
+      <ScrollView contentContainerStyle={styles.contentGrid} showsVerticalScrollIndicator={false}>
         <View style={styles.row}>
           <SummaryHeroCard total={summary.total_anggota} isEditing={isEditing} onEdit={openSummaryModal} />
           <StatusCard summary={summary} isEditing={isEditing} onEdit={openSummaryModal} onOpenStatus={openStatusEmployees} />
@@ -226,12 +249,12 @@ export default function AngkatanScreen({ userRole }) {
           onImportExcel={() => setShowExcelImportModal(true)}
         />
         <AngkatanUnitSection
-          unitList={unitList}
-          loadingUnit={loadingUnit}
+          unitList={unit.staffList}
+          loadingUnit={unit.loading}
           isEditMode={isEditing}
-          saveUnitItem={saveUnitItem}
-          deleteUnitItem={deleteUnitItem}
-          reorderUnit={reorderUnit}
+          saveUnitItem={unit.saveStaffItem}
+          deleteUnitItem={unit.deleteStaffItem}
+          reorderUnit={unit.reorderStaff}
         />
       </ScrollView>
 
