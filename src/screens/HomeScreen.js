@@ -6,7 +6,6 @@ import HomepagePdfCard from '../components/HomepagePdfCard';
 import AuthGate from './home/AuthGate';
 import HeroSection from './home/HeroSection';
 import InfoWidgets from './home/InfoWidgets';
-import AddressWidgets from './home/AddressWidgets';
 import { homeScreenStyles as styles } from './home/homeScreenStyles';
 import { useHomeData } from '../hooks/useHomeData';
 import { PALETTE } from '../constants/palette';
@@ -15,7 +14,19 @@ import { stickyHeaderStyles } from '../styles/stickyHeaderStyles';
 
 export default function HomeScreen({ isAuthFlow, onGuestLogin, onDriverLogin, onAgencyLogin, onLoginPress, navigation, userRole, theme }) {
   const [isEditing, setIsEditing] = useState(false);
-  const { loading, pageData, handleSave, updateField } = useHomeData(isAuthFlow);
+  const [pdfCardHeight, setPdfCardHeight] = useState(null);
+  const { loading, pageData, updatedAt, handleSave, updateField } = useHomeData(isAuthFlow);
+
+  // Convertit un timestamp ISO (colonne updated_at) au format d'affichage DD/M/YYYY HH:MM
+  const formatTimestamp = (iso) => {
+    if (!iso) return null;
+    const d = new Date(iso);
+    const date = `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`;
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    return `${date} ${hours}:${minutes}`;
+  };
+  const dikemaskini = formatTimestamp(updatedAt);
 
   const onSave = async () => {
     const ok = await handleSave();
@@ -45,10 +56,10 @@ export default function HomeScreen({ isAuthFlow, onGuestLogin, onDriverLogin, on
   return (
     <View style={styles.container}>
       {userRole === 'admin' && (
-        <View style={styles.stickyHeader}>
-          {!!pageData?.dikemaskini && (
-            <View style={styles.stickyHeaderCenter} pointerEvents="none">
-              <Text style={styles.stickyHeaderDikemaskini}>DIKEMASKINI {pageData.dikemaskini}</Text>
+        <View style={stickyHeaderStyles.stickyHeader}>
+          {!!dikemaskini && (
+            <View style={stickyHeaderStyles.stickyHeaderCenter} pointerEvents="none">
+              <Text style={stickyHeaderStyles.stickyHeaderDikemaskini}>DIKEMASKINI {dikemaskini}</Text>
             </View>
           )}
           {isEditing && (
@@ -70,20 +81,23 @@ export default function HomeScreen({ isAuthFlow, onGuestLogin, onDriverLogin, on
         )}
 
         <View style={styles.mainRow}>
-          <View style={styles.pdfColumn}>
-            <HomepagePdfCard theme={{ card: PALETTE.inkCard, text: PALETTE.white, textSecondary: PALETTE.mutedLight }} userRole={userRole} />
+          <View
+            style={styles.pdfColumn}
+            onLayout={(e) => setPdfCardHeight(e.nativeEvent.layout.height)}
+          >
+            <HomepagePdfCard
+              theme={{ card: PALETTE.inkCard, text: PALETTE.white, textSecondary: PALETTE.mutedLight }}
+              userRole={userRole}
+              onHeightChange={setPdfCardHeight}
+            />
           </View>
 
           {pageData && (
-            <View style={styles.sideColumn}>
+            <View style={[styles.sideColumn, pdfCardHeight ? { height: pdfCardHeight } : null]}>
               <InfoWidgets isEditing={isEditing} pageData={pageData} updateField={updateField} />
             </View>
           )}
         </View>
-
-        {pageData && (
-          <AddressWidgets isEditing={isEditing} pageData={pageData} updateField={updateField} />
-        )}
 
         <View style={styles.footerInfo}>
           <Info size={14} color={PALETTE.mutedLight} />

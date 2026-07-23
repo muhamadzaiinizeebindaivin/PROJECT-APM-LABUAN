@@ -193,10 +193,39 @@ const buildPdfViewerHtml = () => `
           startAutoSlide();
         }
 
-        // Redimensionnement de la fenêtre : redessine tout à la nouvelle taille, débounce 150ms
+        // Redimensionnement de la fenêtre (y compris zoom navigateur) : on ne redessine PAS le PDF,
+        // on redimensionne juste les canvas déjà rendus en CSS — pas de flash/refresh visible.
+        function softResizeAll() {
+          if (!currentPdfDoc) return;
+          var viewportEl = document.getElementById('viewport');
+          var newWidth = viewportEl.clientWidth || slideWidthPx;
+          if (!newWidth || newWidth === slideWidthPx) return;
+
+          var ratio = newWidth / slideWidthPx;
+          slideWidthPx = newWidth;
+          slideHeightPx = slideHeightPx * ratio;
+
+          var track = document.getElementById('track');
+          track.style.width = (slideWidthPx * totalPages) + 'px';
+          track.style.transform = 'translateX(-' + (currentIndex * slideWidthPx) + 'px)';
+
+          var slides = track.children;
+          for (var i = 0; i < slides.length; i++) {
+            slides[i].style.width = slideWidthPx + 'px';
+            slides[i].style.height = slideHeightPx + 'px';
+            var canvas = slides[i].querySelector('canvas');
+            if (canvas) {
+              canvas.style.width = slideWidthPx + 'px';
+              canvas.style.height = slideHeightPx + 'px';
+            }
+          }
+
+          window.parent.postMessage(JSON.stringify({ type: 'HEIGHT_READY', height: slideHeightPx }), '*');
+        }
+
         window.addEventListener('resize', function() {
           clearTimeout(resizeTimer);
-          resizeTimer = setTimeout(layoutAndRenderAll, 150);
+          resizeTimer = setTimeout(softResizeAll, 100);
         });
 
         window.addEventListener('message', function(event) {
@@ -228,7 +257,7 @@ const buildPdfViewerHtml = () => `
 
 const PDF_VIEWER_SRC = `data:text/html;charset=utf-8,${encodeURIComponent(buildPdfViewerHtml())}`;
 
-export default function HomepagePdfCard({ theme, userRole }) {
+export default function HomepagePdfCard({ theme, userRole, onHeightChange }) {
   const [pdfData, setPdfData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -392,6 +421,14 @@ export default function HomepagePdfCard({ theme, userRole }) {
     await uploadFile(previewFile);
     closePreview();
   };
+
+  // Fait remonter la hauteur exacte du bloc PDF (contenu + bordure de feedCard) dès qu'elle change,
+  // pour que HomeScreen puisse synchroniser la hauteur des deux cartes d'adresse sans approximation.
+  useEffect(() => {
+    if (pdfData?.file_url) {
+      onHeightChange?.(pdfHeight + 2); // +2 = borderWidth:1 (haut + bas) de feedCard
+    }
+  }, [pdfHeight, pdfData?.file_url, onHeightChange]);
 
   const uploadFile = async (file) => {
     setUploading(true);

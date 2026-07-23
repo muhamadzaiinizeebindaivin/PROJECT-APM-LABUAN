@@ -1,11 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Alert } from 'react-native';
-import { supabase } from '../supabaseClient';
+import { supabaseSandbox } from '../supabaseSandboxClient';
+
+const SCHEMA = 'sandbox';
 
 const DEFAULT_DATA = {
-  dikemaskini: '',
-  visiText: 'Bertindak sebagai responden pertama dalam situasi kecemasan dan bencana dalam memberikan perkhidmatan.',
-  misiText: 'Memberi latihan kepada orang awam, menjadikan mereka lebih bersedia dan berupaya menghadapi kecemasan.',
   addressPejabat: {
     orgName: 'Angkatan Pertahanan Awam Malaysia (APM)\nWilayah Persekutuan Labuan\nPejabat Daerah Pertahanan Awam\nJabatan Perdana Menteri',
     address: 'Tingkat 2, Lot 4A2\nWisma Wong Wo Lo\nPeti Surat 81130\n87021 Wilayah Persekutuan Labuan',
@@ -22,29 +21,24 @@ const DEFAULT_DATA = {
   },
 };
 
-const formatDikemaskini = () => {
-  const now = new Date();
-  const date = `${now.getDate()}/${now.getMonth() + 1}/${now.getFullYear()}`;
-  const hours = String(now.getHours()).padStart(2, '0');
-  const minutes = String(now.getMinutes()).padStart(2, '0');
-  return `${date} ${hours}:${minutes}`;
-};
-
 export function useHomeData(isAuthFlow) {
   const [loading, setLoading] = useState(true);
   const [pageData, setPageData] = useState(null);
+  const [updatedAt, setUpdatedAt] = useState(null);
 
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      const { data, error } = await supabaseSandbox
+        .schema(SCHEMA)
         .from('home_data')
-        .select('data_json')
+        .select('data_json, updated_at')
         .eq('id', 1)
         .single();
 
       if (error && error.code !== 'PGRST116') throw error;
-      setPageData(data?.data_json || DEFAULT_DATA);
+      setPageData({ ...DEFAULT_DATA, ...(data?.data_json || {}) });
+      setUpdatedAt(data?.updated_at || null);
     } catch (error) {
       console.error('Error fetching home data:', error);
       setPageData(DEFAULT_DATA);
@@ -60,13 +54,15 @@ export function useHomeData(isAuthFlow) {
   const handleSave = async () => {
     try {
       setLoading(true);
-      const dataToSave = { ...pageData, dikemaskini: formatDikemaskini() };
-      const { error } = await supabase
+      const { data, error } = await supabaseSandbox
+        .schema(SCHEMA)
         .from('home_data')
-        .upsert({ id: 1, data_json: dataToSave });
+        .upsert({ id: 1, data_json: pageData })
+        .select('updated_at')
+        .single();
 
       if (error) throw error;
-      setPageData(dataToSave);
+      setUpdatedAt(data?.updated_at || null);
       Alert.alert('Berjaya', 'Maklumat halaman utama telah dikemaskini.');
       return true;
     } catch (error) {
@@ -82,5 +78,5 @@ export function useHomeData(isAuthFlow) {
     setPageData(prev => ({ ...prev, [field]: value }));
   };
 
-  return { loading, pageData, fetchData, handleSave, updateField };
+  return { loading, pageData, updatedAt, fetchData, handleSave, updateField };
 }
