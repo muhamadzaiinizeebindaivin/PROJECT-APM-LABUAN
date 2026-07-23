@@ -34,7 +34,7 @@ export const homeScreenStyles = StyleSheet.create({
   },
   stickySaveBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
 
-  scrollContent: { paddingTop: 12, paddingBottom: 60 },
+  scrollContent: { paddingTop: 12, paddingBottom: 16 },
 
   mainRow: {
     flexDirection: 'row',
@@ -49,7 +49,6 @@ export const homeScreenStyles = StyleSheet.create({
 
   footerInfo: {
     marginTop: 20,
-    paddingBottom: 40,
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'center',

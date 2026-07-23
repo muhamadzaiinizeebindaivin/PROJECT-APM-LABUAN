@@ -98,11 +98,6 @@ export default function HomeScreen({ isAuthFlow, onGuestLogin, onDriverLogin, on
             </View>
           )}
         </View>
-
-        <View style={styles.footerInfo}>
-          <Info size={14} color={PALETTE.mutedLight} />
-          <Text style={styles.footerText}>SediaOps v1.0.8 • APM Labuan Digital Unit</Text>
-        </View>
       </Animated.ScrollView>
     </View>
   );
