@@ -6,6 +6,7 @@ import AdminEditButton from '../components/AdminEditButton';
 import { useLogistikData } from '../hooks/useLogistikData';
 import { useUnitStaff } from '../hooks/useUnitStaff';
 import { useKpi } from '../hooks/useKpi';
+import { canEditSection } from '../permissions';
 import KpiSection from './pentadbiran/KpiSection';
 import { logistikStyles as styles } from './logistik/logistikStyles';
 import { stickyHeaderStyles } from '../styles/stickyHeaderStyles';
@@ -18,6 +19,7 @@ import HorizontalCarousel from './logistik/HorizontalCarousel';
 import AssetViewModal from './logistik/AssetViewModal';
 import AssetFormModal from './logistik/AssetFormModal';
 export default function LogistikScreen({ userRole }) {
+  const canEdit = canEditSection(userRole, 'Logistik');
   const { logistikData, loading, saveAsset, deleteAsset, logistikUpdatedAt } = useLogistikData();
   const unit = useUnitStaff('logistik');
   const { kpiList, saveKpiItem, deleteKpiItem, reorderKpi, kpiUpdatedAt } = useKpi('logistik');
@@ -77,7 +79,7 @@ export default function LogistikScreen({ userRole }) {
 
   return (
     <View style={styles.container}>
-      {userRole === 'admin' && (
+      {canEdit && (
         <View style={stickyHeaderStyles.stickyHeader}>
           <View style={stickyHeaderStyles.stickyHeaderCenter} pointerEvents="none">
             {dikemaskini ? (
@@ -87,7 +89,7 @@ export default function LogistikScreen({ userRole }) {
               </View>
             ) : null}
           </View>
-          <AdminEditButton isEditMode={isEditMode} setIsEditMode={setIsEditMode} userRole={userRole} />
+          <AdminEditButton isEditMode={isEditMode} setIsEditMode={setIsEditMode} userRole={userRole} section="Logistik" />
         </View>
       )}
 

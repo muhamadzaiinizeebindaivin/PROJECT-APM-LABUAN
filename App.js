@@ -100,7 +100,6 @@ function DepartmentFlow({ userRole, theme, handleLogin, handleLogout, onLoginPre
       options: {
         tabBarActiveTintColor: '#f97316',
         unmountOnBlur: true,
-        tabBarLabel: (userRole === 'admin' || userRole === 'sekretariat') ? 'Sekretariat' : 'Peta Bencana',
       },
       render: (props) => <SekretariatScreen {...props} theme={theme} userRole={userRole} />
     },
@@ -110,7 +109,6 @@ function DepartmentFlow({ userRole, theme, handleLogin, handleLogout, onLoginPre
       options: {
         tabBarActiveTintColor: '#f97316',
         unmountOnBlur: true,
-        tabBarLabel: (userRole === 'admin' || userRole === 'operasi') ? 'Operasi' : 'Peta Kecemasan',
       },
       render: (props) => <OperasiScreen {...props} theme={theme} userRole={userRole} />
     },

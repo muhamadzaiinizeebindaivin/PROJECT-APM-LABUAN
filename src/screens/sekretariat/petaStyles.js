@@ -41,13 +41,13 @@ export const petaStyles = StyleSheet.create({
   agencyLegendLabel: { fontSize: 11, fontWeight: '700', color: PALETTE.textDark, flex: 1 },
 
   historyToggleBtn: {
-    position: 'absolute', top: 16, right: 112, zIndex: 10,
+    position: 'absolute', top: 16, right: 116, zIndex: 10,
     width: 40, height: 40, borderRadius: 12, backgroundColor: PALETTE.cardLight,
     justifyContent: 'center', alignItems: 'center',
     shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 10, elevation: 4,
   },
   summaryToggleBtn: {
-    position: 'absolute', top: 16, right: 64, zIndex: 10,
+    position: 'absolute', top: 16, right: 164, zIndex: 10,
     width: 40, height: 40, borderRadius: 12, backgroundColor: PALETTE.cardLight,
     justifyContent: 'center', alignItems: 'center',
     shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 10, elevation: 4,

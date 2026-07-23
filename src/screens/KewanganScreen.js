@@ -6,6 +6,7 @@ import { useKewanganBudget } from '../hooks/useKewanganBudget';
 import { useKewanganQuarterly } from '../hooks/useKewanganQuarterly';
 import { useUnitStaff } from '../hooks/useUnitStaff';
 import { useKpi } from '../hooks/useKpi';
+import { canEditSection } from '../permissions';
 import KpiSection from './pentadbiran/KpiSection';
 import { kewanganStyles as styles } from './kewangan/kewanganStyles';
 import { stickyHeaderStyles } from '../styles/stickyHeaderStyles';
@@ -16,6 +17,7 @@ import QuarterlySection from './kewangan/QuarterlySection';
 
 export default function KewanganScreen({ userRole }) {
   const [isEditMode, setIsEditMode] = useState(false);
+  const canEdit = canEditSection(userRole, 'Kewangan');
 
   const summary = useKewanganSummary();
   const budget = useKewanganBudget();
@@ -42,7 +44,7 @@ export default function KewanganScreen({ userRole }) {
 
   return (
     <View style={styles.container}>
-      {userRole === 'admin' && (
+      {canEdit && (
         <View style={stickyHeaderStyles.stickyHeader}>
           <View style={stickyHeaderStyles.stickyHeaderCenter} pointerEvents="none">
             {dikemaskini ? (
@@ -52,7 +54,7 @@ export default function KewanganScreen({ userRole }) {
               </View>
             ) : null}
           </View>
-          <AdminEditButton isEditMode={isEditMode} setIsEditMode={setIsEditMode} userRole={userRole} />
+          <AdminEditButton isEditMode={isEditMode} setIsEditMode={setIsEditMode} userRole={userRole} section="Logistik" />
         </View>
       )}
 

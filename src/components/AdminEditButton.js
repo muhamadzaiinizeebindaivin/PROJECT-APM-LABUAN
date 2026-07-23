@@ -1,9 +1,11 @@
 import React from 'react';
 import { TouchableOpacity, View, Text, StyleSheet } from 'react-native';
 import { Edit2, X } from 'lucide-react-native';
+import { canEditSection } from '../permissions';
 
-export default function AdminEditButton({ isEditMode, setIsEditMode, userRole }) {
-  if (userRole && userRole !== 'admin') return null;
+export default function AdminEditButton({ isEditMode, setIsEditMode, userRole, section }) {
+  const allowed = section ? canEditSection(userRole, section) : (!userRole || userRole === 'admin');
+  if (!allowed) return null;
 
   const accent = '#f97316';
 

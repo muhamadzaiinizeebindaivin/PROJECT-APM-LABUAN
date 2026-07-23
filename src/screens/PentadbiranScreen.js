@@ -5,8 +5,10 @@ import { PALETTE } from '../constants/palette';
 import { usePentadbiranData } from '../hooks/usePentadbiranData';
 import { useKpi } from '../hooks/useKpi';
 import { useUnitStaff } from '../hooks/useUnitStaff';
+import { canEditSection } from '../permissions';
 import { pentadbiranStyles as styles } from './pentadbiran/pentadbiranStyles';
-import { stickyHeaderStyles } from '../styles/stickyHeaderStyles';import { Network } from 'lucide-react-native';
+import { stickyHeaderStyles } from '../styles/stickyHeaderStyles';
+import { Network } from 'lucide-react-native';
 import SectionHeader from './pentadbiran/SectionHeader';
 import ComplianceSection from './pentadbiran/ComplianceSection';
 import WaranTable from './pentadbiran/WaranTable';
@@ -18,6 +20,7 @@ const KPI_SECTION = 'pentadbiran';
 
 export default function PentadbiranScreen({ userRole }) {
   const [isEditing, setIsEditing] = useState(false);
+  const canEdit = canEditSection(userRole, 'Pentadbiran');
   const { loading, pageData, updatedAt, saveData, updateField, updateArrayField, addArrayItem, removeArrayItem } = usePentadbiranData();
   const { kpiList, saveKpiItem, deleteKpiItem, reorderKpi, kpiUpdatedAt } = useKpi(KPI_SECTION);
   const { staffList: unitStaffList, saveStaffItem, deleteStaffItem, reorderStaff, staffUpdatedAt } = useUnitStaff('pentadbiran');
@@ -63,7 +66,7 @@ export default function PentadbiranScreen({ userRole }) {
 
   return (
     <View style={styles.container}>
-      {userRole === 'admin' && (
+      {canEdit && (
         <View style={stickyHeaderStyles.stickyHeader}>
           <View style={stickyHeaderStyles.stickyHeaderCenter} pointerEvents="none">
             {dikemaskini ? (
@@ -77,6 +80,7 @@ export default function PentadbiranScreen({ userRole }) {
             isEditMode={isEditing}
             setIsEditMode={setIsEditing}
             userRole={userRole}
+            section="Pentadbiran"
           />
         </View>
       )}
@@ -87,7 +91,7 @@ export default function PentadbiranScreen({ userRole }) {
 
           <OrgChartPhoto
             isEditing={isEditing}
-            canEdit={userRole === 'admin'}
+            canEdit={canEdit}
             url={pageData.cartaOrganisasiUrl}
             onChangeUrl={(url) => updateField('cartaOrganisasiUrl', url)}
             onSaveUrl={async (url) => {

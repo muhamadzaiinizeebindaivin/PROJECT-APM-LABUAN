@@ -14,10 +14,11 @@ import { useSekretariatMeta } from '../hooks/useSekretariatMeta';
 import { appStyles as shared } from '../styles/appStyles';
 import { stickyHeaderStyles } from '../styles/stickyHeaderStyles';
 import { PALETTE } from '../constants/palette';
+import { canEditSection } from '../permissions';
 
 const SekretariatScreen = ({ theme, userRole }) => {
-  const canManageSekretariat = userRole === 'admin' || userRole === 'sekretariat';
-  const [activeTab, setActiveTab] = useState(canManageSekretariat ? 'JPBD' : 'PETA');
+  const canEdit = canEditSection(userRole, 'Sekretariat');
+  const [activeTab, setActiveTab] = useState('JPBD');
   const [isEditMode, setIsEditMode] = useState(false);
 
   // ---- Unit Bertanggungjawab ----
@@ -56,7 +57,7 @@ const SekretariatScreen = ({ theme, userRole }) => {
 
   return (
     <View style={styles.container}>
-      {userRole === 'admin' && activeTab !== 'PETA' && (
+      {canEdit && activeTab !== 'PETA' && (
         <View style={stickyHeaderStyles.stickyHeader}>
           <View style={stickyHeaderStyles.stickyHeaderCenter} pointerEvents="none">
             {dikemaskini ? (
@@ -66,12 +67,11 @@ const SekretariatScreen = ({ theme, userRole }) => {
               </View>
             ) : null}
           </View>
-          <AdminEditButton isEditMode={isEditMode} setIsEditMode={setIsEditMode} userRole={userRole} />
+          <AdminEditButton isEditMode={isEditMode} setIsEditMode={setIsEditMode} userRole={userRole} section="Sekretariat" />
         </View>
       )}
 
-      {canManageSekretariat && (
-        <View style={styles.tabBar}>
+      <View style={styles.tabBar}>
           <TouchableOpacity style={[styles.tabItem, activeTab === 'JPBD' && styles.tabItemActive]} onPress={() => setActiveTab('JPBD')} activeOpacity={0.8}>
             <Users size={16} color={activeTab === 'JPBD' ? PALETTE.white : PALETTE.textMutedDark} />
             <Text style={[styles.tabText, activeTab === 'JPBD' ? styles.tabTextActive : { color: PALETTE.textMutedDark }]}>Jawatankuasa</Text>
@@ -89,7 +89,6 @@ const SekretariatScreen = ({ theme, userRole }) => {
             <Text style={[styles.tabText, activeTab === 'PETA' ? styles.tabTextActive : { color: PALETTE.textMutedDark }]}>Peta Bencana</Text>
           </TouchableOpacity>
         </View>
-      )}
 
       {activeTab === 'PETA' ? (
         <PetaTab theme={theme} userRole={userRole} />
@@ -106,7 +105,7 @@ const SekretariatScreen = ({ theme, userRole }) => {
           <View style={styles.unitSection}>
             <View style={shared.sectionHeaderRow}>
               <Text style={shared.sectionHeaderTitle}>Unit Bertanggungjawab</Text>
-              {userRole === 'admin' && isEditMode ? (
+              {canEdit && isEditMode ? (
                 <TouchableOpacity style={shared.addButton} onPress={openAddUnit}>
                   <Plus size={16} color={PALETTE.white} />
                   <Text style={shared.addButtonText}>Tambah</Text>
@@ -121,7 +120,7 @@ const SekretariatScreen = ({ theme, userRole }) => {
             ) : (
               unitList.map((item, index) => (
                 <View key={item.id} style={[styles.unitCard, { marginBottom: 8 }]}>
-                  {userRole === 'admin' && isEditMode ? (
+                  {canEdit && isEditMode ? (
                     <View style={styles.reorderGroup}>
                       <TouchableOpacity
                         style={[styles.reorderBtn, index === 0 && styles.reorderBtnDisabled]}
@@ -144,7 +143,7 @@ const SekretariatScreen = ({ theme, userRole }) => {
                     <Text style={styles.unitName}>{item.name}</Text>
                     <Text style={styles.unitRole}>{item.role || '—'}</Text>
                   </View>
-                  {userRole === 'admin' && isEditMode ? (
+                  {canEdit && isEditMode ? (
                     <View style={{ flexDirection: 'row', gap: 6 }}>
                       <TouchableOpacity
                         style={styles.unitEditBtn}

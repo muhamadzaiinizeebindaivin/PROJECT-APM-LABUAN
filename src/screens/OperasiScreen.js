@@ -13,9 +13,10 @@ import { useOperasiMeta } from '../hooks/useOperasiMeta';
 import AngkatanUnitSection from './angkatan/AngkatanUnitSection';
 import { PALETTE } from '../constants/palette';
 import { stickyHeaderStyles } from '../styles/stickyHeaderStyles';
+import { canEditSection } from '../permissions';
 
 export default function OperasiScreen({ theme, userRole }) {
-  const canManageOperasi = userRole === 'admin' || userRole === 'operasi';
+  const canEdit = canEditSection(userRole, 'Operasi');
   const [activeTab, setActiveTab] = useState('map');
   const [isEditMode, setIsEditMode] = useState(false);
   const { kpiList, saveKpiItem, deleteKpiItem, reorderKpi } = useKpi('operasi');
@@ -35,7 +36,7 @@ export default function OperasiScreen({ theme, userRole }) {
 
   return (
     <View style={styles.container}>
-      {userRole === 'admin' && activeTab !== 'map' && (
+      {canEdit && activeTab !== 'map' && (
         <View style={stickyHeaderStyles.stickyHeader}>
           <View style={stickyHeaderStyles.stickyHeaderCenter} pointerEvents="none">
             {dikemaskini ? (
@@ -45,13 +46,12 @@ export default function OperasiScreen({ theme, userRole }) {
               </View>
             ) : null}
           </View>
-          <AdminEditButton isEditMode={isEditMode} setIsEditMode={setIsEditMode} userRole={userRole} />
+          <AdminEditButton isEditMode={isEditMode} setIsEditMode={setIsEditMode} userRole={userRole} section="Operasi" />
         </View>
       )}
 
-      {/* ---- Barre d'onglets ---- */}
-      {canManageOperasi && (
-        <View style={styles.toggleWrapper}>
+      {/* ---- Barre d'onglets (visible pour tous) ---- */}
+      <View style={styles.toggleWrapper}>
           <TouchableOpacity
             style={[styles.toggleBtn, activeTab === 'map' && styles.toggleBtnActive]}
             onPress={() => setActiveTab('map')}
@@ -79,7 +79,6 @@ export default function OperasiScreen({ theme, userRole }) {
             <Text style={[styles.toggleText, activeTab === 'cemas' ? styles.toggleTextActive : { color: PALETTE.textMutedDark }]}>Pertolongan Cemas</Text>
           </TouchableOpacity>
         </View>
-      )}
       
       {/* ---- KPI (hors carte) ---- */}
       {activeTab !== 'map' && (
@@ -97,8 +96,8 @@ export default function OperasiScreen({ theme, userRole }) {
               />
             </View>
           )}
-          {activeTab === 'report' && canManageOperasi && <Ng999ReportTab theme={theme} userRole={userRole} isEditMode={isEditMode} />}
-          {activeTab === 'cemas' && canManageOperasi && <PertolonganCemasTab theme={theme} userRole={userRole} isEditMode={isEditMode} />}
+          {activeTab === 'report' && <Ng999ReportTab theme={theme} userRole={userRole} isEditMode={isEditMode} />}
+          {activeTab === 'cemas' && <PertolonganCemasTab theme={theme} userRole={userRole} isEditMode={isEditMode} />}
 
           <View style={{ paddingHorizontal: 16 }}>
             <AngkatanUnitSection

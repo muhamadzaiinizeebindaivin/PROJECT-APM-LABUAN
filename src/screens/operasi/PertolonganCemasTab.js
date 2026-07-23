@@ -5,6 +5,7 @@ import { Plus, X, Edit2, Trash2, Calendar, MapPin, Users, Truck, Package, Pill, 
 import { supabaseSandbox } from '../../supabaseSandboxClient';
 import { formStyles } from '../../styles/formStyles';
 import { reportStyles as styles } from './reportStyles';
+import { canEditSection } from '../../permissions';
 
 const STATUS_OPTIONS = ['aktif', 'selesai', 'dibatal'];
 const STATUS_COLORS = {
@@ -45,7 +46,7 @@ function InfoRow({ icon, label, value }) {
 }
 
 export default function PertolonganCemasTab({ theme, userRole, isEditMode }) {
-  const canManage = isEditMode && (userRole === 'admin' || userRole === 'operasi');
+  const canManage = isEditMode && canEditSection(userRole, 'Operasi');
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);

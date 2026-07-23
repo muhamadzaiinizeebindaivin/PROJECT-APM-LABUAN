@@ -19,8 +19,10 @@ import KpiSection from './pentadbiran/KpiSection';
 import KpiDetailModal from './pentadbiran/KpiDetailModal';
 import KpiEditModal from './pentadbiran/KpiEditModal';
 import { stickyHeaderStyles } from '../styles/stickyHeaderStyles';
+import { canEditSection } from '../permissions';
 
 export default function LatihanScreen({ theme, userRole }) {
+  const canEdit = canEditSection(userRole, 'Latihan');
   const { latihanList, isLoading, stats, saveLatihan, deleteLatihan, latihanUpdatedAt } = useLatihan();
   const unit = useUnitStaff('latihan');
 
@@ -88,7 +90,7 @@ export default function LatihanScreen({ theme, userRole }) {
 
   return (
     <View style={styles.container}>
-      {userRole === 'admin' && (
+      {canEdit && (
         <View style={stickyHeaderStyles.stickyHeader}>
           <View style={stickyHeaderStyles.stickyHeaderCenter} pointerEvents="none">
             {dikemaskini ? (
@@ -98,7 +100,7 @@ export default function LatihanScreen({ theme, userRole }) {
               </View>
             ) : null}
           </View>
-          <AdminEditButton isEditMode={isEditMode} setIsEditMode={setIsEditMode} userRole={userRole} />
+          <AdminEditButton isEditMode={isEditMode} setIsEditMode={setIsEditMode} userRole={userRole} section="Latihan" />
         </View>
       )}
 

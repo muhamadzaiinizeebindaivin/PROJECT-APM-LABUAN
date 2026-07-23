@@ -15,6 +15,7 @@ import { emptyEmployeeForm } from './angkatan/employeeFieldGroups';
 import { useUnitStaff } from '../hooks/useUnitStaff';
 import AngkatanUnitSection from './angkatan/AngkatanUnitSection';
 import { useKpi } from '../hooks/useKpi';
+import { canEditSection } from '../permissions';
 import KpiSection from './pentadbiran/KpiSection';
 
 import SummaryHeroCard from './angkatan/SummaryHeroCard';
@@ -37,6 +38,7 @@ const EMPLOYEES_PER_PAGE = 10;
 
 export default function AngkatanScreen({ userRole }) {
   const [isEditing, setIsEditing] = useState(false);
+  const canEdit = canEditSection(userRole, 'Angkatan');
 
   const {
     loading, employees, summary, categories, pyramidStats, ranks, dataUpdatedAt,
@@ -181,7 +183,7 @@ export default function AngkatanScreen({ userRole }) {
 
   return (
     <View style={styles.container}>
-      {userRole === 'admin' && (
+      {canEdit && (
         <View style={stickyHeaderStyles.stickyHeader}>
           <View style={stickyHeaderStyles.stickyHeaderCenter} pointerEvents="none">
             {dikemaskini ? (
@@ -191,7 +193,7 @@ export default function AngkatanScreen({ userRole }) {
               </View>
             ) : null}
           </View>
-          <AdminEditButton isEditMode={isEditing} setIsEditMode={setIsEditing} userRole={userRole} />
+          <AdminEditButton isEditMode={isEditing} setIsEditMode={setIsEditing} userRole={userRole} section="Angkatan" />
         </View>
       )}
 

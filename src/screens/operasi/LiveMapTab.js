@@ -426,37 +426,44 @@ export default function LiveMapTab({ theme, userRole }) {
             </View>
           )}
 
-          <TouchableOpacity
-            style={styles.historyToggleBtn}
-            onPress={() => setSidePanel(sidePanel === 'history' ? 'none' : 'history')}
-            {...(Platform.OS === 'web' ? {
-              onMouseEnter: () => setHistoryBtnHovered(true),
-              onMouseLeave: () => setHistoryBtnHovered(false),
-            } : {})}
-          >
-            <History size={18} color="#1E3A8A" />
-            {historyBtnHovered && (
-              <View style={styles.historyTooltip}>
-                <Text style={styles.historyTooltipText}>Sejarah Patrol Kenderaan</Text>
-              </View>
-            )}
-          </TouchableOpacity>
+          {(() => {
+            const canAddCalamity = userRole === 'sekretariat' || userRole === 'admin';
+            return (
+              <>
+                <TouchableOpacity
+                  style={[styles.historyToggleBtn, { right: canAddCalamity ? 116 : 16 }]}
+                  onPress={() => setSidePanel(sidePanel === 'history' ? 'none' : 'history')}
+                  {...(Platform.OS === 'web' ? {
+                    onMouseEnter: () => setHistoryBtnHovered(true),
+                    onMouseLeave: () => setHistoryBtnHovered(false),
+                  } : {})}
+                >
+                  <History size={18} color="#1E3A8A" />
+                  {historyBtnHovered && (
+                    <View style={styles.historyTooltip}>
+                      <Text style={styles.historyTooltipText}>Sejarah Patrol Kenderaan</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.summaryToggleBtn}
-            onPress={() => setSidePanel(sidePanel === 'summary' ? 'none' : 'summary')}
-            {...(Platform.OS === 'web' ? {
-              onMouseEnter: () => setSummaryBtnHovered(true),
-              onMouseLeave: () => setSummaryBtnHovered(false),
-            } : {})}
-          >
-            <ClipboardList size={18} color="#1E3A8A" />
-            {summaryBtnHovered && (
-              <View style={styles.historyTooltip}>
-                <Text style={styles.historyTooltipText}>Ringkasan Kecemasan</Text>
-              </View>
-            )}
-          </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.summaryToggleBtn, { right: canAddCalamity ? 164 : 64 }]}
+                  onPress={() => setSidePanel(sidePanel === 'summary' ? 'none' : 'summary')}
+                  {...(Platform.OS === 'web' ? {
+                    onMouseEnter: () => setSummaryBtnHovered(true),
+                    onMouseLeave: () => setSummaryBtnHovered(false),
+                  } : {})}
+                >
+                  <ClipboardList size={18} color="#1E3A8A" />
+                  {summaryBtnHovered && (
+                    <View style={styles.historyTooltip}>
+                      <Text style={styles.historyTooltipText}>Ringkasan Kecemasan</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              </>
+            );
+          })()}
 
           {(userRole === 'sekretariat' || userRole === 'admin') && (
             <View style={styles.calamityPalette}>
