@@ -10,6 +10,7 @@ import { useEmployeeCertificates } from '../hooks/useEmployeeCertificates';
 import { useEmployeePromotionHistory } from '../hooks/useEmployeePromotionHistory';
 import { useEmployeePhoto } from '../hooks/useEmployeePhoto';
 import { angkatanStyles as styles } from './angkatan/angkatanStyles';
+import { stickyHeaderStyles } from '../styles/stickyHeaderStyles';
 import { emptyEmployeeForm } from './angkatan/employeeFieldGroups';
 import { useUnitStaff } from '../hooks/useUnitStaff';
 import AngkatanUnitSection from './angkatan/AngkatanUnitSection';
@@ -181,10 +182,10 @@ export default function AngkatanScreen({ userRole }) {
   return (
     <View style={styles.container}>
       {userRole === 'admin' && (
-        <View style={styles.stickyHeader}>
-          <View style={styles.stickyHeaderCenter} pointerEvents="none">
+        <View style={stickyHeaderStyles.stickyHeader}>
+          <View style={stickyHeaderStyles.stickyHeaderCenter} pointerEvents="none">
             {dikemaskini ? (
-              <Text style={styles.stickyHeaderDikemaskini}>DIKEMASKINI {dikemaskini}</Text>
+              <Text style={stickyHeaderStyles.stickyHeaderDikemaskini}>DIKEMASKINI {dikemaskini}</Text>
             ) : null}
           </View>
           <AdminEditButton isEditMode={isEditing} setIsEditMode={setIsEditing} userRole={userRole} />

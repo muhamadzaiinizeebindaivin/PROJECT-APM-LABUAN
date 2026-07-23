@@ -11,6 +11,7 @@ import KpiSection from './pentadbiran/KpiSection';
 import { useOperasiUnit } from '../hooks/useOperasiUnit';
 import AngkatanUnitSection from './angkatan/AngkatanUnitSection';
 import { PALETTE } from '../constants/palette';
+import { stickyHeaderStyles } from '../styles/stickyHeaderStyles';
 
 export default function OperasiScreen({ theme, userRole }) {
   const canManageOperasi = userRole === 'admin' || userRole === 'operasi';

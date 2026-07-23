@@ -101,5 +101,10 @@ export function useLatihan() {
     };
   }, [latihanList]);
 
-  return { latihanList, isLoading, stats, saveLatihan, deleteLatihan };
+  const latihanUpdatedAt = latihanList.reduce(
+    (latest, item) => (item.updated_at && (!latest || item.updated_at > latest) ? item.updated_at : latest),
+    null
+  );
+
+  return { latihanList, isLoading, stats, saveLatihan, deleteLatihan, latihanUpdatedAt };
 }

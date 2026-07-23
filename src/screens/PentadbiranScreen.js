@@ -6,7 +6,7 @@ import { usePentadbiranData } from '../hooks/usePentadbiranData';
 import { useKpi } from '../hooks/useKpi';
 import { useUnitStaff } from '../hooks/useUnitStaff';
 import { pentadbiranStyles as styles } from './pentadbiran/pentadbiranStyles';
-import { Network } from 'lucide-react-native';
+import { stickyHeaderStyles } from '../styles/stickyHeaderStyles';import { Network } from 'lucide-react-native';
 import SectionHeader from './pentadbiran/SectionHeader';
 import ComplianceSection from './pentadbiran/ComplianceSection';
 import WaranTable from './pentadbiran/WaranTable';
@@ -64,10 +64,10 @@ export default function PentadbiranScreen({ userRole }) {
   return (
     <View style={styles.container}>
       {userRole === 'admin' && (
-        <View style={styles.stickyHeader}>
-          <View style={styles.stickyHeaderCenter} pointerEvents="none">
+        <View style={stickyHeaderStyles.stickyHeader}>
+          <View style={stickyHeaderStyles.stickyHeaderCenter} pointerEvents="none">
             {dikemaskini ? (
-              <Text style={styles.stickyHeaderDikemaskini}>DIKEMASKINI {dikemaskini}</Text>
+              <Text style={stickyHeaderStyles.stickyHeaderDikemaskini}>DIKEMASKINI {dikemaskini}</Text>
             ) : null}
           </View>
           <AdminEditButton

@@ -8,6 +8,7 @@ import { useUnitStaff } from '../hooks/useUnitStaff';
 import { useKpi } from '../hooks/useKpi';
 import KpiSection from './pentadbiran/KpiSection';
 import { kewanganStyles as styles } from './kewangan/kewanganStyles';
+import { stickyHeaderStyles } from '../styles/stickyHeaderStyles';
 import SummaryCard from './kewangan/SummaryCard';
 import UnitInfoCard from './kewangan/UnitInfoCard';
 import BudgetSection from './kewangan/BudgetSection';
@@ -42,10 +43,10 @@ export default function KewanganScreen({ userRole }) {
   return (
     <View style={styles.container}>
       {userRole === 'admin' && (
-        <View style={styles.stickyHeader}>
-          <View style={styles.stickyHeaderCenter} pointerEvents="none">
+        <View style={stickyHeaderStyles.stickyHeader}>
+          <View style={stickyHeaderStyles.stickyHeaderCenter} pointerEvents="none">
             {dikemaskini ? (
-              <Text style={styles.stickyHeaderDikemaskini}>DIKEMASKINI {dikemaskini}</Text>
+              <Text style={stickyHeaderStyles.stickyHeaderDikemaskini}>DIKEMASKINI {dikemaskini}</Text>
             ) : null}
           </View>
           <AdminEditButton isEditMode={isEditMode} setIsEditMode={setIsEditMode} userRole={userRole} />

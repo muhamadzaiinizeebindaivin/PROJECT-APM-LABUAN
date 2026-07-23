@@ -12,22 +12,37 @@ import { latihanStyles as styles } from './latihan/latihanStyles';
 import { AnimatedVerticalBar, AnimatedHorizontalBar, StatusDonut } from './latihan/LatihanCharts';
 import LatihanFormModal from './latihan/LatihanFormModal';
 import { PesertaModal, PrestasiModal, SenaraiModal } from './latihan/LatihanBreakdownModals';
-import { useLatihanUnit } from '../hooks/useLatihanUnit';
+import { useUnitStaff } from '../hooks/useUnitStaff';
 import LatihanUnitSection from './latihan/LatihanUnitSection';
 import { useKpi } from '../hooks/useKpi';
 import KpiSection from './pentadbiran/KpiSection';
 import KpiDetailModal from './pentadbiran/KpiDetailModal';
 import KpiEditModal from './pentadbiran/KpiEditModal';
+import { stickyHeaderStyles } from '../styles/stickyHeaderStyles';
 
 export default function LatihanScreen({ theme, userRole }) {
-  const { latihanList, isLoading, stats, saveLatihan, deleteLatihan } = useLatihan();
-  const { unitList, loadingUnit, saveUnitItem, deleteUnitItem, reorderUnit } = useLatihanUnit();
+  const { latihanList, isLoading, stats, saveLatihan, deleteLatihan, latihanUpdatedAt } = useLatihan();
+  const unit = useUnitStaff('latihan');
 
   const [senaraiModalVisible, setSenaraiModalVisible] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [hoveredMonthIndex, setHoveredMonthIndex] = useState(null);
 
-  const { kpiList, saveKpiItem, deleteKpiItem, reorderKpi } = useKpi('latihan');
+  const { kpiList, saveKpiItem, deleteKpiItem, reorderKpi, kpiUpdatedAt } = useKpi('latihan');
+
+  // Convertit un timestamp ISO (colonne updated_at) au format d'affichage DD/M/YYYY HH:MM
+  const formatTimestamp = (iso) => {
+    if (!iso) return null;
+    const d = new Date(iso);
+    const date = `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`;
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    return `${date} ${hours}:${minutes}`;
+  };
+
+  // DIKEMASKINI = le plus récent updated_at parmi toutes les tables qui composent la page
+  const latestRaw = [latihanUpdatedAt, unit.staffUpdatedAt, kpiUpdatedAt].filter(Boolean).sort().slice(-1)[0] || null;
+  const dikemaskini = formatTimestamp(latestRaw);
 
   const [isFormModalVisible, setFormModalVisible] = useState(false);
   const [pesertaModalVisible, setPesertaModalVisible] = useState(false);
@@ -73,9 +88,18 @@ export default function LatihanScreen({ theme, userRole }) {
 
   return (
     <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.contentContainer} showsVerticalScrollIndicator={false}>
+      {userRole === 'admin' && (
+        <View style={stickyHeaderStyles.stickyHeader}>
+          <View style={stickyHeaderStyles.stickyHeaderCenter} pointerEvents="none">
+            {dikemaskini ? (
+              <Text style={stickyHeaderStyles.stickyHeaderDikemaskini}>DIKEMASKINI {dikemaskini}</Text>
+            ) : null}
+          </View>
+          <AdminEditButton isEditMode={isEditMode} setIsEditMode={setIsEditMode} userRole={userRole} />
+        </View>
+      )}
 
-        <AdminEditButton isEditMode={isEditMode} setIsEditMode={setIsEditMode} userRole={userRole} />
+      <ScrollView contentContainerStyle={styles.contentContainer} showsVerticalScrollIndicator={false}>
 
         {/* ---- Cartes stats ---- */}
         <View style={styles.topRow}>
@@ -187,12 +211,12 @@ export default function LatihanScreen({ theme, userRole }) {
         {/* ---- Unit Bertanggungjawab ---- */}
         <View style={{ height: 16 }} />
         <LatihanUnitSection
-          unitList={unitList}
-          loadingUnit={loadingUnit}
+          unitList={unit.staffList}
+          loadingUnit={unit.loading}
           isEditMode={isEditMode}
-          saveUnitItem={saveUnitItem}
-          deleteUnitItem={deleteUnitItem}
-          reorderUnit={reorderUnit}
+          saveUnitItem={unit.saveStaffItem}
+          deleteUnitItem={unit.deleteStaffItem}
+          reorderUnit={unit.reorderStaff}
         />
       </ScrollView>
 

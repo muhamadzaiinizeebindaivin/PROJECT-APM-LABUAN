@@ -9,8 +9,10 @@ import HotspotSection from './sekretariat/HotspotSection';
 import PpsSection from './sekretariat/PpsSection';
 import PetaTab from './sekretariat/PetaTab';
 import UnitEditModal from './kewangan/UnitEditModal';
-import { useSekretariatUnit } from '../hooks/useSekretariatUnit';
+import { useUnitStaff } from '../hooks/useUnitStaff';
+import { useSekretariatMeta } from '../hooks/useSekretariatMeta';
 import { appStyles as shared } from '../styles/appStyles';
+import { stickyHeaderStyles } from '../styles/stickyHeaderStyles';
 import { PALETTE } from '../constants/palette';
 
 const SekretariatScreen = ({ theme, userRole }) => {
@@ -19,7 +21,19 @@ const SekretariatScreen = ({ theme, userRole }) => {
   const [isEditMode, setIsEditMode] = useState(false);
 
   // ---- Unit Bertanggungjawab ----
-  const { unitList, loadingUnit, saveUnitItem, deleteUnitItem, reorderUnit } = useSekretariatUnit();
+  const { staffList: unitList, loading: loadingUnit, saveStaffItem: saveUnitItem, deleteStaffItem: deleteUnitItem, reorderStaff: reorderUnit } = useUnitStaff('sekretariat');
+  const { dikemaskiniRaw } = useSekretariatMeta();
+
+  // Convertit un timestamp ISO (colonne updated_at) au format d'affichage DD/M/YYYY HH:MM
+  const formatTimestamp = (iso) => {
+    if (!iso) return null;
+    const d = new Date(iso);
+    const date = `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`;
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    return `${date} ${hours}:${minutes}`;
+  };
+  const dikemaskini = formatTimestamp(dikemaskiniRaw);
   const [hoveredUnitIndex, setHoveredUnitIndex] = useState(null);
   const [unitModalVisible, setUnitModalVisible] = useState(false);
   const [editUnit, setEditUnit] = useState(null);
@@ -42,6 +56,17 @@ const SekretariatScreen = ({ theme, userRole }) => {
 
   return (
     <View style={styles.container}>
+      {userRole === 'admin' && activeTab !== 'PETA' && (
+        <View style={stickyHeaderStyles.stickyHeader}>
+          <View style={stickyHeaderStyles.stickyHeaderCenter} pointerEvents="none">
+            {dikemaskini ? (
+              <Text style={stickyHeaderStyles.stickyHeaderDikemaskini}>DIKEMASKINI {dikemaskini}</Text>
+            ) : null}
+          </View>
+          <AdminEditButton isEditMode={isEditMode} setIsEditMode={setIsEditMode} userRole={userRole} />
+        </View>
+      )}
+
       {canManageSekretariat && (
         <View style={styles.tabBar}>
           <TouchableOpacity style={[styles.tabItem, activeTab === 'JPBD' && styles.tabItemActive]} onPress={() => setActiveTab('JPBD')} activeOpacity={0.8}>
@@ -67,7 +92,6 @@ const SekretariatScreen = ({ theme, userRole }) => {
         <PetaTab theme={theme} userRole={userRole} />
       ) : (
         <ScrollView contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false}>
-          <AdminEditButton isEditMode={isEditMode} setIsEditMode={setIsEditMode} userRole={userRole} />
 
           {activeTab === 'JPBD' && <JpbdSection userRole={userRole} isEditMode={isEditMode} />}
           {activeTab === 'HOTSPOT' && <HotspotSection userRole={userRole} isEditMode={isEditMode} />}

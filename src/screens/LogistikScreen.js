@@ -8,6 +8,7 @@ import { useUnitStaff } from '../hooks/useUnitStaff';
 import { useKpi } from '../hooks/useKpi';
 import KpiSection from './pentadbiran/KpiSection';
 import { logistikStyles as styles } from './logistik/logistikStyles';
+import { stickyHeaderStyles } from '../styles/stickyHeaderStyles';
 import SectionHeader from './pentadbiran/SectionHeader';
 import StatsRow from './logistik/StatsRow';
 import UnitInfoCard from './logistik/UnitInfoCard';
@@ -16,7 +17,6 @@ import AssetCard from './logistik/AssetCard';
 import HorizontalCarousel from './logistik/HorizontalCarousel';
 import AssetViewModal from './logistik/AssetViewModal';
 import AssetFormModal from './logistik/AssetFormModal';
-
 export default function LogistikScreen({ userRole }) {
   const { logistikData, loading, saveAsset, deleteAsset, logistikUpdatedAt } = useLogistikData();
   const unit = useUnitStaff('logistik');
@@ -78,10 +78,10 @@ export default function LogistikScreen({ userRole }) {
   return (
     <View style={styles.container}>
       {userRole === 'admin' && (
-        <View style={styles.stickyHeader}>
-          <View style={styles.stickyHeaderCenter} pointerEvents="none">
+        <View style={stickyHeaderStyles.stickyHeader}>
+          <View style={stickyHeaderStyles.stickyHeaderCenter} pointerEvents="none">
             {dikemaskini ? (
-              <Text style={styles.stickyHeaderDikemaskini}>DIKEMASKINI {dikemaskini}</Text>
+              <Text style={stickyHeaderStyles.stickyHeaderDikemaskini}>DIKEMASKINI {dikemaskini}</Text>
             ) : null}
           </View>
           <AdminEditButton isEditMode={isEditMode} setIsEditMode={setIsEditMode} userRole={userRole} />

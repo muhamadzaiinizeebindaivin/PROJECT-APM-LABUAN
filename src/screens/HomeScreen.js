@@ -11,6 +11,7 @@ import { homeScreenStyles as styles } from './home/homeScreenStyles';
 import { useHomeData } from '../hooks/useHomeData';
 import { PALETTE } from '../constants/palette';
 import { ShieldCheck, Truck, Building2 } from 'lucide-react-native';
+import { stickyHeaderStyles } from '../styles/stickyHeaderStyles';
 
 export default function HomeScreen({ isAuthFlow, onGuestLogin, onDriverLogin, onAgencyLogin, onLoginPress, navigation, userRole, theme }) {
   const [isEditing, setIsEditing] = useState(false);
