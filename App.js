@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, StatusBar, TouchableOpacity, Alert, Platform, Text, ActivityIndicator, Modal, TextInput, KeyboardAvoidingView, Image } from 'react-native';import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -32,6 +32,7 @@ import { themes } from './theme';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator(); 
+
 
 // ==========================================
 // STABLE COMPONENTS (defined OUTSIDE App())
@@ -259,6 +260,37 @@ export default function App() {
       setAgencyInfo(null);
     }
   };
+
+  // --- Bouton "retour" du navigateur : ramener vers l'accueil plutôt que
+  // quitter le site quand on est connecté en tant que pemandu/agensi ---
+  // Ces deux flows n'ont qu'un seul écran (pas de pile de navigation interne),
+  // donc sans ceci, l'historique du navigateur n'a rien à "dépiler" et le
+  // bouton retour sort carrément du site.
+  const userRoleRef = useRef(userRole);
+  useEffect(() => { userRoleRef.current = userRole; }, [userRole]);
+
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+    // Empile une entrée d'historique dédiée dès qu'on entre en mode pemandu/agensi,
+    // pour que le bouton retour ait quelque chose à intercepter.
+    if (userRole === 'driver' || userRole === 'agency') {
+      window.history.pushState({ apmGuard: true }, '', window.location.href);
+    }
+  }, [userRole]);
+
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+    const handlePopState = () => {
+      if (userRoleRef.current === 'driver' || userRoleRef.current === 'agency') {
+        setUserRole('guest');
+        setAgencyInfo(null);
+        // Réempile une entrée pour absorber d'éventuels nouveaux clics sur "retour"
+        window.history.pushState({ apmGuard: true }, '', window.location.href);
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   // Formulaire public (lien partagé au personnel de terrain, avec code d'accès)
   const isPublicNg999Route = Platform.OS === 'web' && typeof window !== 'undefined' &&
