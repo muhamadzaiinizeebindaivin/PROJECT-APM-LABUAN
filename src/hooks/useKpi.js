@@ -67,5 +67,10 @@ export function useKpi(section) {
     );
   };
 
-  return { kpiList, loadingKpi, saveKpiItem, deleteKpiItem, reorderKpi };
+  const kpiUpdatedAt = kpiList.reduce(
+    (latest, item) => (item.updated_at && (!latest || item.updated_at > latest) ? item.updated_at : latest),
+    null
+  );
+
+  return { kpiList, loadingKpi, saveKpiItem, deleteKpiItem, reorderKpi, kpiUpdatedAt };
 }

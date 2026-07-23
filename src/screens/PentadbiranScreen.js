@@ -3,7 +3,7 @@ import { View, Text, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import AdminEditButton from '../components/AdminEditButton';
 import { PALETTE } from '../constants/palette';
 import { usePentadbiranData } from '../hooks/usePentadbiranData';
-import { useKpiItems } from '../hooks/useKpiItems';
+import { useKpi } from '../hooks/useKpi';
 import { useUnitStaff } from '../hooks/useUnitStaff';
 import { pentadbiranStyles as styles } from './pentadbiran/pentadbiranStyles';
 import { Network } from 'lucide-react-native';
@@ -19,7 +19,7 @@ const KPI_SECTION = 'pentadbiran';
 export default function PentadbiranScreen({ userRole }) {
   const [isEditing, setIsEditing] = useState(false);
   const { loading, pageData, updatedAt, saveData, updateField, updateArrayField, addArrayItem, removeArrayItem } = usePentadbiranData();
-  const { kpiItems, addKpiItem, removeKpiItem, updateKpiItem, saveKpiItems, kpiUpdatedAt } = useKpiItems(KPI_SECTION);
+  const { kpiList, saveKpiItem, deleteKpiItem, reorderKpi, kpiUpdatedAt } = useKpi(KPI_SECTION);
   const { staffList: unitStaffList, saveStaffItem, deleteStaffItem, reorderStaff, staffUpdatedAt } = useUnitStaff('pentadbiran');
 
   // Convertit un timestamp ISO (colonne updated_at) au format d'affichage DD/M/YYYY HH:MM
@@ -44,17 +44,6 @@ export default function PentadbiranScreen({ userRole }) {
     } catch (error) {
       console.error('Error saving data:', error);
       Alert.alert('Ralat', 'Gagal menyimpan data. Pastikan anda log masuk sebagai Admin.');
-      return false;
-    }
-  };
-
-  const persistKpi = async (itemsOverride) => {
-    try {
-      await saveKpiItems(itemsOverride);
-      return true;
-    } catch (error) {
-      console.error('Error saving KPI:', error);
-      Alert.alert('Ralat', 'Gagal menyimpan KPI.');
       return false;
     }
   };
@@ -111,7 +100,14 @@ export default function PentadbiranScreen({ userRole }) {
           />
         </View>
 
-        <KpiSection kpiItems={kpiItems} isEditing={isEditing} updateKpiItem={updateKpiItem} addKpiItem={addKpiItem} removeKpiItem={removeKpiItem} persistKpi={persistKpi} />
+        <KpiSection
+          kpiItems={kpiList}
+          isEditing={isEditing}
+          updateKpiItem={(form, item) => saveKpiItem(form, item)}
+          addKpiItem={(form) => saveKpiItem(form, null)}
+          removeKpiItem={(item) => deleteKpiItem(item)}
+          persistKpi={reorderKpi}
+        />
         <ComplianceSection pageData={pageData} isEditing={isEditing} updateField={updateField} onSave={persistPageData} />
         <WaranTable pageData={pageData} isEditing={isEditing} updateArrayField={updateArrayField} onSave={persistPageData} />
         <UnitSection

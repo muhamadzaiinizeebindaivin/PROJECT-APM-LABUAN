@@ -17,25 +17,35 @@ export default function KewanganScreen({ userRole }) {
   const [isEditMode, setIsEditMode] = useState(false);
 
   const summary = useKewanganSummary();
-  const budget = useKewanganBudget(summary.touchDikemaskini);
-  const quarterly = useKewanganQuarterly(summary.totalAllocation, summary.touchDikemaskini);
-  const unit = useUnitStaff('kewangan', summary.touchDikemaskini);
-  const { kpiList, saveKpiItem, deleteKpiItem, reorderKpi } = useKpi('kewangan');
+  const budget = useKewanganBudget();
+  const quarterly = useKewanganQuarterly(summary.totalAllocation);
+  const unit = useUnitStaff('kewangan');
+  const { kpiList, saveKpiItem, deleteKpiItem, reorderKpi, kpiUpdatedAt } = useKpi('kewangan');
 
-  // Enchaîne l'action KPI puis met à jour DIKEMASKINI dans l'en-tête
-  const touchAfter = (fn) => async (...args) => {
-    const result = await fn(...args);
-    summary.touchDikemaskini();
-    return result;
+  // Convertit un timestamp ISO (colonne updated_at) au format d'affichage DD/M/YYYY HH:MM
+  const formatTimestamp = (iso) => {
+    if (!iso) return null;
+    const d = new Date(iso);
+    const date = `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`;
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    return `${date} ${hours}:${minutes}`;
   };
+
+  // DIKEMASKINI = le plus récent updated_at parmi toutes les tables qui composent la page
+  const latestRaw = [summary.updatedAt, budget.budgetUpdatedAt, quarterly.quarterlyUpdatedAt, unit.staffUpdatedAt, kpiUpdatedAt]
+    .filter(Boolean)
+    .sort()
+    .slice(-1)[0] || null;
+  const dikemaskini = formatTimestamp(latestRaw);
 
   return (
     <View style={styles.container}>
       {userRole === 'admin' && (
         <View style={styles.stickyHeader}>
           <View style={styles.stickyHeaderCenter} pointerEvents="none">
-            {summary.dikemaskini ? (
-              <Text style={styles.stickyHeaderDikemaskini}>DIKEMASKINI {summary.dikemaskini}</Text>
+            {dikemaskini ? (
+              <Text style={styles.stickyHeaderDikemaskini}>DIKEMASKINI {dikemaskini}</Text>
             ) : null}
           </View>
           <AdminEditButton isEditMode={isEditMode} setIsEditMode={setIsEditMode} userRole={userRole} />
@@ -57,10 +67,10 @@ export default function KewanganScreen({ userRole }) {
           <KpiSection
             kpiItems={kpiList}
             isEditing={isEditMode}
-            updateKpiItem={touchAfter((form, item) => saveKpiItem(form, item))}
-            addKpiItem={touchAfter((form) => saveKpiItem(form, null))}
-            removeKpiItem={touchAfter((item) => deleteKpiItem(item))}
-            persistKpi={touchAfter(reorderKpi)}
+            updateKpiItem={(form, item) => saveKpiItem(form, item)}
+            addKpiItem={(form) => saveKpiItem(form, null)}
+            removeKpiItem={(item) => deleteKpiItem(item)}
+            persistKpi={reorderKpi}
             showSubSeksyen={false}
           />
         </View>

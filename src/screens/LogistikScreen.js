@@ -4,7 +4,6 @@ import { ClipboardList } from 'lucide-react-native';
 import { PALETTE } from '../constants/palette';
 import AdminEditButton from '../components/AdminEditButton';
 import { useLogistikData } from '../hooks/useLogistikData';
-import { useLogistikMeta } from '../hooks/useLogistikMeta';
 import { useUnitStaff } from '../hooks/useUnitStaff';
 import { useKpi } from '../hooks/useKpi';
 import KpiSection from './pentadbiran/KpiSection';
@@ -19,17 +18,23 @@ import AssetViewModal from './logistik/AssetViewModal';
 import AssetFormModal from './logistik/AssetFormModal';
 
 export default function LogistikScreen({ userRole }) {
-  const meta = useLogistikMeta();
-  const { logistikData, loading, saveAsset, deleteAsset } = useLogistikData(meta.touchDikemaskini);
-  const unit = useUnitStaff('logistik', meta.touchDikemaskini);
-  const { kpiList, saveKpiItem, deleteKpiItem, reorderKpi } = useKpi('logistik');
+  const { logistikData, loading, saveAsset, deleteAsset, logistikUpdatedAt } = useLogistikData();
+  const unit = useUnitStaff('logistik');
+  const { kpiList, saveKpiItem, deleteKpiItem, reorderKpi, kpiUpdatedAt } = useKpi('logistik');
 
-  // Enchaîne l'action KPI puis met à jour DIKEMASKINI dans l'en-tête
-  const touchAfter = (fn) => async (...args) => {
-    const result = await fn(...args);
-    meta.touchDikemaskini();
-    return result;
+  // Convertit un timestamp ISO (colonne updated_at) au format d'affichage DD/M/YYYY HH:MM
+  const formatTimestamp = (iso) => {
+    if (!iso) return null;
+    const d = new Date(iso);
+    const date = `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`;
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    return `${date} ${hours}:${minutes}`;
   };
+
+  // DIKEMASKINI = le plus récent updated_at parmi toutes les tables qui composent la page
+  const latestRaw = [logistikUpdatedAt, unit.staffUpdatedAt, kpiUpdatedAt].filter(Boolean).sort().slice(-1)[0] || null;
+  const dikemaskini = formatTimestamp(latestRaw);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('Semua');
@@ -75,8 +80,8 @@ export default function LogistikScreen({ userRole }) {
       {userRole === 'admin' && (
         <View style={styles.stickyHeader}>
           <View style={styles.stickyHeaderCenter} pointerEvents="none">
-            {meta.dikemaskini ? (
-              <Text style={styles.stickyHeaderDikemaskini}>DIKEMASKINI {meta.dikemaskini}</Text>
+            {dikemaskini ? (
+              <Text style={styles.stickyHeaderDikemaskini}>DIKEMASKINI {dikemaskini}</Text>
             ) : null}
           </View>
           <AdminEditButton isEditMode={isEditMode} setIsEditMode={setIsEditMode} userRole={userRole} />
@@ -90,10 +95,10 @@ export default function LogistikScreen({ userRole }) {
           <KpiSection
             kpiItems={kpiList}
             isEditing={isEditMode}
-            updateKpiItem={touchAfter((form, item) => saveKpiItem(form, item))}
-            addKpiItem={touchAfter((form) => saveKpiItem(form, null))}
-            removeKpiItem={touchAfter((item) => deleteKpiItem(item))}
-            persistKpi={touchAfter(reorderKpi)}
+            updateKpiItem={(form, item) => saveKpiItem(form, item)}
+            addKpiItem={(form) => saveKpiItem(form, null)}
+            removeKpiItem={(item) => deleteKpiItem(item)}
+            persistKpi={reorderKpi}
             showSubSeksyen={false}
           />
         </View>

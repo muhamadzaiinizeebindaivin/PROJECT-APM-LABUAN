@@ -4,7 +4,7 @@ import { supabaseSandbox } from '../supabaseSandboxClient';
 
 const SCHEMA = 'sandbox';
 
-export function useLogistikData(onChange) {
+export function useLogistikData() {
   const [logistikData, setLogistikData] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -38,7 +38,6 @@ export function useLogistikData(onChange) {
         if (error) throw error;
       }
       await fetchLogistik();
-      onChange?.();
       return true;
     } catch (error) {
       Alert.alert('Ralat', 'Gagal menyimpan rekod.');
@@ -66,5 +65,10 @@ export function useLogistikData(onChange) {
     ]);
   };
 
-  return { logistikData, loading, saveAsset, deleteAsset };
+  const logistikUpdatedAt = logistikData.reduce(
+    (latest, item) => (item.updated_at && (!latest || item.updated_at > latest) ? item.updated_at : latest),
+    null
+  );
+
+  return { logistikData, loading, saveAsset, deleteAsset, logistikUpdatedAt };
 }
