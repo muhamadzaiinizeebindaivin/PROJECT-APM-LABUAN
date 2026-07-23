@@ -9,8 +9,8 @@ export const mapStyles = StyleSheet.create({
   toggleBtnActive: { backgroundColor: '#3b82f6' },
   toggleText: { fontSize: 13, fontWeight: '700' },
   toggleTextActive: { color: '#fff' },
-  viewContainer: { flex: 1, position: 'relative', marginHorizontal: 16, marginTop: 16 },
-  mapContainer: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0, borderRadius: 20, overflow: 'hidden' },
+  viewContainer: { flex: 1, flexDirection: 'row', position: 'relative', marginHorizontal: 16, marginTop: 16, borderRadius: 20, overflow: 'hidden' },
+  mapContainer: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0 },
 
   historyToggleBtn: {
     position: 'absolute', top: 16, right: 116, zIndex: 10,
@@ -39,7 +39,7 @@ export const mapStyles = StyleSheet.create({
   calamityToolText: { fontSize: 11, fontWeight: '800' },
   calamityHint: { fontSize: 10, color: '#64748b', textAlign: 'center', marginTop: 4 },
 
-  historyHalf: { flex: 1, backgroundColor: '#fff', borderLeftWidth: 1, borderLeftColor: '#e2e8f0', borderTopRightRadius: 20, borderBottomRightRadius: 20, overflow: 'hidden' },
+  historyHalf: { flex: 1, backgroundColor: '#fff', borderLeftWidth: 1, borderLeftColor: '#e2e8f0' },
   historyHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
   pdfExportBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: PALETTE.orange, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, minWidth: 60, justifyContent: 'center' },
   pdfExportBtnDisabled: { backgroundColor: '#cbd5e1' },

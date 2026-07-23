@@ -373,7 +373,7 @@ export default function LiveMapTab({ theme, userRole }) {
 
   return (
     <>
-      <View style={[styles.viewContainer, { flexDirection: 'row' }]}>
+      <View style={styles.viewContainer}>
         <View style={{ flex: 1, position: 'relative' }}>
           <View style={styles.mapContainer}>
             {Platform.OS === 'web' ? (

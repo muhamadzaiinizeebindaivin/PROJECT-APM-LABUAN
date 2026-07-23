@@ -57,17 +57,19 @@ export default function OperasiScreen({ theme, userRole }) {
       {activeTab !== 'map' && (
         <ScrollView contentContainerStyle={styles.contentContainer} showsVerticalScrollIndicator={false}>
           <AdminEditButton isEditMode={isEditMode} setIsEditMode={setIsEditMode} userRole={userRole} />
-          <View style={styles.kpiWrapper}>
-            <KpiSection
-              kpiItems={kpiList}
-              isEditing={isEditMode}
-              updateKpiItem={(form, item) => saveKpiItem(form, item)}
-              addKpiItem={(form) => saveKpiItem(form, null)}
-              removeKpiItem={(item) => deleteKpiItem(item)}
-              persistKpi={reorderKpi}
-              showSubSeksyen={false}
-            />
-          </View>
+          {activeTab === 'report' && (
+            <View style={styles.kpiWrapper}>
+              <KpiSection
+                kpiItems={kpiList}
+                isEditing={isEditMode}
+                updateKpiItem={(form, item) => saveKpiItem(form, item)}
+                addKpiItem={(form) => saveKpiItem(form, null)}
+                removeKpiItem={(item) => deleteKpiItem(item)}
+                persistKpi={reorderKpi}
+                showSubSeksyen={false}
+              />
+            </View>
+          )}
           {activeTab === 'report' && canManageOperasi && <Ng999ReportTab theme={theme} userRole={userRole} isEditMode={isEditMode} />}
           {activeTab === 'cemas' && canManageOperasi && <PertolonganCemasTab theme={theme} userRole={userRole} isEditMode={isEditMode} />}
 
@@ -94,6 +96,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1, backgroundColor: PALETTE.softOrangeBg,
     position: 'relative', width: '100%', overflow: 'hidden', borderRadius: 24,
+    paddingBottom: 16,
   },
   toggleWrapper: {
     flexDirection: 'row', margin: 16, padding: 6, borderRadius: 16,
@@ -105,6 +108,6 @@ const styles = StyleSheet.create({
   toggleText: { fontSize: 13, fontWeight: '700' },
   toggleTextActive: { color: PALETTE.white },
   contentContainer: { paddingBottom: 40 },
-  kpiWrapper: { marginBottom: -16 },
+  kpiWrapper: { marginBottom: -16, paddingHorizontal: 16 },
   mapKpiWrapper: { paddingHorizontal: 16, zIndex: 10 },
 });
