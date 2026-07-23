@@ -1,40 +1,31 @@
 // src/components/AdminEditButton.js
-import React, { useLayoutEffect } from 'react';
-import { TouchableOpacity, Text, StyleSheet } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import React from 'react';
+import { TouchableOpacity, Text, ActivityIndicator, StyleSheet } from 'react-native';
 import { Edit2, X } from 'lucide-react-native';
 
-export default function AdminEditButton({ isEditMode, setIsEditMode, userRole }) {
-  const navigation = useNavigation();
+export default function AdminEditButton({ isEditMode, setIsEditMode, userRole, isSaving = false }) {
+  // N'affiche rien si le rôle n'est pas admin (ni indéfini)
+  if (userRole && userRole !== 'admin') return null;
 
-  useLayoutEffect(() => {
-    // Only show the button in the header if the user is an admin
-    if (!userRole || userRole === 'admin') {
-      navigation.setOptions({
-        headerRight: () => (
-          <TouchableOpacity
-            style={[styles.adminBtn, { backgroundColor: isEditMode ? '#ef4444' : '#22c55e' }]}
-            onPress={() => setIsEditMode(!isEditMode)}
-            activeOpacity={0.8}
-          >
-            {isEditMode ? <X size={14} color="#fff" /> : <Edit2 size={14} color="#fff" />}
-            <Text style={styles.adminBtnText}>
-              {isEditMode ? 'Tutup Kemaskini' : 'Kemaskini Maklumat'}
-            </Text>
-          </TouchableOpacity>
-        ),
-      });
-    } else {
-      navigation.setOptions({ headerRight: () => null });
-    }
-
-    // Cleanup: Remove button if component unmounts (e.g., switching tabs)
-    return () => navigation.setOptions({ headerRight: () => null });
-
-  }, [navigation, isEditMode, userRole]);
-
-  // Returns null because the button now renders in the top navigation bar!
-  return null; 
+  return (
+    <TouchableOpacity
+      style={[styles.adminBtn, { backgroundColor: isEditMode ? '#ef4444' : '#22c55e', opacity: isSaving ? 0.7 : 1 }]}
+      onPress={() => !isSaving && setIsEditMode(!isEditMode)}
+      activeOpacity={0.8}
+      disabled={isSaving}
+    >
+      {isSaving ? (
+        <ActivityIndicator size="small" color="#fff" />
+      ) : isEditMode ? (
+        <X size={14} color="#fff" />
+      ) : (
+        <Edit2 size={14} color="#fff" />
+      )}
+      <Text style={styles.adminBtnText}>
+        {isSaving ? 'Menyimpan...' : isEditMode ? 'Tutup Kemaskini' : 'Kemaskini Maklumat'}
+      </Text>
+    </TouchableOpacity>
+  );
 }
 
 const styles = StyleSheet.create({

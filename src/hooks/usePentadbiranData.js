@@ -2,10 +2,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabaseSandbox } from '../supabaseSandboxClient';
 
 const DEFAULT_DATA = {
-  dikemaskini: '',
   cartaOrganisasiUrl: '',
   pecahanUnit: [],
-  unitPentadbiran: [],
   waran: [],
   pematuhan: [],
 };
@@ -13,6 +11,7 @@ const DEFAULT_DATA = {
 export function usePentadbiranData() {
   const [loading, setLoading] = useState(true);
   const [pageData, setPageData] = useState(null);
+  const [updatedAt, setUpdatedAt] = useState(null);
 
   // Toujours à jour, contrairement à `pageData` capturé dans une closure au moment du rendu —
   // évite qu'un appel tardif de saveData() écrase des changements plus récents avec des données périmées.
@@ -26,7 +25,7 @@ export function usePentadbiranData() {
       setLoading(true);
       const { data, error } = await supabaseSandbox
         .from('pentadbiran_data')
-        .select('data_json')
+        .select('data_json, updated_at')
         .eq('id', 1)
         .single();
 
@@ -34,6 +33,7 @@ export function usePentadbiranData() {
       const initial = data?.data_json || DEFAULT_DATA;
       setPageData(initial);
       pageDataRef.current = initial;
+      setUpdatedAt(data?.updated_at || null);
     } catch (error) {
       console.error('Error fetching data:', error);
       setPageData(DEFAULT_DATA);
@@ -48,12 +48,15 @@ export function usePentadbiranData() {
   const saveData = async (overrides = {}) => {
     // Lit depuis la ref (toujours la valeur la plus récente), pas depuis `pageData` (peut être périmé)
     const dataToSave = { ...pageDataRef.current, ...overrides };
-    const { error } = await supabaseSandbox
+    const { data, error } = await supabaseSandbox
       .from('pentadbiran_data')
-      .upsert({ id: 1, data_json: dataToSave });
+      .upsert({ id: 1, data_json: dataToSave })
+      .select('updated_at')
+      .single();
     if (error) throw error;
     pageDataRef.current = dataToSave;
     setPageData(dataToSave);
+    setUpdatedAt(data?.updated_at || null);
   };
 
   const updateField = (field, value) => {
@@ -92,5 +95,5 @@ export function usePentadbiranData() {
     });
   };
 
-  return { loading, pageData, saveData, updateField, updateArrayField, addArrayItem, removeArrayItem };
+  return { loading, pageData, updatedAt, saveData, updateField, updateArrayField, addArrayItem, removeArrayItem };
 }

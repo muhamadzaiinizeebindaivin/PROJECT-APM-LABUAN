@@ -114,9 +114,9 @@ function DepartmentFlow({ userRole, theme, handleLogin, handleLogout, onLoginPre
   const TAB_CONFIG = [
     { name: 'Utama', render: (props) => <HomeScreen {...props} theme={theme} isAuthFlow={false} userRole={userRole} onDriverLogin={() => handleLogin('driver')} onAgencyLogin={() => handleLogin('agency')} onLoginPress={onLoginPress} /> },
     { name: 'Pentadbiran', options: { tabBarActiveTintColor: '#3b82f6' }, render: (props) => <PentadbiranScreen {...props} theme={theme} userRole={userRole} /> },
-    { name: 'Kewangan', options: { tabBarActiveTintColor: '#3b82f6' }, render: (props) => <KewanganScreen {...props} theme={theme} /> },
-    { name: 'Logistik', options: { tabBarActiveTintColor: '#3b82f6' }, render: (props) => <LogistikScreen {...props} theme={theme} /> },
-    { name: 'Angkatan', options: { tabBarActiveTintColor: '#f97316' }, render: (props) => <AngkatanScreen {...props} theme={theme} /> },
+    { name: 'Kewangan', options: { tabBarActiveTintColor: '#3b82f6' }, render: (props) => <KewanganScreen {...props} theme={theme} userRole={userRole} /> },
+    { name: 'Logistik', options: { tabBarActiveTintColor: '#3b82f6' }, render: (props) => <LogistikScreen {...props} theme={theme} userRole={userRole} /> },
+    { name: 'Angkatan', options: { tabBarActiveTintColor: '#f97316' }, render: (props) => <AngkatanScreen {...props} theme={theme} userRole={userRole} /> },
     {
       name: 'Sekretariat',
       options: {
@@ -126,7 +126,7 @@ function DepartmentFlow({ userRole, theme, handleLogin, handleLogout, onLoginPre
       },
       render: (props) => <SekretariatScreen {...props} theme={theme} userRole={userRole} />
     },
-    { name: 'Latihan', options: { tabBarActiveTintColor: '#f97316' }, render: (props) => <LatihanScreen {...props} theme={theme} /> },
+    { name: 'Latihan', options: { tabBarActiveTintColor: '#f97316' }, render: (props) => <LatihanScreen {...props} theme={theme} userRole={userRole} /> },
     {
       name: 'Operasi',
       options: {

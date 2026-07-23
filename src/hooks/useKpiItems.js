@@ -79,5 +79,10 @@ export function useKpiItems(section) {
     fetchKpi();
   };
 
-  return { kpiItems, addKpiItem, removeKpiItem, updateKpiItem, saveKpiItems };
+  const kpiUpdatedAt = kpiItems.reduce(
+    (latest, item) => (item.updated_at && (!latest || item.updated_at > latest) ? item.updated_at : latest),
+    null
+  );
+
+  return { kpiItems, addKpiItem, removeKpiItem, updateKpiItem, saveKpiItems, kpiUpdatedAt };
 }

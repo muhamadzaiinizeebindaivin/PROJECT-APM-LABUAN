@@ -6,7 +6,7 @@ import { KEWANGAN_BUDGET } from '../../data';
 // TEMPORAIRE : pointe vers "sandbox" pour tester avant de migrer vers "public".
 const SCHEMA = 'sandbox';
 
-export function useKewanganBudget() {
+export function useKewanganBudget(onChange) {
   const [budgetData, setBudgetData] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -45,6 +45,7 @@ export function useKewanganBudget() {
         if (error) throw error;
       }
       await fetchBudget();
+      onChange?.();
       return true;
     } catch (error) {
       Alert.alert('Makluman', "Gagal menyimpan ke Supabase. Sila pastikan table 'kewangan_budget' telah wujud. Ralat: " + error.message);
@@ -59,6 +60,7 @@ export function useKewanganBudget() {
         const { error } = await supabaseSandbox.schema(SCHEMA).from('kewangan_budget').delete().eq('id', item.id);
         if (error) throw error;
         await fetchBudget();
+        onChange?.();
       } catch (error) {
         Alert.alert('Ralat', error.message);
       }
@@ -81,6 +83,7 @@ export function useKewanganBudget() {
         const { error } = await supabaseSandbox.schema(SCHEMA).from('kewangan_budget').delete().eq('kategori', kategori);
         if (error) throw error;
         await fetchBudget();
+        onChange?.();
       } catch (error) {
         Alert.alert('Ralat', error.message);
       }

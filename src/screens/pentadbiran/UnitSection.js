@@ -9,7 +9,7 @@ import StaffEditModal from './StaffEditModal';
 
 const EMPTY_STAFF_DRAFT = { name: '', role: '' };
 
-export default function UnitSection({ pageData, isEditing, updateField, onSave }) {
+export default function UnitSection({ pageData, isEditing, updateField, onSave, unitStaffList, saveStaffItem, deleteStaffItem, reorderStaff }) {
   const [hoveredPecahanIndex, setHoveredPecahanIndex] = useState(null);
   const [hoveredStaffIndex, setHoveredStaffIndex] = useState(null);
 
@@ -54,10 +54,10 @@ export default function UnitSection({ pageData, isEditing, updateField, onSave }
     if (onSave) await onSave({ pecahanUnit: updated });
   };
 
-  // ── Unit Pentadbiran (staff) ──
+  // ── Unit Pentadbiran (staff) — désormais stocké dans sandbox.unit_staff (page='pentadbiran') ──
   const openStaffEdit = (index) => {
     setStaffModalIndex(index);
-    const item = pageData.unitPentadbiran[index];
+    const item = unitStaffList[index];
     setStaffDraft({ name: item.name, role: item.role });
   };
   const openStaffAdd = () => {
@@ -69,34 +69,25 @@ export default function UnitSection({ pageData, isEditing, updateField, onSave }
     setStaffDraft(EMPTY_STAFF_DRAFT);
   };
   const handleStaffSave = async () => {
-    let updated;
-    if (staffModalIndex === -1) updated = [...pageData.unitPentadbiran, staffDraft];
-    else updated = pageData.unitPentadbiran.map((it, i) => (i === staffModalIndex ? { ...it, ...staffDraft } : it));
-    updateField('unitPentadbiran', updated);
+    const editItem = staffModalIndex === -1 ? null : unitStaffList[staffModalIndex];
+    await saveStaffItem(staffDraft, editItem);
     closeStaffModal();
-    if (onSave) await onSave({ unitPentadbiran: updated });
   };
   const handleStaffDelete = async () => {
-    const updated = pageData.unitPentadbiran.filter((_, i) => i !== staffModalIndex);
-    updateField('unitPentadbiran', updated);
+    const item = unitStaffList[staffModalIndex];
     closeStaffModal();
-    if (onSave) await onSave({ unitPentadbiran: updated });
+    deleteStaffItem(item);
   };
   const moveStaff = async (index, direction) => {
     const targetIndex = index + direction;
-    if (targetIndex < 0 || targetIndex >= pageData.unitPentadbiran.length) return;
+    if (targetIndex < 0 || targetIndex >= unitStaffList.length) return;
 
-    const reordered = [...pageData.unitPentadbiran];
+    const reordered = [...unitStaffList];
     [reordered[index], reordered[targetIndex]] = [reordered[targetIndex], reordered[index]];
-    updateField('unitPentadbiran', reordered);
-    if (onSave) await onSave({ unitPentadbiran: reordered });
+    await reorderStaff(reordered);
   };
-  const handleStaffQuickDelete = async (index) => {
-    const confirmed = window.confirm('Adakah anda pasti mahu memadam kakitangan ini?');
-    if (!confirmed) return;
-    const updated = pageData.unitPentadbiran.filter((_, i) => i !== index);
-    updateField('unitPentadbiran', updated);
-    if (onSave) await onSave({ unitPentadbiran: updated });
+  const handleStaffQuickDelete = (index) => {
+    deleteStaffItem(unitStaffList[index]);
   };
 
   return (
@@ -155,8 +146,8 @@ export default function UnitSection({ pageData, isEditing, updateField, onSave }
             <Text style={styles.boxTitle}>UNIT PENTADBIRAN</Text>
           </View>
 
-{pageData.unitPentadbiran.map((item, index) => (
-            <View key={`pentadbiran-${index}`} style={styles.editRowBlock}>
+          {unitStaffList.map((item, index) => (
+            <View key={item.id} style={styles.editRowBlock}>
               <View style={styles.staffCard}>
                 {isEditing && (
                   <View style={styles.staffReorderGroup}>
@@ -168,11 +159,11 @@ export default function UnitSection({ pageData, isEditing, updateField, onSave }
                       <ChevronUp size={13} color={index === 0 ? PALETTE.textMutedDark : PALETTE.orange} />
                     </TouchableOpacity>
                     <TouchableOpacity
-                      style={[styles.staffReorderBtn, index === pageData.unitPentadbiran.length - 1 && styles.staffReorderBtnDisabled]}
+                      style={[styles.staffReorderBtn, index === unitStaffList.length - 1 && styles.staffReorderBtnDisabled]}
                       onPress={() => moveStaff(index, 1)}
-                      disabled={index === pageData.unitPentadbiran.length - 1}
+                      disabled={index === unitStaffList.length - 1}
                     >
-                      <ChevronDown size={13} color={index === pageData.unitPentadbiran.length - 1 ? PALETTE.textMutedDark : PALETTE.orange} />
+                      <ChevronDown size={13} color={index === unitStaffList.length - 1 ? PALETTE.textMutedDark : PALETTE.orange} />
                     </TouchableOpacity>
                   </View>
                 )}

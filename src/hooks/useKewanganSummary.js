@@ -10,6 +10,14 @@ const SCHEMA = 'sandbox';
 // Fixé en dur — non modifiable depuis l'interface (nom de l'organisation, affiché au-dessus du titre)
 const ORG_NAME = KEWANGAN_SUMMARY.title;
 
+const formatDikemaskini = () => {
+  const now = new Date();
+  const date = `${now.getDate()}/${now.getMonth() + 1}/${now.getFullYear()}`;
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  return `${date} ${hours}:${minutes}`;
+};
+
 export function useKewanganSummary() {
   const [summaryData, setSummaryData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -46,7 +54,7 @@ export function useKewanganSummary() {
   const saveSummary = async ({ title, total }) => {
     setSaving(true);
     try {
-      const payload = { id: 1, title: ORG_NAME, year: title, total_allocation: parseCurrency(total) };
+      const payload = { id: 1, title: ORG_NAME, year: title, total_allocation: parseCurrency(total), dikemaskini: formatDikemaskini() };
       const { error } = await supabaseSandbox
         .schema(SCHEMA)
         .from('kewangan_summary')
@@ -62,5 +70,25 @@ export function useKewanganSummary() {
     }
   };
 
-  return { loading, saving, orgName: ORG_NAME, title, totalAllocation, saveSummary };
+  // Met à jour uniquement le timestamp DIKEMASKINI, appelé après une sauvegarde réussie dans n'importe quelle autre section de la page
+  const touchDikemaskini = async () => {
+    const value = formatDikemaskini();
+    try {
+      const { error } = await supabaseSandbox
+        .schema(SCHEMA)
+        .from('kewangan_summary')
+        .update({ dikemaskini: value })
+        .eq('id', 1);
+      if (error) throw error;
+      setSummaryData((prev) => (prev ? { ...prev, dikemaskini: value } : prev));
+    } catch (error) {
+      console.error('Error updating dikemaskini:', error);
+    }
+  };
+
+  return {
+    loading, saving, orgName: ORG_NAME, title, totalAllocation,
+    dikemaskini: summaryData?.dikemaskini || null,
+    saveSummary, touchDikemaskini,
+  };
 }

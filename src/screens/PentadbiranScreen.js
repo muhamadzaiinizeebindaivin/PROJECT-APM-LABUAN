@@ -4,6 +4,7 @@ import AdminEditButton from '../components/AdminEditButton';
 import { PALETTE } from '../constants/palette';
 import { usePentadbiranData } from '../hooks/usePentadbiranData';
 import { useKpiItems } from '../hooks/useKpiItems';
+import { useUnitStaff } from '../hooks/useUnitStaff';
 import { pentadbiranStyles as styles } from './pentadbiran/pentadbiranStyles';
 import { Network } from 'lucide-react-native';
 import SectionHeader from './pentadbiran/SectionHeader';
@@ -17,21 +18,28 @@ const KPI_SECTION = 'pentadbiran';
 
 export default function PentadbiranScreen({ userRole }) {
   const [isEditing, setIsEditing] = useState(false);
-  const { loading, pageData, saveData, updateField, updateArrayField, addArrayItem, removeArrayItem } = usePentadbiranData();
-  const { kpiItems, addKpiItem, removeKpiItem, updateKpiItem, saveKpiItems } = useKpiItems(KPI_SECTION);
+  const { loading, pageData, updatedAt, saveData, updateField, updateArrayField, addArrayItem, removeArrayItem } = usePentadbiranData();
+  const { kpiItems, addKpiItem, removeKpiItem, updateKpiItem, saveKpiItems, kpiUpdatedAt } = useKpiItems(KPI_SECTION);
+  const { staffList: unitStaffList, saveStaffItem, deleteStaffItem, reorderStaff, staffUpdatedAt } = useUnitStaff('pentadbiran');
 
-  const formatDikemaskini = () => {
-    const now = new Date();
-    const date = `${now.getDate()}/${now.getMonth() + 1}/${now.getFullYear()}`;
-    const hours = String(now.getHours()).padStart(2, '0');
-    const minutes = String(now.getMinutes()).padStart(2, '0');
+  // Convertit un timestamp ISO (colonne updated_at) au format d'affichage DD/M/YYYY HH:MM
+  const formatTimestamp = (iso) => {
+    if (!iso) return null;
+    const d = new Date(iso);
+    const date = `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`;
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
     return `${date} ${hours}:${minutes}`;
   };
+
+  // DIKEMASKINI = le plus récent entre les données de la page et les KPI (deux tables distinctes)
+  const latestRaw = [updatedAt, kpiUpdatedAt, staffUpdatedAt].filter(Boolean).sort().slice(-1)[0] || null;
+  const dikemaskini = formatTimestamp(latestRaw);
 
   // Sauvegarde partagée par toutes les sections basées sur pageData (Penilaian, Waran, Unit, Carta Organisasi)
   const persistPageData = async (overrides = {}) => {
     try {
-      await saveData({ ...overrides, dikemaskini: formatDikemaskini() });
+      await saveData(overrides);
       return true;
     } catch (error) {
       console.error('Error saving data:', error);
@@ -52,9 +60,8 @@ export default function PentadbiranScreen({ userRole }) {
   };
 
   // "Tutup Kemaskini" sauvegarde automatiquement tout ce qui a pu être modifié avant de fermer le mode édition
-  const handleCloseEditing = async () => {
-    const ok = await persistPageData();
-    if (ok) setIsEditing(false);
+  const handleCloseEditing = () => {
+    setIsEditing(false);
   };
 
   if (loading && !pageData) {
@@ -70,18 +77,13 @@ export default function PentadbiranScreen({ userRole }) {
       {userRole === 'admin' && (
         <View style={styles.stickyHeader}>
           <View style={styles.stickyHeaderCenter} pointerEvents="none">
-            <Text style={styles.stickyHeaderDikemaskini}>DIKEMASKINI {pageData.dikemaskini}</Text>
+            {dikemaskini ? (
+              <Text style={styles.stickyHeaderDikemaskini}>DIKEMASKINI {dikemaskini}</Text>
+            ) : null}
           </View>
           <AdminEditButton
             isEditMode={isEditing}
-            setIsEditMode={(next) => {
-              const isClosing = isEditing && !next;
-              if (isClosing) {
-                handleCloseEditing();
-              } else {
-                setIsEditing(next);
-              }
-            }}
+            setIsEditMode={setIsEditing}
             userRole={userRole}
           />
         </View>
@@ -98,7 +100,7 @@ export default function PentadbiranScreen({ userRole }) {
             onChangeUrl={(url) => updateField('cartaOrganisasiUrl', url)}
             onSaveUrl={async (url) => {
               try {
-                await saveData({ cartaOrganisasiUrl: url, dikemaskini: formatDikemaskini() });
+                await saveData({ cartaOrganisasiUrl: url });
                 return true;
               } catch (error) {
                 console.error('Error saving org chart:', error);
@@ -112,7 +114,16 @@ export default function PentadbiranScreen({ userRole }) {
         <KpiSection kpiItems={kpiItems} isEditing={isEditing} updateKpiItem={updateKpiItem} addKpiItem={addKpiItem} removeKpiItem={removeKpiItem} persistKpi={persistKpi} />
         <ComplianceSection pageData={pageData} isEditing={isEditing} updateField={updateField} onSave={persistPageData} />
         <WaranTable pageData={pageData} isEditing={isEditing} updateArrayField={updateArrayField} onSave={persistPageData} />
-        <UnitSection pageData={pageData} isEditing={isEditing} updateField={updateField} onSave={persistPageData} />
+        <UnitSection
+          pageData={pageData}
+          isEditing={isEditing}
+          updateField={updateField}
+          onSave={persistPageData}
+          unitStaffList={unitStaffList}
+          saveStaffItem={saveStaffItem}
+          deleteStaffItem={deleteStaffItem}
+          reorderStaff={reorderStaff}
+        />
       </ScrollView>
     </View>
   );

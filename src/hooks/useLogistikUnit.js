@@ -4,7 +4,7 @@ import { supabaseSandbox } from '../supabaseSandboxClient';
 
 const SCHEMA = 'sandbox';
 
-export function useLogistikUnit() {
+export function useLogistikUnit(onChange) {
   const [staffList, setStaffList] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -43,6 +43,7 @@ export function useLogistikUnit() {
         if (error) throw error;
       }
       await fetchStaff();
+      onChange?.();
       return true;
     } catch (error) {
       Alert.alert('Ralat', 'Gagal menyimpan kakitangan: ' + error.message);
@@ -57,6 +58,7 @@ export function useLogistikUnit() {
         const { error } = await supabaseSandbox.schema(SCHEMA).from('logistik_unit_staff').delete().eq('id', item.id);
         if (error) throw error;
         await fetchStaff();
+        onChange?.();
       } catch (error) {
         Alert.alert('Ralat', error.message);
       }
@@ -81,6 +83,7 @@ export function useLogistikUnit() {
         }
       }
       await fetchStaff();
+      onChange?.();
     } catch (error) {
       Alert.alert('Ralat', 'Gagal menyusun semula: ' + error.message);
       await fetchStaff();

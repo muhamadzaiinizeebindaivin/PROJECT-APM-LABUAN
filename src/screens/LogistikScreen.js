@@ -4,7 +4,8 @@ import { ClipboardList } from 'lucide-react-native';
 import { PALETTE } from '../constants/palette';
 import AdminEditButton from '../components/AdminEditButton';
 import { useLogistikData } from '../hooks/useLogistikData';
-import { useLogistikUnit } from '../hooks/useLogistikUnit';
+import { useLogistikMeta } from '../hooks/useLogistikMeta';
+import { useUnitStaff } from '../hooks/useUnitStaff';
 import { useKpi } from '../hooks/useKpi';
 import KpiSection from './pentadbiran/KpiSection';
 import { logistikStyles as styles } from './logistik/logistikStyles';
@@ -18,9 +19,17 @@ import AssetViewModal from './logistik/AssetViewModal';
 import AssetFormModal from './logistik/AssetFormModal';
 
 export default function LogistikScreen({ userRole }) {
-  const { logistikData, loading, saveAsset, deleteAsset } = useLogistikData();
-  const unit = useLogistikUnit();
+  const meta = useLogistikMeta();
+  const { logistikData, loading, saveAsset, deleteAsset } = useLogistikData(meta.touchDikemaskini);
+  const unit = useUnitStaff('logistik', meta.touchDikemaskini);
   const { kpiList, saveKpiItem, deleteKpiItem, reorderKpi } = useKpi('logistik');
+
+  // Enchaîne l'action KPI puis met à jour DIKEMASKINI dans l'en-tête
+  const touchAfter = (fn) => async (...args) => {
+    const result = await fn(...args);
+    meta.touchDikemaskini();
+    return result;
+  };
 
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('Semua');
@@ -63,19 +72,28 @@ export default function LogistikScreen({ userRole }) {
 
   return (
     <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.contentGrid} showsVerticalScrollIndicator={false}>
-        <AdminEditButton isEditMode={isEditMode} setIsEditMode={setIsEditMode} userRole={userRole} />
+      {userRole === 'admin' && (
+        <View style={styles.stickyHeader}>
+          <View style={styles.stickyHeaderCenter} pointerEvents="none">
+            {meta.dikemaskini ? (
+              <Text style={styles.stickyHeaderDikemaskini}>DIKEMASKINI {meta.dikemaskini}</Text>
+            ) : null}
+          </View>
+          <AdminEditButton isEditMode={isEditMode} setIsEditMode={setIsEditMode} userRole={userRole} />
+        </View>
+      )}
 
+      <ScrollView contentContainerStyle={styles.contentGrid} showsVerticalScrollIndicator={false}>
         <StatsRow totalAssets={totalAssets} readinessPercent={readinessPercent} />
 
         <View style={{ marginBottom: -16 }}>
           <KpiSection
             kpiItems={kpiList}
             isEditing={isEditMode}
-            updateKpiItem={(form, item) => saveKpiItem(form, item)}
-            addKpiItem={(form) => saveKpiItem(form, null)}
-            removeKpiItem={(item) => deleteKpiItem(item)}
-            persistKpi={reorderKpi}
+            updateKpiItem={touchAfter((form, item) => saveKpiItem(form, item))}
+            addKpiItem={touchAfter((form) => saveKpiItem(form, null))}
+            removeKpiItem={touchAfter((item) => deleteKpiItem(item))}
+            persistKpi={touchAfter(reorderKpi)}
             showSubSeksyen={false}
           />
         </View>

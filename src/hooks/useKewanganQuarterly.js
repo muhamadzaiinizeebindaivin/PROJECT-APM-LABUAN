@@ -12,7 +12,7 @@ const monthOrderFromLabel = (bulanMula) => {
   return index >= 0 ? index : 999; // 999 = mois inconnu/non renseigné, relégué à la fin
 };
 
-export function useKewanganQuarterly(totalAllocation) {
+export function useKewanganQuarterly(totalAllocation, onChange) {
   const [dataList, setDataList] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -66,6 +66,7 @@ export function useKewanganQuarterly(totalAllocation) {
         if (error) throw error;
       }
       await fetchQuarterly();
+      onChange?.();
       return true;
     } catch (error) {
       Alert.alert('Ralat', 'Gagal menyimpan data: ' + error.message);
@@ -80,6 +81,7 @@ export function useKewanganQuarterly(totalAllocation) {
         const { error } = await supabaseSandbox.schema(SCHEMA).from('kewangan_breakdown').delete().eq('id', item.id);
         if (error) throw error;
         await fetchQuarterly();
+        onChange?.();
       } catch (error) {
         Platform.OS === 'web' ? window.alert(error.message) : Alert.alert('Ralat', error.message);
       }
