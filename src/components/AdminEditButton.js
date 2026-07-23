@@ -1,51 +1,52 @@
-// src/components/AdminEditButton.js
 import React from 'react';
-import { TouchableOpacity, Text, ActivityIndicator, StyleSheet } from 'react-native';
+import { TouchableOpacity, View, Text, StyleSheet } from 'react-native';
 import { Edit2, X } from 'lucide-react-native';
 
-export default function AdminEditButton({ isEditMode, setIsEditMode, userRole, isSaving = false }) {
-  // N'affiche rien si le rôle n'est pas admin (ni indéfini)
+export default function AdminEditButton({ isEditMode, setIsEditMode, userRole }) {
   if (userRole && userRole !== 'admin') return null;
+
+  const accent = isEditMode ? '#ef4444' : '#16a34a';
 
   return (
     <TouchableOpacity
-      style={[styles.adminBtn, { backgroundColor: isEditMode ? '#ef4444' : '#22c55e', opacity: isSaving ? 0.7 : 1 }]}
-      onPress={() => !isSaving && setIsEditMode(!isEditMode)}
-      activeOpacity={0.8}
-      disabled={isSaving}
+      style={[styles.adminBtn, { backgroundColor: accent, shadowColor: accent }]}
+      onPress={() => setIsEditMode(!isEditMode)}
+      activeOpacity={0.85}
     >
-      {isSaving ? (
-        <ActivityIndicator size="small" color="#fff" />
-      ) : isEditMode ? (
-        <X size={14} color="#fff" />
-      ) : (
-        <Edit2 size={14} color="#fff" />
-      )}
+      <View style={styles.iconCircle}>
+        {isEditMode ? <X size={13} color="#fff" /> : <Edit2 size={13} color="#fff" />}
+      </View>
       <Text style={styles.adminBtnText}>
-        {isSaving ? 'Menyimpan...' : isEditMode ? 'Tutup Kemaskini' : 'Kemaskini Maklumat'}
+        {isEditMode ? 'Tutup Kemaskini' : 'Kemaskini Maklumat'}
       </Text>
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
-  adminBtn: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    paddingVertical: 8, 
-    paddingHorizontal: 12, 
-    borderRadius: 8, 
-    marginRight: 15, // Adds padding from the right edge of the screen
-    gap: 6, 
-    elevation: 2,
-    shadowColor: '#000', 
-    shadowOffset: { width: 0, height: 1 }, 
-    shadowOpacity: 0.2, 
-    shadowRadius: 1.41
+  adminBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    paddingLeft: 6,
+    borderRadius: 999,
+    marginRight: 4,
+    gap: 8,
+    elevation: 3,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
   },
-  adminBtnText: { 
-    color: '#fff', 
-    fontWeight: 'bold', 
-    fontSize: 11 
+  iconCircle: {
+    width: 24, height: 24, borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center', alignItems: 'center',
+  },
+  adminBtnText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 12,
+    letterSpacing: 0.2,
   },
 });

@@ -39,7 +39,10 @@ export default function OperasiScreen({ theme, userRole }) {
         <View style={stickyHeaderStyles.stickyHeader}>
           <View style={stickyHeaderStyles.stickyHeaderCenter} pointerEvents="none">
             {dikemaskini ? (
-              <Text style={stickyHeaderStyles.stickyHeaderDikemaskini}>DIKEMASKINI {dikemaskini}</Text>
+              <View style={stickyHeaderStyles.stickyHeaderDikemaskiniBadge}>
+                <View style={stickyHeaderStyles.stickyHeaderDikemaskiniDot} />
+                <Text style={stickyHeaderStyles.stickyHeaderDikemaskini}>DIKEMASKINI {dikemaskini}</Text>
+              </View>
             ) : null}
           </View>
           <AdminEditButton isEditMode={isEditMode} setIsEditMode={setIsEditMode} userRole={userRole} />

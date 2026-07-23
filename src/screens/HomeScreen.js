@@ -59,7 +59,10 @@ export default function HomeScreen({ isAuthFlow, onGuestLogin, onDriverLogin, on
         <View style={stickyHeaderStyles.stickyHeader}>
           {!!dikemaskini && (
             <View style={stickyHeaderStyles.stickyHeaderCenter} pointerEvents="none">
-              <Text style={stickyHeaderStyles.stickyHeaderDikemaskini}>DIKEMASKINI {dikemaskini}</Text>
+              <View style={stickyHeaderStyles.stickyHeaderDikemaskiniBadge}>
+                <View style={stickyHeaderStyles.stickyHeaderDikemaskiniDot} />
+                <Text style={stickyHeaderStyles.stickyHeaderDikemaskini}>DIKEMASKINI {dikemaskini}</Text>
+              </View>
             </View>
           )}
           {isEditing && (
