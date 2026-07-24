@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, Animated, PanResponder, ScrollView } from 'react-native';
-import { Wallet, Pencil, Trash2, FolderOpen } from 'lucide-react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, Animated, PanResponder, ScrollView, Modal } from 'react-native';
+import { Wallet, Pencil, Trash2, FolderOpen, AlertTriangle } from 'lucide-react-native';
 import { PALETTE } from '../../constants/palette';
 import { formatCurrency, parseCurrency } from '../../utils/currency';
 import { kewanganStyles as styles } from './kewanganStyles';
+import { pentadbiranStyles } from '../pentadbiran/pentadbiranStyles';
 import SectionHeader from '../pentadbiran/SectionHeader';
 import BudgetEditModal from './BudgetEditModal';
 
@@ -22,6 +23,8 @@ export default function BudgetSection({ budgetData, loading, isEditMode, saveBud
   const [rows, setRows] = useState([{ ...EMPTY_ROW }]);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [page, setPage] = useState(0);
+  const [confirmDeleteItem, setConfirmDeleteItem] = useState(null);
+  const [confirmDeleteCategory, setConfirmDeleteCategory] = useState(null);
 
   const totalAgihan = budgetData.reduce((sum, item) => sum + parseCurrency(item.agihan), 0);
   const totalBelanja = budgetData.reduce((sum, item) => sum + parseCurrency(item.belanja), 0);
@@ -260,7 +263,7 @@ export default function BudgetSection({ budgetData, loading, isEditMode, saveBud
                     {isEditMode && (
                       <TouchableOpacity
                         style={styles.categoryDeleteBtn}
-                        onPress={() => deleteCategory(kat)}
+                        onPress={() => setConfirmDeleteCategory(kat)}
                       >
                         <Trash2 size={13} color={PALETTE.orange} />
                       </TouchableOpacity>
@@ -312,7 +315,7 @@ export default function BudgetSection({ budgetData, loading, isEditMode, saveBud
                           <TouchableOpacity style={[styles.budgetActionBtn, { backgroundColor: 'rgba(249, 115, 22, 0.12)' }]} onPress={() => openEdit(item)}>
                             <Pencil size={13} color={PALETTE.orange} />
                           </TouchableOpacity>
-                          <TouchableOpacity style={[styles.budgetActionBtn, { backgroundColor: 'rgba(220, 38, 38, 0.10)' }]} onPress={() => deleteBudgetItem(item)}>
+                          <TouchableOpacity style={[styles.budgetActionBtn, { backgroundColor: 'rgba(220, 38, 38, 0.10)' }]} onPress={() => setConfirmDeleteItem(item)}>
                             <Trash2 size={13} color="#dc2626" />
                           </TouchableOpacity>
                         </View>
@@ -361,6 +364,72 @@ export default function BudgetSection({ budgetData, loading, isEditMode, saveBud
           )}
         </View>
       )}
+
+      <Modal visible={confirmDeleteCategory !== null} transparent animationType="fade" onRequestClose={() => setConfirmDeleteCategory(null)}>
+        <View style={pentadbiranStyles.confirmOverlay}>
+          <View style={pentadbiranStyles.confirmBox}>
+            <View style={pentadbiranStyles.confirmBanner}>
+              <View style={pentadbiranStyles.confirmIconCircle}>
+                <AlertTriangle size={26} color="#ef4444" />
+              </View>
+              <Text style={pentadbiranStyles.confirmTitle}>Padam Kategori</Text>
+              <Text style={pentadbiranStyles.confirmSubtitle}>
+                Padam kategori "{confirmDeleteCategory}" beserta {budgetData.filter((item) => item.kategori === confirmDeleteCategory).length} perkara di dalamnya? Tindakan ini tidak boleh dibatalkan.
+              </Text>
+            </View>
+
+            <View style={pentadbiranStyles.confirmActions}>
+              <TouchableOpacity style={pentadbiranStyles.confirmCancelBtn} onPress={() => setConfirmDeleteCategory(null)}>
+                <Text style={pentadbiranStyles.confirmCancelText}>Batal</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={pentadbiranStyles.confirmConfirmBtn}
+                onPress={() => {
+                  const kat = confirmDeleteCategory;
+                  setConfirmDeleteCategory(null);
+                  deleteCategory(kat);
+                }}
+              >
+                <Trash2 size={16} color="#fff" />
+                <Text style={pentadbiranStyles.confirmConfirmText}>Padam</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={confirmDeleteItem !== null} transparent animationType="fade" onRequestClose={() => setConfirmDeleteItem(null)}>
+        <View style={pentadbiranStyles.confirmOverlay}>
+          <View style={pentadbiranStyles.confirmBox}>
+            <View style={pentadbiranStyles.confirmBanner}>
+              <View style={pentadbiranStyles.confirmIconCircle}>
+                <AlertTriangle size={26} color="#ef4444" />
+              </View>
+              <Text style={pentadbiranStyles.confirmTitle}>Padam Bajet</Text>
+              <Text style={pentadbiranStyles.confirmSubtitle}>
+                Padam bajet ini{confirmDeleteItem?.perihal ? ` "${confirmDeleteItem.perihal}"` : ''}? Tindakan ini tidak boleh dibatalkan.
+              </Text>
+            </View>
+
+            <View style={pentadbiranStyles.confirmActions}>
+              <TouchableOpacity style={pentadbiranStyles.confirmCancelBtn} onPress={() => setConfirmDeleteItem(null)}>
+                <Text style={pentadbiranStyles.confirmCancelText}>Batal</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={pentadbiranStyles.confirmConfirmBtn}
+                onPress={() => {
+                  const item = confirmDeleteItem;
+                  setConfirmDeleteItem(null);
+                  deleteBudgetItem(item);
+                }}
+              >
+                <Trash2 size={16} color="#fff" />
+                <Text style={pentadbiranStyles.confirmConfirmText}>Padam</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       <BudgetEditModal
         visible={modalVisible}

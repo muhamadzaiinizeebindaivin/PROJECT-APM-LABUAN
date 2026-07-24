@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Alert, Platform } from 'react-native';
+import { Alert } from 'react-native';
 import { supabaseSandbox } from '../supabaseSandboxClient';
 import { KEWANGAN_BUDGET } from '../../data';
 
@@ -52,47 +52,25 @@ export function useKewanganBudget() {
     }
   };
 
-  const deleteBudgetItem = (item) => {
+  const deleteBudgetItem = async (item) => {
     if (!item || item.id === undefined) return;
-    const executeDelete = async () => {
-      try {
-        const { error } = await supabaseSandbox.schema(SCHEMA).from('kewangan_budget').delete().eq('id', item.id);
-        if (error) throw error;
-        await fetchBudget();
-      } catch (error) {
-        Alert.alert('Ralat', error.message);
-      }
-    };
-    if (Platform.OS === 'web') {
-      if (window.confirm('Padam bajet ini?')) executeDelete();
-    } else {
-      Alert.alert('Pengesahan', 'Padam bajet ini?', [
-        { text: 'Batal', style: 'cancel' },
-        { text: 'Padam', style: 'destructive', onPress: executeDelete },
-      ]);
+    try {
+      const { error } = await supabaseSandbox.schema(SCHEMA).from('kewangan_budget').delete().eq('id', item.id);
+      if (error) throw error;
+      await fetchBudget();
+    } catch (error) {
+      Alert.alert('Ralat', error.message);
     }
   };
 
   // Supprime TOUS les éléments d'une catégorie d'un coup — la catégorie elle-même n'est qu'un regroupement, pas une entité en base
-  const deleteCategory = (kategori) => {
-    const itemCount = budgetData.filter((item) => item.kategori === kategori).length;
-    const executeDelete = async () => {
-      try {
-        const { error } = await supabaseSandbox.schema(SCHEMA).from('kewangan_budget').delete().eq('kategori', kategori);
-        if (error) throw error;
-        await fetchBudget();
-      } catch (error) {
-        Alert.alert('Ralat', error.message);
-      }
-    };
-    const message = `Padam kategori "${kategori}" beserta ${itemCount} perkara di dalamnya? Tindakan ini tidak boleh dibatalkan.`;
-    if (Platform.OS === 'web') {
-      if (window.confirm(message)) executeDelete();
-    } else {
-      Alert.alert('Pengesahan', message, [
-        { text: 'Batal', style: 'cancel' },
-        { text: 'Padam', style: 'destructive', onPress: executeDelete },
-      ]);
+  const deleteCategory = async (kategori) => {
+    try {
+      const { error } = await supabaseSandbox.schema(SCHEMA).from('kewangan_budget').delete().eq('kategori', kategori);
+      if (error) throw error;
+      await fetchBudget();
+    } catch (error) {
+      Alert.alert('Ralat', error.message);
     }
   };
 

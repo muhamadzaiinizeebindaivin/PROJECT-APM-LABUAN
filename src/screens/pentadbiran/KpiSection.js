@@ -210,9 +210,10 @@ export default function KpiSection({ kpiItems, isEditing, updateKpiItem, addKpiI
     if (persistKpi) await persistKpi(updatedItems);
   };
 
-  const handleDelete = async () => {
-    await deleteAtIndex(modalIndex);
+  const handleDelete = () => {
+    const index = modalIndex;
     closeModal();
+    setConfirmDeleteIndex(index);
   };
 
   const deleteAtIndex = async (index) => {
