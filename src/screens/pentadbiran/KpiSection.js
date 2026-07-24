@@ -140,6 +140,16 @@ export default function KpiSection({ kpiItems, isEditing, updateKpiItem, addKpiI
   const thumbWidth = Math.max(MIN_THUMB_WIDTH, SCROLLBAR_TRACK_WIDTH * Math.min(1, viewportWidth / contentWidth));
   const thumbTravel = Math.max(0, SCROLLBAR_TRACK_WIDTH - thumbWidth);
 
+  // thumbPanResponder/contentPanResponder ne sont créés qu'une fois (useRef) — leurs callbacks
+  // capteraient sinon maxScroll/thumbTravel du tout premier rendu (viewportWidth encore à 1
+  // avant la mesure onLayout) pour toujours. On passe donc par des refs, toujours à jour.
+  const maxScrollRef = useRef(maxScroll);
+  const thumbTravelRef = useRef(thumbTravel);
+  useEffect(() => {
+    maxScrollRef.current = maxScroll;
+    thumbTravelRef.current = thumbTravel;
+  }, [maxScroll, thumbTravel]);
+
   const dragStartScrollXRef = useRef(0);
 
   const thumbPanResponder = useRef(
@@ -154,8 +164,8 @@ export default function KpiSection({ kpiItems, isEditing, updateKpiItem, addKpiI
       onPanResponderMove: (evt, gestureState) => {
         // gestureState.dx est cumulatif depuis le début du geste : on l'applique toujours
         // par rapport à l'ancre de départ, jamais par rapport à la position courante
-        const deltaX = (gestureState.dx / Math.max(1, thumbTravel)) * maxScroll;
-        const x = Math.max(0, Math.min(maxScroll, dragStartScrollXRef.current + deltaX));
+        const deltaX = (gestureState.dx / Math.max(1, thumbTravelRef.current)) * maxScrollRef.current;
+        const x = Math.max(0, Math.min(maxScrollRef.current, dragStartScrollXRef.current + deltaX));
         scrollRef.current?.scrollTo({ x, animated: false });
         scrollXRef.current = x;
         scrollX.setValue(x);
@@ -183,7 +193,7 @@ export default function KpiSection({ kpiItems, isEditing, updateKpiItem, addKpiI
       onMoveShouldSetPanResponder: (evt, gestureState) => Math.abs(gestureState.dx) > 3,
       onPanResponderGrant: () => { pauseForInteraction(); dragStartScrollXContentRef.current = scrollXRef.current; },
       onPanResponderMove: (evt, gestureState) => {
-        const x = Math.max(0, Math.min(maxScroll, dragStartScrollXContentRef.current - gestureState.dx));
+        const x = Math.max(0, Math.min(maxScrollRef.current, dragStartScrollXContentRef.current - gestureState.dx));
         scrollRef.current?.scrollTo({ x, animated: false });
         scrollXRef.current = x;
         scrollX.setValue(x);
