@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { View, Text, TouchableOpacity, Animated, PanResponder, ScrollView } from 'react-native';
-import { Target, Pencil } from 'lucide-react-native';
+import { View, Text, TouchableOpacity, Animated, PanResponder, ScrollView, Modal } from 'react-native';
+import { Target, Pencil, Trash2, AlertTriangle } from 'lucide-react-native';
 import { PALETTE } from '../../constants/palette';
 import { pentadbiranStyles as styles } from './pentadbiranStyles';
 import SectionHeader from './SectionHeader';
@@ -26,6 +26,8 @@ export default function KpiSection({ kpiItems, isEditing, updateKpiItem, addKpiI
   const [draft, setDraft] = useState(EMPTY_DRAFT);
   const [detailIndex, setDetailIndex] = useState(null); // index de la carte consultée en lecture seule
   const [hovered, setHovered] = useState(false);
+  const [hoveredDeleteIndex, setHoveredDeleteIndex] = useState(null);
+  const [confirmDeleteIndex, setConfirmDeleteIndex] = useState(null);
 
   const scrollRef = useRef(null);
   const scrollXRef = useRef(0);
@@ -40,6 +42,14 @@ export default function KpiSection({ kpiItems, isEditing, updateKpiItem, addKpiI
 
   const contentWidth = Math.max(1, kpiItems.length * (CARD_WIDTH + CARD_GAP) - CARD_GAP);
   const active = kpiItems.length > 0 && !isEditing && modalIndex === null && detailIndex === null && !hovered;
+
+  // `active` est recalculé à chaque rendu, mais les PanResponder ci-dessous ne sont créés
+  // qu'une seule fois (useRef) — leurs callbacks captureraient sinon la valeur de `active`
+  // du tout premier rendu pour toujours. On passe donc par une ref, toujours à jour.
+  const activeRef = useRef(active);
+  useEffect(() => {
+    activeRef.current = active;
+  }, [active]);
 
   // ── Auto-scroll fluide via requestAnimationFrame, va-et-vient (ping-pong), pause pendant toute interaction ──
   const stopAutoScroll = useCallback(() => {
@@ -96,7 +106,7 @@ export default function KpiSection({ kpiItems, isEditing, updateKpiItem, addKpiI
 
   const resumeAfterInteraction = () => {
     userInteractingRef.current = false;
-    if (active) startAutoScroll();
+    if (activeRef.current) startAutoScroll();
   };
 
   const handleNativeScroll = (e) => {
@@ -201,10 +211,17 @@ export default function KpiSection({ kpiItems, isEditing, updateKpiItem, addKpiI
   };
 
   const handleDelete = async () => {
-    const updatedItems = kpiItems.filter((_, i) => i !== modalIndex);
-    removeKpiItem(modalIndex);
+    await deleteAtIndex(modalIndex);
     closeModal();
-    if (persistKpi) await persistKpi(updatedItems);
+  };
+
+  const deleteAtIndex = async (index) => {
+    await removeKpiItem(kpiItems[index]);
+  };
+
+  const confirmDeleteFromCard = async () => {
+    await deleteAtIndex(confirmDeleteIndex);
+    setConfirmDeleteIndex(null);
   };
 
   return (
@@ -274,19 +291,41 @@ export default function KpiSection({ kpiItems, isEditing, updateKpiItem, addKpiI
               </View>
 
               {isEditing && (
-                <TouchableOpacity
-                  style={styles.kpiPencilBtn}
-                  onPress={() => openEdit(index)}
-                  onMouseEnter={() => setHoveredIndex(index)}
-                  onMouseLeave={() => setHoveredIndex(null)}
-                >
-                  <Pencil size={14} color={PALETTE.orange} />
-                  {hoveredIndex === index && (
-                    <View style={styles.kpiTooltip}>
-                      <Text style={styles.kpiTooltipText}>Ubah</Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
+                <>
+                  <TouchableOpacity
+                    style={styles.kpiPencilBtn}
+                    onPress={() => openEdit(index)}
+                    onMouseEnter={() => setHoveredIndex(index)}
+                    onMouseLeave={() => setHoveredIndex(null)}
+                  >
+                    <Pencil size={14} color={PALETTE.orange} />
+                    {hoveredIndex === index && (
+                      <View style={{
+                        position: 'absolute', top: 32, right: 0, zIndex: 999,
+                        backgroundColor: PALETTE.textDark, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6,
+                      }}>
+                        <Text style={styles.kpiTooltipText}>Ubah</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.kpiPencilBtn, { right: 46, backgroundColor: 'rgba(220, 38, 38, 0.10)' }]}
+                    onPress={() => setConfirmDeleteIndex(index)}
+                    onMouseEnter={() => setHoveredDeleteIndex(index)}
+                    onMouseLeave={() => setHoveredDeleteIndex(null)}
+                  >
+                    <Trash2 size={14} color="#dc2626" />
+                    {hoveredDeleteIndex === index && (
+                      <View style={{
+                        position: 'absolute', top: 32, right: 0, zIndex: 999,
+                        backgroundColor: PALETTE.textDark, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6,
+                      }}>
+                        <Text style={styles.kpiTooltipText}>Padam</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                </>
               )}
             </TouchableOpacity>
             );
@@ -324,6 +363,32 @@ export default function KpiSection({ kpiItems, isEditing, updateKpiItem, addKpiI
           <Text style={styles.addBtnText}>+ Tambah KPI Baru</Text>
         </TouchableOpacity>
       )}
+
+      <Modal visible={confirmDeleteIndex !== null} transparent animationType="fade" onRequestClose={() => setConfirmDeleteIndex(null)}>
+        <View style={styles.confirmOverlay}>
+          <View style={styles.confirmBox}>
+            <View style={styles.confirmBanner}>
+              <View style={styles.confirmIconCircle}>
+                <AlertTriangle size={26} color="#ef4444" />
+              </View>
+              <Text style={styles.confirmTitle}>Padam KPI</Text>
+              <Text style={styles.confirmSubtitle}>
+                Adakah anda pasti mahu memadam KPI "{confirmDeleteIndex !== null ? kpiItems[confirmDeleteIndex]?.nama : ''}"? Tindakan ini tidak boleh dibatalkan.
+              </Text>
+            </View>
+
+            <View style={styles.confirmActions}>
+              <TouchableOpacity style={styles.confirmCancelBtn} onPress={() => setConfirmDeleteIndex(null)}>
+                <Text style={styles.confirmCancelText}>Batal</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.confirmConfirmBtn} onPress={confirmDeleteFromCard}>
+                <Trash2 size={16} color="#fff" />
+                <Text style={styles.confirmConfirmText}>Padam</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       <KpiEditModal
         visible={modalIndex !== null}

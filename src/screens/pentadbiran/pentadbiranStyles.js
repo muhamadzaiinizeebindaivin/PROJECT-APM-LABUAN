@@ -204,6 +204,7 @@ export const pentadbiranStyles = StyleSheet.create({
   kpiSasaranText: { fontSize: 16, fontWeight: '800', color: PALETTE.orange },
 
   kpiPencilBtn: {
+    zIndex: 1,
     position: 'absolute', top: 10, right: 10, zIndex: 5,
     width: 28, height: 28, borderRadius: 8,
     backgroundColor: 'rgba(249, 115, 22, 0.12)',
@@ -220,7 +221,7 @@ export const pentadbiranStyles = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center',
   },
   kpiTooltip: {
-    position: 'absolute', top: -30, right: 0, zIndex: 10,
+    position: 'absolute', top: -30, right: 0, zIndex: 999,
     backgroundColor: PALETTE.textDark, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6,
   },
   kpiTooltipText: { color: '#fff', fontSize: 12, fontWeight: '700' },
@@ -351,5 +352,29 @@ export const pentadbiranStyles = StyleSheet.create({
     backgroundColor: 'rgba(249, 115, 22, 0.10)',
     justifyContent: 'center', alignItems: 'center',
   },
-  staffReorderBtnDisabled: { backgroundColor: PALETTE.surface },
+staffReorderBtnDisabled: { backgroundColor: PALETTE.surface },
+
+  confirmOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 24 },
+  confirmBox: {
+    width: '100%', maxWidth: 400, borderRadius: 24, overflow: 'hidden',
+    shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 20, elevation: 20,
+  },
+  confirmBanner: { backgroundColor: '#0c0c0e', padding: 24, alignItems: 'center' },
+  confirmIconCircle: {
+    width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    alignItems: 'center', justifyContent: 'center', marginBottom: 14,
+  },
+  confirmTitle: { fontSize: 18, fontWeight: '900', color: '#fff' },
+  confirmSubtitle: { fontSize: 13, color: '#94a3b8', marginTop: 6, textAlign: 'center' },
+  confirmActions: { flexDirection: 'row', gap: 10, padding: 20, backgroundColor: '#fff' },
+  confirmCancelBtn: {
+    flex: 1, height: 48, borderRadius: 12, borderWidth: 1.5, borderColor: PALETTE.cardLightBorder,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  confirmCancelText: { color: PALETTE.textMutedDark, fontWeight: '800', fontSize: 14 },
+  confirmConfirmBtn: {
+    flex: 1, height: 48, borderRadius: 12, backgroundColor: '#ef4444',
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+  },
+  confirmConfirmText: { color: '#fff', fontWeight: '800', fontSize: 14 },
 });

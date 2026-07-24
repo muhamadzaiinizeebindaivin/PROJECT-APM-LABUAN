@@ -270,6 +270,7 @@ export default function HomepagePdfCard({ theme, userRole, isEditing, onHeightCh
   // ── État de l'aperçu avant confirmation d'upload ──
   const [previewFile, setPreviewFile] = useState(null);
   const [previewBuffer, setPreviewBuffer] = useState(null);
+  const [confirmReplaceVisible, setConfirmReplaceVisible] = useState(false);
   const [previewReady, setPreviewReady] = useState(false);
   const [previewHeight, setPreviewHeight] = useState(400);
   const [previewRenderingPages, setPreviewRenderingPages] = useState(false);
@@ -412,12 +413,16 @@ export default function HomepagePdfCard({ theme, userRole, isEditing, onHeightCh
     }
 
     if (pdfData?.file_url) {
-      const confirmReplace = window.confirm(
-        `Ini akan menggantikan dokumen sedia ada ("${pdfData.file_name}"). Teruskan?`
-      );
-      if (!confirmReplace) return;
+      setConfirmReplaceVisible(true);
+      return;
     }
 
+    await uploadFile(previewFile);
+    closePreview();
+  };
+
+  const handleConfirmReplace = async () => {
+    setConfirmReplaceVisible(false);
     await uploadFile(previewFile);
     closePreview();
   };
@@ -565,6 +570,39 @@ export default function HomepagePdfCard({ theme, userRole, isEditing, onHeightCh
           </View>
         </View>
       </Modal>
+
+      {/* Modal confirmation remplacement PDF */}
+      <Modal visible={confirmReplaceVisible} transparent animationType="fade" onRequestClose={() => setConfirmReplaceVisible(false)}>
+        <View style={styles.confirmOverlay}>
+          <View style={styles.confirmBox}>
+            <View style={styles.confirmBanner}>
+              <View style={styles.confirmIconCircle}>
+                <Upload size={26} color={PALETTE.orange} />
+              </View>
+              <Text style={styles.confirmTitle}>Ganti Dokumen PDF</Text>
+              <Text style={styles.confirmSubtitle}>
+                Ini akan menggantikan dokumen sedia ada ("{pdfData?.file_name}"). Teruskan?
+              </Text>
+            </View>
+
+            <View style={styles.confirmActions}>
+              <TouchableOpacity style={styles.confirmCancelBtn} onPress={() => setConfirmReplaceVisible(false)}>
+                <Text style={styles.confirmCancelText}>Batal</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.confirmConfirmBtn} onPress={handleConfirmReplace} disabled={uploading}>
+                {uploading ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <>
+                    <Check size={16} color="#fff" />
+                    <Text style={styles.confirmConfirmText}>Ganti</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -626,4 +664,28 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8, backgroundColor: '#22c55e',
   },
   modalConfirmText: { fontSize: 13, fontWeight: '700', color: '#fff' },
+
+  confirmOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 24 },
+  confirmBox: {
+    width: '100%', maxWidth: 400, borderRadius: 24, overflow: 'hidden',
+    shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 20, elevation: 20,
+  },
+  confirmBanner: { backgroundColor: '#0c0c0e', padding: 24, alignItems: 'center' },
+  confirmIconCircle: {
+    width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(249, 115, 22, 0.15)',
+    alignItems: 'center', justifyContent: 'center', marginBottom: 14,
+  },
+  confirmTitle: { fontSize: 18, fontWeight: '900', color: '#fff' },
+  confirmSubtitle: { fontSize: 13, color: '#94a3b8', marginTop: 6, textAlign: 'center' },
+  confirmActions: { flexDirection: 'row', gap: 10, padding: 20, backgroundColor: '#fff' },
+  confirmCancelBtn: {
+    flex: 1, height: 48, borderRadius: 12, borderWidth: 1.5, borderColor: '#e2e8f0',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  confirmCancelText: { color: '#64748b', fontWeight: '800', fontSize: 14 },
+  confirmConfirmBtn: {
+    flex: 1, height: 48, borderRadius: 12, backgroundColor: PALETTE.orange,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+  },
+  confirmConfirmText: { color: '#fff', fontWeight: '800', fontSize: 14 },
 });

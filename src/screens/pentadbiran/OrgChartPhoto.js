@@ -1,6 +1,6 @@
 import React, { useRef, useState, createElement } from 'react';
 import { View, Text, TouchableOpacity, Image, Platform, ActivityIndicator, Modal } from 'react-native';
-import { Upload, Trash2, ImageIcon, X, Maximize2 } from 'lucide-react-native';
+import { Upload, Trash2, ImageIcon, X, Maximize2, AlertTriangle } from 'lucide-react-native';
 import { supabaseSandbox } from '../../supabaseSandboxClient';
 import { PALETTE } from '../../constants/palette';
 import { pentadbiranStyles as styles } from './pentadbiranStyles';
@@ -12,28 +12,42 @@ export default function OrgChartPhoto({ isEditing, canEdit, url, onChangeUrl, on
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState(null);
   const [fullscreen, setFullscreen] = useState(false);
+  const [confirmDeleteVisible, setConfirmDeleteVisible] = useState(false);
+  const [confirmUploadVisible, setConfirmUploadVisible] = useState(false);
+  const [pendingFile, setPendingFile] = useState(null);
 
   const handlePickFile = () => {
     if (Platform.OS === 'web' && fileInputRef.current) fileInputRef.current.click();
   };
 
-  const handleFileChange = async (e) => {
+  const handleFileChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setPendingFile(file);
+    setConfirmUploadVisible(true);
+  };
 
-    const confirmed = Platform.OS === 'web'
-      ? window.confirm('Adakah anda pasti mahu memuat naik gambar carta organisasi ini?')
-      : true;
+  const cancelUpload = () => {
+    setConfirmUploadVisible(false);
+    setPendingFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
 
-    if (!confirmed) {
-      if (fileInputRef.current) fileInputRef.current.value = '';
-      return;
-    }
+  const confirmUploadFile = async () => {
+    const file = pendingFile;
+    setConfirmUploadVisible(false);
+    if (!file) return;
 
     setUploading(true);
     setError(null);
     try {
-      const path = `carta-organisasi/${Date.now()}-${file.name}`;
+      // Nettoie le nom de fichier : supprime les accents, remplace tout ce qui n'est pas
+      // alphanumérique/point/tiret par "_" — Supabase Storage rejette les clés avec des
+      // caractères non-ASCII (accents, apostrophes typographiques) ou des espaces.
+      const safeName = file.name
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // retire les accents (é -> e)
+        .replace(/[^a-zA-Z0-9.\-]/g, '_'); // remplace le reste (espaces, apostrophes...) par "_"
+      const path = `carta-organisasi/${Date.now()}-${safeName}`;
       const { error: uploadError } = await supabaseSandbox.storage
         .from(STORAGE_BUCKET)
         .upload(path, file, { upsert: true });
@@ -48,17 +62,25 @@ export default function OrgChartPhoto({ isEditing, canEdit, url, onChangeUrl, on
       setError('Gagal memuat naik gambar.');
     } finally {
       setUploading(false);
+      setPendingFile(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
-  const handleRemove = async () => {
+  const handleRemove = () => {
+    setConfirmDeleteVisible(true);
+  };
+
+  const confirmRemove = async () => {
+    setConfirmDeleteVisible(false);
     onChangeUrl('');
     if (onSaveUrl) await onSaveUrl('');
   };
 
   return (
     <View style={styles.orgChartWrap}>
+      {!!error && <Text style={styles.orgChartError}>{error}</Text>}
+
       {url ? (
         <TouchableOpacity activeOpacity={0.9} onPress={() => setFullscreen(true)}>
           <Image source={{ uri: url }} style={styles.orgChartImage} resizeMode="contain" />
@@ -98,8 +120,6 @@ export default function OrgChartPhoto({ isEditing, canEdit, url, onChangeUrl, on
         </View>
       )}
 
-      {!!error && <Text style={styles.orgChartError}>{error}</Text>}
-
       {Platform.OS === 'web' && canEdit &&
         createElement('input', {
           ref: fileInputRef,
@@ -109,6 +129,58 @@ export default function OrgChartPhoto({ isEditing, canEdit, url, onChangeUrl, on
           onChange: handleFileChange,
         })
       }
+
+      <Modal visible={confirmDeleteVisible} transparent animationType="fade" onRequestClose={() => setConfirmDeleteVisible(false)}>
+        <View style={styles.confirmOverlay}>
+          <View style={styles.confirmBox}>
+            <View style={styles.confirmBanner}>
+              <View style={styles.confirmIconCircle}>
+                <AlertTriangle size={26} color="#ef4444" />
+              </View>
+              <Text style={styles.confirmTitle}>Padam Gambar</Text>
+              <Text style={styles.confirmSubtitle}>
+                Adakah anda pasti mahu memadam gambar carta organisasi ini? Tindakan ini tidak boleh dibatalkan.
+              </Text>
+            </View>
+
+            <View style={styles.confirmActions}>
+              <TouchableOpacity style={styles.confirmCancelBtn} onPress={() => setConfirmDeleteVisible(false)}>
+                <Text style={styles.confirmCancelText}>Batal</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.confirmConfirmBtn} onPress={confirmRemove}>
+                <Trash2 size={16} color="#fff" />
+                <Text style={styles.confirmConfirmText}>Padam</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={confirmUploadVisible} transparent animationType="fade" onRequestClose={cancelUpload}>
+        <View style={styles.confirmOverlay}>
+          <View style={styles.confirmBox}>
+            <View style={[styles.confirmBanner, { backgroundColor: '#0c0c0e' }]}>
+              <View style={[styles.confirmIconCircle, { backgroundColor: 'rgba(249, 115, 22, 0.15)' }]}>
+                <Upload size={26} color={PALETTE.orange} />
+              </View>
+              <Text style={styles.confirmTitle}>Muat Naik Gambar</Text>
+              <Text style={styles.confirmSubtitle}>
+                Adakah anda pasti mahu memuat naik gambar carta organisasi ini?
+              </Text>
+            </View>
+
+            <View style={styles.confirmActions}>
+              <TouchableOpacity style={styles.confirmCancelBtn} onPress={cancelUpload}>
+                <Text style={styles.confirmCancelText}>Batal</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.confirmConfirmBtn, { backgroundColor: PALETTE.orange }]} onPress={confirmUploadFile}>
+                <Upload size={16} color="#fff" />
+                <Text style={styles.confirmConfirmText}>Muat Naik</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       <Modal visible={fullscreen} transparent animationType="fade" onRequestClose={() => setFullscreen(false)}>
         <View style={styles.orgChartFullscreenOverlay}>

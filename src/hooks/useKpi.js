@@ -44,19 +44,14 @@ export function useKpi(section) {
   };
 
   const deleteKpiItem = async (item) => {
-    const doDelete = async () => {
-      await supabaseSandbox.from('kpi').delete().eq('id', item.id);
-      fetchKpi();
+  if (!item || item.id === undefined) return;
+  try {
+  await supabaseSandbox.from('kpi').delete().eq('id', item.id);
+  await fetchKpi();
+      } catch (error) {
+  Platform.OS === 'web' ? alert('Ralat: ' + error.message) : Alert.alert('Ralat', error.message);
+      }
     };
-    if (Platform.OS === 'web') {
-      if (window.confirm(`Padam KPI "${item.nama}"?`)) doDelete();
-    } else {
-      Alert.alert('Pengesahan Padam', `Padam KPI "${item.nama}"?`, [
-        { text: 'Batal', style: 'cancel' },
-        { text: 'Padam', style: 'destructive', onPress: doDelete },
-      ]);
-    }
-  };
 
   const reorderKpi = async (reordered) => {
     setKpiList(reordered);
