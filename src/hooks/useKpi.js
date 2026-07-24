@@ -44,21 +44,25 @@ export function useKpi(section) {
   };
 
   const deleteKpiItem = async (item) => {
-  if (!item || item.id === undefined) return;
-  try {
-  await supabaseSandbox.from('kpi').delete().eq('id', item.id);
-  await fetchKpi();
-      } catch (error) {
-  Platform.OS === 'web' ? alert('Ralat: ' + error.message) : Alert.alert('Ralat', error.message);
-      }
-    };
+    if (!item || item.id === undefined || item.id === null) return false;
+    try {
+      await supabaseSandbox.from('kpi').delete().eq('id', item.id);
+      await fetchKpi();
+      return true;
+    } catch (error) {
+      Platform.OS === 'web' ? alert('Ralat: ' + error.message) : Alert.alert('Ralat', error.message);
+      return false;
+    }
+  };
 
   const reorderKpi = async (reordered) => {
     setKpiList(reordered);
     await Promise.all(
-      reordered.map((item, index) =>
-        supabaseSandbox.from('kpi').update({ display_order: index }).eq('id', item.id)
-      )
+      reordered
+        .filter((item) => item.id !== null && item.id !== undefined)
+        .map((item, index) =>
+          supabaseSandbox.from('kpi').update({ display_order: index }).eq('id', item.id)
+        )
     );
   };
 

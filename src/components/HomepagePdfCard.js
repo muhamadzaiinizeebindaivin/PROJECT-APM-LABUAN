@@ -79,11 +79,11 @@ const buildPdfViewerHtml = () => `
         function layoutAndRenderAll() {
           if (!currentPdfDoc) return;
 
+          var viewportEl = document.getElementById('viewport');
+          slideWidthPx = viewportEl.clientWidth || 800; // lu AVANT toute écriture DOM, évite un reflow forcé
+
           var track = document.getElementById('track');
           track.classList.remove('ready'); // masque le track pendant le recalcul, évite tout flash
-
-          var viewportEl = document.getElementById('viewport');
-          slideWidthPx = viewportEl.clientWidth || 800;
 
           track.innerHTML = '';
           track.style.transitionProperty = 'opacity'; // pas de transition sur transform pendant le rebuild
@@ -333,7 +333,7 @@ export default function HomepagePdfCard({ theme, userRole, isEditing, onHeightCh
     if (iframeReady && pdfData?.file_url) {
       const cachedHeight = loadedPdfCache.get(pdfData.file_url);
       if (cachedHeight) {
-        setViewerHeight(cachedHeight);
+        setPdfHeight(cachedHeight);
         setRenderingPages(false);
       } else {
         setRenderingPages(true);

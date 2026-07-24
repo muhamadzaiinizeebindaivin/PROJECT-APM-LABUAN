@@ -44,9 +44,21 @@ export const customHeaderStyles = StyleSheet.create({
     letterSpacing: 0.3,
     flexShrink: 1,
     color: '#fff',
-    textShadowColor: 'rgba(0,0,0,0.15)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
+    ...Platform.select({
+      ios: {
+        textShadowColor: 'rgba(0,0,0,0.15)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 2,
+      },
+      android: {
+        textShadowColor: 'rgba(0,0,0,0.15)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 2,
+      },
+      web: {
+        textShadow: '0px 1px 2px rgba(0,0,0,0.15)',
+      },
+    }),
   },
   actionsRow: {
     flexDirection: 'row',

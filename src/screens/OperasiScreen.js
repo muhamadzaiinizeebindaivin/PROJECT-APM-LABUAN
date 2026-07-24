@@ -38,7 +38,7 @@ export default function OperasiScreen({ theme, userRole }) {
     <View style={styles.container}>
       {canEdit && activeTab !== 'map' && (
         <View style={stickyHeaderStyles.stickyHeader}>
-          <View style={stickyHeaderStyles.stickyHeaderCenter} pointerEvents="none">
+          <View style={[stickyHeaderStyles.stickyHeaderCenter, { pointerEvents: 'none' }]}>
             {dikemaskini ? (
               <View style={stickyHeaderStyles.stickyHeaderDikemaskiniBadge}>
                 <View style={stickyHeaderStyles.stickyHeaderDikemaskiniDot} />

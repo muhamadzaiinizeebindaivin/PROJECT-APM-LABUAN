@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { View, Text, TouchableOpacity, Animated, PanResponder, ScrollView, Modal } from 'react-native';
-import { Target, Pencil, Trash2, AlertTriangle } from 'lucide-react-native';
+import { View, Text, TouchableOpacity, Animated, PanResponder, ScrollView, Modal, ActivityIndicator } from 'react-native';
+import { Target, Pencil, Trash2, AlertTriangle, CheckCircle2, XCircle } from 'lucide-react-native';
 import { PALETTE } from '../../constants/palette';
 import { pentadbiranStyles as styles } from './pentadbiranStyles';
 import SectionHeader from './SectionHeader';
@@ -20,7 +20,7 @@ const PX_PER_SECOND = 20;
 const SCROLLBAR_TRACK_WIDTH = 160;
 const MIN_THUMB_WIDTH = 28;
 
-export default function KpiSection({ kpiItems, isEditing, updateKpiItem, addKpiItem, removeKpiItem, persistKpi, showSubSeksyen = true }) {
+export default function KpiSection({ kpiItems, isEditing, updateKpiItem, addKpiItem, removeKpiItem, persistKpi, showSubSeksyen = true, onNotify }) {
   const [hoveredIndex, setHoveredIndex] = useState(null);
   const [modalIndex, setModalIndex] = useState(null); // null = fermé, -1 = ajout, >=0 = édition
   const [draft, setDraft] = useState(EMPTY_DRAFT);
@@ -28,6 +28,25 @@ export default function KpiSection({ kpiItems, isEditing, updateKpiItem, addKpiI
   const [hovered, setHovered] = useState(false);
   const [hoveredDeleteIndex, setHoveredDeleteIndex] = useState(null);
   const [confirmDeleteIndex, setConfirmDeleteIndex] = useState(null);
+  const displayDeleteIndexRef = useRef(null);
+  if (confirmDeleteIndex !== null) displayDeleteIndexRef.current = confirmDeleteIndex;
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // ── Notification (toast) après chaque action réussie ou échouée ──
+  const [notification, setNotification] = useState(null); // { type: 'success' | 'error', message }
+  const notificationTimeoutRef = useRef(null);
+  const showNotification = (type, message) => {
+    if (onNotify) {
+      onNotify(type, message);
+      return;
+    }
+    setNotification({ type, message });
+    if (notificationTimeoutRef.current) clearTimeout(notificationTimeoutRef.current);
+    notificationTimeoutRef.current = setTimeout(() => setNotification(null), 3000);
+  };
+  useEffect(() => () => {
+    if (notificationTimeoutRef.current) clearTimeout(notificationTimeoutRef.current);
+  }, []);
 
   const scrollRef = useRef(null);
   const scrollXRef = useRef(0);
@@ -198,16 +217,33 @@ export default function KpiSection({ kpiItems, isEditing, updateKpiItem, addKpiI
   };
 
   const handleSave = async () => {
+    const isNew = modalIndex === -1;
     let updatedItems;
-    if (modalIndex === -1) {
-      updatedItems = [...kpiItems, { id: null, section: kpiItems[0]?.section, ...draft, display_order: kpiItems.length }];
-      addKpiItem(draft);
-    } else {
-      updatedItems = kpiItems.map((it, i) => (i === modalIndex ? { ...it, ...draft } : it));
-      updateKpiItem(modalIndex, draft);
+    try {
+      if (isNew) {
+        updatedItems = [...kpiItems, { id: null, section: kpiItems[0]?.section, ...draft, display_order: kpiItems.length }];
+        const ok = await addKpiItem(draft);
+        if (ok === false) {
+          showNotification('error', 'Gagal menambah KPI.');
+          return;
+        }
+      } else {
+        updatedItems = kpiItems.map((it, i) => (i === modalIndex ? { ...it, ...draft } : it));
+        const ok = await updateKpiItem(modalIndex, draft);
+        if (ok === false) {
+          showNotification('error', 'Gagal mengemaskini KPI.');
+          return;
+        }
+      }
+      closeModal();
+      // persistKpi (réordonnancement) exige des id valides côté serveur — après un ajout, addKpiItem
+      // vient déjà de rafraîchir kpiList avec les vrais id depuis la base ; réappeler persistKpi ici
+      // avec le tableau local périmé (id encore null pour le nouvel item) écraserait ce rafraîchissement.
+      if (!isNew && persistKpi) await persistKpi(updatedItems);
+      showNotification('success', isNew ? 'KPI berjaya ditambah.' : 'KPI berjaya dikemaskini.');
+    } catch (error) {
+      showNotification('error', 'Ralat berlaku semasa menyimpan KPI.');
     }
-    closeModal();
-    if (persistKpi) await persistKpi(updatedItems);
   };
 
   const handleDelete = () => {
@@ -216,18 +252,50 @@ export default function KpiSection({ kpiItems, isEditing, updateKpiItem, addKpiI
     setConfirmDeleteIndex(index);
   };
 
-  const deleteAtIndex = async (index) => {
-    await removeKpiItem(kpiItems[index]);
-  };
-
   const confirmDeleteFromCard = async () => {
-    await deleteAtIndex(confirmDeleteIndex);
-    setConfirmDeleteIndex(null);
+    const index = confirmDeleteIndex;
+    const itemName = kpiItems[index]?.nama;
+    setIsDeleting(true);
+    try {
+      const ok = await removeKpiItem(kpiItems[index]);
+      // Ferme la popup seulement une fois la suppression terminée — la carte disparaît
+      // au même moment (kpiItems mis à jour par le hook juste avant que cette promesse se résolve)
+      setConfirmDeleteIndex(null);
+      setIsDeleting(false);
+      if (ok === false) {
+        showNotification('error', `Gagal memadam KPI "${itemName}".`);
+      } else {
+        showNotification('success', `KPI "${itemName}" berjaya dipadam.`);
+      }
+    } catch (error) {
+      setConfirmDeleteIndex(null);
+      setIsDeleting(false);
+      showNotification('error', `Gagal memadam KPI "${itemName}".`);
+    }
   };
 
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, { position: 'relative' }]}>
       <SectionHeader title="KEY PERFORMANCE INDICATOR (KPI)" Icon={Target} />
+
+      {!onNotify && notification && (
+        <View
+          style={{
+            position: 'absolute', top: 12, right: 12, zIndex: 1000,
+            flexDirection: 'row', alignItems: 'center', gap: 8,
+            backgroundColor: notification.type === 'success' ? '#16a34a' : '#dc2626',
+            paddingVertical: 10, paddingHorizontal: 14, borderRadius: 10, maxWidth: 320,
+            shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 8, elevation: 4,
+          }}
+        >
+          {notification.type === 'success' ? (
+            <CheckCircle2 size={16} color="#fff" />
+          ) : (
+            <XCircle size={16} color="#fff" />
+          )}
+          <Text style={{ color: '#fff', fontWeight: '700', fontSize: 13, flexShrink: 1 }}>{notification.message}</Text>
+        </View>
+      )}
 
       <View style={styles.kpiLegendRow}>
         {STATUS_LEGEND.map((item) => (
@@ -264,6 +332,7 @@ export default function KpiSection({ kpiItems, isEditing, updateKpiItem, addKpiI
             const statusColor = STATUS_COLORS[item.status] || STATUS_COLORS.kuning;
             return (
             <TouchableOpacity
+              key={item.id ?? index}
               activeOpacity={0.85}
               style={[styles.kpiCard, { borderColor: statusColor }]}
               onPress={() => setDetailIndex(index)}
@@ -374,17 +443,31 @@ export default function KpiSection({ kpiItems, isEditing, updateKpiItem, addKpiI
               </View>
               <Text style={styles.confirmTitle}>Padam KPI</Text>
               <Text style={styles.confirmSubtitle}>
-                Adakah anda pasti mahu memadam KPI "{confirmDeleteIndex !== null ? kpiItems[confirmDeleteIndex]?.nama : ''}"? Tindakan ini tidak boleh dibatalkan.
+                Adakah anda pasti mahu memadam KPI "{kpiItems[displayDeleteIndexRef.current]?.nama}"? Tindakan ini tidak boleh dibatalkan.
               </Text>
             </View>
 
-            <View style={styles.confirmActions}>
-              <TouchableOpacity style={styles.confirmCancelBtn} onPress={() => setConfirmDeleteIndex(null)}>
+<View style={styles.confirmActions}>
+              <TouchableOpacity
+                style={[styles.confirmCancelBtn, isDeleting && { opacity: 0.5 }]}
+                onPress={() => setConfirmDeleteIndex(null)}
+                disabled={isDeleting}
+              >
                 <Text style={styles.confirmCancelText}>Batal</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.confirmConfirmBtn} onPress={confirmDeleteFromCard}>
-                <Trash2 size={16} color="#fff" />
-                <Text style={styles.confirmConfirmText}>Padam</Text>
+              <TouchableOpacity
+                style={[styles.confirmConfirmBtn, isDeleting && { opacity: 0.7 }]}
+                onPress={confirmDeleteFromCard}
+                disabled={isDeleting}
+              >
+                {isDeleting ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <>
+                    <Trash2 size={16} color="#fff" />
+                    <Text style={styles.confirmConfirmText}>Padam</Text>
+                  </>
+                )}
               </TouchableOpacity>
             </View>
           </View>

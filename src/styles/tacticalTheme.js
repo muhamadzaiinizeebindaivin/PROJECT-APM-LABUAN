@@ -21,8 +21,8 @@ export const SPACING = { xs: 4, sm: 8, md: 16, lg: 24, xl: 32 };
 export const RADIUS = { sm: 8, md: 14, lg: 20, xl: 28, pill: 999 };
 
 export const FONTS = {
-  display: 'Rajdhani_600SemiBold',
-  displayBold: 'Rajdhani_700Bold',
+  display: 'Orbitron_600SemiBold',
+  displayBold: 'Orbitron_700Bold',
   body: 'Inter_400Regular',
   bodyMedium: 'Inter_500Medium',
 };

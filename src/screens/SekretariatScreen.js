@@ -59,7 +59,7 @@ const SekretariatScreen = ({ theme, userRole }) => {
     <View style={styles.container}>
       {canEdit && activeTab !== 'PETA' && (
         <View style={stickyHeaderStyles.stickyHeader}>
-          <View style={stickyHeaderStyles.stickyHeaderCenter} pointerEvents="none">
+          <View style={[stickyHeaderStyles.stickyHeaderCenter, { pointerEvents: 'none' }]}>
             {dikemaskini ? (
               <View style={stickyHeaderStyles.stickyHeaderDikemaskiniBadge}>
                 <View style={stickyHeaderStyles.stickyHeaderDikemaskiniDot} />

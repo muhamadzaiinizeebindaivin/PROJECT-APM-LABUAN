@@ -46,7 +46,7 @@ export default function KewanganScreen({ userRole }) {
     <View style={styles.container}>
       {canEdit && (
         <View style={stickyHeaderStyles.stickyHeader}>
-          <View style={stickyHeaderStyles.stickyHeaderCenter} pointerEvents="none">
+          <View style={[stickyHeaderStyles.stickyHeaderCenter, { pointerEvents: 'none' }]}>
             {dikemaskini ? (
               <View style={stickyHeaderStyles.stickyHeaderDikemaskiniBadge}>
                 <View style={stickyHeaderStyles.stickyHeaderDikemaskiniDot} />

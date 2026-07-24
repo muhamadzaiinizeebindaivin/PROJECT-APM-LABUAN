@@ -14,7 +14,7 @@ export default function HoverTip({ label, children }) {
     >
       {children}
       {hovered ? (
-        <View style={tipStyles.bubble} pointerEvents="none">
+        <View style={[tipStyles.bubble, { pointerEvents: 'none' }]}>
           <Text style={tipStyles.text}>{label}</Text>
         </View>
       ) : null}

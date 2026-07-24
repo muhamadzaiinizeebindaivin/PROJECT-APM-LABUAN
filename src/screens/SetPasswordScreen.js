@@ -51,7 +51,7 @@ function FlowingBackground() {
   if (Platform.OS !== 'web') return null;
 
   return (
-    <View style={bgStyles.container} pointerEvents="none">
+    <View style={[bgStyles.container, { pointerEvents: 'none' }]}>
       {createElement('svg', {
         viewBox: '0 0 1200 800',
         preserveAspectRatio: 'xMidYMid slice',
@@ -321,7 +321,7 @@ const styles = StyleSheet.create({
 
   card: {
     width: '100%', maxWidth: 480, alignSelf: 'center', borderRadius: 24, overflow: 'hidden',
-    shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 20, elevation: 10,
+    boxShadow: '0px 0px 20px rgba(0, 0, 0, 0.15)', elevation: 10,
   },
 
   banner: { backgroundColor: '#0c0c0e', padding: 24, paddingBottom: 28 },

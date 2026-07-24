@@ -4,7 +4,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { LayoutDashboard, Users, CreditCard, GraduationCap, Truck, ShieldAlert, Briefcase, Info, LogOut, UserCog, ShieldCheck, Building2, Lock, User, ArrowRight, AlertCircle, X } from 'lucide-react-native';
 import { PALETTE } from './src/constants/palette';
-import { useFonts, Rajdhani_600SemiBold, Rajdhani_700Bold } from '@expo-google-fonts/rajdhani';
+import { useFonts, Orbitron_600SemiBold, Orbitron_700Bold } from '@expo-google-fonts/orbitron';
 import { Inter_400Regular, Inter_500Medium } from '@expo-google-fonts/inter';
 import { supabaseSandbox } from './src/supabaseSandboxClient';
 import { ROLE_PERMISSIONS } from './src/permissions';
@@ -210,8 +210,8 @@ export default function App() {
   };
 
   const [fontsLoaded] = useFonts({
-    Rajdhani_600SemiBold,
-    Rajdhani_700Bold,
+    Orbitron_600SemiBold,
+    Orbitron_700Bold,
     Inter_400Regular,
     Inter_500Medium,
   });

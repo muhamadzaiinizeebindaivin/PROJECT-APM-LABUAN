@@ -58,7 +58,7 @@ export default function HomeScreen({ isAuthFlow, onGuestLogin, onDriverLogin, on
       {userRole === 'admin' && (
         <View style={stickyHeaderStyles.stickyHeader}>
           {!!dikemaskini && (
-            <View style={stickyHeaderStyles.stickyHeaderCenter} pointerEvents="none">
+            <View style={[stickyHeaderStyles.stickyHeaderCenter, { pointerEvents: 'none' }]}>
               <View style={stickyHeaderStyles.stickyHeaderDikemaskiniBadge}>
                 <View style={stickyHeaderStyles.stickyHeaderDikemaskiniDot} />
                 <Text style={stickyHeaderStyles.stickyHeaderDikemaskini}>DIKEMASKINI {dikemaskini}</Text>

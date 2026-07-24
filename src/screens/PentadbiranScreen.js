@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, ScrollView, ActivityIndicator, Alert } from 'react-native';
+import { CheckCircle2, XCircle } from 'lucide-react-native';
 import AdminEditButton from '../components/AdminEditButton';
 import { PALETTE } from '../constants/palette';
 import { usePentadbiranData } from '../hooks/usePentadbiranData';
@@ -24,6 +25,17 @@ export default function PentadbiranScreen({ userRole }) {
   const { loading, pageData, updatedAt, saveData, updateField, updateArrayField, addArrayItem, removeArrayItem } = usePentadbiranData();
   const { kpiList, saveKpiItem, deleteKpiItem, reorderKpi, kpiUpdatedAt } = useKpi(KPI_SECTION);
   const { staffList: unitStaffList, saveStaffItem, deleteStaffItem, reorderStaff, staffUpdatedAt } = useUnitStaff('pentadbiran');
+
+  const [notification, setNotification] = useState(null); // { type: 'success' | 'error', message }
+  const notificationTimeoutRef = useRef(null);
+  const showNotification = (type, message) => {
+    setNotification({ type, message });
+    if (notificationTimeoutRef.current) clearTimeout(notificationTimeoutRef.current);
+    notificationTimeoutRef.current = setTimeout(() => setNotification(null), 3000);
+  };
+  useEffect(() => () => {
+    if (notificationTimeoutRef.current) clearTimeout(notificationTimeoutRef.current);
+  }, []);
 
   // Convertit un timestamp ISO (colonne updated_at) au format d'affichage DD/M/YYYY HH:MM
   const formatTimestamp = (iso) => {
@@ -68,7 +80,7 @@ export default function PentadbiranScreen({ userRole }) {
     <View style={styles.container}>
       {canEdit && (
         <View style={stickyHeaderStyles.stickyHeader}>
-          <View style={stickyHeaderStyles.stickyHeaderCenter} pointerEvents="none">
+          <View style={[stickyHeaderStyles.stickyHeaderCenter, { pointerEvents: 'none' }]}>
             {dikemaskini ? (
               <View style={stickyHeaderStyles.stickyHeaderDikemaskiniBadge}>
                 <View style={stickyHeaderStyles.stickyHeaderDikemaskiniDot} />
@@ -82,6 +94,26 @@ export default function PentadbiranScreen({ userRole }) {
             userRole={userRole}
             section="Pentadbiran"
           />
+        </View>
+      )}
+
+      {notification && (
+        <View style={{ alignItems: 'center', paddingTop: 8 }}>
+          <View
+            style={{
+              flexDirection: 'row', alignItems: 'center', gap: 8,
+              backgroundColor: notification.type === 'success' ? '#16a34a' : '#dc2626',
+              paddingVertical: 10, paddingHorizontal: 14, borderRadius: 10, maxWidth: '90%',
+              shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 8, elevation: 4,
+            }}
+          >
+            {notification.type === 'success' ? (
+              <CheckCircle2 size={16} color="#fff" />
+            ) : (
+              <XCircle size={16} color="#fff" />
+            )}
+            <Text style={{ color: '#fff', fontWeight: '700', fontSize: 13, flexShrink: 1 }}>{notification.message}</Text>
+          </View>
         </View>
       )}
 
@@ -114,6 +146,7 @@ export default function PentadbiranScreen({ userRole }) {
           addKpiItem={(form) => saveKpiItem(form, null)}
           removeKpiItem={(item) => deleteKpiItem(item)}
           persistKpi={reorderKpi}
+          onNotify={showNotification}
         />
         <ComplianceSection pageData={pageData} isEditing={isEditing} updateField={updateField} onSave={persistPageData} />
         <WaranTable pageData={pageData} isEditing={isEditing} updateArrayField={updateArrayField} onSave={persistPageData} />

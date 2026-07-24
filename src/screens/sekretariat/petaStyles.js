@@ -10,7 +10,7 @@ export const petaStyles = StyleSheet.create({
   petaHeaderCard: {
     position: 'absolute', top: 16, left: 16, zIndex: 10, flexDirection: 'row', alignItems: 'center',
     padding: 16, borderRadius: 16, gap: 12, backgroundColor: PALETTE.cardLight,
-    shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 10, elevation: 4, minWidth: 200,
+    boxShadow: '0px 0px 10px rgba(0, 0, 0, 0.1)', elevation: 4, minWidth: 200,
   },
   petaIconCircle: { width: 40, height: 40, borderRadius: 12, backgroundColor: PALETTE.orange, justifyContent: 'center', alignItems: 'center' },
   petaHeaderTitle: { fontSize: 16, fontWeight: '800', color: PALETTE.textDark },
@@ -18,7 +18,7 @@ export const petaStyles = StyleSheet.create({
   liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: PALETTE.success },
   liveText: { fontSize: 10, fontWeight: '700' },
   petaListContainer: { position: 'absolute', bottom: 50, left: 16, right: 16, zIndex: 10 },
-  petaAgencyCard: { padding: 12, borderRadius: 12, backgroundColor: PALETTE.cardLight, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 5, elevation: 3, minWidth: 160 },
+  petaAgencyCard: { padding: 12, borderRadius: 12, backgroundColor: PALETTE.cardLight, boxShadow: '0px 0px 5px rgba(0, 0, 0, 0.05)', elevation: 3, minWidth: 160 },
   petaAgencyDot: { width: 10, height: 10, borderRadius: 5 },
   petaAgencyName: { fontSize: 12, fontWeight: '700', color: PALETTE.textDark, maxWidth: 120 },
   petaAgencyUser: { fontSize: 10, color: PALETTE.textMutedDark, maxWidth: 80 },
@@ -33,7 +33,7 @@ export const petaStyles = StyleSheet.create({
   onlineLabel: { fontSize: 9, fontWeight: '800', color: PALETTE.success },
   agencyLegendPalette: {
     position: 'absolute', top: 108, left: 16, zIndex: 10, backgroundColor: PALETTE.cardLight,
-    borderRadius: 16, padding: 10, shadowColor: '#000', shadowOpacity: 0.1,
+    borderRadius: 16, shadowRadius: 10, elevation: 4, width: 140,
     shadowRadius: 10, elevation: 4, width: 140,
   },
   agencyLegendRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 5 },

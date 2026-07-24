@@ -16,8 +16,7 @@ import FullscreenViewer from '../../components/FullscreenViewer';
 import { formStyles } from '../../styles/formStyles';
 import VehicleCard from './VehicleCard';
 import { mapStyles as styles } from './mapStyles';
-console.log('SUPABASE_URL:', process.env.EXPO_PUBLIC_SUPABASE_URL);
-console.log('logo test:', getCalamityLogoUrl('KJR'));
+
 
 function CompactTooltip({ active, payload, label }) {
   if (!active || !payload || payload.length === 0) return null;
@@ -27,7 +26,7 @@ function CompactTooltip({ active, payload, label }) {
   return (
     <View style={{
       backgroundColor: '#0f172a', borderRadius: 8, padding: 10,
-      maxWidth: 260, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 6,
+      maxWidth: 260, boxShadow: '0px 0px 6px rgba(0, 0, 0, 0.2)',
     }}>
       <Text style={{ color: '#fff', fontSize: 11, fontWeight: '800', marginBottom: 6 }}>{label}</Text>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
