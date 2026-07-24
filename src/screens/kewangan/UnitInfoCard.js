@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { Users, Pencil, Trash2, ChevronUp, ChevronDown } from 'lucide-react-native';
+import React, { useState, useRef } from 'react';
+import { View, Text, TouchableOpacity, ActivityIndicator, Modal } from 'react-native';
+import { Users, Pencil, Trash2, ChevronUp, ChevronDown, AlertTriangle } from 'lucide-react-native';
 import { PALETTE } from '../../constants/palette';
 import { kewanganStyles as styles } from './kewanganStyles';
+import { pentadbiranStyles } from '../pentadbiran/pentadbiranStyles';
 import SectionHeader from '../pentadbiran/SectionHeader';
 import UnitEditModal from './UnitEditModal';
 
@@ -13,6 +14,9 @@ export default function UnitInfoCard({ staffList, loading, isEditMode, saveStaff
   const [modalVisible, setModalVisible] = useState(false);
   const [editItem, setEditItem] = useState(null);
   const [draft, setDraft] = useState(EMPTY_DRAFT);
+  const [confirmDeleteItem, setConfirmDeleteItem] = useState(null);
+  const displayDeleteItemRef = useRef(null);
+  if (confirmDeleteItem !== null) displayDeleteItemRef.current = confirmDeleteItem;
 
   const openAdd = () => {
     setEditItem(null);
@@ -98,13 +102,46 @@ export default function UnitInfoCard({ staffList, loading, isEditMode, saveStaff
                   </View>
                 )}
               </TouchableOpacity>
-              <TouchableOpacity style={styles.kpiDeleteBtnInline} onPress={() => deleteStaffItem(item)}>
+              <TouchableOpacity style={styles.kpiDeleteBtnInline} onPress={() => setConfirmDeleteItem(item)}>
                 <Trash2 size={13} color="#dc2626" />
               </TouchableOpacity>
             </View>
           )}
         </View>
       ))}
+
+      <Modal visible={confirmDeleteItem !== null} transparent animationType="fade" onRequestClose={() => setConfirmDeleteItem(null)}>
+        <View style={pentadbiranStyles.confirmOverlay}>
+          <View style={pentadbiranStyles.confirmBox}>
+            <View style={pentadbiranStyles.confirmBanner}>
+              <View style={pentadbiranStyles.confirmIconCircle}>
+                <AlertTriangle size={26} color="#ef4444" />
+              </View>
+              <Text style={pentadbiranStyles.confirmTitle}>Padam Kakitangan</Text>
+              <Text style={pentadbiranStyles.confirmSubtitle}>
+                Padam kakitangan ini{displayDeleteItemRef.current?.name ? ` "${displayDeleteItemRef.current.name}"` : ''}? Tindakan ini tidak boleh dibatalkan.
+              </Text>
+            </View>
+
+            <View style={pentadbiranStyles.confirmActions}>
+              <TouchableOpacity style={pentadbiranStyles.confirmCancelBtn} onPress={() => setConfirmDeleteItem(null)}>
+                <Text style={pentadbiranStyles.confirmCancelText}>Batal</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={pentadbiranStyles.confirmConfirmBtn}
+                onPress={() => {
+                  const item = confirmDeleteItem;
+                  setConfirmDeleteItem(null);
+                  deleteStaffItem(item);
+                }}
+              >
+                <Trash2 size={16} color="#fff" />
+                <Text style={pentadbiranStyles.confirmConfirmText}>Padam</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       <UnitEditModal
         visible={modalVisible}

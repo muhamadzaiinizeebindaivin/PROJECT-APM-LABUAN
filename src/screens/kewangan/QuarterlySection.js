@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, Animated, PanResponder, ScrollView } from 'react-native';
-import { TrendingUp, Pencil, Trash2 } from 'lucide-react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, Animated, PanResponder, ScrollView, Modal } from 'react-native';
+import { TrendingUp, Pencil, Trash2, AlertTriangle } from 'lucide-react-native';
 import { PALETTE } from '../../constants/palette';
 import { formatCurrency, parseCurrency } from '../../utils/currency';
 import { kewanganStyles as styles } from './kewanganStyles';
+import { pentadbiranStyles } from '../pentadbiran/pentadbiranStyles';
 import SectionHeader from '../pentadbiran/SectionHeader';
 import QuarterlyEditModal from './QuarterlyEditModal';
 import QuarterlyHelpModal from './QuarterlyHelpModal';
@@ -22,6 +23,9 @@ export default function QuarterlySection({ processedData, loading, isEditMode, s
   const [editItem, setEditItem] = useState(null);
   const [draft, setDraft] = useState(EMPTY_DRAFT);
   const [selectedId, setSelectedId] = useState(null);
+  const [confirmDeleteItem, setConfirmDeleteItem] = useState(null);
+  const displayDeleteItemRef = useRef(null);
+  if (confirmDeleteItem !== null) displayDeleteItemRef.current = confirmDeleteItem;
 
   useEffect(() => {
     if (processedData.length === 0) { setSelectedId(null); return; }
@@ -223,7 +227,7 @@ export default function QuarterlySection({ processedData, loading, isEditMode, s
                       {isEditMode && (
                         <TouchableOpacity
                           style={styles.categoryDeleteBtn}
-                          onPress={() => deleteQuarterlyItem(item)}
+                          onPress={() => setConfirmDeleteItem(item)}
                         >
                           <Trash2 size={13} color={PALETTE.orange} />
                         </TouchableOpacity>
@@ -278,7 +282,7 @@ export default function QuarterlySection({ processedData, loading, isEditMode, s
                         <TouchableOpacity style={styles.kpiPencilBtnInline} onPress={() => openEdit(selectedItem)}>
                           <Pencil size={13} color={PALETTE.orange} />
                         </TouchableOpacity>
-                        <TouchableOpacity style={styles.kpiDeleteBtnInline} onPress={() => deleteQuarterlyItem(selectedItem)}>
+                        <TouchableOpacity style={styles.kpiDeleteBtnInline} onPress={() => setConfirmDeleteItem(selectedItem)}>
                           <Trash2 size={13} color="#dc2626" />
                         </TouchableOpacity>
                       </View>
@@ -307,6 +311,39 @@ export default function QuarterlySection({ processedData, loading, isEditMode, s
           </>
         )}
       </View>
+
+      <Modal visible={confirmDeleteItem !== null} transparent animationType="fade" onRequestClose={() => setConfirmDeleteItem(null)}>
+        <View style={pentadbiranStyles.confirmOverlay}>
+          <View style={pentadbiranStyles.confirmBox}>
+            <View style={pentadbiranStyles.confirmBanner}>
+              <View style={pentadbiranStyles.confirmIconCircle}>
+                <AlertTriangle size={26} color="#ef4444" />
+              </View>
+              <Text style={pentadbiranStyles.confirmTitle}>Padam Rekod</Text>
+              <Text style={pentadbiranStyles.confirmSubtitle}>
+                Padam rekod ini{displayDeleteItemRef.current?.q ? ` "${displayDeleteItemRef.current.q}"` : ''}? Tindakan ini tidak boleh dibatalkan.
+              </Text>
+            </View>
+
+            <View style={pentadbiranStyles.confirmActions}>
+              <TouchableOpacity style={pentadbiranStyles.confirmCancelBtn} onPress={() => setConfirmDeleteItem(null)}>
+                <Text style={pentadbiranStyles.confirmCancelText}>Batal</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={pentadbiranStyles.confirmConfirmBtn}
+                onPress={() => {
+                  const item = confirmDeleteItem;
+                  setConfirmDeleteItem(null);
+                  deleteQuarterlyItem(item);
+                }}
+              >
+                <Trash2 size={16} color="#fff" />
+                <Text style={pentadbiranStyles.confirmConfirmText}>Padam</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       <QuarterlyEditModal
         visible={modalVisible}

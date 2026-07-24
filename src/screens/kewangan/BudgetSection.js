@@ -24,7 +24,11 @@ export default function BudgetSection({ budgetData, loading, isEditMode, saveBud
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [page, setPage] = useState(0);
   const [confirmDeleteItem, setConfirmDeleteItem] = useState(null);
+  const displayDeleteItemRef = useRef(null);
+  if (confirmDeleteItem !== null) displayDeleteItemRef.current = confirmDeleteItem;
   const [confirmDeleteCategory, setConfirmDeleteCategory] = useState(null);
+  const displayDeleteCategoryRef = useRef(null);
+  if (confirmDeleteCategory !== null) displayDeleteCategoryRef.current = confirmDeleteCategory;
 
   const totalAgihan = budgetData.reduce((sum, item) => sum + parseCurrency(item.agihan), 0);
   const totalBelanja = budgetData.reduce((sum, item) => sum + parseCurrency(item.belanja), 0);
@@ -374,7 +378,7 @@ export default function BudgetSection({ budgetData, loading, isEditMode, saveBud
               </View>
               <Text style={pentadbiranStyles.confirmTitle}>Padam Kategori</Text>
               <Text style={pentadbiranStyles.confirmSubtitle}>
-                Padam kategori "{confirmDeleteCategory}" beserta {budgetData.filter((item) => item.kategori === confirmDeleteCategory).length} perkara di dalamnya? Tindakan ini tidak boleh dibatalkan.
+                Padam kategori "{displayDeleteCategoryRef.current}" beserta {budgetData.filter((item) => item.kategori === displayDeleteCategoryRef.current).length} perkara di dalamnya? Tindakan ini tidak boleh dibatalkan.
               </Text>
             </View>
 
@@ -407,7 +411,7 @@ export default function BudgetSection({ budgetData, loading, isEditMode, saveBud
               </View>
               <Text style={pentadbiranStyles.confirmTitle}>Padam Bajet</Text>
               <Text style={pentadbiranStyles.confirmSubtitle}>
-                Padam bajet ini{confirmDeleteItem?.perihal ? ` "${confirmDeleteItem.perihal}"` : ''}? Tindakan ini tidak boleh dibatalkan.
+                Padam bajet ini{displayDeleteItemRef.current?.perihal ? ` "${displayDeleteItemRef.current.perihal}"` : ''}? Tindakan ini tidak boleh dibatalkan.
               </Text>
             </View>
 

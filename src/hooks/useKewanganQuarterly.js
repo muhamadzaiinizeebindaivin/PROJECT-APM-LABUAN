@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Alert, Platform } from 'react-native';
+import { Alert } from 'react-native';
 import { supabaseSandbox } from '../supabaseSandboxClient';
 import { parseCurrency } from '../utils/currency';
 import { BULAN_MS } from '../constants/bulan';
@@ -73,24 +73,14 @@ export function useKewanganQuarterly(totalAllocation) {
     }
   };
 
-  const deleteQuarterlyItem = (item) => {
+  const deleteQuarterlyItem = async (item) => {
     if (!item || item.id === undefined) return;
-    const executeDelete = async () => {
-      try {
-        const { error } = await supabaseSandbox.schema(SCHEMA).from('kewangan_breakdown').delete().eq('id', item.id);
-        if (error) throw error;
-        await fetchQuarterly();
-      } catch (error) {
-        Platform.OS === 'web' ? window.alert(error.message) : Alert.alert('Ralat', error.message);
-      }
-    };
-    if (Platform.OS === 'web') {
-      if (window.confirm('Padam rekod ini?')) executeDelete();
-    } else {
-      Alert.alert('Pengesahan', 'Padam rekod ini?', [
-        { text: 'Batal', style: 'cancel' },
-        { text: 'Padam', style: 'destructive', onPress: executeDelete },
-      ]);
+    try {
+      const { error } = await supabaseSandbox.schema(SCHEMA).from('kewangan_breakdown').delete().eq('id', item.id);
+      if (error) throw error;
+      await fetchQuarterly();
+    } catch (error) {
+      Alert.alert('Ralat', error.message);
     }
   };
 
