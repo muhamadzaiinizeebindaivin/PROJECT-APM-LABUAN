@@ -12,7 +12,7 @@ const STATUS_OPTIONS = [
 
 const SUB_SEKSYEN_OPTIONS = ['BKP', 'BPP', 'BPM'];
 
-export default function KpiEditModal({ visible, isNew, draft, setDraft, onSave, onDelete, onClose, showSubSeksyen = true }) {
+export default function KpiEditModal({ visible, isNew, draft, setDraft, onSave, onDelete, onClose, showSubSeksyen = true, error }) {
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.modalOverlay}>
@@ -126,7 +126,10 @@ export default function KpiEditModal({ visible, isNew, draft, setDraft, onSave, 
             </Text>
           </ScrollView>
 
-          <View style={styles.kpiModalFooter}>
+          <View style={[styles.kpiModalFooter, { flexDirection: 'column' }]}>
+            {!!error && (
+              <Text style={{ fontSize: 12, color: '#dc2626', textAlign: 'center', marginBottom: 12 }}>{error}</Text>
+            )}
             <TouchableOpacity
               style={[styles.saveButton, { flex: 1, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, marginTop: 0 }]}
               onPress={onSave}

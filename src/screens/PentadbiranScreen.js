@@ -182,6 +182,7 @@ export default function PentadbiranScreen({ userRole }) {
           saveStaffItem={saveStaffItem}
           deleteStaffItem={deleteStaffItem}
           reorderStaff={reorderStaff}
+          onNotify={showNotification}
         />
       </ScrollView>
     </View>

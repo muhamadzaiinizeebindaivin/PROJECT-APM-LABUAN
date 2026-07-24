@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Modal } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, ActivityIndicator } from 'react-native';
 import { Users, ListChecks, Pencil, Trash2, ChevronUp, ChevronDown, AlertTriangle } from 'lucide-react-native';
 import { PALETTE } from '../../constants/palette';
 import { pentadbiranStyles as styles } from './pentadbiranStyles';
@@ -9,15 +9,21 @@ import StaffEditModal from './StaffEditModal';
 
 const EMPTY_STAFF_DRAFT = { name: '', role: '' };
 
-export default function UnitSection({ pageData, isEditing, updateField, onSave, unitStaffList, saveStaffItem, deleteStaffItem, reorderStaff }) {
+export default function UnitSection({ pageData, isEditing, updateField, onSave, unitStaffList, saveStaffItem, deleteStaffItem, reorderStaff, onNotify }) {
   const [hoveredPecahanIndex, setHoveredPecahanIndex] = useState(null);
   const [hoveredStaffIndex, setHoveredStaffIndex] = useState(null);
 
   const [pecahanModalIndex, setPecahanModalIndex] = useState(null); // null = fermé, -1 = ajout, >=0 = édition
   const [pecahanDraft, setPecahanDraft] = useState('');
+  const [isSavingPecahan, setIsSavingPecahan] = useState(false);
+  const [isDeletingPecahan, setIsDeletingPecahan] = useState(false);
+  const [pecahanFormError, setPecahanFormError] = useState(null);
 
   const [staffModalIndex, setStaffModalIndex] = useState(null);
   const [staffDraft, setStaffDraft] = useState(EMPTY_STAFF_DRAFT);
+  const [isSavingStaff, setIsSavingStaff] = useState(false);
+  const [isDeletingStaff, setIsDeletingStaff] = useState(false);
+  const [staffFormError, setStaffFormError] = useState(null);
   const [confirmStaffDeleteIndex, setConfirmStaffDeleteIndex] = useState(null);
   const [confirmPecahanDeleteIndex, setConfirmPecahanDeleteIndex] = useState(null);
 
@@ -25,28 +31,38 @@ export default function UnitSection({ pageData, isEditing, updateField, onSave, 
   const openPecahanEdit = (index) => {
     setPecahanModalIndex(index);
     setPecahanDraft(pageData.pecahanUnit[index]);
+    setPecahanFormError(null);
   };
   const openPecahanAdd = () => {
     setPecahanModalIndex(-1);
     setPecahanDraft('');
+    setPecahanFormError(null);
   };
   const closePecahanModal = () => {
     setPecahanModalIndex(null);
     setPecahanDraft('');
+    setPecahanFormError(null);
   };
   const handlePecahanSave = async () => {
+    if (!pecahanDraft.trim()) {
+      setPecahanFormError('Nama unit tidak boleh kosong.');
+      return;
+    }
+    setPecahanFormError(null);
+    const isNew = pecahanModalIndex === -1;
     let updated;
-    if (pecahanModalIndex === -1) updated = [...pageData.pecahanUnit, pecahanDraft];
+    if (isNew) updated = [...pageData.pecahanUnit, pecahanDraft];
     else updated = pageData.pecahanUnit.map((it, i) => (i === pecahanModalIndex ? pecahanDraft : it));
     updateField('pecahanUnit', updated);
+    setIsSavingPecahan(true);
+    const ok = onSave ? await onSave({ pecahanUnit: updated }) : true;
+    setIsSavingPecahan(false);
+    if (ok === false) {
+      onNotify?.('error', isNew ? 'Gagal menambah unit.' : 'Gagal mengemaskini unit.');
+      return;
+    }
     closePecahanModal();
-    if (onSave) await onSave({ pecahanUnit: updated });
-  };
-  const handlePecahanDelete = async () => {
-    const updated = pageData.pecahanUnit.filter((_, i) => i !== pecahanModalIndex);
-    updateField('pecahanUnit', updated);
-    closePecahanModal();
-    if (onSave) await onSave({ pecahanUnit: updated });
+    onNotify?.('success', isNew ? 'Unit berjaya ditambah.' : 'Unit berjaya dikemaskini.');
   };
   const handlePecahanQuickDelete = (index) => {
     setConfirmPecahanDeleteIndex(index);
@@ -54,10 +70,17 @@ export default function UnitSection({ pageData, isEditing, updateField, onSave, 
 
   const confirmPecahanDeleteFromCard = async () => {
     const index = confirmPecahanDeleteIndex;
-    setConfirmPecahanDeleteIndex(null);
     const updated = pageData.pecahanUnit.filter((_, i) => i !== index);
+    setIsDeletingPecahan(true);
+    const ok = onSave ? await onSave({ pecahanUnit: updated }) : true;
+    setIsDeletingPecahan(false);
+    if (ok === false) {
+      onNotify?.('error', 'Gagal memadam unit.');
+      return;
+    }
     updateField('pecahanUnit', updated);
-    if (onSave) await onSave({ pecahanUnit: updated });
+    setConfirmPecahanDeleteIndex(null);
+    onNotify?.('success', 'Unit berjaya dipadam.');
   };
 
   // ── Unit Pentadbiran (staff) — désormais stocké dans sandbox.unit_staff (page='pentadbiran') ──
@@ -65,24 +88,35 @@ export default function UnitSection({ pageData, isEditing, updateField, onSave, 
     setStaffModalIndex(index);
     const item = unitStaffList[index];
     setStaffDraft({ name: item.name, role: item.role });
+    setStaffFormError(null);
   };
   const openStaffAdd = () => {
     setStaffModalIndex(-1);
     setStaffDraft(EMPTY_STAFF_DRAFT);
+    setStaffFormError(null);
   };
   const closeStaffModal = () => {
     setStaffModalIndex(null);
     setStaffDraft(EMPTY_STAFF_DRAFT);
+    setStaffFormError(null);
   };
   const handleStaffSave = async () => {
-    const editItem = staffModalIndex === -1 ? null : unitStaffList[staffModalIndex];
-    await saveStaffItem(staffDraft, editItem);
+    if (!staffDraft.name.trim() || !staffDraft.role.trim()) {
+      setStaffFormError('Nama dan peranan tidak boleh kosong.');
+      return;
+    }
+    setStaffFormError(null);
+    const isNew = staffModalIndex === -1;
+    const editItem = isNew ? null : unitStaffList[staffModalIndex];
+    setIsSavingStaff(true);
+    const ok = await saveStaffItem(staffDraft, editItem);
+    setIsSavingStaff(false);
+    if (!ok) {
+      onNotify?.('error', isNew ? 'Gagal menambah kakitangan.' : 'Gagal mengemaskini kakitangan.');
+      return;
+    }
     closeStaffModal();
-  };
-  const handleStaffDelete = async () => {
-    const item = unitStaffList[staffModalIndex];
-    closeStaffModal();
-    deleteStaffItem(item);
+    onNotify?.('success', isNew ? 'Kakitangan berjaya ditambah.' : 'Kakitangan berjaya dikemaskini.');
   };
   const moveStaff = async (index, direction) => {
     const targetIndex = index + direction;
@@ -90,16 +124,24 @@ export default function UnitSection({ pageData, isEditing, updateField, onSave, 
 
     const reordered = [...unitStaffList];
     [reordered[index], reordered[targetIndex]] = [reordered[targetIndex], reordered[index]];
-    await reorderStaff(reordered);
+    const ok = await reorderStaff(reordered);
+    if (ok === false) onNotify?.('error', 'Gagal menyusun semula kakitangan.');
   };
   const handleStaffQuickDelete = (index) => {
     setConfirmStaffDeleteIndex(index);
   };
 
-  const confirmStaffDeleteFromCard = () => {
+  const confirmStaffDeleteFromCard = async () => {
     const index = confirmStaffDeleteIndex;
+    setIsDeletingStaff(true);
+    const ok = await deleteStaffItem(unitStaffList[index]);
+    setIsDeletingStaff(false);
+    if (!ok) {
+      onNotify?.('error', 'Gagal memadam kakitangan.');
+      return;
+    }
     setConfirmStaffDeleteIndex(null);
-    deleteStaffItem(unitStaffList[index]);
+    onNotify?.('success', 'Kakitangan berjaya dipadam.');
   };
 
   return (
@@ -234,12 +276,26 @@ export default function UnitSection({ pageData, isEditing, updateField, onSave, 
             </View>
 
             <View style={styles.confirmActions}>
-              <TouchableOpacity style={styles.confirmCancelBtn} onPress={() => setConfirmPecahanDeleteIndex(null)}>
+              <TouchableOpacity
+                style={[styles.confirmCancelBtn, isDeletingPecahan && { opacity: 0.5 }]}
+                onPress={() => setConfirmPecahanDeleteIndex(null)}
+                disabled={isDeletingPecahan}
+              >
                 <Text style={styles.confirmCancelText}>Batal</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.confirmConfirmBtn} onPress={confirmPecahanDeleteFromCard}>
-                <Trash2 size={16} color="#fff" />
-                <Text style={styles.confirmConfirmText}>Padam</Text>
+              <TouchableOpacity
+                style={[styles.confirmConfirmBtn, isDeletingPecahan && { opacity: 0.7 }]}
+                onPress={confirmPecahanDeleteFromCard}
+                disabled={isDeletingPecahan}
+              >
+                {isDeletingPecahan ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <>
+                    <Trash2 size={16} color="#fff" />
+                    <Text style={styles.confirmConfirmText}>Padam</Text>
+                  </>
+                )}
               </TouchableOpacity>
             </View>
           </View>
@@ -260,12 +316,26 @@ export default function UnitSection({ pageData, isEditing, updateField, onSave, 
             </View>
 
             <View style={styles.confirmActions}>
-              <TouchableOpacity style={styles.confirmCancelBtn} onPress={() => setConfirmStaffDeleteIndex(null)}>
+              <TouchableOpacity
+                style={[styles.confirmCancelBtn, isDeletingStaff && { opacity: 0.5 }]}
+                onPress={() => setConfirmStaffDeleteIndex(null)}
+                disabled={isDeletingStaff}
+              >
                 <Text style={styles.confirmCancelText}>Batal</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.confirmConfirmBtn} onPress={confirmStaffDeleteFromCard}>
-                <Trash2 size={16} color="#fff" />
-                <Text style={styles.confirmConfirmText}>Padam</Text>
+              <TouchableOpacity
+                style={[styles.confirmConfirmBtn, isDeletingStaff && { opacity: 0.7 }]}
+                onPress={confirmStaffDeleteFromCard}
+                disabled={isDeletingStaff}
+              >
+                {isDeletingStaff ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <>
+                    <Trash2 size={16} color="#fff" />
+                    <Text style={styles.confirmConfirmText}>Padam</Text>
+                  </>
+                )}
               </TouchableOpacity>
             </View>
           </View>
@@ -278,8 +348,9 @@ export default function UnitSection({ pageData, isEditing, updateField, onSave, 
         draft={pecahanDraft}
         setDraft={setPecahanDraft}
         onSave={handlePecahanSave}
-        onDelete={handlePecahanDelete}
         onClose={closePecahanModal}
+        isSaving={isSavingPecahan}
+        error={pecahanFormError}
       />
 
       <StaffEditModal
@@ -288,8 +359,9 @@ export default function UnitSection({ pageData, isEditing, updateField, onSave, 
         draft={staffDraft}
         setDraft={setStaffDraft}
         onSave={handleStaffSave}
-        onDelete={handleStaffDelete}
         onClose={closeStaffModal}
+        isSaving={isSavingStaff}
+        error={staffFormError}
       />
     </View>
   );

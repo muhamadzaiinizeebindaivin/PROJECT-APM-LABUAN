@@ -18,7 +18,7 @@ const dateInputWebStyle = {
   outlineWidth: 0,
 };
 
-export default function PenilaianEditModal({ visible, isNew, draft, setDraft, onSave, onDelete, onClose }) {
+export default function PenilaianEditModal({ visible, isNew, draft, setDraft, onSave, onDelete, onClose, error }) {
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.modalOverlay}>
@@ -67,7 +67,10 @@ export default function PenilaianEditModal({ visible, isNew, draft, setDraft, on
               placeholderTextColor={PALETTE.textMutedDark}
             />
 
-            <View style={{ flexDirection: 'row', gap: 10, marginTop: 20 }}>
+            {!!error && (
+              <Text style={{ fontSize: 12, color: '#dc2626', textAlign: 'center', marginTop: 14, marginBottom: 12 }}>{error}</Text>
+            )}
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: error ? 0 : 10 }}>
               <TouchableOpacity
                 style={[styles.saveButton, { flex: 1, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, marginTop: 0 }]}
                 onPress={onSave}

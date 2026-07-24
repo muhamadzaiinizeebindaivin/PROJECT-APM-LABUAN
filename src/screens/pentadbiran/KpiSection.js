@@ -24,6 +24,7 @@ export default function KpiSection({ kpiItems, isEditing, updateKpiItem, addKpiI
   const [hoveredIndex, setHoveredIndex] = useState(null);
   const [modalIndex, setModalIndex] = useState(null); // null = fermé, -1 = ajout, >=0 = édition
   const [draft, setDraft] = useState(EMPTY_DRAFT);
+  const [formError, setFormError] = useState(null);
   const [detailIndex, setDetailIndex] = useState(null); // index de la carte consultée en lecture seule
   const [hovered, setHovered] = useState(false);
   const [hoveredDeleteIndex, setHoveredDeleteIndex] = useState(null);
@@ -204,19 +205,27 @@ export default function KpiSection({ kpiItems, isEditing, updateKpiItem, addKpiI
       analisis_tindakan: item.analisis_tindakan || '',
       sub_seksyen: item.sub_seksyen || '',
     });
+    setFormError(null);
   };
 
   const openAdd = () => {
     setModalIndex(-1);
     setDraft(EMPTY_DRAFT);
+    setFormError(null);
   };
 
   const closeModal = () => {
     setModalIndex(null);
     setDraft(EMPTY_DRAFT);
+    setFormError(null);
   };
 
   const handleSave = async () => {
+    if (!draft.nama.trim() || !draft.tafsiran.trim() || !draft.sasaran.trim()) {
+      setFormError('Nama, tafsiran dan sasaran tidak boleh kosong.');
+      return;
+    }
+    setFormError(null);
     const isNew = modalIndex === -1;
     let updatedItems;
     try {
@@ -489,6 +498,7 @@ export default function KpiSection({ kpiItems, isEditing, updateKpiItem, addKpiI
         onDelete={handleDelete}
         onClose={closeModal}
         showSubSeksyen={showSubSeksyen}
+        error={formError}
       />
 
       <KpiDetailModal

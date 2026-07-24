@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Alert } from 'react-native';
 import { supabaseSandbox } from '../supabaseSandboxClient';
 
 const SCHEMA = 'sandbox';
@@ -48,20 +47,22 @@ export function useUnitStaff(page, onChange) {
       onChange?.();
       return true;
     } catch (error) {
-      Alert.alert('Ralat', 'Gagal menyimpan kakitangan: ' + error.message);
+      console.error('Error saving unit_staff:', error);
       return false;
     }
   };
 
   const deleteStaffItem = async (item) => {
-    if (!item || item.id === undefined) return;
+    if (!item || item.id === undefined) return false;
     try {
       const { error } = await supabaseSandbox.schema(SCHEMA).from('unit_staff').delete().eq('id', item.id);
       if (error) throw error;
       await fetchStaff();
       onChange?.();
+      return true;
     } catch (error) {
-      Alert.alert('Ralat', error.message);
+      console.error('Error deleting unit_staff:', error);
+      return false;
     }
   };
 
@@ -76,9 +77,11 @@ export function useUnitStaff(page, onChange) {
       }
       await fetchStaff();
       onChange?.();
+      return true;
     } catch (error) {
-      Alert.alert('Ralat', 'Gagal menyusun semula: ' + error.message);
+      console.error('Error reordering unit_staff:', error);
       await fetchStaff();
+      return false;
     }
   };
 

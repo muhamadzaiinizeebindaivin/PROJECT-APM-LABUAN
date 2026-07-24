@@ -20,6 +20,7 @@ export default function ComplianceSection({ pageData, isEditing, updateField, on
   const [hoveredIndex, setHoveredIndex] = useState(null);
   const [modalIndex, setModalIndex] = useState(null); // null = fermé, -1 = ajout, >=0 = édition
   const [draft, setDraft] = useState(EMPTY_DRAFT);
+  const [formError, setFormError] = useState(null);
   const [hoveredDeleteIndex, setHoveredDeleteIndex] = useState(null);
   const [confirmDeleteIndex, setConfirmDeleteIndex] = useState(null);
 
@@ -31,19 +32,27 @@ export default function ComplianceSection({ pageData, isEditing, updateField, on
       agensi: item.agensi || '',
       tajukPenilaian: item.tajukPenilaian || '',
     });
+    setFormError(null);
   };
 
   const openAdd = () => {
     setModalIndex(-1);
     setDraft(EMPTY_DRAFT);
+    setFormError(null);
   };
 
   const closeModal = () => {
     setModalIndex(null);
     setDraft(EMPTY_DRAFT);
+    setFormError(null);
   };
 
   const handleSave = async () => {
+    if (!draft.tarikh.trim() || !draft.agensi.trim() || !draft.tajukPenilaian.trim()) {
+      setFormError('Semua medan mesti diisi.');
+      return;
+    }
+    setFormError(null);
     const isNew = modalIndex === -1;
     let updated;
     if (isNew) {
@@ -181,6 +190,7 @@ export default function ComplianceSection({ pageData, isEditing, updateField, on
         onSave={handleSave}
         onDelete={handleDelete}
         onClose={closeModal}
+        error={formError}
       />
     </View>
   );
