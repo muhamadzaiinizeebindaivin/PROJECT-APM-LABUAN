@@ -102,10 +102,25 @@ export default function PentadbiranScreen({ userRole }) {
               pointerEvents="none"
               style={{
                 position: 'absolute', top: '100%', left: 0, right: 0,
-                alignItems: 'center', paddingTop: 8, zIndex: 30,
+                alignItems: 'center', paddingTop: 10, zIndex: 30,
               }}
             >
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, maxWidth: '92%' }}>
+              <View
+                style={{
+                  flexDirection: 'row', alignItems: 'center', gap: 10, maxWidth: '92%',
+                  backgroundColor: notification.type === 'success' ? '#f0fdf4' : '#fef2f2',
+                  borderWidth: 1,
+                  borderColor: notification.type === 'success' ? '#bbf7d0' : '#fecaca',
+                  borderRadius: 12,
+                  paddingVertical: 10,
+                  paddingHorizontal: 14,
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.12,
+                  shadowRadius: 10,
+                  elevation: 5,
+                }}
+              >
                 {notification.type === 'success' ? (
                   <CheckCircle2 size={17} color="#16a34a" />
                 ) : (
