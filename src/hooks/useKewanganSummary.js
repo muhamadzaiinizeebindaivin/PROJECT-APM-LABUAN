@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Alert } from 'react-native';
 import { supabaseSandbox } from '../supabaseSandboxClient';
 import { parseCurrency } from '../utils/currency';
 import { KEWANGAN_SUMMARY } from '../../data';
@@ -57,7 +56,7 @@ export function useKewanganSummary() {
       setSummaryData(data);
       return true;
     } catch (error) {
-      Alert.alert('Ralat', 'Gagal menyimpan peruntukan: ' + error.message);
+      console.error('Error saving kewangan_summary:', error);
       return false;
     } finally {
       setSaving(false);

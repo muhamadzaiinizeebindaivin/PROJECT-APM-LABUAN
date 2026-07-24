@@ -4,7 +4,7 @@ import { X, Check } from 'lucide-react-native';
 import { PALETTE } from '../../constants/palette';
 import { kewanganStyles as styles } from './kewanganStyles';
 
-export default function SummaryEditModal({ visible, draft, setDraft, onSave, onClose, saving }) {
+export default function SummaryEditModal({ visible, draft, setDraft, onSave, onClose, saving, error }) {
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.modalOverlay}>
@@ -31,6 +31,7 @@ export default function SummaryEditModal({ visible, draft, setDraft, onSave, onC
               keyboardType="numeric"
               placeholderTextColor={PALETTE.textMutedDark}
             />
+            {!!error && <Text style={{ fontSize: 12, color: '#dc2626', textAlign: 'center', marginBottom: 12 }}>{error}</Text>}
             <TouchableOpacity
               style={[styles.saveButton, { flexDirection: 'row', justifyContent: 'center', gap: 8 }]}
               onPress={onSave}

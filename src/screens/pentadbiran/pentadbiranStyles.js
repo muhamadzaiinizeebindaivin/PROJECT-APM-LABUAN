@@ -207,7 +207,7 @@ export const pentadbiranStyles = StyleSheet.create({
     zIndex: 1,
     position: 'absolute', top: 10, right: 10, zIndex: 5,
     width: 28, height: 28, borderRadius: 8,
-    backgroundColor: 'rgba(249, 115, 22, 0.12)',
+    backgroundColor: '#16a34a',
     justifyContent: 'center', alignItems: 'center',
   },
   kpiPencilBtnInline: {

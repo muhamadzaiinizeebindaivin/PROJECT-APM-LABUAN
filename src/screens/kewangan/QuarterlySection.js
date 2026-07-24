@@ -16,13 +16,15 @@ const PX_PER_SECOND = 35;
 const SCROLLBAR_TRACK_WIDTH = 160;
 const MIN_THUMB_WIDTH = 28;
 
-export default function QuarterlySection({ processedData, loading, isEditMode, saveQuarterlyItem, deleteQuarterlyItem }) {
+export default function QuarterlySection({ processedData, loading, isEditMode, saveQuarterlyItem, deleteQuarterlyItem, onNotify }) {
   const [modalVisible, setModalVisible] = useState(false);
   const [helpVisible, setHelpVisible] = useState(false);
   const [helpHovered, setHelpHovered] = useState(false);
   const [editItem, setEditItem] = useState(null);
   const [draft, setDraft] = useState(EMPTY_DRAFT);
   const [selectedId, setSelectedId] = useState(null);
+  const [formError, setFormError] = useState(null);
+  const [isSaving, setIsSaving] = useState(false);
   const [confirmDeleteItem, setConfirmDeleteItem] = useState(null);
   const displayDeleteItemRef = useRef(null);
   if (confirmDeleteItem !== null) displayDeleteItemRef.current = confirmDeleteItem;
@@ -149,18 +151,31 @@ export default function QuarterlySection({ processedData, loading, isEditMode, s
   const openAdd = () => {
     setEditItem(null);
     setDraft(EMPTY_DRAFT);
+    setFormError(null);
     setModalVisible(true);
   };
   const openEdit = (item) => {
     setEditItem(item);
     const [bulanMula = '', bulanAkhir = ''] = (item.months || '').split(' - ').map((s) => s.trim());
     setDraft({ q: item.q, months: item.months, bulanMula, bulanAkhir, spend: String(item.spend) });
+    setFormError(null);
     setModalVisible(true);
   };
   const handleSave = async () => {
-    if (!draft.q.trim() || !draft.spend) return;
+    if (!draft.q.trim() || !draft.spend.trim() || !draft.bulanMula || !draft.bulanAkhir) {
+      setFormError('Sukuan, tempoh bulan dan jumlah belanja mesti diisi.');
+      return;
+    }
+    setFormError(null);
+    setIsSaving(true);
     const ok = await saveQuarterlyItem(draft, editItem);
-    if (ok) setModalVisible(false);
+    setIsSaving(false);
+    if (ok) {
+      setModalVisible(false);
+      onNotify?.('success', editItem ? 'Sukuan berjaya dikemaskini.' : 'Sukuan berjaya ditambah.');
+    } else {
+      onNotify?.('error', 'Gagal menyimpan sukuan.');
+    }
   };
 
   return (
@@ -331,10 +346,11 @@ export default function QuarterlySection({ processedData, loading, isEditMode, s
               </TouchableOpacity>
               <TouchableOpacity
                 style={pentadbiranStyles.confirmConfirmBtn}
-                onPress={() => {
+                onPress={async () => {
                   const item = confirmDeleteItem;
                   setConfirmDeleteItem(null);
-                  deleteQuarterlyItem(item);
+                  const ok = await deleteQuarterlyItem(item);
+                  onNotify?.(ok === false ? 'error' : 'success', ok === false ? 'Gagal memadam rekod.' : 'Rekod berjaya dipadam.');
                 }}
               >
                 <Trash2 size={16} color="#fff" />
@@ -352,6 +368,8 @@ export default function QuarterlySection({ processedData, loading, isEditMode, s
         setDraft={setDraft}
         onSave={handleSave}
         onClose={() => setModalVisible(false)}
+        error={formError}
+        isSaving={isSaving}
       />
 
       <QuarterlyHelpModal

@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Alert } from 'react-native';
 import { supabaseSandbox } from '../supabaseSandboxClient';
 import { parseCurrency } from '../utils/currency';
 import { BULAN_MS } from '../constants/bulan';
@@ -27,7 +26,7 @@ export function useKewanganQuarterly(totalAllocation) {
       if (error) throw error;
       if (data) setDataList(data);
     } catch (error) {
-      Alert.alert('Ralat', 'Gagal mengambil data dari pangkalan data: ' + error.message);
+      console.error('Error fetching kewangan_breakdown:', error);
     } finally {
       setLoading(false);
     }
@@ -68,19 +67,21 @@ export function useKewanganQuarterly(totalAllocation) {
       await fetchQuarterly();
       return true;
     } catch (error) {
-      Alert.alert('Ralat', 'Gagal menyimpan data: ' + error.message);
+      console.error('Error saving kewangan_breakdown:', error);
       return false;
     }
   };
 
   const deleteQuarterlyItem = async (item) => {
-    if (!item || item.id === undefined) return;
+    if (!item || item.id === undefined) return false;
     try {
       const { error } = await supabaseSandbox.schema(SCHEMA).from('kewangan_breakdown').delete().eq('id', item.id);
       if (error) throw error;
       await fetchQuarterly();
+      return true;
     } catch (error) {
-      Alert.alert('Ralat', error.message);
+      console.error('Error deleting kewangan_breakdown item:', error);
+      return false;
     }
   };
 

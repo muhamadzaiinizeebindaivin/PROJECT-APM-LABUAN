@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Alert } from 'react-native';
 import { supabaseSandbox } from '../supabaseSandboxClient';
 import { KEWANGAN_BUDGET } from '../../data';
 
@@ -47,19 +46,21 @@ export function useKewanganBudget() {
       await fetchBudget();
       return true;
     } catch (error) {
-      Alert.alert('Makluman', "Gagal menyimpan ke Supabase. Sila pastikan table 'kewangan_budget' telah wujud. Ralat: " + error.message);
+      console.error('Error saving kewangan_budget:', error);
       return false;
     }
   };
 
   const deleteBudgetItem = async (item) => {
-    if (!item || item.id === undefined) return;
+    if (!item || item.id === undefined) return false;
     try {
       const { error } = await supabaseSandbox.schema(SCHEMA).from('kewangan_budget').delete().eq('id', item.id);
       if (error) throw error;
       await fetchBudget();
+      return true;
     } catch (error) {
-      Alert.alert('Ralat', error.message);
+      console.error('Error deleting kewangan_budget item:', error);
+      return false;
     }
   };
 
@@ -69,8 +70,10 @@ export function useKewanganBudget() {
       const { error } = await supabaseSandbox.schema(SCHEMA).from('kewangan_budget').delete().eq('kategori', kategori);
       if (error) throw error;
       await fetchBudget();
+      return true;
     } catch (error) {
-      Alert.alert('Ralat', error.message);
+      console.error('Error deleting kewangan_budget category:', error);
+      return false;
     }
   };
 

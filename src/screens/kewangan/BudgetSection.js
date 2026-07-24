@@ -16,13 +16,15 @@ const SCROLLBAR_TRACK_WIDTH = 160;
 const MIN_THUMB_WIDTH = 28;
 const ITEMS_PER_PAGE = 5;
 
-export default function BudgetSection({ budgetData, loading, isEditMode, saveBudgetItem, deleteBudgetItem, deleteCategory }) {
+export default function BudgetSection({ budgetData, loading, isEditMode, saveBudgetItem, deleteBudgetItem, deleteCategory, onNotify }) {
   const [modalVisible, setModalVisible] = useState(false);
   const [editItem, setEditItem] = useState(null);
   const [kategori, setKategori] = useState('');
   const [rows, setRows] = useState([{ ...EMPTY_ROW }]);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [page, setPage] = useState(0);
+  const [formError, setFormError] = useState(null);
+  const [isSaving, setIsSaving] = useState(false);
   const [confirmDeleteItem, setConfirmDeleteItem] = useState(null);
   const displayDeleteItemRef = useRef(null);
   if (confirmDeleteItem !== null) displayDeleteItemRef.current = confirmDeleteItem;
@@ -177,29 +179,53 @@ export default function BudgetSection({ budgetData, loading, isEditMode, saveBud
     setEditItem(null);
     setKategori(selectedCategory || '');
     setRows([{ ...EMPTY_ROW }]);
+    setFormError(null);
     setModalVisible(true);
   };
   const openEdit = (item) => {
     setEditItem(item);
     setKategori(item.kategori);
     setRows([{ perihal: item.perihal, agihan: String(item.agihan), belanja: String(item.belanja) }]);
+    setFormError(null);
     setModalVisible(true);
   };
   const handleSave = async () => {
-    if (!kategori.trim()) return;
+    if (!kategori.trim()) {
+      setFormError('Kategori tidak boleh kosong.');
+      return;
+    }
     const validRows = rows.filter((r) => r.perihal.trim() && r.agihan);
-    if (validRows.length === 0) return;
+    if (validRows.length === 0) {
+      setFormError('Sila lengkapkan sekurang-kurangnya satu perkara (perihal + agihan).');
+      return;
+    }
+    setFormError(null);
+    setIsSaving(true);
 
     if (editItem) {
       const ok = await saveBudgetItem({ kategori, ...validRows[0] }, editItem);
-      if (ok) { setSelectedCategory(kategori); setModalVisible(false); }
+      setIsSaving(false);
+      if (ok) {
+        setSelectedCategory(kategori);
+        setModalVisible(false);
+        onNotify?.('success', 'Bajet berjaya dikemaskini.');
+      } else {
+        onNotify?.('error', 'Gagal menyimpan bajet.');
+      }
     } else {
       let allOk = true;
       for (const row of validRows) {
         const ok = await saveBudgetItem({ kategori, ...row }, null);
         if (!ok) allOk = false;
       }
-      if (allOk) { setSelectedCategory(kategori); setModalVisible(false); }
+      setIsSaving(false);
+      if (allOk) {
+        setSelectedCategory(kategori);
+        setModalVisible(false);
+        onNotify?.('success', 'Bajet berjaya ditambah.');
+      } else {
+        onNotify?.('error', 'Gagal menambah sebahagian atau semua perkara bajet.');
+      }
     }
   };
 
@@ -388,10 +414,11 @@ export default function BudgetSection({ budgetData, loading, isEditMode, saveBud
               </TouchableOpacity>
               <TouchableOpacity
                 style={pentadbiranStyles.confirmConfirmBtn}
-                onPress={() => {
+                onPress={async () => {
                   const kat = confirmDeleteCategory;
                   setConfirmDeleteCategory(null);
-                  deleteCategory(kat);
+                  const ok = await deleteCategory(kat);
+                  onNotify?.(ok === false ? 'error' : 'success', ok === false ? 'Gagal memadam kategori.' : 'Kategori berjaya dipadam.');
                 }}
               >
                 <Trash2 size={16} color="#fff" />
@@ -421,10 +448,11 @@ export default function BudgetSection({ budgetData, loading, isEditMode, saveBud
               </TouchableOpacity>
               <TouchableOpacity
                 style={pentadbiranStyles.confirmConfirmBtn}
-                onPress={() => {
+                onPress={async () => {
                   const item = confirmDeleteItem;
                   setConfirmDeleteItem(null);
-                  deleteBudgetItem(item);
+                  const ok = await deleteBudgetItem(item);
+                  onNotify?.(ok === false ? 'error' : 'success', ok === false ? 'Gagal memadam bajet.' : 'Bajet berjaya dipadam.');
                 }}
               >
                 <Trash2 size={16} color="#fff" />
@@ -445,6 +473,8 @@ export default function BudgetSection({ budgetData, loading, isEditMode, saveBud
         existingCategories={existingCategories}
         onSave={handleSave}
         onClose={() => setModalVisible(false)}
+        error={formError}
+        isSaving={isSaving}
       />
     </>
   );

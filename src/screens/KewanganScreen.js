@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { View, ScrollView, Text } from 'react-native';
+import { CheckCircle2, XCircle } from 'lucide-react-native';
 import AdminEditButton from '../components/AdminEditButton';
 import { useKewanganSummary } from '../hooks/useKewanganSummary';
 import { useKewanganBudget } from '../hooks/useKewanganBudget';
@@ -24,6 +25,17 @@ export default function KewanganScreen({ userRole }) {
   const quarterly = useKewanganQuarterly(summary.totalAllocation);
   const unit = useUnitStaff('kewangan');
   const { kpiList, saveKpiItem, deleteKpiItem, reorderKpi, kpiUpdatedAt } = useKpi('kewangan');
+
+  const [notification, setNotification] = useState(null); // { type: 'success' | 'error', message }
+  const notificationTimeoutRef = useRef(null);
+  const showNotification = (type, message) => {
+    setNotification({ type, message });
+    if (notificationTimeoutRef.current) clearTimeout(notificationTimeoutRef.current);
+    notificationTimeoutRef.current = setTimeout(() => setNotification(null), 3000);
+  };
+  useEffect(() => () => {
+    if (notificationTimeoutRef.current) clearTimeout(notificationTimeoutRef.current);
+  }, []);
 
   // Convertit un timestamp ISO (colonne updated_at) au format d'affichage DD/M/YYYY HH:MM
   const formatTimestamp = (iso) => {
@@ -54,7 +66,48 @@ export default function KewanganScreen({ userRole }) {
               </View>
             ) : null}
           </View>
-          <AdminEditButton isEditMode={isEditMode} setIsEditMode={setIsEditMode} userRole={userRole} section="Logistik" />
+          <AdminEditButton isEditMode={isEditMode} setIsEditMode={setIsEditMode} userRole={userRole} section="Kewangan" />
+
+          {notification && (
+            <View
+              pointerEvents="none"
+              style={{
+                position: 'absolute', top: '100%', left: 0, right: 0,
+                alignItems: 'center', paddingTop: 10, zIndex: 30,
+              }}
+            >
+              <View
+                style={{
+                  flexDirection: 'row', alignItems: 'center', gap: 10, maxWidth: '92%',
+                  backgroundColor: notification.type === 'success' ? '#f0fdf4' : '#fef2f2',
+                  borderWidth: 1,
+                  borderColor: notification.type === 'success' ? '#bbf7d0' : '#fecaca',
+                  borderRadius: 12,
+                  paddingVertical: 10,
+                  paddingHorizontal: 14,
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.12,
+                  shadowRadius: 10,
+                  elevation: 5,
+                }}
+              >
+                {notification.type === 'success' ? (
+                  <CheckCircle2 size={17} color="#16a34a" />
+                ) : (
+                  <XCircle size={17} color="#dc2626" />
+                )}
+                <Text
+                  style={{
+                    color: notification.type === 'success' ? '#166534' : '#991b1b',
+                    fontWeight: '700', fontSize: 13, flexShrink: 1,
+                  }}
+                >
+                  {notification.message}
+                </Text>
+              </View>
+            </View>
+          )}
         </View>
       )}
 
@@ -67,6 +120,7 @@ export default function KewanganScreen({ userRole }) {
           isEditMode={isEditMode}
           saveSummary={summary.saveSummary}
           saving={summary.saving}
+          onNotify={showNotification}
         />
 
         <View style={{ marginBottom: 4 }}>
@@ -78,6 +132,7 @@ export default function KewanganScreen({ userRole }) {
             removeKpiItem={(item) => deleteKpiItem(item)}
             persistKpi={reorderKpi}
             showSubSeksyen={false}
+            onNotify={showNotification}
           />
         </View>
 
@@ -88,6 +143,7 @@ export default function KewanganScreen({ userRole }) {
           saveBudgetItem={budget.saveBudgetItem}
           deleteBudgetItem={budget.deleteBudgetItem}
           deleteCategory={budget.deleteCategory}
+          onNotify={showNotification}
         />
 
         <QuarterlySection
@@ -96,6 +152,7 @@ export default function KewanganScreen({ userRole }) {
           isEditMode={isEditMode}
           saveQuarterlyItem={quarterly.saveQuarterlyItem}
           deleteQuarterlyItem={quarterly.deleteQuarterlyItem}
+          onNotify={showNotification}
         />
 
         <UnitInfoCard
@@ -105,6 +162,7 @@ export default function KewanganScreen({ userRole }) {
           saveStaffItem={unit.saveStaffItem}
           deleteStaffItem={unit.deleteStaffItem}
           reorderStaff={unit.reorderStaff}
+          onNotify={showNotification}
         />
       </ScrollView>
     </View>

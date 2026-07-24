@@ -9,11 +9,13 @@ import UnitEditModal from './UnitEditModal';
 
 const EMPTY_DRAFT = { name: '', role: '' };
 
-export default function UnitInfoCard({ staffList, loading, isEditMode, saveStaffItem, deleteStaffItem, reorderStaff }) {
+export default function UnitInfoCard({ staffList, loading, isEditMode, saveStaffItem, deleteStaffItem, reorderStaff, onNotify }) {
   const [hoveredIndex, setHoveredIndex] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [editItem, setEditItem] = useState(null);
   const [draft, setDraft] = useState(EMPTY_DRAFT);
+  const [formError, setFormError] = useState(null);
+  const [isSaving, setIsSaving] = useState(false);
   const [confirmDeleteItem, setConfirmDeleteItem] = useState(null);
   const displayDeleteItemRef = useRef(null);
   if (confirmDeleteItem !== null) displayDeleteItemRef.current = confirmDeleteItem;
@@ -21,19 +23,32 @@ export default function UnitInfoCard({ staffList, loading, isEditMode, saveStaff
   const openAdd = () => {
     setEditItem(null);
     setDraft(EMPTY_DRAFT);
+    setFormError(null);
     setModalVisible(true);
   };
 
   const openEdit = (item) => {
     setEditItem(item);
     setDraft({ name: item.name, role: item.role });
+    setFormError(null);
     setModalVisible(true);
   };
 
   const handleSave = async () => {
-    if (!draft.name.trim()) return;
+    if (!draft.name.trim() || !draft.role.trim()) {
+      setFormError('Nama dan peranan tidak boleh kosong.');
+      return;
+    }
+    setFormError(null);
+    setIsSaving(true);
     const ok = await saveStaffItem(draft, editItem);
-    if (ok) setModalVisible(false);
+    setIsSaving(false);
+    if (ok) {
+      setModalVisible(false);
+      onNotify?.('success', editItem ? 'Kakitangan berjaya dikemaskini.' : 'Kakitangan berjaya ditambah.');
+    } else {
+      onNotify?.('error', 'Gagal menyimpan kakitangan.');
+    }
   };
 
   const moveStaff = (index, direction) => {
@@ -129,10 +144,11 @@ export default function UnitInfoCard({ staffList, loading, isEditMode, saveStaff
               </TouchableOpacity>
               <TouchableOpacity
                 style={pentadbiranStyles.confirmConfirmBtn}
-                onPress={() => {
+                onPress={async () => {
                   const item = confirmDeleteItem;
                   setConfirmDeleteItem(null);
-                  deleteStaffItem(item);
+                  const ok = await deleteStaffItem(item);
+                  onNotify?.(ok === false ? 'error' : 'success', ok === false ? 'Gagal memadam kakitangan.' : 'Kakitangan berjaya dipadam.');
                 }}
               >
                 <Trash2 size={16} color="#fff" />
@@ -150,6 +166,8 @@ export default function UnitInfoCard({ staffList, loading, isEditMode, saveStaff
         setDraft={setDraft}
         onSave={handleSave}
         onClose={() => setModalVisible(false)}
+        error={formError}
+        isSaving={isSaving}
       />
     </View>
   );

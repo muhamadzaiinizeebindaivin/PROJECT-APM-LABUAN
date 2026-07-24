@@ -393,7 +393,7 @@ export default function KpiSection({ kpiItems, isEditing, updateKpiItem, addKpiI
                     onMouseEnter={() => setHoveredIndex(index)}
                     onMouseLeave={() => setHoveredIndex(null)}
                   >
-                    <Pencil size={14} color={PALETTE.orange} />
+                    <Pencil size={14} color="#fff" />
                     {hoveredIndex === index && (
                       <View style={{
                         position: 'absolute', top: 32, right: 0, zIndex: 999,
@@ -405,12 +405,12 @@ export default function KpiSection({ kpiItems, isEditing, updateKpiItem, addKpiI
                   </TouchableOpacity>
 
                   <TouchableOpacity
-                    style={[styles.kpiPencilBtn, { right: 46, backgroundColor: 'rgba(220, 38, 38, 0.10)' }]}
+                    style={[styles.kpiPencilBtn, { right: 46, backgroundColor: '#dc2626' }]}
                     onPress={() => setConfirmDeleteIndex(index)}
                     onMouseEnter={() => setHoveredDeleteIndex(index)}
                     onMouseLeave={() => setHoveredDeleteIndex(null)}
                   >
-                    <Trash2 size={14} color="#dc2626" />
+                    <Trash2 size={14} color="#fff" />
                     {hoveredDeleteIndex === index && (
                       <View style={{
                         position: 'absolute', top: 32, right: 0, zIndex: 999,

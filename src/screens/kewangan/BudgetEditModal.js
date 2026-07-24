@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Modal, ScrollView } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Modal, ScrollView, ActivityIndicator } from 'react-native';
 import { X, Check, Plus, Trash2, FolderOpen } from 'lucide-react-native';
 import { PALETTE } from '../../constants/palette';
 import { kewanganStyles as styles } from './kewanganStyles';
 
-export default function BudgetEditModal({ visible, isNew, kategori, setKategori, rows, setRows, existingCategories, onSave, onClose }) {
+export default function BudgetEditModal({ visible, isNew, kategori, setKategori, rows, setRows, existingCategories, onSave, onClose, error, isSaving }) {
   const [creatingNew, setCreatingNew] = useState(existingCategories.length === 0);
 
   const selectExisting = (cat) => {
@@ -146,9 +146,20 @@ export default function BudgetEditModal({ visible, isNew, kategori, setKategori,
               </TouchableOpacity>
             )}
 
-            <TouchableOpacity style={[styles.saveButton, { flexDirection: 'row', justifyContent: 'center', gap: 8 }]} onPress={onSave}>
-              <Check size={16} color="#fff" />
-              <Text style={styles.saveButtonText}>Simpan</Text>
+            {!!error && <Text style={{ fontSize: 12, color: '#dc2626', textAlign: 'center', marginTop: 10, marginBottom: 12 }}>{error}</Text>}
+            <TouchableOpacity
+              style={[styles.saveButton, { flexDirection: 'row', justifyContent: 'center', gap: 8 }, isSaving && { opacity: 0.7 }]}
+              onPress={onSave}
+              disabled={isSaving}
+            >
+              {isSaving ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <>
+                  <Check size={16} color="#fff" />
+                  <Text style={styles.saveButtonText}>Simpan</Text>
+                </>
+              )}
             </TouchableOpacity>
           </ScrollView>
         </View>

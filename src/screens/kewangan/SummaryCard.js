@@ -5,19 +5,30 @@ import { formatCurrency } from '../../utils/currency';
 import { kewanganStyles as styles } from './kewanganStyles';
 import SummaryEditModal from './SummaryEditModal';
 
-export default function SummaryCard({ orgName, title, totalAllocation, loading, isEditMode, saveSummary, saving }) {
+export default function SummaryCard({ orgName, title, totalAllocation, loading, isEditMode, saveSummary, saving, onNotify }) {
   const [modalVisible, setModalVisible] = useState(false);
   const [draft, setDraft] = useState({ title, total: String(totalAllocation) });
+  const [formError, setFormError] = useState(null);
 
   const openModal = () => {
     setDraft({ title, total: String(totalAllocation) });
+    setFormError(null);
     setModalVisible(true);
   };
 
   const handleSave = async () => {
-    if (!draft.total) return;
+    if (!draft.title.trim() || !draft.total.trim()) {
+      setFormError('Tajuk dan peruntukan tidak boleh kosong.');
+      return;
+    }
+    setFormError(null);
     const ok = await saveSummary(draft);
-    if (ok) setModalVisible(false);
+    if (ok) {
+      setModalVisible(false);
+      onNotify?.('success', 'Peruntukan tahunan berjaya dikemaskini.');
+    } else {
+      onNotify?.('error', 'Gagal menyimpan peruntukan.');
+    }
   };
 
   return (
@@ -49,6 +60,7 @@ export default function SummaryCard({ orgName, title, totalAllocation, loading, 
         onSave={handleSave}
         onClose={() => setModalVisible(false)}
         saving={saving}
+        error={formError}
       />
     </View>
   );
