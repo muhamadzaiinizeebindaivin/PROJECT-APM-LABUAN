@@ -22,8 +22,9 @@ const KPI_SECTION = 'pentadbiran';
 export default function PentadbiranScreen({ userRole }) {
   const [isEditing, setIsEditing] = useState(false);
   const canEdit = canEditSection(userRole, 'Pentadbiran');
-  const { loading, pageData, updatedAt, saveData, updateField, updateArrayField, addArrayItem, removeArrayItem } = usePentadbiranData();
+  const { loading, pageData, updatedAt, saveData, updateField, updateArrayField, addArrayItem, removeArrayItem, restorePageData } = usePentadbiranData();
   const { kpiList, saveKpiItem, deleteKpiItem, reorderKpi, kpiUpdatedAt } = useKpi(KPI_SECTION);
+  const editSnapshotRef = useRef(null);
   const { staffList: unitStaffList, saveStaffItem, deleteStaffItem, reorderStaff, staffUpdatedAt } = useUnitStaff('pentadbiran');
 
   const [notification, setNotification] = useState(null); // { type: 'success' | 'error', message }
@@ -55,6 +56,7 @@ export default function PentadbiranScreen({ userRole }) {
   const persistPageData = async (overrides = {}) => {
     try {
       await saveData(overrides);
+      editSnapshotRef.current = null; // sauvegardé : plus rien à restaurer si on ferme ensuite
       return true;
     } catch (error) {
       console.error('Error saving data:', error);
@@ -63,9 +65,15 @@ export default function PentadbiranScreen({ userRole }) {
     }
   };
 
-  // "Tutup Kemaskini" sauvegarde automatiquement tout ce qui a pu être modifié avant de fermer le mode édition
-  const handleCloseEditing = () => {
-    setIsEditing(false);
+  // Prend un instantané de pageData à l'entrée en édition ; le restaure à la sortie si rien n'a été sauvegardé
+  const handleEditModeChange = (next) => {
+    if (next) {
+      editSnapshotRef.current = pageData;
+    } else if (editSnapshotRef.current) {
+      restorePageData(editSnapshotRef.current);
+      editSnapshotRef.current = null;
+    }
+    setIsEditing(next);
   };
 
   if (loading && !pageData) {
@@ -91,7 +99,7 @@ export default function PentadbiranScreen({ userRole }) {
             </View>
             <AdminEditButton
               isEditMode={isEditing}
-              setIsEditMode={setIsEditing}
+              setIsEditMode={handleEditModeChange}
               userRole={userRole}
               section="Pentadbiran"
             />

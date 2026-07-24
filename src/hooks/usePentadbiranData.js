@@ -95,5 +95,10 @@ export function usePentadbiranData() {
     });
   };
 
-  return { loading, pageData, updatedAt, saveData, updateField, updateArrayField, addArrayItem, removeArrayItem };
+  const restorePageData = (snapshot) => {
+    pageDataRef.current = snapshot;
+    setPageData(snapshot);
+  };
+
+  return { loading, pageData, updatedAt, saveData, updateField, updateArrayField, addArrayItem, removeArrayItem, restorePageData };
 }

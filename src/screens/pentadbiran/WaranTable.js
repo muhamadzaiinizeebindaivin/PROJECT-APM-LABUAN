@@ -12,12 +12,22 @@ const COLUMN_HEADERS = ['KP9', 'KP5', 'KP2', 'N2', 'KP1', 'N1', 'H1', 'JUMLAH'];
 export default function WaranTable({ pageData, isEditing, updateArrayField, onSave, onNotify }) {
   const lastSavedRef = useRef(JSON.stringify(pageData.waran));
   const [isDirty, setIsDirty] = useState(false);
+  const [formError, setFormError] = useState(null);
 
   useEffect(() => {
     setIsDirty(JSON.stringify(pageData.waran) !== lastSavedRef.current);
   }, [pageData.waran]);
 
   const handleSaveWrapped = async () => {
+    const hasEmptyCell = pageData.waran.some(
+      (row) => !row.label?.trim() || COLUMNS.some((key) => !String(row[key] ?? '').trim())
+    );
+    if (hasEmptyCell) {
+      setFormError('Semua medan dalam jadual mesti diisi.');
+      return false;
+    }
+    setFormError(null);
+
     const ok = await onSave();
     if (ok) {
       lastSavedRef.current = JSON.stringify(pageData.waran);
@@ -79,6 +89,9 @@ export default function WaranTable({ pageData, isEditing, updateArrayField, onSa
         ))}
       </View>
 
+      {isEditing && !!formError && (
+        <Text style={{ fontSize: 12, color: '#dc2626', textAlign: 'center', marginTop: 10 }}>{formError}</Text>
+      )}
       {isEditing && <SectionSaveButton onSave={handleSaveWrapped} urgent={isDirty} />}
     </View>
   );
