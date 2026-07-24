@@ -1,6 +1,6 @@
 import React, { createElement } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Modal, Platform, StyleSheet } from 'react-native';
-import { X, Trash2, Check } from 'lucide-react-native';
+import { X, Check } from 'lucide-react-native';
 import { PALETTE } from '../../constants/palette';
 import { pentadbiranStyles as styles } from './pentadbiranStyles';
 
@@ -68,12 +68,6 @@ export default function PenilaianEditModal({ visible, isNew, draft, setDraft, on
             />
 
             <View style={{ flexDirection: 'row', gap: 10, marginTop: 20 }}>
-              {!isNew && (
-                <TouchableOpacity style={styles.kpiModalDeleteBtn} onPress={onDelete}>
-                  <Trash2 size={16} color="#dc2626" />
-                  <Text style={styles.kpiModalDeleteBtnText}>Padam</Text>
-                </TouchableOpacity>
-              )}
               <TouchableOpacity
                 style={[styles.saveButton, { flex: 1, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, marginTop: 0 }]}
                 onPress={onSave}

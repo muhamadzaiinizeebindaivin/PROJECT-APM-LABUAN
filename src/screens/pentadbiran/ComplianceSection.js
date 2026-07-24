@@ -16,7 +16,7 @@ function formatTarikh(value) {
   return `${day}/${month}/${year}`;
 }
 
-export default function ComplianceSection({ pageData, isEditing, updateField, onSave }) {
+export default function ComplianceSection({ pageData, isEditing, updateField, onSave, onNotify }) {
   const [hoveredIndex, setHoveredIndex] = useState(null);
   const [modalIndex, setModalIndex] = useState(null); // null = fermé, -1 = ajout, >=0 = édition
   const [draft, setDraft] = useState(EMPTY_DRAFT);
@@ -44,15 +44,23 @@ export default function ComplianceSection({ pageData, isEditing, updateField, on
   };
 
   const handleSave = async () => {
+    const isNew = modalIndex === -1;
     let updated;
-    if (modalIndex === -1) {
+    if (isNew) {
       updated = [...pageData.pematuhan, draft];
     } else {
       updated = pageData.pematuhan.map((it, i) => (i === modalIndex ? { ...it, ...draft } : it));
     }
     updateField('pematuhan', updated);
     closeModal();
-    if (onSave) await onSave({ pematuhan: updated });
+    if (onSave) {
+      const ok = await onSave({ pematuhan: updated });
+      if (ok === false) {
+        onNotify?.('error', isNew ? 'Gagal menambah penilaian.' : 'Gagal mengemaskini penilaian.');
+        return;
+      }
+    }
+    onNotify?.('success', isNew ? 'Penilaian berjaya ditambah.' : 'Penilaian berjaya dikemaskini.');
   };
 
   const handleDelete = () => {
@@ -64,7 +72,14 @@ export default function ComplianceSection({ pageData, isEditing, updateField, on
   const deleteAtIndex = async (index) => {
     const updated = pageData.pematuhan.filter((_, i) => i !== index);
     updateField('pematuhan', updated);
-    if (onSave) await onSave({ pematuhan: updated });
+    if (onSave) {
+      const ok = await onSave({ pematuhan: updated });
+      if (ok === false) {
+        onNotify?.('error', 'Gagal memadam penilaian.');
+        return;
+      }
+    }
+    onNotify?.('success', 'Penilaian berjaya dipadam.');
   };
 
   const confirmDeleteFromCard = () => {

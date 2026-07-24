@@ -282,18 +282,24 @@ export default function KpiSection({ kpiItems, isEditing, updateKpiItem, addKpiI
         <View
           style={{
             position: 'absolute', top: 12, right: 12, zIndex: 1000,
-            flexDirection: 'row', alignItems: 'center', gap: 8,
-            backgroundColor: notification.type === 'success' ? '#16a34a' : '#dc2626',
-            paddingVertical: 10, paddingHorizontal: 14, borderRadius: 10, maxWidth: 320,
-            shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 8, elevation: 4,
+            flexDirection: 'row', alignItems: 'center', gap: 10,
+            backgroundColor: 'transparent',
+            paddingVertical: 6, paddingHorizontal: 4, maxWidth: 320,
           }}
         >
           {notification.type === 'success' ? (
-            <CheckCircle2 size={16} color="#fff" />
+            <CheckCircle2 size={17} color="#16a34a" />
           ) : (
-            <XCircle size={16} color="#fff" />
+            <XCircle size={17} color="#dc2626" />
           )}
-          <Text style={{ color: '#fff', fontWeight: '700', fontSize: 13, flexShrink: 1 }}>{notification.message}</Text>
+          <Text
+            style={{
+              color: notification.type === 'success' ? '#166534' : '#991b1b',
+              fontWeight: '700', fontSize: 13, flexShrink: 1,
+            }}
+          >
+            {notification.message}
+          </Text>
         </View>
       )}
 

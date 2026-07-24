@@ -79,41 +79,49 @@ export default function PentadbiranScreen({ userRole }) {
   return (
     <View style={styles.container}>
       {canEdit && (
-        <View style={stickyHeaderStyles.stickyHeader}>
-          <View style={[stickyHeaderStyles.stickyHeaderCenter, { pointerEvents: 'none' }]}>
-            {dikemaskini ? (
-              <View style={stickyHeaderStyles.stickyHeaderDikemaskiniBadge}>
-                <View style={stickyHeaderStyles.stickyHeaderDikemaskiniDot} />
-                <Text style={stickyHeaderStyles.stickyHeaderDikemaskini}>DIKEMASKINI {dikemaskini}</Text>
-              </View>
-            ) : null}
+        <View style={{ position: 'relative', zIndex: 20 }}>
+          <View style={stickyHeaderStyles.stickyHeader}>
+            <View style={[stickyHeaderStyles.stickyHeaderCenter, { pointerEvents: 'none' }]}>
+              {dikemaskini ? (
+                <View style={stickyHeaderStyles.stickyHeaderDikemaskiniBadge}>
+                  <View style={stickyHeaderStyles.stickyHeaderDikemaskiniDot} />
+                  <Text style={stickyHeaderStyles.stickyHeaderDikemaskini}>DIKEMASKINI {dikemaskini}</Text>
+                </View>
+              ) : null}
+            </View>
+            <AdminEditButton
+              isEditMode={isEditing}
+              setIsEditMode={setIsEditing}
+              userRole={userRole}
+              section="Pentadbiran"
+            />
           </View>
-          <AdminEditButton
-            isEditMode={isEditing}
-            setIsEditMode={setIsEditing}
-            userRole={userRole}
-            section="Pentadbiran"
-          />
-        </View>
-      )}
 
-      {notification && (
-        <View style={{ alignItems: 'center', paddingTop: 8 }}>
-          <View
-            style={{
-              flexDirection: 'row', alignItems: 'center', gap: 8,
-              backgroundColor: notification.type === 'success' ? '#16a34a' : '#dc2626',
-              paddingVertical: 10, paddingHorizontal: 14, borderRadius: 10, maxWidth: '90%',
-              shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 8, elevation: 4,
-            }}
-          >
-            {notification.type === 'success' ? (
-              <CheckCircle2 size={16} color="#fff" />
-            ) : (
-              <XCircle size={16} color="#fff" />
-            )}
-            <Text style={{ color: '#fff', fontWeight: '700', fontSize: 13, flexShrink: 1 }}>{notification.message}</Text>
-          </View>
+          {notification && (
+            <View
+              pointerEvents="none"
+              style={{
+                position: 'absolute', top: '100%', left: 0, right: 0,
+                alignItems: 'center', paddingTop: 8, zIndex: 30,
+              }}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, maxWidth: '92%' }}>
+                {notification.type === 'success' ? (
+                  <CheckCircle2 size={17} color="#16a34a" />
+                ) : (
+                  <XCircle size={17} color="#dc2626" />
+                )}
+                <Text
+                  style={{
+                    color: notification.type === 'success' ? '#166534' : '#991b1b',
+                    fontWeight: '700', fontSize: 13, flexShrink: 1,
+                  }}
+                >
+                  {notification.message}
+                </Text>
+              </View>
+            </View>
+          )}
         </View>
       )}
 
@@ -148,7 +156,7 @@ export default function PentadbiranScreen({ userRole }) {
           persistKpi={reorderKpi}
           onNotify={showNotification}
         />
-        <ComplianceSection pageData={pageData} isEditing={isEditing} updateField={updateField} onSave={persistPageData} />
+        <ComplianceSection pageData={pageData} isEditing={isEditing} updateField={updateField} onSave={persistPageData} onNotify={showNotification} />
         <WaranTable pageData={pageData} isEditing={isEditing} updateArrayField={updateArrayField} onSave={persistPageData} />
         <UnitSection
           pageData={pageData}
