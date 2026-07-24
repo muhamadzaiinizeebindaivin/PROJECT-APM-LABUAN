@@ -23,6 +23,7 @@ const DEFAULT_DATA = {
 
 export function useHomeData(isAuthFlow) {
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [pageData, setPageData] = useState(null);
   const [updatedAt, setUpdatedAt] = useState(null);
 
@@ -53,7 +54,7 @@ export function useHomeData(isAuthFlow) {
 
   const handleSave = async () => {
     try {
-      setLoading(true);
+      setSaving(true);
       const { data, error } = await supabaseSandbox
         .schema(SCHEMA)
         .from('home_data')
@@ -70,7 +71,7 @@ export function useHomeData(isAuthFlow) {
       Alert.alert('Ralat', 'Gagal menyimpan data.');
       return false;
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
@@ -78,5 +79,5 @@ export function useHomeData(isAuthFlow) {
     setPageData(prev => ({ ...prev, [field]: value }));
   };
 
-  return { loading, pageData, updatedAt, fetchData, handleSave, updateField };
+  return { loading, saving, pageData, updatedAt, fetchData, handleSave, updateField };
 }

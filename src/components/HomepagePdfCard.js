@@ -257,7 +257,7 @@ const buildPdfViewerHtml = () => `
 
 const PDF_VIEWER_SRC = `data:text/html;charset=utf-8,${encodeURIComponent(buildPdfViewerHtml())}`;
 
-export default function HomepagePdfCard({ theme, userRole, onHeightChange }) {
+export default function HomepagePdfCard({ theme, userRole, isEditing, onHeightChange }) {
   const [pdfData, setPdfData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -470,7 +470,7 @@ export default function HomepagePdfCard({ theme, userRole, onHeightChange }) {
   if (loading) return null;
 
   const hasDocument = Boolean(pdfData?.file_url);
-  const canEdit = userRole === 'admin';
+  const canEdit = userRole === 'admin' && isEditing;
 
   return (
     <View style={styles.feedCard}>

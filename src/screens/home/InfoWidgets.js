@@ -1,6 +1,6 @@
 import React from 'react';
-import { View, Text, TextInput, StyleSheet } from 'react-native';
-import { MapPin, Phone, Mail, Building2 } from 'lucide-react-native';
+import { View, Text, TextInput, ScrollView, StyleSheet, Platform, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { MapPin, Phone, Mail, Building2, Save } from 'lucide-react-native';
 import { PALETTE } from '../../constants/palette';
 
 const WIDGETS = [
@@ -8,32 +8,46 @@ const WIDGETS = [
   { key: 'addressPkod', label: 'ALAMAT PUSAT KAWALAN OPERASI DAERAH (PKOD)', accent: PALETTE.blue, accentSoft: 'rgba(29, 78, 216, 0.08)' },
 ];
 
-function FieldRow({ Icon, label, value, isEditing, onChangeText, multiline, placeholder, accent }) {
+// Force l'affichage permanent de la scrollbar sur web (au lieu de n'apparaître
+// qu'au survol), pour signaler clairement que le contenu est scrollable.
+if (Platform.OS === 'web' && typeof document !== 'undefined' && !document.getElementById('info-widgets-scrollbar-css')) {
+  const style = document.createElement('style');
+  style.id = 'info-widgets-scrollbar-css';
+  style.textContent = `
+    .info-widgets-grid-scroll::-webkit-scrollbar { width: 6px; }
+    .info-widgets-grid-scroll::-webkit-scrollbar-track { background: transparent; }
+    .info-widgets-grid-scroll::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 3px; }
+    .info-widgets-grid-scroll { scrollbar-width: thin; scrollbar-color: rgba(0,0,0,0.15) transparent; }
+  `;
+  document.head.appendChild(style);
+}
+
+function FieldBox({ Icon, label, value, isEditing, onChangeText, multiline, placeholder, accent, wide }) {
   return (
-    <View style={styles.fieldRow}>
-      <View style={[styles.fieldIcon, { backgroundColor: `${accent}1A` }]}>
-        <Icon size={11} color={accent} />
-      </View>
-      <View style={{ flex: 1 }}>
+    <View style={[styles.fieldBox, wide && styles.fieldBoxWide]}>
+      <View style={styles.fieldBoxHeader}>
+        <View style={[styles.fieldIcon, { backgroundColor: `${accent}1A` }]}>
+          <Icon size={11} color={accent} />
+        </View>
         <Text style={styles.fieldLabel}>{label}</Text>
-        {isEditing ? (
-          <TextInput
-            style={[styles.input, multiline && styles.inputMultiline]}
-            value={value}
-            onChangeText={onChangeText}
-            multiline={multiline}
-            placeholder={placeholder}
-            placeholderTextColor={PALETTE.textMutedDark}
-          />
-        ) : (
-          <Text style={styles.fieldValue}>{value || '—'}</Text>
-        )}
       </View>
+      {isEditing ? (
+        <TextInput
+          style={[styles.input, multiline && styles.inputMultiline]}
+          value={value}
+          onChangeText={onChangeText}
+          multiline={multiline}
+          placeholder={placeholder}
+          placeholderTextColor={PALETTE.textMutedDark}
+        />
+      ) : (
+        <Text style={styles.fieldValue} numberOfLines={multiline ? 4 : 2}>{value || '—'}</Text>
+      )}
     </View>
   );
 }
 
-export default function InfoWidgets({ isEditing, pageData, updateField }) {
+export default function InfoWidgets({ isEditing, pageData, updateField, onSave, saving }) {
   return (
     <View style={styles.column}>
       {WIDGETS.map(({ key, label, accent, accentSoft }) => {
@@ -51,28 +65,35 @@ export default function InfoWidgets({ isEditing, pageData, updateField }) {
               <Text style={[styles.label, { color: accent }]}>{label}</Text>
             </View>
 
-            <View style={styles.body}>
-              <FieldRow
+            <ScrollView
+              style={styles.gridScroll}
+              contentContainerStyle={styles.grid}
+              showsVerticalScrollIndicator={true}
+              {...(Platform.OS === 'web' ? { className: 'info-widgets-grid-scroll' } : {})}
+            >
+              <FieldBox
                 Icon={Building2}
                 label="Nama Organisasi"
                 value={data.orgName}
                 isEditing={isEditing}
                 onChangeText={(text) => update('orgName', text)}
                 multiline
+                wide
                 placeholder="Nama organisasi / jabatan"
                 accent={accent}
               />
-              <FieldRow
+              <FieldBox
                 Icon={MapPin}
                 label="Alamat"
                 value={data.address}
                 isEditing={isEditing}
                 onChangeText={(text) => update('address', text)}
                 multiline
+                wide
                 placeholder="Alamat penuh"
                 accent={accent}
               />
-              <FieldRow
+              <FieldBox
                 Icon={Phone}
                 label="No. Telefon"
                 value={data.phone}
@@ -81,7 +102,7 @@ export default function InfoWidgets({ isEditing, pageData, updateField }) {
                 placeholder="cth. 087-425155"
                 accent={accent}
               />
-              <FieldRow
+              <FieldBox
                 Icon={Mail}
                 label="E-mel"
                 value={data.email}
@@ -91,17 +112,35 @@ export default function InfoWidgets({ isEditing, pageData, updateField }) {
                 accent={accent}
               />
               {(isEditing || !!data.note) && (
-                <FieldRow
+                <FieldBox
                   Icon={MapPin}
                   label="Catatan"
                   value={data.note}
                   isEditing={isEditing}
                   onChangeText={(text) => update('note', text)}
+                  wide
                   placeholder="cth. Operasi 24/7 (pilihan)"
                   accent={accent}
                 />
               )}
-            </View>
+            </ScrollView>
+
+            {isEditing && (
+              <TouchableOpacity
+                style={[styles.saveBtn, { backgroundColor: accent }]}
+                onPress={onSave}
+                disabled={saving}
+              >
+                {saving ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <>
+                    <Save size={14} color="#fff" />
+                    <Text style={styles.saveBtnText}>Simpan</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            )}
           </View>
         );
       })}
@@ -127,6 +166,7 @@ const styles = StyleSheet.create({
     shadowRadius: 16,
     elevation: 3,
   },
+  gridScroll: { flex: 1, ...(Platform.OS === 'web' ? { overflowY: 'scroll' } : {}) },
   watermark: {
     position: 'absolute',
     right: -30,
@@ -134,7 +174,7 @@ const styles = StyleSheet.create({
     opacity: 0.06,
   },
 
-  headerRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
+  headerRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 },
   iconBadge: {
     width: 30, height: 30, borderRadius: 9,
     justifyContent: 'center', alignItems: 'center',
@@ -149,33 +189,49 @@ const styles = StyleSheet.create({
     lineHeight: 14,
   },
 
-  body: { gap: 8 },
-  fieldRow: { flexDirection: 'row', gap: 8, alignItems: 'flex-start' },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingBottom: 4, paddingRight: 10 },
+  fieldBox: {
+    flexBasis: '47%',
+    flexGrow: 1,
+    backgroundColor: PALETTE.surface,
+    borderRadius: 12,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: PALETTE.cardLightBorder,
+  },
+  fieldBoxWide: { flexBasis: '100%' },
+
+  fieldBoxHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
   fieldIcon: {
-    width: 20, height: 20, borderRadius: 6, marginTop: 1,
+    width: 18, height: 18, borderRadius: 5,
     justifyContent: 'center', alignItems: 'center',
   },
   fieldLabel: {
-    fontSize: 9.5,
+    fontSize: 9,
     fontWeight: '700',
     color: PALETTE.textMutedDark,
-    marginBottom: 2,
     textTransform: 'uppercase',
     letterSpacing: 0.3,
   },
   fieldValue: {
     fontSize: 12,
     color: PALETTE.textDark,
-    lineHeight: 15.5,
+    lineHeight: 16,
   },
   input: {
     borderWidth: 1,
     borderColor: PALETTE.cardLightBorder,
-    borderRadius: 8,
-    padding: 9,
+    borderRadius: 6,
+    padding: 6,
     backgroundColor: '#fafafa',
     color: PALETTE.textDark,
-    fontSize: 13,
+    fontSize: 12,
   },
-  inputMultiline: { minHeight: 50, textAlignVertical: 'top' },
+  inputMultiline: { minHeight: 40, textAlignVertical: 'top' },
+
+  saveBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    marginTop: 10, paddingVertical: 9, borderRadius: 10,
+  },
+  saveBtnText: { color: '#fff', fontWeight: '700', fontSize: 12 },
 });

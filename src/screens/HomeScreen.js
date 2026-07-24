@@ -15,7 +15,7 @@ import { stickyHeaderStyles } from '../styles/stickyHeaderStyles';
 export default function HomeScreen({ isAuthFlow, onGuestLogin, onDriverLogin, onAgencyLogin, onLoginPress, navigation, userRole, theme }) {
   const [isEditing, setIsEditing] = useState(false);
   const [pdfCardHeight, setPdfCardHeight] = useState(null);
-  const { loading, pageData, updatedAt, handleSave, updateField } = useHomeData(isAuthFlow);
+  const { loading, saving, pageData, updatedAt, handleSave, updateField } = useHomeData(isAuthFlow);
 
   // Convertit un timestamp ISO (colonne updated_at) au format d'affichage DD/M/YYYY HH:MM
   const formatTimestamp = (iso) => {
@@ -65,11 +65,6 @@ export default function HomeScreen({ isAuthFlow, onGuestLogin, onDriverLogin, on
               </View>
             </View>
           )}
-          {isEditing && (
-            <TouchableOpacity style={styles.stickySaveBtn} onPress={onSave}>
-              <Text style={styles.stickySaveBtnText}>💾 Simpan Perubahan</Text>
-            </TouchableOpacity>
-          )}
           <AdminEditButton isEditMode={isEditing} setIsEditMode={setIsEditing} userRole={userRole} />
         </View>
       )}
@@ -80,7 +75,13 @@ export default function HomeScreen({ isAuthFlow, onGuestLogin, onDriverLogin, on
         scrollEventThrottle={16}
       >
         {pageData && (
-          <HeroSection />
+          <HeroSection
+            isEditing={isEditing}
+            pageData={pageData}
+            updateField={updateField}
+            onSave={onSave}
+            saving={saving}
+          />
         )}
 
         <View style={styles.mainRow}>
@@ -91,13 +92,14 @@ export default function HomeScreen({ isAuthFlow, onGuestLogin, onDriverLogin, on
             <HomepagePdfCard
               theme={{ card: PALETTE.inkCard, text: PALETTE.white, textSecondary: PALETTE.mutedLight }}
               userRole={userRole}
+              isEditing={isEditing}
               onHeightChange={setPdfCardHeight}
             />
           </View>
 
           {pageData && (
             <View style={[styles.sideColumn, pdfCardHeight ? { height: pdfCardHeight } : null]}>
-              <InfoWidgets isEditing={isEditing} pageData={pageData} updateField={updateField} />
+              <InfoWidgets isEditing={isEditing} pageData={pageData} updateField={updateField} onSave={onSave} saving={saving} />
             </View>
           )}
         </View>
