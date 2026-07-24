@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Alert, Platform } from 'react-native';
+import { Alert } from 'react-native';
 import { supabaseSandbox } from '../supabaseSandboxClient';
 
 const SCHEMA = 'sandbox';
@@ -53,25 +53,15 @@ export function useUnitStaff(page, onChange) {
     }
   };
 
-  const deleteStaffItem = (item) => {
+  const deleteStaffItem = async (item) => {
     if (!item || item.id === undefined) return;
-    const executeDelete = async () => {
-      try {
-        const { error } = await supabaseSandbox.schema(SCHEMA).from('unit_staff').delete().eq('id', item.id);
-        if (error) throw error;
-        await fetchStaff();
-        onChange?.();
-      } catch (error) {
-        Alert.alert('Ralat', error.message);
-      }
-    };
-    if (Platform.OS === 'web') {
-      if (window.confirm('Padam kakitangan ini?')) executeDelete();
-    } else {
-      Alert.alert('Pengesahan', 'Padam kakitangan ini?', [
-        { text: 'Batal', style: 'cancel' },
-        { text: 'Padam', style: 'destructive', onPress: executeDelete },
-      ]);
+    try {
+      const { error } = await supabaseSandbox.schema(SCHEMA).from('unit_staff').delete().eq('id', item.id);
+      if (error) throw error;
+      await fetchStaff();
+      onChange?.();
+    } catch (error) {
+      Alert.alert('Ralat', error.message);
     }
   };
 

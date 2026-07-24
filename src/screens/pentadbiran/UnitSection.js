@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
-import { Users, ListChecks, Pencil, Trash2, ChevronUp, ChevronDown } from 'lucide-react-native';
+import { View, Text, TouchableOpacity, Modal } from 'react-native';
+import { Users, ListChecks, Pencil, Trash2, ChevronUp, ChevronDown, AlertTriangle } from 'lucide-react-native';
 import { PALETTE } from '../../constants/palette';
 import { pentadbiranStyles as styles } from './pentadbiranStyles';
 import SectionHeader from './SectionHeader';
@@ -18,6 +18,8 @@ export default function UnitSection({ pageData, isEditing, updateField, onSave, 
 
   const [staffModalIndex, setStaffModalIndex] = useState(null);
   const [staffDraft, setStaffDraft] = useState(EMPTY_STAFF_DRAFT);
+  const [confirmStaffDeleteIndex, setConfirmStaffDeleteIndex] = useState(null);
+  const [confirmPecahanDeleteIndex, setConfirmPecahanDeleteIndex] = useState(null);
 
   // ── Pecahan Unit ──
   const openPecahanEdit = (index) => {
@@ -46,9 +48,13 @@ export default function UnitSection({ pageData, isEditing, updateField, onSave, 
     closePecahanModal();
     if (onSave) await onSave({ pecahanUnit: updated });
   };
-  const handlePecahanQuickDelete = async (index) => {
-    const confirmed = window.confirm('Adakah anda pasti mahu memadam unit ini?');
-    if (!confirmed) return;
+  const handlePecahanQuickDelete = (index) => {
+    setConfirmPecahanDeleteIndex(index);
+  };
+
+  const confirmPecahanDeleteFromCard = async () => {
+    const index = confirmPecahanDeleteIndex;
+    setConfirmPecahanDeleteIndex(null);
     const updated = pageData.pecahanUnit.filter((_, i) => i !== index);
     updateField('pecahanUnit', updated);
     if (onSave) await onSave({ pecahanUnit: updated });
@@ -87,6 +93,12 @@ export default function UnitSection({ pageData, isEditing, updateField, onSave, 
     await reorderStaff(reordered);
   };
   const handleStaffQuickDelete = (index) => {
+    setConfirmStaffDeleteIndex(index);
+  };
+
+  const confirmStaffDeleteFromCard = () => {
+    const index = confirmStaffDeleteIndex;
+    setConfirmStaffDeleteIndex(null);
     deleteStaffItem(unitStaffList[index]);
   };
 
@@ -207,6 +219,58 @@ export default function UnitSection({ pageData, isEditing, updateField, onSave, 
           )}
         </View>
       </View>
+
+      <Modal visible={confirmPecahanDeleteIndex !== null} transparent animationType="fade" onRequestClose={() => setConfirmPecahanDeleteIndex(null)}>
+        <View style={styles.confirmOverlay}>
+          <View style={styles.confirmBox}>
+            <View style={styles.confirmBanner}>
+              <View style={styles.confirmIconCircle}>
+                <AlertTriangle size={26} color="#ef4444" />
+              </View>
+              <Text style={styles.confirmTitle}>Padam Unit</Text>
+              <Text style={styles.confirmSubtitle}>
+                Adakah anda pasti mahu memadam unit ini? Tindakan ini tidak boleh dibatalkan.
+              </Text>
+            </View>
+
+            <View style={styles.confirmActions}>
+              <TouchableOpacity style={styles.confirmCancelBtn} onPress={() => setConfirmPecahanDeleteIndex(null)}>
+                <Text style={styles.confirmCancelText}>Batal</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.confirmConfirmBtn} onPress={confirmPecahanDeleteFromCard}>
+                <Trash2 size={16} color="#fff" />
+                <Text style={styles.confirmConfirmText}>Padam</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={confirmStaffDeleteIndex !== null} transparent animationType="fade" onRequestClose={() => setConfirmStaffDeleteIndex(null)}>
+        <View style={styles.confirmOverlay}>
+          <View style={styles.confirmBox}>
+            <View style={styles.confirmBanner}>
+              <View style={styles.confirmIconCircle}>
+                <AlertTriangle size={26} color="#ef4444" />
+              </View>
+              <Text style={styles.confirmTitle}>Padam Kakitangan</Text>
+              <Text style={styles.confirmSubtitle}>
+                Padam kakitangan ini{confirmStaffDeleteIndex !== null && unitStaffList[confirmStaffDeleteIndex]?.name ? ` "${unitStaffList[confirmStaffDeleteIndex].name}"` : ''}? Tindakan ini tidak boleh dibatalkan.
+              </Text>
+            </View>
+
+            <View style={styles.confirmActions}>
+              <TouchableOpacity style={styles.confirmCancelBtn} onPress={() => setConfirmStaffDeleteIndex(null)}>
+                <Text style={styles.confirmCancelText}>Batal</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.confirmConfirmBtn} onPress={confirmStaffDeleteFromCard}>
+                <Trash2 size={16} color="#fff" />
+                <Text style={styles.confirmConfirmText}>Padam</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       <PecahanUnitEditModal
         visible={pecahanModalIndex !== null}

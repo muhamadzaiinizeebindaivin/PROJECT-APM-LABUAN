@@ -7,7 +7,7 @@ export default function AdminEditButton({ isEditMode, setIsEditMode, userRole, s
   const allowed = section ? canEditSection(userRole, section) : (!userRole || userRole === 'admin');
   if (!allowed) return null;
 
-  const accent = '#f97316';
+  const accent = isEditMode ? '#ef4444' : '#f97316';
 
   return (
     <TouchableOpacity
