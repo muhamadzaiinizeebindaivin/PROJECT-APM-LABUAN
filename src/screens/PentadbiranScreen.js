@@ -172,7 +172,7 @@ export default function PentadbiranScreen({ userRole }) {
           onNotify={showNotification}
         />
         <ComplianceSection pageData={pageData} isEditing={isEditing} updateField={updateField} onSave={persistPageData} onNotify={showNotification} />
-        <WaranTable pageData={pageData} isEditing={isEditing} updateArrayField={updateArrayField} onSave={persistPageData} />
+        <WaranTable pageData={pageData} isEditing={isEditing} updateArrayField={updateArrayField} onSave={persistPageData} onNotify={showNotification} />
         <UnitSection
           pageData={pageData}
           isEditing={isEditing}

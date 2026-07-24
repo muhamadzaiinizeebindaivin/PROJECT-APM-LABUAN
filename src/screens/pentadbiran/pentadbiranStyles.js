@@ -343,7 +343,6 @@ export const pentadbiranStyles = StyleSheet.create({
   unsavedBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     backgroundColor: 'rgba(217, 119, 6, 0.12)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999,
-    marginBottom: 12,
   },
   unsavedBadgeText: { fontSize: 12, fontWeight: '700', color: '#b45309' },
   staffReorderGroup: { gap: 2 },

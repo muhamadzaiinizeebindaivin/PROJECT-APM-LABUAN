@@ -9,7 +9,7 @@ import SectionSaveButton from './SectionSaveButton';
 const COLUMNS = ['kp9', 'kp5', 'kp2', 'n2', 'kp1', 'n1', 'h1', 'jumlah'];
 const COLUMN_HEADERS = ['KP9', 'KP5', 'KP2', 'N2', 'KP1', 'N1', 'H1', 'JUMLAH'];
 
-export default function WaranTable({ pageData, isEditing, updateArrayField, onSave }) {
+export default function WaranTable({ pageData, isEditing, updateArrayField, onSave, onNotify }) {
   const lastSavedRef = useRef(JSON.stringify(pageData.waran));
   const [isDirty, setIsDirty] = useState(false);
 
@@ -22,21 +22,27 @@ export default function WaranTable({ pageData, isEditing, updateArrayField, onSa
     if (ok) {
       lastSavedRef.current = JSON.stringify(pageData.waran);
       setIsDirty(false);
+      onNotify?.('success', 'Waran perjawatan berjaya dikemaskini.');
+    } else {
+      onNotify?.('error', 'Gagal menyimpan waran perjawatan.');
     }
     return ok;
   };
 
   return (
     <View style={styles.card}>
-      <View style={styles.sectionHeaderWithBadge}>
-        <SectionHeader title="WARAN PERJAWATAN" Icon={FileText} />
-        {isEditing && isDirty && (
-          <View style={styles.unsavedBadge}>
-            <AlertCircle size={12} color="#b45309" />
-            <Text style={styles.unsavedBadgeText}>Perubahan belum disimpan</Text>
-          </View>
-        )}
-      </View>
+      <SectionHeader
+        title="WARAN PERJAWATAN"
+        Icon={FileText}
+        rightSlot={
+          isEditing && isDirty && (
+            <View style={styles.unsavedBadge}>
+              <AlertCircle size={12} color="#b45309" />
+              <Text style={styles.unsavedBadgeText}>Perubahan belum disimpan</Text>
+            </View>
+          )
+        }
+      />
 
       <View style={styles.table}>
         <View style={[styles.tableRow, styles.tableHeader]}>
