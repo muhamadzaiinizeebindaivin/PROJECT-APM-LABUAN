@@ -16,6 +16,7 @@ import { stickyHeaderStyles } from '../styles/stickyHeaderStyles';
 export default function HomeScreen({ isAuthFlow, onGuestLogin, onDriverLogin, onAgencyLogin, onLoginPress, navigation, userRole, theme }) {
   const [isEditing, setIsEditing] = useState(false);
   const [pdfCardHeight, setPdfCardHeight] = useState(null);
+  const [savingSection, setSavingSection] = useState(null); // 'hero' | 'addressPejabat' | 'addressPkod' | null
   const { loading, saving, pageData, updatedAt, handleSave, updateField, restorePageData } = useHomeData(isAuthFlow);
 
   const editSnapshotRef = useRef(null);
@@ -52,8 +53,10 @@ export default function HomeScreen({ isAuthFlow, onGuestLogin, onDriverLogin, on
   };
   const dikemaskini = formatTimestamp(updatedAt);
 
-  const onSave = async () => {
+  const onSave = async (section) => {
+    setSavingSection(section);
     const ok = await handleSave();
+    setSavingSection(null);
     if (ok) {
       editSnapshotRef.current = null; // sauvegardé : plus rien à restaurer si on ferme ensuite
       showNotification('success', 'Maklumat halaman utama telah dikemaskini.');
@@ -95,6 +98,47 @@ export default function HomeScreen({ isAuthFlow, onGuestLogin, onDriverLogin, on
             </View>
           )}
           <AdminEditButton isEditMode={isEditing} setIsEditMode={handleEditModeChange} userRole={userRole} />
+
+          {notification && (
+            <View
+              pointerEvents="none"
+              style={{
+                position: 'absolute', top: '100%', left: 0, right: 0,
+                alignItems: 'center', paddingTop: 10, zIndex: 30,
+              }}
+            >
+              <View
+                style={{
+                  flexDirection: 'row', alignItems: 'center', gap: 10, maxWidth: '92%',
+                  backgroundColor: notification.type === 'success' ? '#f0fdf4' : '#fef2f2',
+                  borderWidth: 1,
+                  borderColor: notification.type === 'success' ? '#bbf7d0' : '#fecaca',
+                  borderRadius: 12,
+                  paddingVertical: 10,
+                  paddingHorizontal: 14,
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.12,
+                  shadowRadius: 10,
+                  elevation: 5,
+                }}
+              >
+                {notification.type === 'success' ? (
+                  <CheckCircle2 size={17} color="#16a34a" />
+                ) : (
+                  <XCircle size={17} color="#dc2626" />
+                )}
+                <Text
+                  style={{
+                    color: notification.type === 'success' ? '#166534' : '#991b1b',
+                    fontWeight: '700', fontSize: 13, flexShrink: 1,
+                  }}
+                >
+                  {notification.message}
+                </Text>
+              </View>
+            </View>
+          )}
         </View>
       )}
 
@@ -110,6 +154,7 @@ export default function HomeScreen({ isAuthFlow, onGuestLogin, onDriverLogin, on
             updateField={updateField}
             onSave={onSave}
             saving={saving}
+            isSavingThis={savingSection === 'hero'}
             onNotify={showNotification}
           />
         )}
@@ -129,7 +174,7 @@ export default function HomeScreen({ isAuthFlow, onGuestLogin, onDriverLogin, on
 
           {pageData && (
             <View style={[styles.sideColumn, pdfCardHeight ? { height: pdfCardHeight } : null]}>
-              <InfoWidgets isEditing={isEditing} pageData={pageData} updateField={updateField} onSave={onSave} saving={saving} onNotify={showNotification} />
+              <InfoWidgets isEditing={isEditing} pageData={pageData} updateField={updateField} onSave={onSave} saving={saving} savingSection={savingSection} onNotify={showNotification} />
             </View>
           )}
         </View>

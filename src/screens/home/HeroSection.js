@@ -6,7 +6,7 @@ import { PALETTE } from '../../constants/palette';
 const DEFAULT_TITLE = 'ANGKATAN PERTAHANAN AWAM MALAYSIA (APM) W.P LABUAN';
 const DEFAULT_SUBTITLE = 'Pejabat Pertahanan Awam Daerah Wilayah Persekutuan Labuan.\n"Sedia, Pantas, Berintegriti"';
 
-export default function HeroSection({ isEditing, pageData, updateField, onSave, saving }) {
+export default function HeroSection({ isEditing, pageData, updateField, onSave, saving, isSavingThis }) {
   const title = pageData?.welcomeTitle ?? DEFAULT_TITLE;
   const subtitle = pageData?.welcomeSubtitle ?? DEFAULT_SUBTITLE;
   const [formError, setFormError] = useState(null);
@@ -17,7 +17,7 @@ export default function HeroSection({ isEditing, pageData, updateField, onSave, 
       return;
     }
     setFormError(null);
-    await onSave();
+    await onSave('hero');
   };
 
   return (
@@ -44,7 +44,7 @@ export default function HeroSection({ isEditing, pageData, updateField, onSave, 
           />
           {!!formError && <Text style={styles.formError}>{formError}</Text>}
           <TouchableOpacity style={styles.saveBtn} onPress={handleSave} disabled={saving}>
-            {saving ? (
+            {isSavingThis ? (
               <ActivityIndicator color="#fff" size="small" />
             ) : (
               <>

@@ -47,7 +47,7 @@ function FieldBox({ Icon, label, value, isEditing, onChangeText, multiline, plac
   );
 }
 
-export default function InfoWidgets({ isEditing, pageData, updateField, onSave, saving }) {
+export default function InfoWidgets({ isEditing, pageData, updateField, onSave, saving, savingSection }) {
   const [formErrors, setFormErrors] = useState({});
 
   return (
@@ -56,13 +56,15 @@ export default function InfoWidgets({ isEditing, pageData, updateField, onSave, 
         const data = pageData[key] || {};
         const update = (field, text) => updateField(key, { ...data, [field]: text });
 
+        const isSavingThis = savingSection === key;
+
         const handleSave = async () => {
           if (!data.orgName?.trim() || !data.address?.trim() || !data.phone?.trim() || !data.email?.trim()) {
             setFormErrors((prev) => ({ ...prev, [key]: 'Semua medan (kecuali catatan) mesti diisi.' }));
             return;
           }
           setFormErrors((prev) => ({ ...prev, [key]: null }));
-          await onSave();
+          await onSave(key);
         };
 
         return (
@@ -144,7 +146,7 @@ export default function InfoWidgets({ isEditing, pageData, updateField, onSave, 
                   onPress={handleSave}
                   disabled={saving}
                 >
-                  {saving ? (
+                  {isSavingThis ? (
                     <ActivityIndicator color="#fff" size="small" />
                   ) : (
                     <>
