@@ -1,8 +1,9 @@
-import React from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
-import { Ship, Truck, Hash, Pencil, Trash2 } from 'lucide-react-native';
+import React, { useState, useRef } from 'react';
+import { View, Text, TouchableOpacity, Modal } from 'react-native';
+import { Ship, Truck, Hash, Pencil, Trash2, AlertTriangle } from 'lucide-react-native';
 import { PALETTE } from '../../constants/palette';
 import { logistikStyles as styles } from './logistikStyles';
+import { pentadbiranStyles } from '../pentadbiran/pentadbiranStyles';
 
 const getStatusStyle = (status) => {
   switch (status) {
@@ -15,6 +16,7 @@ const getStatusStyle = (status) => {
 
 export default function AssetCard({ item, isSea, isEditMode, onView, onEdit, onDelete }) {
   const statusStyle = getStatusStyle(item.status);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   return (
     <TouchableOpacity
@@ -36,7 +38,7 @@ export default function AssetCard({ item, isSea, isEditMode, onView, onEdit, onD
             <TouchableOpacity style={styles.kpiPencilBtnInline} onPress={() => onEdit(item)}>
               <Pencil size={12} color={PALETTE.orange} />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.kpiDeleteBtnInline} onPress={() => onDelete(item)}>
+            <TouchableOpacity style={styles.kpiDeleteBtnInline} onPress={() => setConfirmDelete(true)}>
               <Trash2 size={12} color="#dc2626" />
             </TouchableOpacity>
           </View>
@@ -52,6 +54,38 @@ export default function AssetCard({ item, isSea, isEditMode, onView, onEdit, onD
         {isSea && <Hash size={11} color="#94a3b8" />}
         <Text style={isSea ? styles.qtyText : styles.regText}>{isSea ? `QTY: ${item.qty}` : item.reg}</Text>
       </View>
+
+      <Modal visible={confirmDelete} transparent animationType="fade" onRequestClose={() => setConfirmDelete(false)}>
+        <View style={pentadbiranStyles.confirmOverlay}>
+          <View style={pentadbiranStyles.confirmBox}>
+            <View style={pentadbiranStyles.confirmBanner}>
+              <View style={pentadbiranStyles.confirmIconCircle}>
+                <AlertTriangle size={26} color="#ef4444" />
+              </View>
+              <Text style={pentadbiranStyles.confirmTitle}>Padam Aset</Text>
+              <Text style={pentadbiranStyles.confirmSubtitle}>
+                Padam aset "{item.model}" ini? Tindakan ini tidak boleh dibatalkan.
+              </Text>
+            </View>
+
+            <View style={pentadbiranStyles.confirmActions}>
+              <TouchableOpacity style={pentadbiranStyles.confirmCancelBtn} onPress={() => setConfirmDelete(false)}>
+                <Text style={pentadbiranStyles.confirmCancelText}>Batal</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={pentadbiranStyles.confirmConfirmBtn}
+                onPress={() => {
+                  setConfirmDelete(false);
+                  onDelete(item);
+                }}
+              >
+                <Trash2 size={16} color="#fff" />
+                <Text style={pentadbiranStyles.confirmConfirmText}>Padam</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </TouchableOpacity>
   );
 }

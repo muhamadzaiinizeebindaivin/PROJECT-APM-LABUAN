@@ -45,24 +45,15 @@ export function useLogistikData() {
     }
   };
 
-  const deleteAsset = (asset) => {
-    Alert.alert('Padam Aset', 'Adakah anda pasti mahu memadam aset ini?', [
-      { text: 'Batal', style: 'cancel' },
-      {
-        text: 'Padam',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            const { error } = await supabaseSandbox.schema(SCHEMA).from('logistik').delete().eq('id', asset.id);
-            if (error) throw error;
-            await fetchLogistik();
-            onChange?.();
-          } catch (error) {
-            Alert.alert('Ralat', 'Gagal memadam aset.');
-          }
-        },
-      },
-    ]);
+  const deleteAsset = async (asset) => {
+    if (!asset || asset.id === undefined) return;
+    try {
+      const { error } = await supabaseSandbox.schema(SCHEMA).from('logistik').delete().eq('id', asset.id);
+      if (error) throw error;
+      await fetchLogistik();
+    } catch (error) {
+      Alert.alert('Ralat', 'Gagal memadam aset.');
+    }
   };
 
   const logistikUpdatedAt = logistikData.reduce(
