@@ -263,9 +263,15 @@ export default function HomepagePdfCard({ theme, userRole, isEditing, onHeightCh
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState(null);
 
+  const PDF_ASPECT_RATIO = 1197 / 673;
+
   const [iframeReady, setIframeReady] = useState(false);
   const [renderingPages, setRenderingPages] = useState(false);
-  const [pdfHeight, setPdfHeight] = useState(400);
+  const [pdfHeight, setPdfHeight] = useState(null);
+  const [containerWidth, setContainerWidth] = useState(null);
+
+  const estimatedHeight = containerWidth ? containerWidth / PDF_ASPECT_RATIO : null;
+  const displayHeight = pdfHeight || estimatedHeight;
 
   // ── État de l'aperçu avant confirmation d'upload ──
   const [previewFile, setPreviewFile] = useState(null);
@@ -315,7 +321,10 @@ export default function HomepagePdfCard({ theme, userRole, isEditing, onHeightCh
       if (data.type === 'PDF_LOADED' || data.type === 'RENDER_START') {
         setRenderingPages(true);
       } else if (data.type === 'HEIGHT_READY') {
-        if (data.height) setPdfHeight(data.height);
+        if (data.height) {
+          setPdfHeight(data.height);
+          if (pdfData?.file_url) loadedPdfCache.set(pdfData.file_url, data.height);
+        }
       } else if (data.type === 'ALL_PAGES_RENDERED') {
         setRenderingPages(false);
       } else if (data.type === 'PDF_ERROR') {
@@ -430,10 +439,10 @@ export default function HomepagePdfCard({ theme, userRole, isEditing, onHeightCh
   // Fait remonter la hauteur exacte du bloc PDF (contenu + bordure de feedCard) dès qu'elle change,
   // pour que HomeScreen puisse synchroniser la hauteur des deux cartes d'adresse sans approximation.
   useEffect(() => {
-    if (pdfData?.file_url) {
-      onHeightChange?.(pdfHeight + 2); // +2 = borderWidth:1 (haut + bas) de feedCard
+    if (pdfData?.file_url && displayHeight) {
+      onHeightChange?.(displayHeight + 2); // +2 = borderWidth:1 (haut + bas) de feedCard
     }
-  }, [pdfHeight, pdfData?.file_url, onHeightChange]);
+  }, [displayHeight, pdfData?.file_url, onHeightChange]);
 
   const uploadFile = async (file) => {
     setUploading(true);
@@ -508,7 +517,12 @@ export default function HomepagePdfCard({ theme, userRole, isEditing, onHeightCh
       ) : Platform.OS !== 'web' ? (
         <EmptyState text="Paparan PDF tidak disokong pada peranti ini." />
       ) : (
-        <View style={[styles.pageContainer, { height: pdfHeight }]}>
+        <View
+          style={[styles.pageContainer, displayHeight ? { height: displayHeight } : null]}
+          onLayout={(e) => {
+            if (!containerWidth) setContainerWidth(e.nativeEvent.layout.width);
+          }}
+        >
           {renderingPages && (
             <View style={styles.pageLoader}>
               <ActivityIndicator color="#1E3A8A" />
