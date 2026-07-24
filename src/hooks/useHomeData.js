@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Alert } from 'react-native';
 import { supabaseSandbox } from '../supabaseSandboxClient';
 
 const SCHEMA = 'sandbox';
@@ -64,11 +63,9 @@ export function useHomeData(isAuthFlow) {
 
       if (error) throw error;
       setUpdatedAt(data?.updated_at || null);
-      Alert.alert('Berjaya', 'Maklumat halaman utama telah dikemaskini.');
       return true;
     } catch (error) {
       console.error('Error saving data:', error);
-      Alert.alert('Ralat', 'Gagal menyimpan data.');
       return false;
     } finally {
       setSaving(false);
@@ -79,5 +76,9 @@ export function useHomeData(isAuthFlow) {
     setPageData(prev => ({ ...prev, [field]: value }));
   };
 
-  return { loading, saving, pageData, updatedAt, fetchData, handleSave, updateField };
+  const restorePageData = (snapshot) => {
+    setPageData(snapshot);
+  };
+
+  return { loading, saving, pageData, updatedAt, fetchData, handleSave, updateField, restorePageData };
 }

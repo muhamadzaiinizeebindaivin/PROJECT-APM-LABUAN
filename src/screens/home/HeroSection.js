@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
 import { Save } from 'lucide-react-native';
 import { PALETTE } from '../../constants/palette';
@@ -9,6 +9,16 @@ const DEFAULT_SUBTITLE = 'Pejabat Pertahanan Awam Daerah Wilayah Persekutuan Lab
 export default function HeroSection({ isEditing, pageData, updateField, onSave, saving }) {
   const title = pageData?.welcomeTitle ?? DEFAULT_TITLE;
   const subtitle = pageData?.welcomeSubtitle ?? DEFAULT_SUBTITLE;
+  const [formError, setFormError] = useState(null);
+
+  const handleSave = async () => {
+    if (!title.trim() || !subtitle.trim()) {
+      setFormError('Tajuk dan sari kata tidak boleh kosong.');
+      return;
+    }
+    setFormError(null);
+    await onSave();
+  };
 
   return (
     <View style={styles.heroCard}>
@@ -32,7 +42,8 @@ export default function HeroSection({ isEditing, pageData, updateField, onSave, 
             placeholder="Sari kata"
             placeholderTextColor="rgba(255,255,255,0.4)"
           />
-          <TouchableOpacity style={styles.saveBtn} onPress={onSave} disabled={saving}>
+          {!!formError && <Text style={styles.formError}>{formError}</Text>}
+          <TouchableOpacity style={styles.saveBtn} onPress={handleSave} disabled={saving}>
             {saving ? (
               <ActivityIndicator color="#fff" size="small" />
             ) : (
@@ -102,4 +113,5 @@ const styles = StyleSheet.create({
     marginTop: 12, backgroundColor: PALETTE.orange, paddingVertical: 10, borderRadius: 10,
   },
   saveBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+  formError: { fontSize: 12, color: '#fca5a5', textAlign: 'center', marginTop: 12 },
 });

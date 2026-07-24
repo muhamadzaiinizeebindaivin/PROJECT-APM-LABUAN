@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, TextInput, ScrollView, StyleSheet, Platform, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { MapPin, Phone, Mail, Building2, Save } from 'lucide-react-native';
 import { PALETTE } from '../../constants/palette';
@@ -48,11 +48,22 @@ function FieldBox({ Icon, label, value, isEditing, onChangeText, multiline, plac
 }
 
 export default function InfoWidgets({ isEditing, pageData, updateField, onSave, saving }) {
+  const [formErrors, setFormErrors] = useState({});
+
   return (
     <View style={styles.column}>
       {WIDGETS.map(({ key, label, accent, accentSoft }) => {
         const data = pageData[key] || {};
         const update = (field, text) => updateField(key, { ...data, [field]: text });
+
+        const handleSave = async () => {
+          if (!data.orgName?.trim() || !data.address?.trim() || !data.phone?.trim() || !data.email?.trim()) {
+            setFormErrors((prev) => ({ ...prev, [key]: 'Semua medan (kecuali catatan) mesti diisi.' }));
+            return;
+          }
+          setFormErrors((prev) => ({ ...prev, [key]: null }));
+          await onSave();
+        };
 
         return (
           <View key={key} style={styles.widget}>
@@ -126,20 +137,23 @@ export default function InfoWidgets({ isEditing, pageData, updateField, onSave, 
             </ScrollView>
 
             {isEditing && (
-              <TouchableOpacity
-                style={[styles.saveBtn, { backgroundColor: accent }]}
-                onPress={onSave}
-                disabled={saving}
-              >
-                {saving ? (
-                  <ActivityIndicator color="#fff" size="small" />
-                ) : (
-                  <>
-                    <Save size={14} color="#fff" />
-                    <Text style={styles.saveBtnText}>Simpan</Text>
-                  </>
-                )}
-              </TouchableOpacity>
+              <>
+                {!!formErrors[key] && <Text style={styles.formError}>{formErrors[key]}</Text>}
+                <TouchableOpacity
+                  style={[styles.saveBtn, { backgroundColor: accent }]}
+                  onPress={handleSave}
+                  disabled={saving}
+                >
+                  {saving ? (
+                    <ActivityIndicator color="#fff" size="small" />
+                  ) : (
+                    <>
+                      <Save size={14} color="#fff" />
+                      <Text style={styles.saveBtnText}>Simpan</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </>
             )}
           </View>
         );
@@ -234,4 +248,5 @@ const styles = StyleSheet.create({
     marginTop: 10, paddingVertical: 9, borderRadius: 10,
   },
   saveBtnText: { color: '#fff', fontWeight: '700', fontSize: 12 },
+  formError: { fontSize: 11, color: '#dc2626', textAlign: 'center', marginTop: 10 },
 });

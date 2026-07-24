@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Animated, ActivityIndicator } from 'react-native';
+import { CheckCircle2, XCircle } from 'lucide-react-native';
 import { Info } from 'lucide-react-native';
 import AdminEditButton from '../components/AdminEditButton';
 import HomepagePdfCard from '../components/HomepagePdfCard';
@@ -15,7 +16,30 @@ import { stickyHeaderStyles } from '../styles/stickyHeaderStyles';
 export default function HomeScreen({ isAuthFlow, onGuestLogin, onDriverLogin, onAgencyLogin, onLoginPress, navigation, userRole, theme }) {
   const [isEditing, setIsEditing] = useState(false);
   const [pdfCardHeight, setPdfCardHeight] = useState(null);
-  const { loading, saving, pageData, updatedAt, handleSave, updateField } = useHomeData(isAuthFlow);
+  const { loading, saving, pageData, updatedAt, handleSave, updateField, restorePageData } = useHomeData(isAuthFlow);
+
+  const editSnapshotRef = useRef(null);
+
+  const [notification, setNotification] = useState(null); // { type: 'success' | 'error', message }
+  const notificationTimeoutRef = useRef(null);
+  const showNotification = (type, message) => {
+    setNotification({ type, message });
+    if (notificationTimeoutRef.current) clearTimeout(notificationTimeoutRef.current);
+    notificationTimeoutRef.current = setTimeout(() => setNotification(null), 3000);
+  };
+  useEffect(() => () => {
+    if (notificationTimeoutRef.current) clearTimeout(notificationTimeoutRef.current);
+  }, []);
+
+  const handleEditModeChange = (next) => {
+    if (next) {
+      editSnapshotRef.current = pageData;
+    } else if (editSnapshotRef.current) {
+      restorePageData(editSnapshotRef.current);
+      editSnapshotRef.current = null;
+    }
+    setIsEditing(next);
+  };
 
   // Convertit un timestamp ISO (colonne updated_at) au format d'affichage DD/M/YYYY HH:MM
   const formatTimestamp = (iso) => {
@@ -30,7 +54,12 @@ export default function HomeScreen({ isAuthFlow, onGuestLogin, onDriverLogin, on
 
   const onSave = async () => {
     const ok = await handleSave();
-    if (ok) setIsEditing(false);
+    if (ok) {
+      editSnapshotRef.current = null; // sauvegardé : plus rien à restaurer si on ferme ensuite
+      showNotification('success', 'Maklumat halaman utama telah dikemaskini.');
+    } else {
+      showNotification('error', 'Gagal menyimpan data.');
+    }
   };
 
   if (isAuthFlow) {
@@ -65,7 +94,7 @@ export default function HomeScreen({ isAuthFlow, onGuestLogin, onDriverLogin, on
               </View>
             </View>
           )}
-          <AdminEditButton isEditMode={isEditing} setIsEditMode={setIsEditing} userRole={userRole} />
+          <AdminEditButton isEditMode={isEditing} setIsEditMode={handleEditModeChange} userRole={userRole} />
         </View>
       )}
 
@@ -81,6 +110,7 @@ export default function HomeScreen({ isAuthFlow, onGuestLogin, onDriverLogin, on
             updateField={updateField}
             onSave={onSave}
             saving={saving}
+            onNotify={showNotification}
           />
         )}
 
@@ -99,7 +129,7 @@ export default function HomeScreen({ isAuthFlow, onGuestLogin, onDriverLogin, on
 
           {pageData && (
             <View style={[styles.sideColumn, pdfCardHeight ? { height: pdfCardHeight } : null]}>
-              <InfoWidgets isEditing={isEditing} pageData={pageData} updateField={updateField} onSave={onSave} saving={saving} />
+              <InfoWidgets isEditing={isEditing} pageData={pageData} updateField={updateField} onSave={onSave} saving={saving} onNotify={showNotification} />
             </View>
           )}
         </View>
