@@ -55,6 +55,7 @@ export default function AgencyTrackingScreen({ onLogout }) {
   const [selectedAgency, setSelectedAgency] = useState(null);
 
   const [memberName, setMemberName] = useState('');
+  const [accessCode, setAccessCode] = useState('');
   const [trackerId, setTrackerId] = useState(null);
   const [joining, setJoining] = useState(false);
 
@@ -115,20 +116,34 @@ export default function AgencyTrackingScreen({ onLogout }) {
       Alert.alert('Ralat', 'Sila masukkan nama anda.');
       return;
     }
+    if (!accessCode.trim()) {
+      Alert.alert('Ralat', 'Sila masukkan kod akses agensi.');
+      return;
+    }
     setJoining(true);
-    const { data, error } = await supabase
-      .from('agency_trackers')
-      .insert([{ agency_id: selectedAgency.id, member_name: memberName.trim(), tracking_status: 'Offline' }])
-      .select('id')
-      .single();
 
-    if (error) {
-      Alert.alert('Ralat', 'Gagal mendaftar. Sila cuba lagi.');
+    // Session anonyme requise pour que RLS (has_role) fonctionne côté agency_trackers/profiles
+    const { data: authData, error: authError } = await supabase.auth.signInAnonymously();
+    if (authError || !authData?.user) {
+      Alert.alert('Ralat', 'Gagal memulakan sesi. Sila cuba lagi.');
       setJoining(false);
       return;
     }
-    setTrackerId(data.id);
-    saveSession({ selectedAgency, memberName: memberName.trim(), trackerId: data.id });
+
+    const { data: trackerId, error } = await supabase.rpc('join_agency', {
+      p_agency_id: selectedAgency.id,
+      p_code: accessCode.trim(),
+      p_member_name: memberName.trim(),
+    });
+
+    if (error) {
+      Alert.alert('Ralat', error.message?.includes('Invalid access code') ? 'Kod akses tidak sah.' : 'Gagal mendaftar. Sila cuba lagi.');
+      setJoining(false);
+      return;
+    }
+
+    setTrackerId(trackerId);
+    saveSession({ selectedAgency, memberName: memberName.trim(), trackerId });
     setJoining(false);
   };
 
@@ -351,13 +366,25 @@ export default function AgencyTrackingScreen({ onLogout }) {
           <Text style={styles.subtitle}>Masukkan nama anda untuk mula</Text>
         </View>
 
-        <View style={[styles.searchContainer, { marginBottom: 20 }]}>
+        <View style={[styles.searchContainer, { marginBottom: 14 }]}>
           <TextInput
             style={styles.searchInput}
             placeholder="Nama anda"
             placeholderTextColor={PALETTE.textMutedDark}
             value={memberName}
             onChangeText={setMemberName}
+          />
+        </View>
+
+        <View style={[styles.searchContainer, { marginBottom: 20 }]}>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Kod akses agensi"
+            placeholderTextColor={PALETTE.textMutedDark}
+            value={accessCode}
+            onChangeText={setAccessCode}
+            secureTextEntry
+            autoCapitalize="none"
           />
         </View>
 
