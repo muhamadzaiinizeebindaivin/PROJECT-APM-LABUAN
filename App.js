@@ -295,26 +295,39 @@ export default function App() {
 
       const userId = session.user.id;
       const email = session.user.email;
-      const cleanUsername = email.split('@')[0];
+      const cleanUsername = email ? email.split('@')[0] : null;
 
       const { data: profile } = await supabaseSandbox
         .from('profiles')
-        .select('role, agency_id')
+        .select('role, agency_id, username')
         .eq('id', userId)
         .maybeSingle();
 
       if (profile?.role === 'agency') {
-        const { data: agencyRow } = await supabaseSandbox
+        if (!profile.agency_id) {
+          // Profil agency incomplet (agency_id manquant) — on ne peut pas restaurer proprement
+          setUserRole('guest');
+          setIsCheckingSession(false);
+          return;
+        }
+
+        const { data: agencyRow, error: agencyError } = await supabaseSandbox
           .from('jpbd_directory')
           .select('id, agency')
           .eq('id', profile.agency_id)
-          .single();
+          .maybeSingle();
+
+        if (agencyError || !agencyRow) {
+          setUserRole('guest');
+          setIsCheckingSession(false);
+          return;
+        }
 
         handleLogin('agency', { 
           agencyId: agencyRow.id, 
           agencyName: agencyRow.agency,
           userId: userId,
-          username: cleanUsername
+          username: cleanUsername || profile.username
         });
       } else if (profile?.role) {
         // Rôle réel vérifié en base — plus de mapping par username, plus de catch-all

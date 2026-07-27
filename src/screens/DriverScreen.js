@@ -9,12 +9,54 @@ import { usePatrolTracking } from '../hooks/usePatrolTracking';
 import { supabaseSandbox } from '../supabaseSandboxClient';
 import { PALETTE } from '../constants/palette';
 
+const DRIVER_ACCESS_KEY = 'apm_driver_access_verified';
+
 export default function DriverScreen({ onLogout }) {
   const { vehicles, loading: loadingVehicles } = useAvailableVehicles();
 
   const [selectedVehicle, setSelectedVehicle] = useState(null);
   const [isTracking, setIsTracking] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+
+  const [accessVerified, setAccessVerified] = useState(false);
+  const [checkingAccess, setCheckingAccess] = useState(true);
+  const [accessCode, setAccessCode] = useState('');
+  const [verifying, setVerifying] = useState(false);
+
+  // Vérifie s'il existe une vraie session Supabase active (pas juste un drapeau local)
+  useEffect(() => {
+    const checkSession = async () => {
+      const { data: { session } } = await supabaseSandbox.auth.getSession();
+      setAccessVerified(!!session);
+      setCheckingAccess(false);
+    };
+    checkSession();
+  }, []);
+
+  const handleVerifyAccess = async () => {
+    if (!accessCode.trim()) {
+      Alert.alert('Ralat', 'Sila masukkan kod akses.');
+      return;
+    }
+    setVerifying(true);
+
+    const { data: authData, error: authError } = await supabaseSandbox.auth.signInAnonymously();
+    if (authError || !authData?.user) {
+      Alert.alert('Ralat', 'Gagal memulakan sesi. Sila cuba lagi.');
+      setVerifying(false);
+      return;
+    }
+
+    const { error } = await supabaseSandbox.rpc('join_driver', { p_code: accessCode.trim() });
+    if (error) {
+      Alert.alert('Ralat', error.message?.includes('Invalid access code') ? 'Kod akses tidak sah.' : 'Gagal mengesahkan kod. Sila cuba lagi.');
+      setVerifying(false);
+      return;
+    }
+
+    setAccessVerified(true);
+    setVerifying(false);
+  };
 
   // Restaure la patrouille en cours si le driver recharge la page ou revient par erreur
   useEffect(() => {
@@ -93,6 +135,45 @@ export default function DriverScreen({ onLogout }) {
     v.model.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (v.reg || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  if (checkingAccess) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center' }]}>
+        <ActivityIndicator size="large" color={PALETTE.orange} />
+      </View>
+    );
+  }
+
+  if (!accessVerified) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center' }]}>
+        <View style={styles.header}>
+          <Text style={styles.title}>Kod Akses Pemandu</Text>
+          <Text style={styles.subtitle}>Masukkan kod akses untuk teruskan</Text>
+        </View>
+
+        <View style={[styles.searchContainer, { marginBottom: 20 }]}>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Kod akses"
+            placeholderTextColor={PALETTE.textMutedDark}
+            value={accessCode}
+            onChangeText={setAccessCode}
+            secureTextEntry
+            autoCapitalize="none"
+          />
+        </View>
+
+        <TouchableOpacity
+          style={[styles.joinButton, verifying && { opacity: 0.7 }]}
+          onPress={handleVerifyAccess}
+          disabled={verifying}
+        >
+          {verifying ? <ActivityIndicator color="#fff" /> : <Text style={styles.joinButtonText}>Sahkan</Text>}
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   // View 1: Vehicle Selection Screen
   if (!selectedVehicle) {
@@ -298,6 +379,8 @@ const styles = StyleSheet.create({
   statusCoords: { color: PALETTE.textMutedDark, fontSize: 12, marginTop: 5 },
 
   actionRow: { flexDirection: 'row', gap: 20, alignItems: 'center', justifyContent: 'center' },
+  joinButton: { width: '100%', paddingVertical: 16, borderRadius: 14, alignItems: 'center', backgroundColor: PALETTE.orange },
+  joinButtonText: { color: '#fff', fontSize: 15, fontWeight: '800' },
   button: {
     width: 200, height: 200, borderRadius: 100, justifyContent: 'center', alignItems: 'center',
     elevation: 8, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 10, shadowOffset: { width: 0, height: 5 },

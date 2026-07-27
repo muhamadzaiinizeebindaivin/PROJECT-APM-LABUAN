@@ -20,6 +20,14 @@ const PX_PER_SECOND = 20;
 const SCROLLBAR_TRACK_WIDTH = 160;
 const MIN_THUMB_WIDTH = 28;
 
+// Extrait un nombre d'une chaîne de pourcentage (ex. "88%" -> 88). Renvoie null si non numérique
+// (repli pour d'anciens KPI encore en texte libre, ex. "2 hari") — pas de barre affichée dans ce cas.
+const parsePercent = (value) => {
+  if (!value) return null;
+  const match = String(value).match(/-?\d+(\.\d+)?/);
+  return match ? parseFloat(match[0]) : null;
+};
+
 export default function KpiSection({ kpiItems, isEditing, updateKpiItem, addKpiItem, removeKpiItem, persistKpi, showSubSeksyen = true, onNotify }) {
   const [hoveredIndex, setHoveredIndex] = useState(null);
   const [modalIndex, setModalIndex] = useState(null); // null = fermé, -1 = ajout, >=0 = édition
@@ -372,18 +380,38 @@ export default function KpiSection({ kpiItems, isEditing, updateKpiItem, addKpiI
                   <Text style={styles.kpiCardNama}>{item.nama}</Text>
                 </View>
                 <Text style={styles.kpiCardTafsiran}>{item.tafsiran}</Text>
-                {!!item.pencapaian_semasa && (
-                  <Text style={styles.kpiCardPencapaian}>
-                    Pencapaian Semasa: <Text style={{ fontWeight: '800' }}>{item.pencapaian_semasa}</Text>
-                  </Text>
-                )}
+                {(() => {
+                  const sasaranPct = parsePercent(item.sasaran);
+                  const pencapaianPct = parsePercent(item.pencapaian_semasa);
+                  if (sasaranPct === null || pencapaianPct === null) {
+                    // Repli : anciennes valeurs non numériques, affichées telles quelles sans barre
+                    return (
+                      <>
+                        {!!item.sasaran && <Text style={styles.kpiCardPencapaian}>Sasaran: <Text style={{ fontWeight: '800' }}>{item.sasaran}</Text></Text>}
+                        {!!item.pencapaian_semasa && <Text style={styles.kpiCardPencapaian}>Pencapaian Semasa: <Text style={{ fontWeight: '800' }}>{item.pencapaian_semasa}</Text></Text>}
+                      </>
+                    );
+                  }
+                  return null; // affichée en bas de la carte, hors de ce bloc
+                })()}
                 {!!item.analisis_tindakan && (
                   <Text style={styles.kpiCardAnalisis} numberOfLines={3}>{item.analisis_tindakan}</Text>
                 )}
               </View>
-              <View style={styles.kpiSasaranBadge}>
-                <Text style={styles.kpiSasaranText}>{item.sasaran}</Text>
-              </View>
+              {(() => {
+                const sasaranPct = parsePercent(item.sasaran);
+                const pencapaianPct = parsePercent(item.pencapaian_semasa);
+                if (sasaranPct === null || pencapaianPct === null) return null;
+                const ratio = sasaranPct > 0 ? Math.max(0, Math.min(1, pencapaianPct / sasaranPct)) : 0;
+                return (
+                  <View style={styles.kpiProgressWrap}>
+                    <Text style={styles.kpiProgressLabel}>{pencapaianPct}%</Text>
+                    <View style={styles.kpiProgressTrack}>
+                      <View style={[styles.kpiProgressFill, { width: `${ratio * 100}%`, backgroundColor: statusColor }]} />
+                    </View>
+                  </View>
+                );
+              })()}
 
               {isEditing && (
                 <>

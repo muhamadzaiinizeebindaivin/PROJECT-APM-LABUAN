@@ -202,7 +202,12 @@ export const pentadbiranStyles = StyleSheet.create({
     borderRadius: 999, marginLeft: 6, marginTop: 12, borderWidth: 1, borderColor: 'rgba(249, 115, 22, 0.3)',
   },
   kpiSasaranText: { fontSize: 16, fontWeight: '800', color: PALETTE.orange },
-
+  kpiProgressWrap: { marginLeft: 6, marginTop: 12 },
+  kpiProgressLabelRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 },
+  kpiProgressLabel: { fontSize: 15, fontWeight: '900', color: PALETTE.textDark },
+  kpiProgressLabelMuted: { fontSize: 11, fontWeight: '600', color: PALETTE.textMutedDark },
+  kpiProgressTrack: { height: 8, borderRadius: 4, backgroundColor: PALETTE.surface, overflow: 'hidden' },
+  kpiProgressFill: { height: '100%', borderRadius: 4 },
   kpiPencilBtn: {
     zIndex: 1,
     position: 'absolute', top: 10, right: 10, zIndex: 5,

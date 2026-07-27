@@ -105,7 +105,7 @@ export function buildOperasiMapHtml({ theme, userRole }) {
           }).addTo(map);
 
           // ---- Vehicle type -> inner glyph, mirrors utils/vehicleIcons.js "operasi" preset ----
-          var VEHICLE_GLYPHS = { car: '', lori: '', motor: '', bot: '' };
+          var VEHICLE_GLYPHS = ${JSON.stringify(VEHICLE_GLYPHS)};
 
           function vehicleGlyph(iconKey, color) {
             if (iconKey === 'ambulans') {
