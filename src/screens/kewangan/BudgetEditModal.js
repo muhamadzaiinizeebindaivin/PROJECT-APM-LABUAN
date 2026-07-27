@@ -1,22 +1,10 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { View, Text, TextInput, TouchableOpacity, Modal, ScrollView, ActivityIndicator } from 'react-native';
 import { X, Check, Plus, Trash2, FolderOpen } from 'lucide-react-native';
 import { PALETTE } from '../../constants/palette';
 import { kewanganStyles as styles } from './kewanganStyles';
 
-export default function BudgetEditModal({ visible, isNew, kategori, setKategori, rows, setRows, existingCategories, onSave, onClose, error, isSaving }) {
-  const [creatingNew, setCreatingNew] = useState(existingCategories.length === 0);
-
-  const selectExisting = (cat) => {
-    setCreatingNew(false);
-    setKategori(cat);
-  };
-
-  const startNewCategory = () => {
-    setCreatingNew(true);
-    setKategori('');
-  };
-
+export default function BudgetEditModal({ visible, kategori, setKategori, rows, setRows, onSave, onClose, error, isSaving }) {
   const updateRow = (index, field, value) => {
     setRows((prev) => prev.map((r, i) => (i === index ? { ...r, [field]: value } : r)));
   };
@@ -34,50 +22,24 @@ export default function BudgetEditModal({ visible, isNew, kategori, setKategori,
       <View style={styles.modalOverlay}>
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>{isNew ? 'Tambah Bajet Baru' : 'Kemaskini Bajet'}</Text>
+            <Text style={styles.modalTitle}>Tambah Bajet Baru</Text>
             <TouchableOpacity onPress={onClose}><X size={22} color={PALETTE.textMutedDark} /></TouchableOpacity>
           </View>
 
           <ScrollView style={{ maxHeight: 520 }} contentContainerStyle={styles.modalBody}>
             <View style={styles.categoryPickerHeader}>
               <FolderOpen size={14} color={PALETTE.orange} />
-              <Text style={styles.categoryPickerLabel}>Kategori (Kod Objek)</Text>
+              <Text style={styles.categoryPickerLabel}>Nama Kategori (Kod Objek)</Text>
             </View>
 
-            {existingCategories.length > 0 && (
-              <View style={styles.categoryChipRow}>
-                {existingCategories.map((cat) => {
-                  const selected = !creatingNew && kategori === cat;
-                  return (
-                    <TouchableOpacity
-                      key={cat}
-                      style={[styles.categoryChip, selected && styles.categoryChipSelected]}
-                      onPress={() => selectExisting(cat)}
-                    >
-                      <Text style={[styles.categoryChipText, selected && styles.categoryChipTextSelected]}>{cat}</Text>
-                    </TouchableOpacity>
-                  );
-                })}
-                <TouchableOpacity
-                  style={[styles.categoryChip, styles.categoryChipNew, creatingNew && styles.categoryChipSelected]}
-                  onPress={startNewCategory}
-                >
-                  <Plus size={12} color={creatingNew ? PALETTE.orange : PALETTE.textMutedDark} />
-                  <Text style={[styles.categoryChipText, creatingNew && styles.categoryChipTextSelected]}>Kategori Baru</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-
-            {creatingNew && (
-              <TextInput
-                style={styles.modalInput}
-                value={kategori}
-                onChangeText={setKategori}
-                placeholder="Cth: 27000"
-                placeholderTextColor={PALETTE.textMutedDark}
-                autoFocus={existingCategories.length > 0}
-              />
-            )}
+            <TextInput
+              style={styles.modalInput}
+              value={kategori}
+              onChangeText={setKategori}
+              placeholder="Cth: 27000"
+              placeholderTextColor={PALETTE.textMutedDark}
+              autoFocus
+            />
 
             <Text style={[styles.inputLabel, { marginTop: 18 }]}>Perkara</Text>
 
@@ -139,12 +101,10 @@ export default function BudgetEditModal({ visible, isNew, kategori, setKategori,
               );
             })}
 
-            {isNew && (
-              <TouchableOpacity style={styles.addRowBtn} onPress={addRow}>
-                <Plus size={14} color={PALETTE.orange} />
-                <Text style={styles.addRowBtnText}>Tambah Perkara Lain</Text>
-              </TouchableOpacity>
-            )}
+            <TouchableOpacity style={styles.addRowBtn} onPress={addRow}>
+              <Plus size={14} color={PALETTE.orange} />
+              <Text style={styles.addRowBtnText}>Tambah Perkara Lain</Text>
+            </TouchableOpacity>
 
             {!!error && <Text style={{ fontSize: 12, color: '#dc2626', textAlign: 'center', marginTop: 10, marginBottom: 12 }}>{error}</Text>}
             <TouchableOpacity

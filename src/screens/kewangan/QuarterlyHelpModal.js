@@ -15,30 +15,38 @@ export default function QuarterlyHelpModal({ visible, onClose }) {
           </View>
 
           <ScrollView style={{ maxHeight: 460 }} contentContainerStyle={styles.modalBody}>
-            <Text style={styles.helpSectionTitle}>1. Belanja Diskret</Text>
+            <Text style={styles.helpSectionTitle}>1. Belanja Sukuan</Text>
             <Text style={styles.helpText}>
-              Nilai "Belanja (Kumulatif)" yang anda masukkan adalah jumlah perbelanjaan sejak awal tahun sehingga akhir sukuan tersebut, bukan perbelanjaan sukuan itu sendiri.{'\n\n'}
-              Belanja sebenar sukuan ini dikira dengan menolak kumulatif sukuan sebelumnya:{'\n'}
-              Belanja Diskret = Kumulatif Sukuan Ini − Kumulatif Sukuan Sebelumnya
+              Nilai "Belanja" yang anda masukkan adalah jumlah perbelanjaan bagi sukuan itu sahaja (bukan kumulatif) — masukkan terus jumlah yang dibelanjakan dalam tempoh sukuan berkenaan.
             </Text>
 
             <Text style={styles.helpSectionTitle}>2. Peratus daripada Peruntukan</Text>
             <Text style={styles.helpText}>
-              Peratus = (Belanja Diskret ÷ Jumlah Peruntukan Tahunan) × 100{'\n\n'}
+              Peratus = (Belanja Sukuan ÷ Jumlah Peruntukan Tahunan) × 100{'\n\n'}
               Ini menunjukkan berapa peratus daripada peruntukan tahunan yang telah dibelanjakan oleh sukuan ini sahaja.
             </Text>
 
-            <Text style={styles.helpSectionTitle}>3. Petunjuk Status</Text>
+            <Text style={styles.helpSectionTitle}>3. Had Mengikut Sukuan</Text>
             <Text style={styles.helpText}>
-              Setiap sukuan disasarkan membelanjakan lebih kurang 25% daripada peruntukan tahunan (kerana terdapat 4 sukuan setahun):{'\n\n'}
-              🔴 Melebihi Had — peratus melebihi 25%{'\n'}
-              🟢 Optimum — peratus antara 21.25% hingga 25%{'\n'}
-              🟠 Underspend — peratus di bawah 21.25%
+              Setiap sukuan mempunyai had kumulatif tersendiri mengikut kedudukannya dalam tahun:{'\n\n'}
+              Sukuan 1 — Had 25%{'\n'}
+              Sukuan 2 — Had 50%{'\n'}
+              Sukuan 3 — Had 75%{'\n'}
+              Sukuan 4 — Had 100%
             </Text>
 
-            <Text style={styles.helpSectionTitle}>4. Bar Kemajuan</Text>
+            <Text style={styles.helpSectionTitle}>4. Petunjuk Status</Text>
             <Text style={styles.helpText}>
-              Bar diisi mengikut nisbah peratus sukuan ini berbanding had 25%. Bar akan penuh sepenuhnya apabila mencapai 25%, dan kekal penuh (bertukar merah) jika melebihi had tersebut.
+              Status dikira berbanding had sukuan berkenaan:{'\n\n'}
+              🔴 Melebihi Had — peratus melebihi had sukuan tersebut{'\n'}
+              🟢 Optimum — peratus antara 85% hingga 100% daripada had sukuan tersebut{'\n'}
+              🟠 Underspend — peratus di bawah 85% daripada had sukuan tersebut
+            </Text>
+
+            <Text style={styles.helpSectionTitle}>5. Dua Bar Kemajuan</Text>
+            <Text style={styles.helpText}>
+              Bar pertama menunjukkan belanja sukuan ini sahaja berbanding had sukuan tersebut.{'\n\n'}
+              Bar kedua ("% Kumulatif") menunjukkan jumlah keseluruhan belanja sejak Sukuan 1 hingga sukuan ini (dijumlahkan), juga dibandingkan dengan had yang sama. Ini memberi gambaran sebenar sama ada perbelanjaan keseluruhan tahun setakat ini berada di landasan yang betul.
             </Text>
           </ScrollView>
         </View>

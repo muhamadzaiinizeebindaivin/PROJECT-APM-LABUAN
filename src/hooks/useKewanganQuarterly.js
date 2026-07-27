@@ -34,18 +34,33 @@ export function useKewanganQuarterly(totalAllocation) {
 
   useEffect(() => { fetchQuarterly(); }, [fetchQuarterly]);
 
+  // Le seuil ("had") d'un sukuan est cumulatif selon son rang : Sukuan 1 = 25%, 2 = 50%, 3 = 75%, 4 = 100%
+  const quarterThreshold = (q) => {
+    const match = String(q || '').match(/\d+/);
+    const num = match ? parseInt(match[0], 10) : 1;
+    return Math.min(100, Math.max(25, num * 25));
+  };
+
+  // dataList est déjà trié par display_order (ordre chronologique) — la somme jusqu'à l'index i
+  // donne le vrai cumulatif réel dépensé depuis le début de l'année jusqu'à ce sukuan inclus
   const processedData = dataList.map((item, index) => {
-    const currentCumulative = parseCurrency(item.spend);
-    const prevCumulative = index > 0 ? parseCurrency(dataList[index - 1].spend) : 0;
-    const discreteSpend = currentCumulative - prevCumulative;
+    const discreteSpend = parseCurrency(item.spend); // saisi directement par l'utilisateur, déjà propre au trimestre
     const percentOfTotal = totalAllocation > 0 ? (discreteSpend / totalAllocation) * 100 : 0;
+    const threshold = quarterThreshold(item.q);
+
+    const cumulativeSpend = dataList.slice(0, index + 1).reduce((sum, it) => sum + parseCurrency(it.spend), 0);
+    const cumulativePercent = totalAllocation > 0 ? (cumulativeSpend / totalAllocation) * 100 : 0;
 
     let barColor = '#d97706';
     let statusText = 'Underspend';
     if (percentOfTotal > 25) { barColor = '#dc2626'; statusText = 'Melebihi Had'; }
     else if (percentOfTotal >= 25 * 0.85) { barColor = '#16a34a'; statusText = 'Optimum'; }
 
-    return { ...item, discreteSpend, percentOfTotal, barColor, statusText };
+    let cumulativeBarColor = '#d97706';
+    if (cumulativePercent > threshold) cumulativeBarColor = '#dc2626';
+    else if (cumulativePercent >= threshold * 0.85) cumulativeBarColor = '#16a34a';
+
+    return { ...item, discreteSpend, percentOfTotal, threshold, barColor, statusText, cumulativeSpend, cumulativePercent, cumulativeBarColor };
   });
 
   const saveQuarterlyItem = async (draft, editItem) => {

@@ -143,6 +143,7 @@ export default function KewanganScreen({ userRole }) {
           saveBudgetItem={budget.saveBudgetItem}
           deleteBudgetItem={budget.deleteBudgetItem}
           deleteCategory={budget.deleteCategory}
+          renameCategory={budget.renameCategory}
           onNotify={showNotification}
         />
 

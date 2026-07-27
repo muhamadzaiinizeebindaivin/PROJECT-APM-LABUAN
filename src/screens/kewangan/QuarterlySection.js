@@ -166,6 +166,11 @@ export default function QuarterlySection({ processedData, loading, isEditMode, s
       setFormError('Sukuan, tempoh bulan dan jumlah belanja mesti diisi.');
       return;
     }
+    const duplicate = processedData.some((it) => it.q === draft.q && it.id !== editItem?.id);
+    if (duplicate) {
+      setFormError(`${draft.q} sudah wujud. Sila pilih sukuan lain.`);
+      return;
+    }
     setFormError(null);
     setIsSaving(true);
     const ok = await saveQuarterlyItem(draft, editItem);
@@ -212,6 +217,31 @@ export default function QuarterlySection({ processedData, loading, isEditMode, s
         {!loading && processedData.length > 0 && (
           <>
             <View
+              style={{
+                backgroundColor: PALETTE.softOrangeBg,
+                borderWidth: 1,
+                borderColor: 'rgba(249, 115, 22, 0.25)',
+                borderRadius: 14,
+                paddingVertical: 14,
+                paddingHorizontal: 16,
+                marginBottom: 18,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}
+            >
+              <View>
+                <Text style={{ fontSize: 11, fontWeight: '700', color: PALETTE.textMutedDark, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 4 }}>
+                  Jumlah Perbelanjaan Keseluruhan
+                </Text>
+                <Text style={{ fontSize: 22, fontWeight: '900', color: PALETTE.orange, fontFamily: 'monospace' }}>
+                  RM {formatCurrency(processedData.reduce((sum, it) => sum + parseCurrency(it.spend), 0))}
+                </Text>
+              </View>
+              <TrendingUp size={28} color={PALETTE.orange} style={{ opacity: 0.4 }} />
+            </View>
+
+            <View
               style={styles.categoryCarouselViewport}
               onLayout={(e) => {
                 const w = e.nativeEvent.layout.width;
@@ -240,12 +270,20 @@ export default function QuarterlySection({ processedData, loading, isEditMode, s
                       onPress={() => setSelectedId(item.id)}
                     >
                       {isEditMode && (
-                        <TouchableOpacity
-                          style={styles.categoryDeleteBtn}
-                          onPress={() => setConfirmDeleteItem(item)}
-                        >
-                          <Trash2 size={13} color={PALETTE.orange} />
-                        </TouchableOpacity>
+                        <>
+                          <TouchableOpacity
+                            style={[styles.categoryDeleteBtn, { right: 34 }]}
+                            onPress={() => openEdit(item)}
+                          >
+                            <Pencil size={13} color={PALETTE.orange} />
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={styles.categoryDeleteBtn}
+                            onPress={() => setConfirmDeleteItem(item)}
+                          >
+                            <Trash2 size={13} color={PALETTE.orange} />
+                          </TouchableOpacity>
+                        </>
                       )}
                       <Text style={[styles.categoryCardText, selected && styles.categoryCardTextSelected]}>{item.q}</Text>
                       <View style={[styles.quarterDot, { backgroundColor: item.barColor }]} />
@@ -292,22 +330,12 @@ export default function QuarterlySection({ processedData, loading, isEditMode, s
                     <View style={[styles.statusBadge, { backgroundColor: selectedItem.barColor + '20' }]}>
                       <Text style={[styles.statusText, { color: selectedItem.barColor }]}>{selectedItem.statusText}</Text>
                     </View>
-                    {isEditMode && (
-                      <View style={styles.quarterHeaderActions}>
-                        <TouchableOpacity style={styles.kpiPencilBtnInline} onPress={() => openEdit(selectedItem)}>
-                          <Pencil size={13} color={PALETTE.orange} />
-                        </TouchableOpacity>
-                        <TouchableOpacity style={styles.kpiDeleteBtnInline} onPress={() => setConfirmDeleteItem(selectedItem)}>
-                          <Trash2 size={13} color="#dc2626" />
-                        </TouchableOpacity>
-                      </View>
-                    )}
                   </View>
                 </View>
 
                 <View style={styles.statsRow}>
                   <View>
-                    <Text style={styles.statsLabel}>Belanja (Kumulatif)</Text>
+                    <Text style={styles.statsLabel}>Belanja</Text>
                     <Text style={styles.statsValue}>RM {formatCurrency(parseCurrency(selectedItem.spend))}</Text>
                   </View>
                   <View style={{ alignItems: 'flex-end' }}>
@@ -320,7 +348,17 @@ export default function QuarterlySection({ processedData, loading, isEditMode, s
                   <View style={[styles.progressBar, { width: `${Math.min((selectedItem.percentOfTotal / 25) * 100, 100)}%`, backgroundColor: selectedItem.barColor }]} />
                   <View style={styles.limitLine} />
                 </View>
-                <Text style={styles.limitLabel}>Had Sukuan (25%)</Text>
+                <Text style={styles.limitLabel}>Had per Sukuan (25%)</Text>
+
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 14, marginBottom: 4 }}>
+                  <Text style={styles.statsLabel}>% Kumulatif Sejak Awal Tahun</Text>
+                  <Text style={[styles.statsValue, { color: selectedItem.cumulativeBarColor }]}>{selectedItem.cumulativePercent.toFixed(2)}%</Text>
+                </View>
+                <View style={styles.progressContainer}>
+                  <View style={[styles.progressBar, { width: `${Math.min((selectedItem.cumulativePercent / selectedItem.threshold) * 100, 100)}%`, backgroundColor: selectedItem.cumulativeBarColor }]} />
+                  <View style={styles.limitLine} />
+                </View>
+                <Text style={styles.limitLabel}>Had Kumulatif ({selectedItem.threshold}%)</Text>
               </View>
             )}
           </>

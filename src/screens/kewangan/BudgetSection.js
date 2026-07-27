@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, Animated, PanResponder, ScrollView, Modal } from 'react-native';
-import { Wallet, Pencil, Trash2, FolderOpen, AlertTriangle } from 'lucide-react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, Animated, PanResponder, ScrollView, Modal, TextInput } from 'react-native';
+import { Wallet, Pencil, Trash2, FolderOpen, AlertTriangle, Check, Plus, X } from 'lucide-react-native';
 import { PALETTE } from '../../constants/palette';
 import { formatCurrency, parseCurrency } from '../../utils/currency';
 import { kewanganStyles as styles } from './kewanganStyles';
@@ -16,7 +16,7 @@ const SCROLLBAR_TRACK_WIDTH = 160;
 const MIN_THUMB_WIDTH = 28;
 const ITEMS_PER_PAGE = 5;
 
-export default function BudgetSection({ budgetData, loading, isEditMode, saveBudgetItem, deleteBudgetItem, deleteCategory, onNotify }) {
+export default function BudgetSection({ budgetData, loading, isEditMode, saveBudgetItem, deleteBudgetItem, deleteCategory, renameCategory, onNotify }) {
   const [modalVisible, setModalVisible] = useState(false);
   const [editItem, setEditItem] = useState(null);
   const [kategori, setKategori] = useState('');
@@ -32,6 +32,130 @@ export default function BudgetSection({ budgetData, loading, isEditMode, saveBud
   const displayDeleteCategoryRef = useRef(null);
   if (confirmDeleteCategory !== null) displayDeleteCategoryRef.current = confirmDeleteCategory;
 
+  // ── Modale "Urus Kategori" : renommer + éditer/ajouter/retirer tous les perkara de la catégorie en une fois ──
+  const [manageTarget, setManageTarget] = useState(null); // nom de la catégorie en cours de gestion, ou null
+  const [manageNameDraft, setManageNameDraft] = useState('');
+  const [manageRows, setManageRows] = useState([]); // { id, perihal, agihan, belanja } — id=null pour une nouvelle ligne
+  const [manageError, setManageError] = useState(null);
+  const [isManageSaving, setIsManageSaving] = useState(false);
+  const [manageDeleteIndex, setManageDeleteIndex] = useState(null);
+  const displayManageDeleteRef = useRef(null);
+  if (manageDeleteIndex !== null) displayManageDeleteRef.current = manageRows[manageDeleteIndex];
+  const [isDeletingManageRow, setIsDeletingManageRow] = useState(false);
+
+  // ── Modale légère : modifier un seul perkara depuis la liste, sans passer par "Urus Kategori" ──
+  const [editSingleItem, setEditSingleItem] = useState(null); // l'item en cours de modification, ou null
+  const [editSingleDraft, setEditSingleDraft] = useState({ perihal: '', agihan: '', belanja: '' });
+  const [editSingleError, setEditSingleError] = useState(null);
+  const [isSavingSingle, setIsSavingSingle] = useState(false);
+
+  const openEditSingle = (item) => {
+    setEditSingleItem(item);
+    setEditSingleDraft({ perihal: item.perihal, agihan: String(item.agihan), belanja: String(item.belanja) });
+    setEditSingleError(null);
+  };
+  const closeEditSingle = () => {
+    setEditSingleItem(null);
+    setEditSingleDraft({ perihal: '', agihan: '', belanja: '' });
+    setEditSingleError(null);
+  };
+  const handleEditSingleSave = async () => {
+    if (!editSingleDraft.perihal.trim() || !editSingleDraft.agihan.trim()) {
+      setEditSingleError('Perihal dan agihan tidak boleh kosong.');
+      return;
+    }
+    setEditSingleError(null);
+    setIsSavingSingle(true);
+    const ok = await saveBudgetItem(
+      { kategori: editSingleItem.kategori, perihal: editSingleDraft.perihal, agihan: editSingleDraft.agihan, belanja: editSingleDraft.belanja || '0' },
+      editSingleItem
+    );
+    setIsSavingSingle(false);
+    if (ok) {
+      closeEditSingle();
+      onNotify?.('success', 'Bajet berjaya dikemaskini.');
+    } else {
+      onNotify?.('error', 'Gagal menyimpan bajet.');
+    }
+  };
+
+  const openManage = (kat) => {
+    setManageTarget(kat);
+    setManageNameDraft(kat);
+    setManageRows((grouped[kat] || []).map((item) => ({
+      id: item.id, perihal: item.perihal, agihan: String(item.agihan), belanja: String(item.belanja),
+    })));
+    setManageError(null);
+  };
+  const closeManage = () => {
+    setManageTarget(null);
+    setManageNameDraft('');
+    setManageRows([]);
+    setManageError(null);
+  };
+  const updateManageRow = (index, field, value) => {
+    setManageRows((prev) => prev.map((r, i) => (i === index ? { ...r, [field]: value } : r)));
+  };
+  const addManageRow = () => {
+    setManageRows((prev) => [...prev, { id: null, perihal: '', agihan: '', belanja: '' }]);
+  };
+  const requestDeleteManageRow = (index) => setManageDeleteIndex(index);
+  const confirmDeleteManageRow = async () => {
+    const index = manageDeleteIndex;
+    const row = manageRows[index];
+    if (row.id) {
+      setIsDeletingManageRow(true);
+      const ok = await deleteBudgetItem(row);
+      setIsDeletingManageRow(false);
+      if (ok === false) {
+        onNotify?.('error', 'Gagal memadam perkara.');
+        setManageDeleteIndex(null);
+        return;
+      }
+    }
+    setManageRows((prev) => prev.filter((_, i) => i !== index));
+    setManageDeleteIndex(null);
+  };
+  const handleManageSave = async () => {
+    if (!manageNameDraft.trim()) {
+      setManageError('Nama kategori tidak boleh kosong.');
+      return;
+    }
+    const hasInvalidRow = manageRows.some((r) => !r.perihal.trim() || !String(r.agihan).trim());
+    if (hasInvalidRow) {
+      setManageError('Sila lengkapkan perihal dan agihan untuk setiap perkara.');
+      return;
+    }
+    setManageError(null);
+    setIsManageSaving(true);
+
+    const newName = manageNameDraft.trim();
+    if (newName !== manageTarget) {
+      const ok = await renameCategory(manageTarget, newName);
+      if (!ok) {
+        setIsManageSaving(false);
+        onNotify?.('error', 'Gagal menamakan semula kategori.');
+        return;
+      }
+    }
+
+    let allOk = true;
+    for (const row of manageRows) {
+      const payload = { kategori: newName, perihal: row.perihal, agihan: row.agihan, belanja: row.belanja || '0' };
+      const ok = await saveBudgetItem(payload, row.id ? row : null);
+      if (!ok) allOk = false;
+    }
+
+    setIsManageSaving(false);
+    if (allOk) {
+      setSelectedCategory(newName);
+      closeManage();
+      onNotify?.('success', 'Kategori berjaya dikemaskini.');
+    } else {
+      onNotify?.('error', 'Sebahagian perkara gagal disimpan.');
+    }
+  };
+
   const totalAgihan = budgetData.reduce((sum, item) => sum + parseCurrency(item.agihan), 0);
   const totalBelanja = budgetData.reduce((sum, item) => sum + parseCurrency(item.belanja), 0);
   const baki = totalAgihan - totalBelanja;
@@ -41,7 +165,9 @@ export default function BudgetSection({ budgetData, loading, isEditMode, saveBud
     acc[item.kategori].push(item);
     return acc;
   }, {});
-  const existingCategories = Object.keys(grouped).sort();
+  // Pas de tri alphabétique : garde l'ordre d'apparition (budgetData est déjà trié par id croissant),
+  // pour qu'une nouvelle catégorie s'ajoute toujours à la fin sans jamais réarranger les pills existantes
+  const existingCategories = Object.keys(grouped);
 
   const categoryTotals = existingCategories.reduce((acc, cat) => {
     const items = grouped[cat];
@@ -177,55 +303,40 @@ export default function BudgetSection({ budgetData, loading, isEditMode, saveBud
 
   const openAdd = () => {
     setEditItem(null);
-    setKategori(selectedCategory || '');
+    setKategori('');
     setRows([{ ...EMPTY_ROW }]);
-    setFormError(null);
-    setModalVisible(true);
-  };
-  const openEdit = (item) => {
-    setEditItem(item);
-    setKategori(item.kategori);
-    setRows([{ perihal: item.perihal, agihan: String(item.agihan), belanja: String(item.belanja) }]);
     setFormError(null);
     setModalVisible(true);
   };
   const handleSave = async () => {
     if (!kategori.trim()) {
-      setFormError('Kategori tidak boleh kosong.');
+      setFormError('Nama kategori tidak boleh kosong.');
       return;
     }
-    const validRows = rows.filter((r) => r.perihal.trim() && r.agihan);
-    if (validRows.length === 0) {
-      setFormError('Sila lengkapkan sekurang-kurangnya satu perkara (perihal + agihan).');
+    if (existingCategories.includes(kategori.trim())) {
+      setFormError('Kategori ini sudah wujud. Gunakan "Urus Kategori" untuk menambah perkara padanya.');
+      return;
+    }
+    const hasIncompleteRow = rows.some((r) => !r.perihal.trim() || !String(r.agihan).trim());
+    if (hasIncompleteRow) {
+      setFormError('Sila lengkapkan perihal dan agihan untuk setiap perkara.');
       return;
     }
     setFormError(null);
     setIsSaving(true);
 
-    if (editItem) {
-      const ok = await saveBudgetItem({ kategori, ...validRows[0] }, editItem);
-      setIsSaving(false);
-      if (ok) {
-        setSelectedCategory(kategori);
-        setModalVisible(false);
-        onNotify?.('success', 'Bajet berjaya dikemaskini.');
-      } else {
-        onNotify?.('error', 'Gagal menyimpan bajet.');
-      }
+    let allOk = true;
+    for (const row of rows) {
+      const ok = await saveBudgetItem({ kategori: kategori.trim(), ...row }, null);
+      if (!ok) allOk = false;
+    }
+    setIsSaving(false);
+    if (allOk) {
+      setSelectedCategory(kategori.trim());
+      setModalVisible(false);
+      onNotify?.('success', 'Kategori baharu berjaya ditambah.');
     } else {
-      let allOk = true;
-      for (const row of validRows) {
-        const ok = await saveBudgetItem({ kategori, ...row }, null);
-        if (!ok) allOk = false;
-      }
-      setIsSaving(false);
-      if (allOk) {
-        setSelectedCategory(kategori);
-        setModalVisible(false);
-        onNotify?.('success', 'Bajet berjaya ditambah.');
-      } else {
-        onNotify?.('error', 'Gagal menambah sebahagian atau semua perkara bajet.');
-      }
+      onNotify?.('error', 'Gagal menambah sebahagian atau semua perkara bajet.');
     }
   };
 
@@ -291,12 +402,20 @@ export default function BudgetSection({ budgetData, loading, isEditMode, saveBud
                     onPress={() => setSelectedCategory(kat)}
                   >
                     {isEditMode && (
-                      <TouchableOpacity
-                        style={styles.categoryDeleteBtn}
-                        onPress={() => setConfirmDeleteCategory(kat)}
-                      >
-                        <Trash2 size={13} color={PALETTE.orange} />
-                      </TouchableOpacity>
+                      <>
+                        <TouchableOpacity
+                          style={[styles.categoryDeleteBtn, { right: 34 }]}
+                          onPress={() => openManage(kat)}
+                        >
+                          <Pencil size={13} color={PALETTE.orange} />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.categoryDeleteBtn}
+                          onPress={() => setConfirmDeleteCategory(kat)}
+                        >
+                          <Trash2 size={13} color={PALETTE.orange} />
+                        </TouchableOpacity>
+                      </>
                     )}
                     <Text style={[styles.categoryCardText, selected && styles.categoryCardTextSelected]}>{kat}</Text>
                   </TouchableOpacity>
@@ -342,7 +461,7 @@ export default function BudgetSection({ budgetData, loading, isEditMode, saveBud
                       <Text style={styles.budgetPerihal}>{item.perihal}</Text>
                       {isEditMode && (
                         <View style={styles.budgetActionGroup}>
-                          <TouchableOpacity style={[styles.budgetActionBtn, { backgroundColor: 'rgba(249, 115, 22, 0.12)' }]} onPress={() => openEdit(item)}>
+                          <TouchableOpacity style={[styles.budgetActionBtn, { backgroundColor: 'rgba(249, 115, 22, 0.12)' }]} onPress={() => openEditSingle(item)}>
                             <Pencil size={13} color={PALETTE.orange} />
                           </TouchableOpacity>
                           <TouchableOpacity style={[styles.budgetActionBtn, { backgroundColor: 'rgba(220, 38, 38, 0.10)' }]} onPress={() => setConfirmDeleteItem(item)}>
@@ -463,14 +582,198 @@ export default function BudgetSection({ budgetData, loading, isEditMode, saveBud
         </View>
       </Modal>
 
+      <Modal visible={manageTarget !== null} transparent animationType="fade" onRequestClose={closeManage}>
+        <View style={pentadbiranStyles.modalOverlay}>
+          <View style={[pentadbiranStyles.modalContainer, { maxWidth: 460 }]}>
+            <View style={pentadbiranStyles.modalHeader}>
+              <Text style={pentadbiranStyles.modalTitle}>Urus Kategori</Text>
+              <TouchableOpacity onPress={closeManage}><X size={22} color={PALETTE.textMutedDark} /></TouchableOpacity>
+            </View>
+
+            <ScrollView style={{ maxHeight: 520 }} contentContainerStyle={pentadbiranStyles.modalBody}>
+              <Text style={pentadbiranStyles.inputLabel}>Nama Kategori</Text>
+              <TextInput
+                style={pentadbiranStyles.modalInput}
+                value={manageNameDraft}
+                onChangeText={setManageNameDraft}
+                placeholder="Cth: 27000"
+                placeholderTextColor={PALETTE.textMutedDark}
+              />
+
+              <Text style={[pentadbiranStyles.inputLabel, { marginTop: 18 }]}>Perkara</Text>
+              {manageRows.map((row, index) => (
+                <View key={row.id ?? `new-${index}`} style={styles.multiRowBlock}>
+                  <View style={styles.multiRowHeader}>
+                    <Text style={styles.multiRowIndex}>Perkara {index + 1}</Text>
+                    <TouchableOpacity style={styles.multiRowDeleteBtn} onPress={() => requestDeleteManageRow(index)}>
+                      <Trash2 size={13} color="#dc2626" />
+                    </TouchableOpacity>
+                  </View>
+
+                  <TextInput
+                    style={[pentadbiranStyles.modalInput, { marginBottom: 10 }]}
+                    value={row.perihal}
+                    onChangeText={(t) => updateManageRow(index, 'perihal', t)}
+                    placeholder="Perihal — Cth: E. Kasut"
+                    placeholderTextColor={PALETTE.textMutedDark}
+                  />
+
+                  <View style={{ flexDirection: 'row', gap: 10 }}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={pentadbiranStyles.inputLabel}>Agihan (RM)</Text>
+                      <TextInput
+                        style={pentadbiranStyles.modalInput}
+                        value={row.agihan}
+                        onChangeText={(t) => updateManageRow(index, 'agihan', t)}
+                        placeholder="20000.00"
+                        keyboardType="numeric"
+                        placeholderTextColor={PALETTE.textMutedDark}
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={pentadbiranStyles.inputLabel}>Belanja (RM)</Text>
+                      <TextInput
+                        style={pentadbiranStyles.modalInput}
+                        value={row.belanja}
+                        onChangeText={(t) => updateManageRow(index, 'belanja', t)}
+                        placeholder="150.00"
+                        keyboardType="numeric"
+                        placeholderTextColor={PALETTE.textMutedDark}
+                      />
+                    </View>
+                  </View>
+                </View>
+              ))}
+
+              <TouchableOpacity style={styles.addRowBtn} onPress={addManageRow}>
+                <Plus size={14} color={PALETTE.orange} />
+                <Text style={styles.addRowBtnText}>Tambah Perkara Lain</Text>
+              </TouchableOpacity>
+
+              {!!manageError && <Text style={{ fontSize: 12, color: '#dc2626', textAlign: 'center', marginBottom: 12 }}>{manageError}</Text>}
+              <TouchableOpacity
+                style={[styles.saveButton, { flexDirection: 'row', justifyContent: 'center', gap: 8 }, isManageSaving && { opacity: 0.7 }]}
+                onPress={handleManageSave}
+                disabled={isManageSaving}
+              >
+                {isManageSaving ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <>
+                    <Check size={16} color="#fff" />
+                    <Text style={styles.saveButtonText}>Simpan</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={manageDeleteIndex !== null} transparent animationType="fade" onRequestClose={() => setManageDeleteIndex(null)}>
+        <View style={pentadbiranStyles.confirmOverlay}>
+          <View style={pentadbiranStyles.confirmBox}>
+            <View style={pentadbiranStyles.confirmBanner}>
+              <View style={pentadbiranStyles.confirmIconCircle}>
+                <AlertTriangle size={26} color="#ef4444" />
+              </View>
+              <Text style={pentadbiranStyles.confirmTitle}>Padam Perkara</Text>
+              <Text style={pentadbiranStyles.confirmSubtitle}>
+                Padam perkara ini{displayManageDeleteRef.current?.perihal ? ` "${displayManageDeleteRef.current.perihal}"` : ''}? Tindakan ini tidak boleh dibatalkan.
+              </Text>
+            </View>
+
+            <View style={pentadbiranStyles.confirmActions}>
+              <TouchableOpacity style={pentadbiranStyles.confirmCancelBtn} onPress={() => setManageDeleteIndex(null)} disabled={isDeletingManageRow}>
+                <Text style={pentadbiranStyles.confirmCancelText}>Batal</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[pentadbiranStyles.confirmConfirmBtn, isDeletingManageRow && { opacity: 0.7 }]}
+                onPress={confirmDeleteManageRow}
+                disabled={isDeletingManageRow}
+              >
+                {isDeletingManageRow ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <>
+                    <Trash2 size={16} color="#fff" />
+                    <Text style={pentadbiranStyles.confirmConfirmText}>Padam</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={editSingleItem !== null} transparent animationType="fade" onRequestClose={closeEditSingle}>
+        <View style={pentadbiranStyles.modalOverlay}>
+          <View style={pentadbiranStyles.modalContainer}>
+            <View style={pentadbiranStyles.modalHeader}>
+              <Text style={pentadbiranStyles.modalTitle}>Kemaskini Perkara</Text>
+              <TouchableOpacity onPress={closeEditSingle}><X size={22} color={PALETTE.textMutedDark} /></TouchableOpacity>
+            </View>
+            <View style={pentadbiranStyles.modalBody}>
+              <Text style={pentadbiranStyles.inputLabel}>Perihal</Text>
+              <TextInput
+                style={pentadbiranStyles.modalInput}
+                value={editSingleDraft.perihal}
+                onChangeText={(t) => setEditSingleDraft((prev) => ({ ...prev, perihal: t }))}
+                placeholder="Perihal — Cth: E. Kasut"
+                placeholderTextColor={PALETTE.textMutedDark}
+              />
+
+              <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={pentadbiranStyles.inputLabel}>Agihan (RM)</Text>
+                  <TextInput
+                    style={pentadbiranStyles.modalInput}
+                    value={editSingleDraft.agihan}
+                    onChangeText={(t) => setEditSingleDraft((prev) => ({ ...prev, agihan: t }))}
+                    placeholder="20000.00"
+                    keyboardType="numeric"
+                    placeholderTextColor={PALETTE.textMutedDark}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={pentadbiranStyles.inputLabel}>Belanja (RM)</Text>
+                  <TextInput
+                    style={pentadbiranStyles.modalInput}
+                    value={editSingleDraft.belanja}
+                    onChangeText={(t) => setEditSingleDraft((prev) => ({ ...prev, belanja: t }))}
+                    placeholder="150.00"
+                    keyboardType="numeric"
+                    placeholderTextColor={PALETTE.textMutedDark}
+                  />
+                </View>
+              </View>
+
+              {!!editSingleError && <Text style={{ fontSize: 12, color: '#dc2626', textAlign: 'center', marginTop: 12 }}>{editSingleError}</Text>}
+              <TouchableOpacity
+                style={[styles.saveButton, { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8 }, isSavingSingle && { opacity: 0.7 }]}
+                onPress={handleEditSingleSave}
+                disabled={isSavingSingle}
+              >
+                {isSavingSingle ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <>
+                    <Check size={16} color="#fff" />
+                    <Text style={styles.saveButtonText}>Simpan</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       <BudgetEditModal
         visible={modalVisible}
-        isNew={!editItem}
         kategori={kategori}
         setKategori={setKategori}
         rows={rows}
         setRows={setRows}
-        existingCategories={existingCategories}
         onSave={handleSave}
         onClose={() => setModalVisible(false)}
         error={formError}

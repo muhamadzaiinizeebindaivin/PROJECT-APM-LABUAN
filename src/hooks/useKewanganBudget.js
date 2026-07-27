@@ -8,9 +8,10 @@ const SCHEMA = 'sandbox';
 export function useKewanganBudget() {
   const [budgetData, setBudgetData] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
 
   const fetchBudget = useCallback(async () => {
-    setLoading(true);
+    if (!hasLoadedOnce) setLoading(true);
     try {
       const { data, error } = await supabaseSandbox
         .schema(SCHEMA)
@@ -23,8 +24,9 @@ export function useKewanganBudget() {
       setBudgetData(KEWANGAN_BUDGET);
     } finally {
       setLoading(false);
+      setHasLoadedOnce(true);
     }
-  }, []);
+  }, [hasLoadedOnce]);
 
   useEffect(() => { fetchBudget(); }, [fetchBudget]);
 
@@ -77,10 +79,23 @@ export function useKewanganBudget() {
     }
   };
 
+  // Renomme une catégorie : met à jour `kategori` sur toutes les lignes qui lui appartiennent d'un coup
+  const renameCategory = async (oldName, newName) => {
+    try {
+      const { error } = await supabaseSandbox.schema(SCHEMA).from('kewangan_budget').update({ kategori: newName }).eq('kategori', oldName);
+      if (error) throw error;
+      await fetchBudget();
+      return true;
+    } catch (error) {
+      console.error('Error renaming kewangan_budget category:', error);
+      return false;
+    }
+  };
+
   const budgetUpdatedAt = budgetData.reduce(
     (latest, item) => (item.updated_at && (!latest || item.updated_at > latest) ? item.updated_at : latest),
     null
   );
 
-  return { budgetData, loading, saveBudgetItem, deleteBudgetItem, deleteCategory, budgetUpdatedAt };
+  return { budgetData, loading, saveBudgetItem, deleteBudgetItem, deleteCategory, renameCategory, budgetUpdatedAt };
 }
