@@ -6,6 +6,8 @@ import { useJpbdDirectory } from '../../hooks/useJpbdDirectory';
 import { useAgencyLogo } from '../../hooks/useAgencyLogo';
 import { useKpi } from '../../hooks/useKpi';
 import KpiSection from '../pentadbiran/KpiSection';
+import { useSekretariatDocuments } from '../../hooks/useSekretariatDocuments';
+import SekretariatDocumentsSection from './SekretariatDocumentsSection';
 import { appStyles as styles } from '../../styles/appStyles';
 import { PALETTE } from '../../constants/palette';
 
@@ -33,6 +35,7 @@ export default function JpbdSection({ userRole, isEditMode }) {
   } = useJpbdDirectory();
   const { pickAndUploadLogo, uploadingLogo } = useAgencyLogo();
   const { kpiList, saveKpiItem, deleteKpiItem, reorderKpi } = useKpi('sekretariat');
+  const { documents, loading: loadingDocuments, uploading: uploadingDocument, uploadDocument, deleteDocument } = useSekretariatDocuments();
 
   // Sélectionne automatiquement la 1re agence au chargement
   useEffect(() => {
@@ -85,6 +88,17 @@ export default function JpbdSection({ userRole, isEditMode }) {
 
   return (
     <View>
+      {/* ---- Dokumen & Imej ---- */}
+      <SekretariatDocumentsSection
+        documents={documents}
+        loading={loadingDocuments}
+        isEditing={isEditMode}
+        uploading={uploadingDocument}
+        uploadDocument={uploadDocument}
+        deleteDocument={deleteDocument}
+        onNotify={(type, message) => console.log(type, message) /* remplace par le toast réel si JpbdSection en a un */}
+      />
+
       {/* ---- KPI ---- */}
       <KpiSection
         kpiItems={kpiList}

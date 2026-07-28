@@ -158,14 +158,9 @@ export default function PentadbiranScreen({ userRole }) {
             url={pageData.cartaOrganisasiUrl}
             onChangeUrl={(url) => updateField('cartaOrganisasiUrl', url)}
             onSaveUrl={async (url) => {
-              try {
-                await saveData({ cartaOrganisasiUrl: url });
-                return true;
-              } catch (error) {
-                console.error('Error saving org chart:', error);
-                Alert.alert('Ralat', 'Gagal menyimpan gambar.');
-                return false;
-              }
+              const ok = await persistPageData({ cartaOrganisasiUrl: url });
+              if (!ok) Alert.alert('Ralat', 'Gagal menyimpan gambar.');
+              return ok;
             }}
           />
         </View>
