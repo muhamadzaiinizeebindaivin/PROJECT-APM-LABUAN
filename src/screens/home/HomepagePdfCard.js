@@ -467,7 +467,6 @@ export default function HomepagePdfCard({ theme, userRole, isEditing, onHeightCh
         file_name: file.name,
         file_url: `${urlData.publicUrl}?t=${Date.now()}`, // cache-busting
         uploaded_at: new Date().toISOString(),
-        uploaded_by: user?.id,
       });
 
     setUploading(false);

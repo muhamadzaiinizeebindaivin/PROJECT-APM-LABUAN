@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, StatusBar, TouchableOpacity, Alert, Platform, Text, ActivityIndicator, Modal, TextInput, KeyboardAvoidingView, Image } from 'react-native';import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { LayoutDashboard, Users, CreditCard, GraduationCap, Truck, ShieldAlert, Briefcase, Info, LogOut, UserCog, ShieldCheck, Building2, Lock, User, ArrowRight, AlertCircle, X } from 'lucide-react-native';
+import { LayoutDashboard, Users, CreditCard, GraduationCap, Truck, ShieldAlert, Briefcase, Info, LogOut, UserCog, ShieldCheck, Building2, Lock, User, ArrowRight, AlertCircle, X, Eye, EyeOff, CheckCircle } from 'lucide-react-native';
 import { PALETTE } from './src/constants/palette';
 import { useFonts, Orbitron_600SemiBold, Orbitron_700Bold } from '@expo-google-fonts/orbitron';
 import { Inter_400Regular, Inter_500Medium } from '@expo-google-fonts/inter';
@@ -183,6 +183,39 @@ export default function App() {
   const [loginError, setLoginError] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
+  const [forgotPasswordMode, setForgotPasswordMode] = useState(false);
+
+  const handleForgotPassword = async () => {
+    if (!loginUsername.trim()) {
+      setLoginError('Sila masukkan e-mel anda.');
+      return;
+    }
+    const email = loginUsername.toLowerCase().trim().includes('@')
+      ? loginUsername.toLowerCase().trim()
+      : `${loginUsername.toLowerCase().trim()}@apm-labuan.com`;
+
+    setResetLoading(true);
+    setLoginError('');
+    const { error } = await supabaseSandbox.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin,
+    });
+    setResetLoading(false);
+
+    if (error) {
+      setLoginError('Gagal menghantar e-mel. Sila cuba lagi.');
+      return;
+    }
+    setResetSent(true);
+  };
+
+  const backToLogin = () => {
+    setForgotPasswordMode(false);
+    setResetSent(false);
+    setLoginError('');
+  };
 
   const handleModalLogin = async () => {
     setLoginError('');
@@ -207,6 +240,8 @@ export default function App() {
     setLoginError('');
     setLoginUsername('');
     setLoginPassword('');
+    setForgotPasswordMode(false);
+    setResetSent(false);
   };
 
   const [fontsLoaded] = useFonts({
@@ -458,20 +493,40 @@ export default function App() {
                     editable={!loginLoading}
                   />
                 </View>
-                <View style={{ flexDirection: 'row', alignItems: 'center', borderWidth: 1.5, borderColor: '#e2e8f0', borderRadius: 12, paddingHorizontal: 14, height: 52, backgroundColor: '#f8fafc' }}>
-                  <Lock size={17} color="#94a3b8" style={{ marginRight: 10 }} />
-                  <TextInput
-                    style={{ flex: 1, fontSize: 14, fontWeight: '600', color: '#0f172a', outlineStyle: 'none' }}
-                    placeholder="Kata Laluan"
-                    placeholderTextColor="#94a3b8"
-                    value={loginPassword}
-                    onChangeText={setLoginPassword}
-                    secureTextEntry
-                    returnKeyType="done"
-                    editable={!loginLoading}
-                    onSubmitEditing={handleModalLogin}
-                  />
-                </View>
+                {!forgotPasswordMode && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', borderWidth: 1.5, borderColor: '#e2e8f0', borderRadius: 12, paddingHorizontal: 14, height: 52, backgroundColor: '#f8fafc' }}>
+                    <Lock size={17} color="#94a3b8" style={{ marginRight: 10 }} />
+                    <TextInput
+                      style={{ flex: 1, fontSize: 14, fontWeight: '600', color: '#0f172a', outlineStyle: 'none' }}
+                      placeholder="Kata Laluan"
+                      placeholderTextColor="#94a3b8"
+                      value={loginPassword}
+                      onChangeText={setLoginPassword}
+                      secureTextEntry={!showLoginPassword}
+                      returnKeyType="done"
+                      editable={!loginLoading}
+                      onSubmitEditing={handleModalLogin}
+                    />
+                    <TouchableOpacity onPress={() => setShowLoginPassword((v) => !v)} style={{ paddingLeft: 8 }}>
+                      {showLoginPassword ? <EyeOff size={17} color="#94a3b8" /> : <Eye size={17} color="#94a3b8" />}
+                    </TouchableOpacity>
+                  </View>
+                )}
+
+                <TouchableOpacity onPress={() => (forgotPasswordMode ? backToLogin() : setForgotPasswordMode(true))} style={{ alignSelf: 'flex-end' }}>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: PALETTE.orange }}>
+                    {forgotPasswordMode ? '← Kembali ke Log Masuk' : 'Lupa kata laluan?'}
+                  </Text>
+                </TouchableOpacity>
+
+                {resetSent ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#f0fdf4', padding: 10, borderRadius: 8, borderWidth: 1, borderColor: '#bbf7d0' }}>
+                    <CheckCircle size={14} color="#16a34a" />
+                    <Text style={{ color: '#166534', fontSize: 12, fontWeight: '700', flex: 1 }}>
+                      E-mel tetapan semula kata laluan telah dihantar. Sila semak peti masuk anda.
+                    </Text>
+                  </View>
+                ) : null}
 
                 {loginError ? (
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#fef2f2', padding: 10, borderRadius: 8, borderWidth: 1, borderColor: '#fecaca' }}>
@@ -481,14 +536,19 @@ export default function App() {
                 ) : null}
 
                 <TouchableOpacity
-                  onPress={handleModalLogin}
-                  disabled={loginLoading}
-                  style={{ backgroundColor: PALETTE.orange, borderRadius: 12, height: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: loginLoading ? 0.7 : 1, marginTop: 2 }}
+                  onPress={forgotPasswordMode ? handleForgotPassword : handleModalLogin}
+                  disabled={forgotPasswordMode ? resetLoading : loginLoading}
+                  style={{ backgroundColor: PALETTE.orange, borderRadius: 12, height: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: (forgotPasswordMode ? resetLoading : loginLoading) ? 0.7 : 1, marginTop: 2 }}
                 >
-                  {loginLoading
-                    ? <ActivityIndicator color="#fff" />
-                    : <><Text style={{ color: '#fff', fontSize: 15, fontWeight: '800' }}>Log Masuk</Text><ArrowRight size={18} color="#fff" /></>
-                  }
+                  {forgotPasswordMode ? (
+                    resetLoading
+                      ? <ActivityIndicator color="#fff" />
+                      : <><Text style={{ color: '#fff', fontSize: 15, fontWeight: '800' }}>Hantar E-mel Tetapan Semula</Text><ArrowRight size={18} color="#fff" /></>
+                  ) : (
+                    loginLoading
+                      ? <ActivityIndicator color="#fff" />
+                      : <><Text style={{ color: '#fff', fontSize: 15, fontWeight: '800' }}>Log Masuk</Text><ArrowRight size={18} color="#fff" /></>
+                  )}
                 </TouchableOpacity>
               </View>
 
