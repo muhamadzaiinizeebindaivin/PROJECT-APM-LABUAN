@@ -58,6 +58,7 @@ export default function AgencyTrackingScreen({ onLogout }) {
   const [accessCode, setAccessCode] = useState('');
   const [trackerId, setTrackerId] = useState(null);
   const [joining, setJoining] = useState(false);
+  const [joinError, setJoinError] = useState(null);
 
   const [isTracking, setIsTracking] = useState(false);
   const [location, setLocation] = useState(null);
@@ -113,19 +114,20 @@ export default function AgencyTrackingScreen({ onLogout }) {
 
   const handleJoin = async () => {
     if (!memberName.trim()) {
-      Alert.alert('Ralat', 'Sila masukkan nama anda.');
+      setJoinError('Sila masukkan nama anda.');
       return;
     }
     if (!accessCode.trim()) {
-      Alert.alert('Ralat', 'Sila masukkan kod akses agensi.');
+      setJoinError('Sila masukkan kod akses agensi.');
       return;
     }
+    setJoinError(null);
     setJoining(true);
 
     // Session anonyme requise pour que RLS (has_role) fonctionne côté agency_trackers/profiles
     const { data: authData, error: authError } = await supabase.auth.signInAnonymously();
     if (authError || !authData?.user) {
-      Alert.alert('Ralat', 'Gagal memulakan sesi. Sila cuba lagi.');
+      setJoinError('Gagal memulakan sesi. Sila cuba lagi.');
       setJoining(false);
       return;
     }
@@ -137,7 +139,7 @@ export default function AgencyTrackingScreen({ onLogout }) {
     });
 
     if (error) {
-      Alert.alert('Ralat', error.message?.includes('Invalid access code') ? 'Kod akses tidak sah.' : 'Gagal mendaftar. Sila cuba lagi.');
+      setJoinError(error.message?.includes('Invalid access code') ? 'Kod akses tidak sah.' : 'Gagal mendaftar. Sila cuba lagi.');
       setJoining(false);
       return;
     }
@@ -353,7 +355,7 @@ export default function AgencyTrackingScreen({ onLogout }) {
   if (!trackerId) {
     return (
       <View style={[styles.container, { justifyContent: 'center' }]}>
-        <TouchableOpacity style={styles.backButton} onPress={() => setSelectedAgency(null)}>
+        <TouchableOpacity style={styles.backButton} onPress={() => { setSelectedAgency(null); setJoinError(null); }}>
           <ArrowLeft color={PALETTE.textDark} size={22} />
           <Text style={styles.backText}>Tukar Agensi</Text>
         </TouchableOpacity>
@@ -387,6 +389,8 @@ export default function AgencyTrackingScreen({ onLogout }) {
             autoCapitalize="none"
           />
         </View>
+
+        {!!joinError && <Text style={styles.joinErrorText}>{joinError}</Text>}
 
         <TouchableOpacity
           style={[styles.joinButton, joining && { opacity: 0.7 }]}
@@ -501,4 +505,5 @@ const styles = StyleSheet.create({
 
   joinButton: { width: '100%', paddingVertical: 16, borderRadius: 14, alignItems: 'center', backgroundColor: PALETTE.orange },
   joinButtonText: { color: '#fff', fontSize: 15, fontWeight: '800' },
+  joinErrorText: { color: '#dc2626', fontSize: 13, fontWeight: '700', textAlign: 'center', marginBottom: 14 },
 });
