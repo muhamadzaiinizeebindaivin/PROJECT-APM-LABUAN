@@ -374,7 +374,7 @@ export default function BudgetSection({ budgetData, loading, isEditMode, saveBud
 
           {!loading && (existingCategories.length === 0 ? (
             <Text style={{ fontSize: 13, color: PALETTE.textMutedDark, textAlign: 'center', paddingVertical: 20 }}>
-              Tiada kategori lagi. Klik "+ Tambah" untuk mula.
+              Tiada kategori lagi.
             </Text>
           ) : (
           <>
