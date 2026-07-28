@@ -1,7 +1,9 @@
 // src/screens/LatihanScreen.js
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { Users, Calendar, Plus, Edit, Trash2, TrendingUp, GraduationCap, BarChart3, PieChart, Target } from 'lucide-react-native';
+import { Users, Calendar, Plus, Edit, Trash2, TrendingUp, GraduationCap, BarChart3, PieChart, Target, CheckCircle2, XCircle } from 'lucide-react-native';
+import { useLatihanBudget } from '../hooks/useLatihanBudget';
+import BudgetSection from './kewangan/BudgetSection';
 import { useLatihan } from '../hooks/useLatihan';
 import AdminEditButton from '../components/AdminEditButton';
 import HoverTip from '../components/HoverTip';
@@ -31,6 +33,18 @@ export default function LatihanScreen({ theme, userRole }) {
   const [hoveredMonthIndex, setHoveredMonthIndex] = useState(null);
 
   const { kpiList, saveKpiItem, deleteKpiItem, reorderKpi, kpiUpdatedAt } = useKpi('latihan');
+  const latihanBudget = useLatihanBudget();
+
+  const [notification, setNotification] = useState(null);
+  const notificationTimeoutRef = useRef(null);
+  const showNotification = (type, message) => {
+    setNotification({ type, message });
+    if (notificationTimeoutRef.current) clearTimeout(notificationTimeoutRef.current);
+    notificationTimeoutRef.current = setTimeout(() => setNotification(null), 3000);
+  };
+  useEffect(() => () => {
+    if (notificationTimeoutRef.current) clearTimeout(notificationTimeoutRef.current);
+  }, []);
 
   // Convertit un timestamp ISO (colonne updated_at) au format d'affichage DD/M/YYYY HH:MM
   const formatTimestamp = (iso) => {
@@ -43,7 +57,7 @@ export default function LatihanScreen({ theme, userRole }) {
   };
 
   // DIKEMASKINI = le plus récent updated_at parmi toutes les tables qui composent la page
-  const latestRaw = [latihanUpdatedAt, unit.staffUpdatedAt, kpiUpdatedAt].filter(Boolean).sort().slice(-1)[0] || null;
+  const latestRaw = [latihanUpdatedAt, unit.staffUpdatedAt, kpiUpdatedAt, latihanBudget.budgetUpdatedAt].filter(Boolean).sort().slice(-1)[0] || null;
   const dikemaskini = formatTimestamp(latestRaw);
 
   const [isFormModalVisible, setFormModalVisible] = useState(false);
@@ -101,6 +115,47 @@ export default function LatihanScreen({ theme, userRole }) {
             ) : null}
           </View>
           <AdminEditButton isEditMode={isEditMode} setIsEditMode={setIsEditMode} userRole={userRole} section="Latihan" />
+
+          {notification && (
+            <View
+              pointerEvents="none"
+              style={{
+                position: 'absolute', top: '100%', left: 0, right: 0,
+                alignItems: 'center', paddingTop: 10, zIndex: 30,
+              }}
+            >
+              <View
+                style={{
+                  flexDirection: 'row', alignItems: 'center', gap: 10, maxWidth: '92%',
+                  backgroundColor: notification.type === 'success' ? '#f0fdf4' : '#fef2f2',
+                  borderWidth: 1,
+                  borderColor: notification.type === 'success' ? '#bbf7d0' : '#fecaca',
+                  borderRadius: 12,
+                  paddingVertical: 10,
+                  paddingHorizontal: 14,
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.12,
+                  shadowRadius: 10,
+                  elevation: 5,
+                }}
+              >
+                {notification.type === 'success' ? (
+                  <CheckCircle2 size={17} color="#16a34a" />
+                ) : (
+                  <XCircle size={17} color="#dc2626" />
+                )}
+                <Text
+                  style={{
+                    color: notification.type === 'success' ? '#166534' : '#991b1b',
+                    fontWeight: '700', fontSize: 13, flexShrink: 1,
+                  }}
+                >
+                  {notification.message}
+                </Text>
+              </View>
+            </View>
+          )}
         </View>
       )}
 
@@ -149,6 +204,17 @@ export default function LatihanScreen({ theme, userRole }) {
           removeKpiItem={(item) => deleteKpiItem(item)}
           persistKpi={reorderKpi}
           showSubSeksyen={false}
+        />
+
+        <BudgetSection
+          budgetData={latihanBudget.budgetData}
+          loading={latihanBudget.loading}
+          isEditMode={isEditMode}
+          saveBudgetItem={latihanBudget.saveBudgetItem}
+          deleteBudgetItem={latihanBudget.deleteBudgetItem}
+          deleteCategory={latihanBudget.deleteCategory}
+          renameCategory={latihanBudget.renameCategory}
+          onNotify={showNotification}
         />
 
         {/* ---- Statistik Bulanan ---- */}
