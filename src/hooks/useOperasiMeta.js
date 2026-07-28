@@ -23,7 +23,7 @@ export function useOperasiMeta() {
         return data?.[0]?.updated_at || null;
       })
     );
-    console.log('[OperasiMeta] fetch results:', results);
+    
     setDikemaskiniRaw(results.filter(Boolean).sort().slice(-1)[0] || null);
   }, []);
 
@@ -44,7 +44,7 @@ export function useOperasiMeta() {
       );
     });
     channel.subscribe((status) => {
-      console.log('[OperasiMeta] channel status:', status);
+      
     });
 
     return () => { supabaseSandbox.removeChannel(channel); };

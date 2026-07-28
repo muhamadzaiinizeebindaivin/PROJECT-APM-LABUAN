@@ -91,7 +91,7 @@ export default function LiveMapTab({ theme, userRole }) {
       let data;
       try { data = JSON.parse(event.data); } catch (e) { return; }
       if (data.type === 'MAP_CLICKED' && activeCalamityTool) {
-        console.log('MAP_CLICKED reçu', data, 'activeCalamityTool:', activeCalamityTool);
+        
         setPendingPlacement({ lat: data.lat, lng: data.lng });
         setCalamityModalVisible(true);
       } else if (data.type === 'DELETE_CALAMITY_REQUEST') {
@@ -107,7 +107,7 @@ export default function LiveMapTab({ theme, userRole }) {
   }, [activeCalamityTool]);
 
   useEffect(() => {
-    console.log('calamityPoints update:', calamityPoints.length, calamityPoints.map(c => c.id));
+    
     if (iframeRef?.current?.contentWindow) {
       const payload = calamityPoints
         .filter(c => c.status === 'active')
@@ -145,7 +145,7 @@ export default function LiveMapTab({ theme, userRole }) {
       latitude: pendingPlacement.lat,
       longitude: pendingPlacement.lng,
     });
-    console.log('saveCalamity result:', error);
+    
     if (!error) {
       setCalamityModalVisible(false);
       setCalamityDescription('');
