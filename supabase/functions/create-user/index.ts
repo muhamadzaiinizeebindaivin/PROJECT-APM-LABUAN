@@ -9,15 +9,27 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const jsonResponse = (body: Record<string, unknown>, status: number) =>
-  new Response(JSON.stringify(body), {
-    status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
-
 const ALLOWED_ROLES = ["admin", "pentadbiran", "kewangan", "logistik", "angkatan", "sekretariat", "latihan", "operasi"];
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MAX_NAME_LENGTH = 100;
+
+function jsonResponse(body: Record<string, unknown>, status: number) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
+// Traduit les messages d'erreur techniques (contrainte de clé unique, Auth "already registered", etc.)
+// en un texte clair pour l'utilisateur.
+function friendlyDuplicateEmailMessage(raw: string): string {
+  const lower = raw.toLowerCase();
+  const isDuplicate =
+    lower.includes("duplicate key value violates unique constraint") ||
+    lower.includes("already registered") ||
+    lower.includes("already exists");
+  return isDuplicate ? "E-mel ini sudah wujud." : raw;
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -72,22 +84,36 @@ serve(async (req) => {
       return jsonResponse({ error: "Peranan tidak sah." }, 400);
     }
 
-    // ── 4. Crée le compte auth (via clé service_role) ──
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
+    // ── 4. Vérifie si un profil existe déjà pour cet e-mail, AVANT toute création ──
+    // Empêche d'atteindre le chemin de nettoyage plus bas pour un compte auth qui existait déjà
+    // avant cet appel (ce qui supprimerait par erreur un compte utilisateur légitime).
+    const { data: existingProfile } = await supabaseAdmin
+      .schema("sandbox")
+      .from("profiles")
+      .select("id")
+      .eq("email", cleanEmail)
+      .maybeSingle();
+
+    if (existingProfile) {
+      return jsonResponse({ error: "E-mel ini sudah wujud." }, 400);
+    }
+
+    // ── 5. Crée le compte auth (via clé service_role) ──
     const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.inviteUserByEmail(
       cleanEmail,
       { redirectTo: ALLOWED_ORIGIN }
     );
 
     if (createError) {
-      return jsonResponse({ error: createError.message }, 400);
+      return jsonResponse({ error: friendlyDuplicateEmailMessage(createError.message) }, 400);
     }
 
-    // ── 5. Crée le profil lié ──
+    // ── 6. Crée le profil lié ──
     const { error: profileError } = await supabaseAdmin
       .schema("sandbox")
       .from("profiles")
@@ -99,9 +125,10 @@ serve(async (req) => {
       }]);
 
     if (profileError) {
-      // Nettoyage : si le profil échoue, on retire le compte auth orphelin créé juste avant
+      // Ce compte auth vient tout juste d'être créé par cet appel précis (aucun profil
+      // n'existait avant, vérifié à l'étape 4) — sûr de le nettoyer ici.
       await supabaseAdmin.auth.admin.deleteUser(newUser.user.id);
-      return jsonResponse({ error: profileError.message }, 400);
+      return jsonResponse({ error: friendlyDuplicateEmailMessage(profileError.message) }, 400);
     }
 
     return jsonResponse({ success: true, displayName: cleanDisplayName, role }, 200);

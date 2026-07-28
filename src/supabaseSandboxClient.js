@@ -11,7 +11,7 @@ export const supabaseSandbox = createClient(supabaseUrl, supabaseKey, {
     storageKey: 'sb-sandbox-auth-token',
     persistSession: true,
     autoRefreshToken: true,
-    detectSessionInUrl: false,
+    detectSessionInUrl: true,
     storage: Platform.OS === 'web' ? window.localStorage : undefined,
   },
 });

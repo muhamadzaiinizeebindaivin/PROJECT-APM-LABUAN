@@ -578,66 +578,61 @@ export default function PetaTab({ theme, userRole }) {
           </View>
         )}
 
-        {(() => {
-          const canAddBencana = userRole === 'sekretariat' || userRole === 'admin';
-          return (
-            <>
-              <TouchableOpacity
-                style={[styles.historyToggleBtn, { right: canAddBencana ? 116 : 16 }]}
-                onPress={() => setSidePanel(sidePanel === 'history' ? 'none' : 'history')}
-                {...(Platform.OS === 'web' ? {
-                  onMouseEnter: () => setHistoryBtnHovered(true),
-                  onMouseLeave: () => setHistoryBtnHovered(false),
-                } : {})}
-              >
-                <History size={18} color={PALETTE.orange} />
-                {historyBtnHovered && (
-                  <View style={styles.historyTooltip}>
-                    <Text style={styles.historyTooltipText}>Sejarah Patrol Agensi</Text>
-                  </View>
-                )}
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.summaryToggleBtn, { right: canAddBencana ? 164 : 64 }]}
-                onPress={() => setSidePanel(sidePanel === 'summary' ? 'none' : 'summary')}
-                {...(Platform.OS === 'web' ? {
-                  onMouseEnter: () => setSummaryBtnHovered(true),
-                  onMouseLeave: () => setSummaryBtnHovered(false),
-                } : {})}
-              >
-                <ClipboardList size={18} color={PALETTE.orange} />
-                {summaryBtnHovered && (
-                  <View style={styles.historyTooltip}>
-                    <Text style={styles.historyTooltipText}>Ringkasan Bencana</Text>
-                  </View>
-                )}
-              </TouchableOpacity>
-            </>
-          );
-        })()}
-
-        {(userRole === 'sekretariat' || userRole === 'admin') && (
+        <View style={styles.mapToolbar}>
           <TouchableOpacity
-            style={[styles.addBencanaToggleBtn, isPlacingBencana && styles.addBencanaToggleBtnActive]}
-            onPress={() => setIsPlacingBencana(!isPlacingBencana)}
+            style={styles.historyToggleBtn}
+            onPress={() => setSidePanel(sidePanel === 'history' ? 'none' : 'history')}
             {...(Platform.OS === 'web' ? {
-              onMouseEnter: () => setAddBencanaBtnHovered(true),
-              onMouseLeave: () => setAddBencanaBtnHovered(false),
+              onMouseEnter: () => setHistoryBtnHovered(true),
+              onMouseLeave: () => setHistoryBtnHovered(false),
             } : {})}
           >
-            {isPlacingBencana ? (
-              <X size={18} color={PALETTE.white} />
-            ) : (
-              <Plus size={18} color={PALETTE.orange} />
-            )}
-            {addBencanaBtnHovered && !isPlacingBencana && (
+            <History size={18} color={PALETTE.orange} />
+            {historyBtnHovered && (
               <View style={styles.historyTooltip}>
-                <Text style={styles.historyTooltipText}>Tambah Bencana</Text>
+                <Text style={styles.historyTooltipText}>Sejarah Patrol Agensi</Text>
               </View>
             )}
           </TouchableOpacity>
-        )}
+
+          <TouchableOpacity
+            style={styles.summaryToggleBtn}
+            onPress={() => setSidePanel(sidePanel === 'summary' ? 'none' : 'summary')}
+            {...(Platform.OS === 'web' ? {
+              onMouseEnter: () => setSummaryBtnHovered(true),
+              onMouseLeave: () => setSummaryBtnHovered(false),
+            } : {})}
+          >
+            <ClipboardList size={18} color={PALETTE.orange} />
+            {summaryBtnHovered && (
+              <View style={styles.historyTooltip}>
+                <Text style={styles.historyTooltipText}>Ringkasan Bencana</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+
+          {(userRole === 'sekretariat' || userRole === 'admin') && (
+            <TouchableOpacity
+              style={[styles.addBencanaToggleBtn, isPlacingBencana && styles.addBencanaToggleBtnActive]}
+              onPress={() => setIsPlacingBencana(!isPlacingBencana)}
+              {...(Platform.OS === 'web' ? {
+                onMouseEnter: () => setAddBencanaBtnHovered(true),
+                onMouseLeave: () => setAddBencanaBtnHovered(false),
+              } : {})}
+            >
+              {isPlacingBencana ? (
+                <X size={18} color={PALETTE.white} />
+              ) : (
+                <Plus size={18} color={PALETTE.orange} />
+              )}
+              {addBencanaBtnHovered && !isPlacingBencana && (
+                <View style={styles.historyTooltip}>
+                  <Text style={styles.historyTooltipText}>Tambah Bencana</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          )}
+        </View>
         {isPlacingBencana && (
           <Text style={styles.placingBencanaHint}>Klik pada peta untuk letak titik</Text>
         )}

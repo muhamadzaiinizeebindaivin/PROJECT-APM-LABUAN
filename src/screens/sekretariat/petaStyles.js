@@ -40,20 +40,21 @@ export const petaStyles = StyleSheet.create({
   agencyLegendDot: { width: 10, height: 10, borderRadius: 5 },
   agencyLegendLabel: { fontSize: 11, fontWeight: '700', color: PALETTE.textDark, flex: 1 },
 
+  mapToolbar: {
+    position: 'absolute', top: 16, right: 16, zIndex: 10,
+    flexDirection: 'row', gap: 10,
+  },
   historyToggleBtn: {
-    position: 'absolute', top: 16, right: 116, zIndex: 10,
     width: 40, height: 40, borderRadius: 12, backgroundColor: PALETTE.cardLight,
     justifyContent: 'center', alignItems: 'center',
     shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 10, elevation: 4,
   },
   summaryToggleBtn: {
-    position: 'absolute', top: 16, right: 164, zIndex: 10,
     width: 40, height: 40, borderRadius: 12, backgroundColor: PALETTE.cardLight,
     justifyContent: 'center', alignItems: 'center',
     shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 10, elevation: 4,
   },
   addBencanaToggleBtn: {
-    position: 'absolute', top: 16, right: 16, zIndex: 10,
     width: 40, height: 40, borderRadius: 12, backgroundColor: PALETTE.cardLight,
     justifyContent: 'center', alignItems: 'center',
     shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 10, elevation: 4,

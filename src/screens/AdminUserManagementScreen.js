@@ -141,6 +141,15 @@ export default function AdminUserManagementScreen() {
 
     setLoading(false);
 
+    // Remplace les messages techniques de la base de données par un texte clair pour l'utilisateur
+    const friendlyErrorMessage = (raw) => {
+      if (!raw) return raw;
+      if (raw.includes('duplicate key value violates unique constraint') || raw.includes('already registered') || raw.includes('already exists')) {
+        return 'E-mel ini sudah wujud.';
+      }
+      return raw;
+    };
+
     if (error) {
       let detailedMessage = error.message || 'Ralat rangkaian.';
       try {
@@ -149,12 +158,12 @@ export default function AdminUserManagementScreen() {
           if (errorBody?.error) detailedMessage = errorBody.error;
         }
       } catch (e) {}
-      setFeedback({ type: 'error', message: detailedMessage });
+      setFeedback({ type: 'error', message: friendlyErrorMessage(detailedMessage) });
       return;
     }
 
     if (data?.error) {
-      setFeedback({ type: 'error', message: data.error });
+      setFeedback({ type: 'error', message: friendlyErrorMessage(data.error) });
       return;
     }
 

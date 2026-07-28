@@ -80,16 +80,31 @@ serve(async (req) => {
         });
       }
 
-      // Vérifie quels comptes n'ont pas encore confirmé leur invitation
-      const usersWithStatus = await Promise.all(
-        (profiles || []).map(async (p) => {
-          const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(p.id);
-          return {
-            ...p,
-            pending: !authUser?.user?.email_confirmed_at,
-          };
-        })
-      );
+      // Un seul appel à l'API Admin Auth (au lieu d'un appel par utilisateur affiché),
+      // puis correspondance en mémoire — évite le problème N+1 qui ralentissait la liste.
+      const pendingMap = new Map<string, boolean>();
+      if (profiles && profiles.length > 0) {
+        let authPage = 1;
+        const authPerPage = 200; // large marge, ajuste si ta base a plus de comptes que ça
+        let keepGoing = true;
+        while (keepGoing) {
+          const { data: authPageData, error: authListError } = await supabaseAdmin.auth.admin.listUsers({
+            page: authPage,
+            perPage: authPerPage,
+          });
+          if (authListError || !authPageData?.users?.length) break;
+          for (const u of authPageData.users) {
+            pendingMap.set(u.id, !u.email_confirmed_at);
+          }
+          keepGoing = authPageData.users.length === authPerPage;
+          authPage += 1;
+        }
+      }
+
+      const usersWithStatus = (profiles || []).map((p) => ({
+        ...p,
+        pending: pendingMap.get(p.id) ?? false,
+      }));
 
       return new Response(JSON.stringify({
         users: usersWithStatus,
