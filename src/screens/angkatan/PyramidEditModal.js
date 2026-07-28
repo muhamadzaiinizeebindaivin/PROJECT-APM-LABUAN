@@ -1,10 +1,10 @@
 import React from 'react';
-import { View, Text, TextInput, TouchableOpacity, Modal } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Modal, ActivityIndicator } from 'react-native';
 import { X, Check } from 'lucide-react-native';
 import { PALETTE } from '../../constants/palette';
 import { angkatanStyles as styles } from './angkatanStyles';
 
-export default function PyramidEditModal({ visible, isNew, pyramidForm, setPyramidForm, onSave, onClose }) {
+export default function PyramidEditModal({ visible, isNew, pyramidForm, setPyramidForm, onSave, onClose, error, isSaving }) {
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.modalOverlay}>
@@ -45,9 +45,16 @@ export default function PyramidEditModal({ visible, isNew, pyramidForm, setPyram
               keyboardType="numeric"
               placeholderTextColor={PALETTE.textMutedDark}
             />
-            <TouchableOpacity style={styles.saveButton} onPress={onSave}>
-              <Check size={16} color="#fff" />
-              <Text style={styles.saveButtonText}>Simpan</Text>
+            {!!error && <Text style={{ fontSize: 12, color: '#dc2626', textAlign: 'center', marginTop: 12 }}>{error}</Text>}
+            <TouchableOpacity style={[styles.saveButton, isSaving && { opacity: 0.7 }]} onPress={onSave} disabled={isSaving}>
+              {isSaving ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <>
+                  <Check size={16} color="#fff" />
+                  <Text style={styles.saveButtonText}>Simpan</Text>
+                </>
+              )}
             </TouchableOpacity>
           </View>
         </View>

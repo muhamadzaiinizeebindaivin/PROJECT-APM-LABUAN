@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Modal, Image } from 'react-native';
-import { X, Trash2, User } from 'lucide-react-native';
+import { View, Text, TouchableOpacity, ScrollView, Modal } from 'react-native';import { X, Trash2, User } from 'lucide-react-native';
 import { PALETTE } from '../../constants/palette';
 import { angkatanStyles as styles } from './angkatanStyles';
 import { EMPLOYEE_TABS, FIELD_GROUPS } from './employeeFieldGroups';
@@ -15,7 +14,6 @@ export default function EmployeeDetailModal({
   isEditing, certOnlyMode,
   certificates, promotionHistoryList,
   onSaveCertificate, onDeleteCertificate, onOpenCertLink,
-  uploadingPhoto, onPickPhoto,
   onSaveEmployee, onDeleteEmployee,
 }) {
   const [showFullDetail, setShowFullDetail] = useState(false);
@@ -45,7 +43,7 @@ export default function EmployeeDetailModal({
         <View style={styles.employeeModalContainer}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>
-              {certOnlyMode ? 'Sijil / Sertifikat' : (employeeForm.id ? 'Butiran Anggota' : 'Tambah Anggota')}
+              {certOnlyMode ? 'Sijil' : (employeeForm.id ? 'Butiran Anggota' : 'Tambah Anggota')}
             </Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
               {employeeForm.id && isEditing && !certOnlyMode && (
@@ -61,13 +59,9 @@ export default function EmployeeDetailModal({
             {!certOnlyMode && (
               <View style={styles.profileHeader}>
                 <View style={styles.profilePhotoWrap}>
-                  {employeeForm.photo_url ? (
-                    <Image source={{ uri: employeeForm.photo_url }} style={styles.profilePhotoLarge} />
-                  ) : (
-                    <View style={[styles.profilePhotoLarge, styles.employeeAvatarPlaceholder]}>
-                      <User size={40} color={PALETTE.textMutedDark} />
-                    </View>
-                  )}
+                  <View style={[styles.profilePhotoLarge, styles.employeeAvatarPlaceholder]}>
+                    <User size={40} color={PALETTE.textMutedDark} />
+                  </View>
                 </View>
                 <Text style={styles.profileName}>{employeeForm.nama || 'Nama Baru'}</Text>
                 <Text style={styles.profileRank}>{employeeForm.pangkat || '-'}</Text>
@@ -77,18 +71,6 @@ export default function EmployeeDetailModal({
                       {employeeForm.status_keaktifan}
                     </Text>
                   </View>
-                )}
-                {isEditing && (
-                  <TouchableOpacity
-                    style={styles.changePhotoBtn}
-                    disabled={uploadingPhoto}
-                    onPress={async () => {
-                      const url = await onPickPhoto(employeeForm.id);
-                      if (url) setEmployeeForm({ ...employeeForm, photo_url: url });
-                    }}
-                  >
-                    <Text style={styles.changePhotoText}>{uploadingPhoto ? 'Memuat naik...' : 'Tukar Foto'}</Text>
-                  </TouchableOpacity>
                 )}
               </View>
             )}

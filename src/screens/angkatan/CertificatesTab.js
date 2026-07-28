@@ -8,7 +8,7 @@ export default function CertificatesTab({ certificates, isEditing, onAdd, onEdit
   return (
     <View>
       <View style={styles.cardHeader}>
-        <Text style={{ color: PALETTE.textDark, fontWeight: '700', fontSize: 14 }}>Sijil / Sertifikat</Text>
+        <Text style={{ color: PALETTE.textDark, fontWeight: '700', fontSize: 14 }}>Sijil</Text>
         {isEditing && (
           <TouchableOpacity onPress={onAdd}>
             <Plus size={20} color={PALETTE.orange} />

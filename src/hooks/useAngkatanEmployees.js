@@ -192,19 +192,34 @@ export function useAngkatanEmployees() {
   };
 
   const savePyramidItem = async (pyramidForm) => {
-    const payload = {
-      rank: pyramidForm.rank,
-      total: parseInt(pyramidForm.total, 10),
-      color: pyramidForm.color,
-      display_order: parseInt(pyramidForm.display_order, 10),
-    };
-    if (pyramidForm.id) await supabaseSandbox.from('angkatan_pyramid').update(payload).eq('id', pyramidForm.id);
-    else await supabaseSandbox.from('angkatan_pyramid').insert([payload]);
-    await fetchEmployees();
+    try {
+      const payload = {
+        rank: pyramidForm.rank,
+        total: parseInt(pyramidForm.total, 10),
+        color: pyramidForm.color,
+        display_order: parseInt(pyramidForm.display_order, 10),
+      };
+      const { error } = pyramidForm.id
+        ? await supabaseSandbox.from('angkatan_pyramid').update(payload).eq('id', pyramidForm.id)
+        : await supabaseSandbox.from('angkatan_pyramid').insert([payload]);
+      if (error) throw error;
+      await fetchEmployees();
+      return true;
+    } catch (error) {
+      console.error('Error saving angkatan_pyramid:', error);
+      return false;
+    }
   };
   const deletePyramidItem = async (id) => {
-    await supabaseSandbox.from('angkatan_pyramid').delete().eq('id', id);
-    await fetchEmployees();
+    try {
+      const { error } = await supabaseSandbox.from('angkatan_pyramid').delete().eq('id', id);
+      if (error) throw error;
+      await fetchEmployees();
+      return true;
+    } catch (error) {
+      console.error('Error deleting angkatan_pyramid:', error);
+      return false;
+    }
   };
 
   const saveRankItem = async (rankForm) => {

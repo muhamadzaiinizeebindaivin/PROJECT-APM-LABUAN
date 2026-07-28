@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, Animated, PanResponder, ScrollView, Modal, TextInput } from 'react-native';
-import { Wallet, Pencil, Trash2, FolderOpen, AlertTriangle, Check, Plus, X } from 'lucide-react-native';
+import { Wallet, Pencil, Trash2, FolderOpen, AlertTriangle, Check, Plus, X, TrendingUp } from 'lucide-react-native';
 import { PALETTE } from '../../constants/palette';
 import { formatCurrency, parseCurrency } from '../../utils/currency';
 import { kewanganStyles as styles } from './kewanganStyles';
@@ -342,28 +342,7 @@ export default function BudgetSection({ budgetData, loading, isEditMode, saveBud
 
   return (
     <>
-      <View style={styles.card}>
-        <SectionHeader title="STATUS AGIHAN & PERBELANJAAN SEMASA" Icon={Wallet} />
-
-        <View style={styles.kpiRow}>
-          <View style={styles.kpiCard}>
-            <Text style={styles.kpiTitle}>Jumlah Agihan</Text>
-            <Text style={[styles.kpiValue, { color: PALETTE.blue }]}>RM {formatCurrency(totalAgihan)}</Text>
-          </View>
-          <View style={styles.kpiCard}>
-            <Text style={styles.kpiTitle}>Jumlah Belanja</Text>
-            <Text style={[styles.kpiValue, { color: PALETTE.orange }]}>RM {formatCurrency(totalBelanja)}</Text>
-          </View>
-          <View style={styles.kpiCard}>
-            <Text style={styles.kpiTitle}>Baki Semasa</Text>
-            <Text style={[styles.kpiValue, { color: '#16a34a' }]}>RM {formatCurrency(baki)}</Text>
-          </View>
-        </View>
-
-        {loading && <ActivityIndicator size="large" color={PALETTE.orange} style={{ marginVertical: 20 }} />}
-      </View>
-
-      {!loading && existingCategories.length > 0 && (
+      {!loading && (
         <View style={[styles.card, { position: 'relative' }]}>
           {isEditMode && (
             <TouchableOpacity style={styles.categoryAddBtnFloating} onPress={openAdd}>
@@ -373,6 +352,32 @@ export default function BudgetSection({ budgetData, loading, isEditMode, saveBud
 
           <SectionHeader title="KATEGORI PERBELANJAAN" Icon={FolderOpen} />
 
+          <View style={styles.kpiRow}>
+            <View style={[styles.kpiCard, { backgroundColor: 'rgba(59, 130, 246, 0.08)', borderColor: 'rgba(59, 130, 246, 0.25)' }]}>
+              <Text style={[styles.kpiTitle, { color: PALETTE.blue }]}>Jumlah Agihan</Text>
+              <Text style={[styles.kpiValue, { color: PALETTE.blue }]}>RM {formatCurrency(totalAgihan)}</Text>
+              <Wallet size={26} color={PALETTE.blue} style={{ position: 'absolute', top: 10, right: 10, opacity: 0.35 }} />
+            </View>
+            <View style={[styles.kpiCard, { backgroundColor: PALETTE.softOrangeBg, borderColor: 'rgba(249, 115, 22, 0.25)' }]}>
+              <Text style={[styles.kpiTitle, { color: PALETTE.orange }]}>Jumlah Belanja</Text>
+              <Text style={[styles.kpiValue, { color: PALETTE.orange }]}>RM {formatCurrency(totalBelanja)}</Text>
+              <TrendingUp size={26} color={PALETTE.orange} style={{ position: 'absolute', top: 10, right: 10, opacity: 0.35 }} />
+            </View>
+            <View style={[styles.kpiCard, { backgroundColor: 'rgba(22, 163, 74, 0.08)', borderColor: 'rgba(22, 163, 74, 0.25)' }]}>
+              <Text style={[styles.kpiTitle, { color: '#16a34a' }]}>Baki Semasa</Text>
+              <Text style={[styles.kpiValue, { color: '#16a34a' }]}>RM {formatCurrency(baki)}</Text>
+              <Check size={26} color="#16a34a" style={{ position: 'absolute', top: 10, right: 10, opacity: 0.35 }} />
+            </View>
+          </View>
+
+          {loading && <ActivityIndicator size="large" color={PALETTE.orange} style={{ marginVertical: 20 }} />}
+
+          {!loading && (existingCategories.length === 0 ? (
+            <Text style={{ fontSize: 13, color: PALETTE.textMutedDark, textAlign: 'center', paddingVertical: 20 }}>
+              Tiada kategori lagi. Klik "+ Tambah" untuk mula.
+            </Text>
+          ) : (
+          <>
           <View
             style={styles.categoryCarouselViewport}
             onLayout={(e) => {
@@ -511,6 +516,8 @@ export default function BudgetSection({ budgetData, loading, isEditMode, saveBud
               )}
             </View>
           )}
+          </>
+          ))}
         </View>
       )}
 

@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TextInput, TouchableOpacity, FlatList, Image } from 'react-native';
-import { User, Search, Plus, Upload, Award, Users } from 'lucide-react-native';
+import { User, Search, Plus, Upload, Award, Users, Pencil } from 'lucide-react-native';
 import { PALETTE } from '../../constants/palette';
 import { angkatanStyles as styles } from './angkatanStyles';
 
@@ -76,13 +76,23 @@ export default function EmployeesListCard({
                 </View>
                 <Text style={styles.employeeRank}>{emp.pangkat}</Text>
               </View>
-              <TouchableOpacity
-                style={styles.lihatSijilBtn}
-                onPress={(e) => { e.stopPropagation?.(); onOpenCertificates(emp); }}
-              >
-                <Award size={14} color={PALETTE.orange} />
-                <Text style={styles.lihatSijilBtnText}>Lihat Sijil</Text>
-              </TouchableOpacity>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <TouchableOpacity
+                  style={styles.lihatSijilBtn}
+                  onPress={(e) => { e.stopPropagation?.(); onOpenCertificates(emp); }}
+                >
+                  <Award size={14} color={PALETTE.orange} />
+                  <Text style={styles.lihatSijilBtnText}>Lihat Sijil</Text>
+                </TouchableOpacity>
+                {isEditing && (
+                  <TouchableOpacity
+                    style={styles.kpiPencilBtnInline}
+                    onPress={(e) => { e.stopPropagation?.(); onOpenDetail(emp); }}
+                  >
+                    <Pencil size={14} color={PALETTE.orange} />
+                  </TouchableOpacity>
+                )}
+              </View>
             </TouchableOpacity>
           );
         }}

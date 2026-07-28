@@ -64,13 +64,13 @@ export const kewanganStyles = StyleSheet.create({
   staffName: { fontSize: 14, fontWeight: '700', color: PALETTE.textDark, marginBottom: 2 },
   staffRole: { fontSize: 12, color: PALETTE.textMutedDark },
 
-  kpiRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
+  kpiRow: { flexDirection: 'row', gap: 12, marginBottom: 18 },
   kpiCard: {
-    flex: 1, backgroundColor: PALETTE.surface, padding: 14, borderRadius: 14,
-    borderWidth: 1, borderColor: PALETTE.cardLightBorder, alignItems: 'center',
+    flex: 1, paddingVertical: 14, paddingHorizontal: 16, borderRadius: 14,
+    borderWidth: 1, alignItems: 'flex-start', position: 'relative', overflow: 'hidden',
   },
-  kpiTitle: { fontSize: 12, color: PALETTE.textMutedDark, fontWeight: '700', marginBottom: 4, textAlign: 'center' },
-  kpiValue: { fontSize: 14, fontWeight: '800' },
+  kpiTitle: { fontSize: 11, fontWeight: '700', marginBottom: 4, textAlign: 'left', textTransform: 'uppercase', letterSpacing: 0.4 },
+  kpiValue: { fontSize: 17, fontWeight: '900', fontFamily: 'monospace' },
 
   kategoriHeader: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',

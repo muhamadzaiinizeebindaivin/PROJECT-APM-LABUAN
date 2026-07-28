@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { View, ScrollView, ActivityIndicator, Text } from 'react-native';
+import { CheckCircle2, XCircle } from 'lucide-react-native';
 import { PALETTE } from '../constants/palette';
 import AdminEditButton from '../components/AdminEditButton';
 import { useExcelImport } from '../hooks/useExcelImport';
@@ -8,12 +9,14 @@ import { useAngkatanEmployees, mapMyaspaLabel } from '../hooks/useAngkatanEmploy
 import { useAngkatanCommunity } from '../hooks/useAngkatanCommunity';
 import { useEmployeeCertificates } from '../hooks/useEmployeeCertificates';
 import { useEmployeePromotionHistory } from '../hooks/useEmployeePromotionHistory';
-import { useEmployeePhoto } from '../hooks/useEmployeePhoto';
+// useEmployeePhoto retiré — fonctionnalité photo employé abandonnée
 import { angkatanStyles as styles } from './angkatan/angkatanStyles';
 import { stickyHeaderStyles } from '../styles/stickyHeaderStyles';
 import { emptyEmployeeForm } from './angkatan/employeeFieldGroups';
 import { useUnitStaff } from '../hooks/useUnitStaff';
 import AngkatanUnitSection from './angkatan/AngkatanUnitSection';
+import { useAngkatanBudget } from '../hooks/useAngkatanBudget';
+import BudgetSection from './kewangan/BudgetSection';
 import { useKpi } from '../hooks/useKpi';
 import { canEditSection } from '../permissions';
 import KpiSection from './pentadbiran/KpiSection';
@@ -49,10 +52,25 @@ export default function AngkatanScreen({ userRole }) {
   const { communityProgs, saveCommunityItem, deleteCommunityItem, communityUpdatedAt } = useAngkatanCommunity();
   const { certificates, fetchCertificates, saveCertificate, deleteCertificate, openCertificateLink } = useEmployeeCertificates();
   const { promotionHistoryList, fetchPromotionHistory } = useEmployeePromotionHistory();
-  const { uploadingPhoto, pickAndUploadPhoto } = useEmployeePhoto();
+  // photo employé retirée
   const excelImportHook = useExcelImport();
   const unit = useUnitStaff('angkatan');
   const { kpiList, saveKpiItem, deleteKpiItem, reorderKpi, kpiUpdatedAt } = useKpi('angkatan');
+  const angkatanBudget = useAngkatanBudget();
+
+  const [notification, setNotification] = useState(null);
+  const notificationTimeoutRef = useRef(null);
+  const showNotification = (type, message) => {
+    setNotification({ type, message });
+    if (notificationTimeoutRef.current) clearTimeout(notificationTimeoutRef.current);
+    notificationTimeoutRef.current = setTimeout(() => setNotification(null), 3000);
+  };
+  useEffect(() => () => {
+    if (notificationTimeoutRef.current) clearTimeout(notificationTimeoutRef.current);
+  }, []);
+
+  const [pyramidFormError, setPyramidFormError] = useState(null);
+  const [isSavingPyramid, setIsSavingPyramid] = useState(false);
 
   // Convertit un timestamp ISO (colonne updated_at) au format d'affichage DD/M/YYYY HH:MM
   const formatTimestamp = (iso) => {
@@ -65,7 +83,7 @@ export default function AngkatanScreen({ userRole }) {
   };
 
   // DIKEMASKINI = le plus récent updated_at parmi toutes les tables qui composent la page
-  const latestRaw = [dataUpdatedAt, communityUpdatedAt, unit.staffUpdatedAt, kpiUpdatedAt].filter(Boolean).sort().slice(-1)[0] || null;
+  const latestRaw = [dataUpdatedAt, communityUpdatedAt, unit.staffUpdatedAt, kpiUpdatedAt, angkatanBudget.budgetUpdatedAt].filter(Boolean).sort().slice(-1)[0] || null;
   const dikemaskini = formatTimestamp(latestRaw);
 
   // ── Recherche / pagination liste principale ──
@@ -152,9 +170,24 @@ export default function AngkatanScreen({ userRole }) {
   // ── Modal Pyramide ──
   const [showPyramidModal, setShowPyramidModal] = useState(false);
   const [pyramidForm, setPyramidForm] = useState({ id: null, rank: '', total: '', color: '#123456', display_order: '' });
-  const openAddPyramid = () => { setPyramidForm({ id: null, rank: '', total: '', color: '#123456', display_order: '' }); setShowPyramidModal(true); };
-  const openEditPyramid = (item) => { setPyramidForm({ ...item, total: String(item.total), display_order: String(item.display_order) }); setShowPyramidModal(true); };
-  const handleSavePyramid = async () => { await savePyramidItem(pyramidForm); setShowPyramidModal(false); };
+  const openAddPyramid = () => { setPyramidForm({ id: null, rank: '', total: '', color: '#123456', display_order: '' }); setPyramidFormError(null); setShowPyramidModal(true); };
+  const openEditPyramid = (item) => { setPyramidForm({ ...item, total: String(item.total), display_order: String(item.display_order) }); setPyramidFormError(null); setShowPyramidModal(true); };
+  const handleSavePyramid = async () => {
+    if (!pyramidForm.rank.trim() || !String(pyramidForm.total).trim()) {
+      setPyramidFormError('Pangkat dan jumlah tidak boleh kosong.');
+      return;
+    }
+    setPyramidFormError(null);
+    setIsSavingPyramid(true);
+    const ok = await savePyramidItem(pyramidForm);
+    setIsSavingPyramid(false);
+    if (ok) {
+      setShowPyramidModal(false);
+      showNotification('success', pyramidForm.id ? 'Struktur pangkat berjaya dikemaskini.' : 'Struktur pangkat berjaya ditambah.');
+    } else {
+      showNotification('error', 'Gagal menyimpan struktur pangkat.');
+    }
+  };
 
   // ── Import Excel ──
   const [showExcelImportModal, setShowExcelImportModal] = useState(false);
@@ -194,6 +227,47 @@ export default function AngkatanScreen({ userRole }) {
             ) : null}
           </View>
           <AdminEditButton isEditMode={isEditing} setIsEditMode={setIsEditing} userRole={userRole} section="Angkatan" />
+
+          {notification && (
+            <View
+              pointerEvents="none"
+              style={{
+                position: 'absolute', top: '100%', left: 0, right: 0,
+                alignItems: 'center', paddingTop: 10, zIndex: 30,
+              }}
+            >
+              <View
+                style={{
+                  flexDirection: 'row', alignItems: 'center', gap: 10, maxWidth: '92%',
+                  backgroundColor: notification.type === 'success' ? '#f0fdf4' : '#fef2f2',
+                  borderWidth: 1,
+                  borderColor: notification.type === 'success' ? '#bbf7d0' : '#fecaca',
+                  borderRadius: 12,
+                  paddingVertical: 10,
+                  paddingHorizontal: 14,
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.12,
+                  shadowRadius: 10,
+                  elevation: 5,
+                }}
+              >
+                {notification.type === 'success' ? (
+                  <CheckCircle2 size={17} color="#16a34a" />
+                ) : (
+                  <XCircle size={17} color="#dc2626" />
+                )}
+                <Text
+                  style={{
+                    color: notification.type === 'success' ? '#166534' : '#991b1b',
+                    fontWeight: '700', fontSize: 13, flexShrink: 1,
+                  }}
+                >
+                  {notification.message}
+                </Text>
+              </View>
+            </View>
+          )}
         </View>
       )}
 
@@ -228,6 +302,17 @@ export default function AngkatanScreen({ userRole }) {
           />
         </View>
 
+        <BudgetSection
+          budgetData={angkatanBudget.budgetData}
+          loading={angkatanBudget.loading}
+          isEditMode={isEditing}
+          saveBudgetItem={angkatanBudget.saveBudgetItem}
+          deleteBudgetItem={angkatanBudget.deleteBudgetItem}
+          deleteCategory={angkatanBudget.deleteCategory}
+          renameCategory={angkatanBudget.renameCategory}
+          onNotify={showNotification}
+        />
+
         <RanksTable ranks={ranks} isEditing={isEditing} onAdd={openAddRank} onEdit={openEditRank} onDelete={handleDeleteRank} />
 
         <CommunityList
@@ -238,7 +323,7 @@ export default function AngkatanScreen({ userRole }) {
           onDelete={handleDeleteCommunity}
         />
 
-        <PyramidChart pyramidStats={pyramidStats} isEditing={isEditing} onAdd={openAddPyramid} onEdit={openEditPyramid} />
+        <PyramidChart pyramidStats={pyramidStats} isEditing={isEditing} onAdd={openAddPyramid} onEdit={openEditPyramid} onDelete={deletePyramidItem} onNotify={showNotification} />
 
         <EmployeesListCard
           paginatedEmployees={paginatedEmployees}
@@ -276,8 +361,6 @@ export default function AngkatanScreen({ userRole }) {
         onSaveCertificate={handleSaveCertificate}
         onDeleteCertificate={handleDeleteCertificate}
         onOpenCertLink={openCertificateLink}
-        uploadingPhoto={uploadingPhoto}
-        onPickPhoto={pickAndUploadPhoto}
         onSaveEmployee={handleSaveEmployee}
         onDeleteEmployee={handleDeleteEmployee}
       />
@@ -333,6 +416,8 @@ export default function AngkatanScreen({ userRole }) {
         setPyramidForm={setPyramidForm}
         onSave={handleSavePyramid}
         onClose={() => setShowPyramidModal(false)}
+        error={pyramidFormError}
+        isSaving={isSavingPyramid}
       />
 
       <ExcelImportModal

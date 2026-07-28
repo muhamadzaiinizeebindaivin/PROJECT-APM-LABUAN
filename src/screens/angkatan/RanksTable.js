@@ -24,6 +24,15 @@ export default function RanksTable({ ranks, isEditing, onAdd, onEdit, onDelete }
         )}
       </View>
 
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 16, marginBottom: 14 }}>
+        <Text style={{ fontSize: 12, color: PALETTE.textMutedDark }}>
+          <Text style={{ fontWeight: '800', color: PALETTE.textDark }}>KBP:</Text> Kursus Bakal Pegawai
+        </Text>
+        <Text style={{ fontSize: 12, color: PALETTE.textMutedDark }}>
+          <Text style={{ fontWeight: '800', color: PALETTE.textDark }}>PTB:</Text> Pegawai Tak Bertauliah
+        </Text>
+      </View>
+
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tableScroll} contentContainerStyle={styles.tableScrollContent}>
         <View style={styles.table}>
           <View style={styles.tableHeaderRow}>
