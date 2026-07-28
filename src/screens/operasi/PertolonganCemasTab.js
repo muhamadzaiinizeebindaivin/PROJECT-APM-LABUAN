@@ -6,6 +6,7 @@ import { supabaseSandbox } from '../../supabaseSandboxClient';
 import { formStyles } from '../../styles/formStyles';
 import { reportStyles as styles } from './reportStyles';
 import { canEditSection } from '../../permissions';
+import { useAvailableVehicles } from '../../hooks/useAvailableVehicles';
 
 const STATUS_OPTIONS = ['aktif', 'selesai', 'dibatal'];
 const STATUS_COLORS = {
@@ -48,15 +49,46 @@ function InfoRow({ icon, label, value }) {
 
 export default function PertolonganCemasTab({ theme, userRole, isEditMode }) {
   const canManage = isEditMode && canEditSection(userRole, 'Operasi');
+  const { vehicles } = useAvailableVehicles();
+  const vehicleOptions = vehicles.map(v => `${v.model}${v.reg ? ` (${v.reg})` : ''}`);
+  const [jenisKenderaanOpen, setJenisKenderaanOpen] = useState(false);
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
+  const selectedVehicles = form.jenis_kenderaan ? form.jenis_kenderaan.split(', ').filter(Boolean) : [];
+  const toggleVehicle = (opt) => {
+    setForm(f => {
+      const current = f.jenis_kenderaan ? f.jenis_kenderaan.split(', ').filter(Boolean) : [];
+      const next = current.includes(opt) ? current.filter(v => v !== opt) : [...current, opt];
+      return { ...f, jenis_kenderaan: next.join(', ') };
+    });
+  };
+  const lainLainValue = selectedVehicles.filter(v => !vehicleOptions.includes(v)).join(', ');
+  const [showLainLain, setShowLainLain] = useState(false);
+  const toggleLainLain = () => {
+    if (showLainLain) {
+      // Décoché : retire toute valeur personnalisée déjà saisie, rien n'est enregistré
+      setForm(f => {
+        const current = f.jenis_kenderaan ? f.jenis_kenderaan.split(', ').filter(Boolean) : [];
+        const next = current.filter(v => vehicleOptions.includes(v));
+        return { ...f, jenis_kenderaan: next.join(', ') };
+      });
+    }
+    setShowLainLain(!showLainLain);
+  };
+
+  useEffect(() => {
+    if (modalVisible) setShowLainLain(!!lainLainValue);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modalVisible]);
+
   const [saving, setSaving] = useState(false);
   const [filterStatus, setFilterStatus] = useState('semua');
   const [statusModalId, setStatusModalId] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterYear, setFilterYear] = useState(new Date().getFullYear());
+  
 
   // photos retirées
 
@@ -232,7 +264,6 @@ export default function PertolonganCemasTab({ theme, userRole, isEditMode }) {
         ) : (
           filteredEvents.map(event => {
             const sc = STATUS_COLORS[event.status] || STATUS_COLORS.aktif;
-            const photos = event.pertolongan_cemas_photos || [];
             return (
               <View key={event.id} style={{
                 backgroundColor: theme.card, borderRadius: 16, padding: 18, marginBottom: 12,
@@ -282,26 +313,7 @@ export default function PertolonganCemasTab({ theme, userRole, isEditMode }) {
                   </View>
                 </View>
 
-                {/* Photos */}
-                <View style={{ marginTop: 12 }}>
-                  <Text style={{ fontSize: 11, color: '#94a3b8', fontWeight: '600', marginBottom: 8 }}>
-                    FOTO {photos.length > 0 ? `(${photos.length})` : ''}
-                  </Text>
-                  {photos.length > 0 ? (
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                      <View style={{ flexDirection: 'row', gap: 8 }}>
-                        {photos.map((photo, i) => (
-                          <TouchableOpacity key={photo.id} onPress={() => setPhotoViewer({ photos, index: i })}>
-                            <Image source={{ uri: photo.photo_url }} style={{ width: 72, height: 72, borderRadius: 10 }} resizeMode="cover" />
-                          </TouchableOpacity>
-                        ))}
-                      </View>
-                    </ScrollView>
-                  ) : (
-                    <Text style={{ fontSize: 12, color: '#cbd5e1', fontStyle: 'italic' }}>Tiada gambar</Text>
-                  )}
                 </View>
-              </View>
             );
           })
         )}
@@ -447,8 +459,120 @@ export default function PertolonganCemasTab({ theme, userRole, isEditMode }) {
               </View>
 
               <Text style={labelStyle}>Jenis Kenderaan <Text style={{ color: '#94a3b8', fontWeight: '400' }}>(pilihan)</Text></Text>
-              <TextInput style={inputStyle} placeholder="Cth: Ambulans, MPV" placeholderTextColor={theme.textSecondary}
-                value={form.jenis_kenderaan} onChangeText={v => setForm(f => ({ ...f, jenis_kenderaan: v }))} />
+              <TouchableOpacity
+                style={[inputStyle, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}
+                onPress={() => setJenisKenderaanOpen(true)}
+              >
+                <Text style={{ color: selectedVehicles.length ? theme.text : theme.textSecondary, fontSize: 14, flex: 1 }} numberOfLines={1}>
+                  {selectedVehicles.length ? form.jenis_kenderaan : 'Pilih kenderaan...'}
+                </Text>
+              </TouchableOpacity>
+
+              <Modal visible={jenisKenderaanOpen} transparent animationType="fade" onRequestClose={() => setJenisKenderaanOpen(false)}>
+                <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 }} activeOpacity={1} onPress={() => setJenisKenderaanOpen(false)}>
+                  <TouchableOpacity activeOpacity={1} onPress={() => {}}>
+                    <View style={{
+                      backgroundColor: theme.card, borderRadius: 16, maxHeight: 460, width: '100%', maxWidth: 420,
+                      alignSelf: 'center', overflow: 'hidden',
+                      shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 20, shadowOffset: { width: 0, height: 10 }, elevation: 10,
+                    }}>
+                      <View style={{
+                        flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+                        paddingHorizontal: 18, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: theme.border,
+                      }}>
+                        <View>
+                          <Text style={{ fontSize: 16, fontWeight: '800', color: theme.text }}>Pilih Kenderaan</Text>
+                          <Text style={{ fontSize: 12, color: theme.textSecondary, marginTop: 2, fontWeight: '600' }}>
+                            {selectedVehicles.length > 0 ? `${selectedVehicles.length} dipilih` : 'Tiada kenderaan dipilih'}
+                          </Text>
+                        </View>
+                        <TouchableOpacity onPress={() => setJenisKenderaanOpen(false)} style={{ padding: 4 }}>
+                          <X size={20} color={theme.textSecondary} />
+                        </TouchableOpacity>
+                      </View>
+
+                      <ScrollView style={{ maxHeight: 320 }}>
+                        {vehicleOptions.map((opt, i) => {
+                          const selected = selectedVehicles.includes(opt);
+                          return (
+                            <TouchableOpacity
+                              key={opt}
+                              onPress={() => toggleVehicle(opt)}
+                              style={{
+                                flexDirection: 'row', alignItems: 'center', gap: 12,
+                                paddingVertical: 13, paddingHorizontal: 18,
+                                backgroundColor: selected ? '#eff6ff' : 'transparent',
+                                borderBottomWidth: 1,
+                                borderBottomColor: '#f1f5f9',
+                              }}
+                            >
+                              <View style={{
+                                width: 20, height: 20, borderRadius: 5, borderWidth: 2,
+                                borderColor: selected ? '#1E3A8A' : '#cbd5e1',
+                                backgroundColor: selected ? '#1E3A8A' : 'transparent',
+                                justifyContent: 'center', alignItems: 'center',
+                              }}>
+                                {selected && <Text style={{ color: '#fff', fontSize: 12, fontWeight: '900' }}>✓</Text>}
+                              </View>
+                              <Truck size={15} color={selected ? '#1E3A8A' : '#94a3b8'} />
+                              <Text style={{ fontSize: 14, color: theme.text, fontWeight: selected ? '700' : '500', flex: 1 }} numberOfLines={1}>{opt}</Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+
+                        <View
+                          style={{
+                            flexDirection: 'row', alignItems: 'center', gap: 12,
+                            paddingVertical: 13, paddingHorizontal: 18,
+                            backgroundColor: showLainLain ? '#eff6ff' : 'transparent',
+                          }}
+                        >
+                          <TouchableOpacity onPress={toggleLainLain} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                            <View style={{
+                              width: 20, height: 20, borderRadius: 5, borderWidth: 2,
+                              borderColor: showLainLain ? '#1E3A8A' : '#cbd5e1',
+                              backgroundColor: showLainLain ? '#1E3A8A' : 'transparent',
+                              justifyContent: 'center', alignItems: 'center',
+                            }}>
+                              {showLainLain && <Text style={{ color: '#fff', fontSize: 12, fontWeight: '900' }}>✓</Text>}
+                            </View>
+                            <Truck size={15} color={showLainLain ? '#1E3A8A' : '#94a3b8'} />
+                          </TouchableOpacity>
+                          {showLainLain ? (
+                            <TextInput
+                              style={{ fontSize: 14, color: theme.text, fontWeight: '700', flex: 1, padding: 0, outlineStyle: 'none' }}
+                              placeholder="Lain-lain..."
+                              placeholderTextColor={theme.textSecondary}
+                              value={lainLainValue}
+                              onChangeText={(text) => {
+                                setForm(f => {
+                                  const current = f.jenis_kenderaan ? f.jenis_kenderaan.split(', ').filter(Boolean) : [];
+                                  const known = current.filter(v => vehicleOptions.includes(v));
+                                  const next = text.trim() ? [...known, text.trim()] : known;
+                                  return { ...f, jenis_kenderaan: next.join(', ') };
+                                });
+                              }}
+                            />
+                          ) : (
+                            <TouchableOpacity onPress={toggleLainLain} style={{ flex: 1 }}>
+                              <Text style={{ fontSize: 14, color: theme.text, fontWeight: '500' }}>Lain-lain</Text>
+                            </TouchableOpacity>
+                          )}
+                        </View>
+                      </ScrollView>
+
+                      <View style={{ padding: 14, borderTopWidth: 1, borderTopColor: theme.border }}>
+                        <TouchableOpacity
+                          onPress={() => setJenisKenderaanOpen(false)}
+                          style={{ backgroundColor: '#1E3A8A', borderRadius: 10, paddingVertical: 12, alignItems: 'center' }}
+                        >
+                          <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>Selesai</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                </TouchableOpacity>
+              </Modal>
 
               <Text style={labelStyle}>Catatan Tambahan <Text style={{ color: '#94a3b8', fontWeight: '400' }}>(pilihan)</Text></Text>
               <TextInput style={[inputStyle, { height: 80, textAlignVertical: 'top' }]} placeholder="Maklumat tambahan..." placeholderTextColor={theme.textSecondary}

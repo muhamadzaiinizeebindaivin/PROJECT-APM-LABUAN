@@ -17,6 +17,8 @@ import { useUnitStaff } from '../hooks/useUnitStaff';
 import AngkatanUnitSection from './angkatan/AngkatanUnitSection';
 import { useAngkatanBudget } from '../hooks/useAngkatanBudget';
 import BudgetSection from './kewangan/BudgetSection';
+import { useAngkatanPameran } from '../hooks/useAngkatanPameran';
+import PameranTable from './angkatan/PameranTable';
 import { useKpi } from '../hooks/useKpi';
 import { canEditSection } from '../permissions';
 import KpiSection from './pentadbiran/KpiSection';
@@ -57,6 +59,7 @@ export default function AngkatanScreen({ userRole }) {
   const unit = useUnitStaff('angkatan');
   const { kpiList, saveKpiItem, deleteKpiItem, reorderKpi, kpiUpdatedAt } = useKpi('angkatan');
   const angkatanBudget = useAngkatanBudget();
+  const angkatanPameran = useAngkatanPameran();
 
   const [notification, setNotification] = useState(null);
   const notificationTimeoutRef = useRef(null);
@@ -83,7 +86,7 @@ export default function AngkatanScreen({ userRole }) {
   };
 
   // DIKEMASKINI = le plus récent updated_at parmi toutes les tables qui composent la page
-  const latestRaw = [dataUpdatedAt, communityUpdatedAt, unit.staffUpdatedAt, kpiUpdatedAt, angkatanBudget.budgetUpdatedAt].filter(Boolean).sort().slice(-1)[0] || null;
+  const latestRaw = [dataUpdatedAt, communityUpdatedAt, unit.staffUpdatedAt, kpiUpdatedAt, angkatanBudget.budgetUpdatedAt, angkatanPameran.pameranUpdatedAt].filter(Boolean).sort().slice(-1)[0] || null;
   const dikemaskini = formatTimestamp(latestRaw);
 
   // ── Recherche / pagination liste principale ──
@@ -314,6 +317,14 @@ export default function AngkatanScreen({ userRole }) {
         />
 
         <RanksTable ranks={ranks} isEditing={isEditing} onAdd={openAddRank} onEdit={openEditRank} onDelete={handleDeleteRank} />
+
+        <PameranTable
+          pameranList={angkatanPameran.pameranList}
+          isEditing={isEditing}
+          savePameranItem={angkatanPameran.savePameranItem}
+          deletePameranItem={angkatanPameran.deletePameranItem}
+          onNotify={showNotification}
+        />
 
         <CommunityList
           communityProgs={communityProgs}
