@@ -1,8 +1,8 @@
 // src/screens/AgencyTrackingScreen.js
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, FlatList, TextInput, Platform, Image } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, FlatList, TextInput, Platform, Image, Modal } from 'react-native';
 import * as Location from 'expo-location';
-import { Navigation, StopCircle, ArrowLeft, Search, Building2 } from 'lucide-react-native';
+import { Navigation, StopCircle, ArrowLeft, Search, Building2, X } from 'lucide-react-native';
 import { supabaseSandbox as supabase } from '../supabaseSandboxClient';
 import { PALETTE } from '../constants/palette';
 
@@ -53,6 +53,8 @@ export default function AgencyTrackingScreen({ onLogout }) {
   const [loadingAgencies, setLoadingAgencies] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedAgency, setSelectedAgency] = useState(null);
+  const lastSelectedAgencyRef = useRef(null);
+  if (selectedAgency) lastSelectedAgencyRef.current = selectedAgency;
 
   const [memberName, setMemberName] = useState('');
   const [accessCode, setAccessCode] = useState('');
@@ -147,6 +149,13 @@ export default function AgencyTrackingScreen({ onLogout }) {
     setTrackerId(trackerId);
     saveSession({ selectedAgency, memberName: memberName.trim(), trackerId });
     setJoining(false);
+  };
+
+  const closeJoinModal = () => {
+    setSelectedAgency(null);
+    setMemberName('');
+    setAccessCode('');
+    setJoinError(null);
   };
 
   useEffect(() => {
@@ -296,8 +305,8 @@ export default function AgencyTrackingScreen({ onLogout }) {
     );
   }
 
-  // VIEW 1 : Sélection de l'agence
-  if (!selectedAgency) {
+  // VIEW 1 : Sélection de l'agence + popup pour rejoindre (affichée dès qu'une agence est choisie)
+  if (!trackerId) {
     return (
       <View style={styles.container}>
         <View style={styles.header}>
@@ -347,58 +356,56 @@ export default function AgencyTrackingScreen({ onLogout }) {
           />
         )}
 
-      </View>
-    );
-  }
+        {/* ---- Popup : rejoindre une agence (nom + code d'accès) ---- */}
+        <Modal visible={!!selectedAgency && !trackerId} transparent animationType="fade" onRequestClose={closeJoinModal}>
+          <View style={joinStyles.overlay}>
+            <View style={joinStyles.card}>
+              <TouchableOpacity style={joinStyles.closeBtn} onPress={closeJoinModal}>
+                <X size={20} color={PALETTE.textMutedDark} />
+              </TouchableOpacity>
 
-  // VIEW 2 : Saisie du nom (si pas encore rejoint)
-  if (!trackerId) {
-    return (
-      <View style={[styles.container, { justifyContent: 'center' }]}>
-        <TouchableOpacity style={styles.backButton} onPress={() => { setSelectedAgency(null); setJoinError(null); }}>
-          <ArrowLeft color={PALETTE.textDark} size={22} />
-          <Text style={styles.backText}>Tukar Agensi</Text>
-        </TouchableOpacity>
+              <View style={styles.header}>
+                <View style={styles.agencyIconWrapLarge}>
+                  <AgencyLogo url={lastSelectedAgencyRef.current?.logo_url} size={60} fallbackSize={40} />
+                </View>
+                <Text style={[styles.title, { marginTop: 12 }]}>{lastSelectedAgencyRef.current?.agency}</Text>
+                <Text style={styles.subtitle}>Masukkan nama anda untuk mula</Text>
+              </View>
 
-        <View style={styles.header}>
-          <View style={styles.agencyIconWrapLarge}>
-            <AgencyLogo url={selectedAgency.logo_url} size={60} fallbackSize={40} />
+              <View style={[styles.searchContainer, { marginBottom: 14 }]}>
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="Nama anda"
+                  placeholderTextColor={PALETTE.textMutedDark}
+                  value={memberName}
+                  onChangeText={setMemberName}
+                />
+              </View>
+
+              <View style={[styles.searchContainer, { marginBottom: 20 }]}>
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="Kod akses agensi"
+                  placeholderTextColor={PALETTE.textMutedDark}
+                  value={accessCode}
+                  onChangeText={setAccessCode}
+                  secureTextEntry
+                  autoCapitalize="none"
+                />
+              </View>
+
+              {!!joinError && <Text style={styles.joinErrorText}>{joinError}</Text>}
+
+              <TouchableOpacity
+                style={[styles.joinButton, joining && { opacity: 0.7 }]}
+                onPress={handleJoin}
+                disabled={joining}
+              >
+                {joining ? <ActivityIndicator color="#fff" /> : <Text style={styles.joinButtonText}>Sertai</Text>}
+              </TouchableOpacity>
+            </View>
           </View>
-          <Text style={[styles.title, { marginTop: 12 }]}>{selectedAgency.agency}</Text>
-          <Text style={styles.subtitle}>Masukkan nama anda untuk mula</Text>
-        </View>
-
-        <View style={[styles.searchContainer, { marginBottom: 14 }]}>
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Nama anda"
-            placeholderTextColor={PALETTE.textMutedDark}
-            value={memberName}
-            onChangeText={setMemberName}
-          />
-        </View>
-
-        <View style={[styles.searchContainer, { marginBottom: 20 }]}>
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Kod akses agensi"
-            placeholderTextColor={PALETTE.textMutedDark}
-            value={accessCode}
-            onChangeText={setAccessCode}
-            secureTextEntry
-            autoCapitalize="none"
-          />
-        </View>
-
-        {!!joinError && <Text style={styles.joinErrorText}>{joinError}</Text>}
-
-        <TouchableOpacity
-          style={[styles.joinButton, joining && { opacity: 0.7 }]}
-          onPress={handleJoin}
-          disabled={joining}
-        >
-          {joining ? <ActivityIndicator color="#fff" /> : <Text style={styles.joinButtonText}>Sertai</Text>}
-        </TouchableOpacity>
+        </Modal>
       </View>
     );
   }
@@ -506,4 +513,15 @@ const styles = StyleSheet.create({
   joinButton: { width: '100%', paddingVertical: 16, borderRadius: 14, alignItems: 'center', backgroundColor: PALETTE.orange },
   joinButtonText: { color: '#fff', fontSize: 15, fontWeight: '800' },
   joinErrorText: { color: '#dc2626', fontSize: 13, fontWeight: '700', textAlign: 'center', marginBottom: 14 },
+});
+
+const joinStyles = StyleSheet.create({
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 24 },
+  card: {
+    width: '100%', maxWidth: 420, borderRadius: 24, padding: 24,
+    backgroundColor: PALETTE.softOrangeBg,
+    shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 20, elevation: 20,
+    position: 'relative',
+  },
+  closeBtn: { position: 'absolute', top: 16, right: 16, zIndex: 2, padding: 4 },
 });
