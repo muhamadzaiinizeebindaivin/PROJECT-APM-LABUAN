@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useRef, createElement } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Platform, Modal } from 'react-native';
-import { PALETTE } from '../constants/palette';
+import { PALETTE } from '../../constants/palette';
 import { FileText, Upload, X, Check } from 'lucide-react-native';
-import { supabaseSandbox as supabase } from '../supabaseSandboxClient';
-
+import { supabaseSandbox as supabase } from '../../supabaseSandboxClient';
 const PDFJS_VERSION = '3.11.174';
 const MAX_RECOMMENDED_SIZE_MB = 3;
 

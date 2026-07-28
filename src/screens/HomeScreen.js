@@ -1,21 +1,19 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Animated, ActivityIndicator } from 'react-native';
+import { View, Text, Animated, ActivityIndicator } from 'react-native';
 import { CheckCircle2, XCircle } from 'lucide-react-native';
-import { Info } from 'lucide-react-native';
 import AdminEditButton from '../components/AdminEditButton';
-import HomepagePdfCard from '../components/HomepagePdfCard';
+import HomepagePdfCard from './home/HomepagePdfCard';
 import AuthGate from './home/AuthGate';
-import HeroSection from './home/HeroSection';
 import InfoWidgets from './home/InfoWidgets';
 import { homeScreenStyles as styles } from './home/homeScreenStyles';
 import { useHomeData } from '../hooks/useHomeData';
 import { PALETTE } from '../constants/palette';
-import { ShieldCheck, Truck, Building2 } from 'lucide-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { stickyHeaderStyles } from '../styles/stickyHeaderStyles';
 
 export default function HomeScreen({ isAuthFlow, onGuestLogin, onDriverLogin, onAgencyLogin, onLoginPress, navigation, userRole, theme }) {
   const [isEditing, setIsEditing] = useState(false);
-  const [pdfCardHeight, setPdfCardHeight] = useState(null);
+  // pdfCardHeight retiré — plus besoin d'aligner la hauteur, les deux blocs sont maintenant empilés
   const [savingSection, setSavingSection] = useState(null); // 'hero' | 'addressPejabat' | 'addressPkod' | null
   const { loading, saving, pageData, updatedAt, handleSave, updateField, restorePageData } = useHomeData(isAuthFlow);
 
@@ -147,37 +145,29 @@ export default function HomeScreen({ isAuthFlow, onGuestLogin, onDriverLogin, on
         showsVerticalScrollIndicator={false}
         scrollEventThrottle={16}
       >
-        {pageData && (
-          <HeroSection
-            isEditing={isEditing}
-            pageData={pageData}
-            updateField={updateField}
-            onSave={onSave}
-            saving={saving}
-            isSavingThis={savingSection === 'hero'}
-            onNotify={showNotification}
-          />
-        )}
-
-        <View style={styles.mainRow}>
-          <View
-            style={styles.pdfColumn}
-            onLayout={(e) => setPdfCardHeight(e.nativeEvent.layout.height)}
+        <View style={{ paddingHorizontal: 20 }}>
+          <LinearGradient
+            colors={['rgba(29, 78, 216, 0.55)', 'rgba(249, 115, 22, 0.55)']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={{ borderRadius: 20, padding: 24, alignItems: 'center' }}
           >
-            <HomepagePdfCard
-              theme={{ card: PALETTE.inkCard, text: PALETTE.white, textSecondary: PALETTE.mutedLight }}
-              userRole={userRole}
-              isEditing={isEditing}
-              onHeightChange={setPdfCardHeight}
-            />
-          </View>
-
-          {pageData && (
-            <View style={[styles.sideColumn, pdfCardHeight ? { height: pdfCardHeight } : null]}>
-              <InfoWidgets isEditing={isEditing} pageData={pageData} updateField={updateField} onSave={onSave} saving={saving} savingSection={savingSection} onNotify={showNotification} />
+            <View style={{ width: '100%', maxWidth: 1100 }}>
+              <HomepagePdfCard
+                theme={{ card: PALETTE.inkCard, text: PALETTE.white, textSecondary: PALETTE.mutedLight }}
+                userRole={userRole}
+                isEditing={isEditing}
+                onHeightChange={() => {}}
+              />
             </View>
-          )}
+          </LinearGradient>
         </View>
+
+        {pageData && (
+          <View style={{ paddingHorizontal: 20, marginTop: 16 }}>
+            <InfoWidgets isEditing={isEditing} pageData={pageData} updateField={updateField} onSave={onSave} saving={saving} savingSection={savingSection} onNotify={showNotification} />
+          </View>
+        )}
       </Animated.ScrollView>
     </View>
   );

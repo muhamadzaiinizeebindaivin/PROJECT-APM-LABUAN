@@ -36,7 +36,7 @@ export function useAngkatanEmployees() {
     const [catRes, pyrRes, rankRes] = await Promise.all([
       supabaseSandbox.from('angkatan_categories').select('*').order('id'),
       supabaseSandbox.from('angkatan_pyramid').select('*').order('display_order', { ascending: true }),
-      supabaseSandbox.from('angkatan_ranks').select('*').order('id'),
+      supabaseSandbox.from('angkatan_ranks').select('*').order('display_order', { ascending: true }),
     ]);
     return {
       cats: catRes.data || [],
