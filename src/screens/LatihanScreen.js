@@ -13,7 +13,7 @@ import { appStyles as shared } from '../styles/appStyles';
 import { latihanStyles as styles } from './latihan/latihanStyles';
 import { AnimatedVerticalBar, AnimatedHorizontalBar, StatusDonut } from './latihan/LatihanCharts';
 import LatihanFormModal from './latihan/LatihanFormModal';
-import { PesertaModal, PrestasiModal, SenaraiModal } from './latihan/LatihanBreakdownModals';
+// LatihanBreakdownModals retiré — remplacé par des onglets + liste inline
 import { useUnitStaff } from '../hooks/useUnitStaff';
 import LatihanUnitSection from './latihan/LatihanUnitSection';
 import { useKpi } from '../hooks/useKpi';
@@ -28,9 +28,13 @@ export default function LatihanScreen({ theme, userRole }) {
   const { latihanList, isLoading, stats, saveLatihan, deleteLatihan, latihanUpdatedAt } = useLatihan();
   const unit = useUnitStaff('latihan');
 
-  const [senaraiModalVisible, setSenaraiModalVisible] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [hoveredMonthIndex, setHoveredMonthIndex] = useState(null);
+  const [activeStatTab, setActiveStatTab] = useState('senarai'); // 'senarai' | 'peserta' | 'prestasi'
+  const [statPage, setStatPage] = useState(1);
+  const STAT_PAGE_SIZE = 10;
+  const paginatedLatihanList = latihanList.slice((statPage - 1) * STAT_PAGE_SIZE, statPage * STAT_PAGE_SIZE);
+  const totalStatPages = Math.max(1, Math.ceil(latihanList.length / STAT_PAGE_SIZE));
 
   const { kpiList, saveKpiItem, deleteKpiItem, reorderKpi, kpiUpdatedAt } = useKpi('latihan');
   const latihanBudget = useLatihanBudget();
@@ -61,8 +65,6 @@ export default function LatihanScreen({ theme, userRole }) {
   const dikemaskini = formatTimestamp(latestRaw);
 
   const [isFormModalVisible, setFormModalVisible] = useState(false);
-  const [pesertaModalVisible, setPesertaModalVisible] = useState(false);
-  const [prestasiModalVisible, setPrestasiModalVisible] = useState(false);
 
   const [editingId, setEditingId] = useState(null);
   const [formData, setFormData] = useState({
@@ -161,41 +163,7 @@ export default function LatihanScreen({ theme, userRole }) {
 
       <ScrollView contentContainerStyle={styles.contentContainer} showsVerticalScrollIndicator={false}>
 
-        {/* ---- Cartes stats ---- */}
-        <View style={styles.topRow}>
-          <TouchableOpacity style={[styles.statCard, { backgroundColor: PALETTE.blue }]} activeOpacity={0.7} onPress={() => setPesertaModalVisible(true)}>
-            <View style={styles.statDecorCircle} />
-            <View style={styles.cardHeader}>
-              <Text style={styles.cardLabelLight}>Total Peserta</Text>
-              <View style={styles.iconBoxLight}><Users size={16} color="#fff" /></View>
-            </View>
-            <Text style={styles.cardValueLight}>{stats.totalPax}</Text>
-            <Text style={[styles.cardSubLight, { textDecorationLine: 'underline' }]}>Lihat Pecahan</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={[styles.statCard, { backgroundColor: PALETTE.orange }]} activeOpacity={0.7} onPress={() => setSenaraiModalVisible(true)}>
-            <View style={styles.statDecorCircle} />
-            <View style={styles.cardHeader}>
-              <Text style={styles.cardLabelLight}>Bil. Latihan</Text>
-              <View style={styles.iconBoxLight}><Calendar size={16} color="#fff" /></View>
-            </View>
-            <Text style={styles.cardValueLight}>{stats.totalEvents}</Text>
-            <Text style={[styles.cardSubLight, { textDecorationLine: 'underline' }]}>Lihat Senarai</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.statCardDark} activeOpacity={0.7} onPress={() => setPrestasiModalVisible(true)}>
-            <View style={styles.darkDecorCircle} />
-            <View style={styles.cardHeader}>
-              <Text style={styles.cardLabelLight}>Prestasi</Text>
-              <View style={styles.iconBoxDark}><TrendingUp size={16} color={PALETTE.orange} /></View>
-            </View>
-            <Text style={styles.cardValueLight}>{stats.completionRate}%</Text>
-            <Text style={[styles.cardSubLight, { textDecorationLine: 'underline' }]}>{stats.completed} Berjaya</Text>
-          </TouchableOpacity>
-        </View>
-
         {/* ---- KPI ---- */}
-        <View style={{ height: 16 }} />
         <KpiSection
           kpiItems={kpiList}
           isEditing={isEditMode}
@@ -205,17 +173,7 @@ export default function LatihanScreen({ theme, userRole }) {
           persistKpi={reorderKpi}
           showSubSeksyen={false}
         />
-
-        <BudgetSection
-          budgetData={latihanBudget.budgetData}
-          loading={latihanBudget.loading}
-          isEditMode={isEditMode}
-          saveBudgetItem={latihanBudget.saveBudgetItem}
-          deleteBudgetItem={latihanBudget.deleteBudgetItem}
-          deleteCategory={latihanBudget.deleteCategory}
-          renameCategory={latihanBudget.renameCategory}
-          onNotify={showNotification}
-        />
+        <View style={{ height: 16 }} />
 
         {/* ---- Statistik Bulanan ---- */}
         <View style={styles.sectionCard}>
@@ -279,6 +237,162 @@ export default function LatihanScreen({ theme, userRole }) {
             ))}
           </View>
         </View>
+
+        {/* ---- Onglets stats + liste ---- */}
+        <View style={[styles.sectionCard, { marginTop: 16 }]}>
+          <View style={{ flexDirection: 'row', gap: 10, marginBottom: 14 }}>
+            {[
+              { key: 'senarai', label: 'Bil. Latihan', Icon: Calendar, color: PALETTE.orange, value: stats.totalEvents },
+              { key: 'peserta', label: 'Total Peserta', Icon: Users, color: PALETTE.blue, value: stats.totalPax },
+              { key: 'prestasi', label: 'Prestasi', Icon: TrendingUp, color: PALETTE.orange, value: `${stats.completionRate}%` },
+            ].map((tab) => {
+              const isActive = activeStatTab === tab.key;
+              return (
+                <TouchableOpacity
+                  key={tab.key}
+                  onPress={() => { setActiveStatTab(tab.key); setStatPage(1); }}
+                  style={{
+                    flex: 1, alignItems: 'center', paddingVertical: 14, borderRadius: 14,
+                    backgroundColor: isActive ? tab.color : PALETTE.surface,
+                    borderWidth: 1, borderColor: isActive ? tab.color : PALETTE.cardLightBorder,
+                  }}
+                >
+                  <tab.Icon size={18} color={isActive ? '#fff' : tab.color} style={{ marginBottom: 6 }} />
+                  <Text style={{ fontSize: 18, fontWeight: '900', color: isActive ? '#fff' : PALETTE.textDark }}>{tab.value}</Text>
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: isActive ? '#fff' : PALETTE.textMutedDark, marginTop: 2 }}>{tab.label}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          {activeStatTab === 'senarai' && (
+            <>
+              {isEditMode && (
+                <TouchableOpacity style={[shared.addButton, { alignSelf: 'flex-end', marginBottom: 10 }]} onPress={handleOpenAdd}>
+                  <Plus size={16} color="#fff" />
+                  <Text style={shared.addButtonText}>Tambah</Text>
+                </TouchableOpacity>
+              )}
+              {latihanList.length === 0 ? (
+                <Text style={shared.emptyText}>Tiada data latihan.</Text>
+              ) : (
+                paginatedLatihanList.map((item) => {
+                  const meta = statusMeta(item.status);
+                  return (
+                    <View key={item.id} style={styles.listItem}>
+                      <View style={styles.dateChip}>
+                        <Text style={styles.dateText}>{formatDisplayDate(item.start_date, item.end_date)}</Text>
+                      </View>
+                      <View style={{ flex: 1, paddingLeft: 8 }}>
+                        <Text style={styles.itemTitle}>{item.title}</Text>
+                        <Text style={styles.itemSub}>{item.note || 'Tiada Kumpulan'} • {item.pax} Pax</Text>
+                      </View>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <View style={[styles.statusBadge, { backgroundColor: meta.soft }]}>
+                          <meta.Icon size={12} color={meta.color} />
+                          <Text style={[styles.statusBadgeText, { color: meta.color }]}>{item.status}</Text>
+                        </View>
+                        {isEditMode && (
+                          <View style={{ flexDirection: 'row', gap: 8 }}>
+                            <HoverTip label="Kemaskini latihan ini">
+                              <TouchableOpacity onPress={() => handleOpenEdit(item)} style={[styles.itemActionBtn, { backgroundColor: 'rgba(249, 115, 22, 0.12)' }]}>
+                                <Edit size={14} color={PALETTE.orange} />
+                              </TouchableOpacity>
+                            </HoverTip>
+                            <HoverTip label="Padam latihan ini">
+                              <TouchableOpacity onPress={() => deleteLatihan(item.id)} style={[styles.itemActionBtn, { backgroundColor: 'rgba(220, 38, 38, 0.10)' }]}>
+                                <Trash2 size={14} color={PALETTE.danger} />
+                              </TouchableOpacity>
+                            </HoverTip>
+                          </View>
+                        )}
+                      </View>
+                    </View>
+                  );
+                })
+              )}
+            </>
+          )}
+
+          {activeStatTab === 'peserta' && (
+            <>
+              {paginatedLatihanList.map((item) => (
+                <View key={item.id} style={styles.listItem}>
+                  <View style={styles.dateChip}>
+                    <Text style={styles.dateText}>{formatDisplayDate(item.start_date, item.end_date)}</Text>
+                  </View>
+                  <View style={{ flex: 1, paddingLeft: 8 }}>
+                    <Text style={styles.itemTitle}>{item.title}</Text>
+                    <Text style={styles.itemSub}>{item.note || 'Tiada Kumpulan'}</Text>
+                  </View>
+                  <View style={[styles.statusBadge, { backgroundColor: `${PALETTE.blue}1F` }]}>
+                    <Users size={12} color={PALETTE.blue} />
+                    <Text style={[styles.statusBadgeText, { color: PALETTE.blue }]}>{item.pax} Pax</Text>
+                  </View>
+                </View>
+              ))}
+              <View style={styles.breakdownTotalRow}>
+                <Text style={styles.breakdownTotalLabel}>Jumlah Keseluruhan</Text>
+                <Text style={styles.breakdownTotalValue}>{stats.totalPax} Pax</Text>
+              </View>
+            </>
+          )}
+
+          {activeStatTab === 'prestasi' && (
+            paginatedLatihanList.map((item) => {
+              const meta = statusMeta(item.status);
+              return (
+                <View key={item.id} style={styles.listItem}>
+                  <View style={styles.dateChip}>
+                    <Text style={styles.dateText}>{formatDisplayDate(item.start_date, item.end_date)}</Text>
+                  </View>
+                  <View style={{ flex: 1, paddingLeft: 8 }}>
+                    <Text style={styles.itemTitle}>{item.title}</Text>
+                    <Text style={styles.itemSub}>{item.note || 'Tiada Kumpulan'} • {item.pax} Pax</Text>
+                  </View>
+                  <View style={[styles.statusBadge, { backgroundColor: meta.soft }]}>
+                    <meta.Icon size={12} color={meta.color} />
+                    <Text style={[styles.statusBadgeText, { color: meta.color }]}>{item.status}</Text>
+                  </View>
+                </View>
+              );
+            })
+          )}
+
+          {latihanList.length > STAT_PAGE_SIZE && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 16, marginTop: 14 }}>
+              <TouchableOpacity
+                disabled={statPage === 1}
+                onPress={() => setStatPage((p) => Math.max(1, p - 1))}
+                style={{ opacity: statPage === 1 ? 0.3 : 1, padding: 8 }}
+              >
+                <Text style={{ fontSize: 13, fontWeight: '700', color: PALETTE.orange }}>← Sebelum</Text>
+              </TouchableOpacity>
+              <Text style={{ fontSize: 12, fontWeight: '700', color: PALETTE.textDark }}>
+                Muka {statPage} / {totalStatPages}
+              </Text>
+              <TouchableOpacity
+                disabled={statPage === totalStatPages}
+                onPress={() => setStatPage((p) => Math.min(totalStatPages, p + 1))}
+                style={{ opacity: statPage === totalStatPages ? 0.3 : 1, padding: 8 }}
+              >
+                <Text style={{ fontSize: 13, fontWeight: '700', color: PALETTE.orange }}>Seterusnya →</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+
+        <BudgetSection
+          budgetData={latihanBudget.budgetData}
+          loading={latihanBudget.loading}
+          isEditMode={isEditMode}
+          saveBudgetItem={latihanBudget.saveBudgetItem}
+          deleteBudgetItem={latihanBudget.deleteBudgetItem}
+          deleteCategory={latihanBudget.deleteCategory}
+          renameCategory={latihanBudget.renameCategory}
+          onNotify={showNotification}
+        />
+
         {/* ---- Unit Bertanggungjawab ---- */}
         <View style={{ height: 16 }} />
         <LatihanUnitSection
@@ -299,17 +413,6 @@ export default function LatihanScreen({ theme, userRole }) {
         setFormData={setFormData}
         onSave={handleSave}
       />
-      <SenaraiModal
-        visible={senaraiModalVisible}
-        onClose={() => setSenaraiModalVisible(false)}
-        latihanList={latihanList}
-        isEditMode={isEditMode}
-        onAdd={handleOpenAdd}
-        onEdit={handleOpenEdit}
-        onDelete={deleteLatihan}
-      />
-      <PesertaModal visible={pesertaModalVisible} onClose={() => setPesertaModalVisible(false)} latihanList={latihanList} totalPax={stats.totalPax} />
-      <PrestasiModal visible={prestasiModalVisible} onClose={() => setPrestasiModalVisible(false)} latihanList={latihanList} completionRate={stats.completionRate} />
-    </View>
+      </View>
   );
 }
