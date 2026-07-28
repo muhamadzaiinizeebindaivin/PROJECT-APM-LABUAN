@@ -230,12 +230,11 @@ export default function Ng999ReportTab({ theme, userRole, isEditMode }) {
     <>
       <ScrollView style={styles.reportContainer} showsVerticalScrollIndicator={false}>
 
-        <View style={styles.reportHeader}>
-          <Text style={styles.reportTitle}>Emergency Case Report</Text>
-          <Text style={{ color: PALETTE.textMutedDark, fontWeight: '600' }}>NG 999 W.P. Labuan {now.getFullYear()}</Text>
-        </View>
-
         <View style={[styles.crudContainer, { marginBottom: 12 }]}>
+          <View style={[styles.reportHeader, { marginBottom: 12 }]}>
+            <Text style={styles.reportTitle}>Emergency Case Report</Text>
+            <Text style={{ color: PALETTE.textMutedDark, fontWeight: '600' }}>NG 999 W.P. Labuan {now.getFullYear()}</Text>
+          </View>
           <CalamitySummaryContent theme={theme} mode="chart" statsOnly />
         </View>
 

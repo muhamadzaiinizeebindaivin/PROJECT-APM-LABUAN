@@ -1,7 +1,9 @@
 // src/screens/OperasiScreen.js
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { View, TouchableOpacity, Text, StyleSheet, ScrollView } from 'react-native';
-import { MapIcon, BarChart2, HeartPulse } from 'lucide-react-native';
+import { MapIcon, BarChart2, HeartPulse, CheckCircle2, XCircle } from 'lucide-react-native';
+import { useOperasiBudget } from '../hooks/useOperasiBudget';
+import BudgetSection from './kewangan/BudgetSection';
 import LiveMapTab from './operasi/LiveMapTab';
 import Ng999ReportTab from './operasi/Ng999ReportTab';
 import PertolonganCemasTab from './operasi/PertolonganCemasTab';
@@ -22,6 +24,18 @@ export default function OperasiScreen({ theme, userRole }) {
   const { kpiList, saveKpiItem, deleteKpiItem, reorderKpi } = useKpi('operasi');
   const unit = useUnitStaff('operasi');
   const { dikemaskiniRaw } = useOperasiMeta();
+  const operasiBudget = useOperasiBudget();
+
+  const [notification, setNotification] = useState(null);
+  const notificationTimeoutRef = useRef(null);
+  const showNotification = (type, message) => {
+    setNotification({ type, message });
+    if (notificationTimeoutRef.current) clearTimeout(notificationTimeoutRef.current);
+    notificationTimeoutRef.current = setTimeout(() => setNotification(null), 3000);
+  };
+  useEffect(() => () => {
+    if (notificationTimeoutRef.current) clearTimeout(notificationTimeoutRef.current);
+  }, []);
 
   // Convertit un timestamp ISO (colonne updated_at) au format d'affichage DD/M/YYYY HH:MM
   const formatTimestamp = (iso) => {
@@ -47,6 +61,47 @@ export default function OperasiScreen({ theme, userRole }) {
             ) : null}
           </View>
           <AdminEditButton isEditMode={isEditMode} setIsEditMode={setIsEditMode} userRole={userRole} section="Operasi" />
+
+          {notification && (
+            <View
+              pointerEvents="none"
+              style={{
+                position: 'absolute', top: '100%', left: 0, right: 0,
+                alignItems: 'center', paddingTop: 10, zIndex: 30,
+              }}
+            >
+              <View
+                style={{
+                  flexDirection: 'row', alignItems: 'center', gap: 10, maxWidth: '92%',
+                  backgroundColor: notification.type === 'success' ? '#f0fdf4' : '#fef2f2',
+                  borderWidth: 1,
+                  borderColor: notification.type === 'success' ? '#bbf7d0' : '#fecaca',
+                  borderRadius: 12,
+                  paddingVertical: 10,
+                  paddingHorizontal: 14,
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.12,
+                  shadowRadius: 10,
+                  elevation: 5,
+                }}
+              >
+                {notification.type === 'success' ? (
+                  <CheckCircle2 size={17} color="#16a34a" />
+                ) : (
+                  <XCircle size={17} color="#dc2626" />
+                )}
+                <Text
+                  style={{
+                    color: notification.type === 'success' ? '#166534' : '#991b1b',
+                    fontWeight: '700', fontSize: 13, flexShrink: 1,
+                  }}
+                >
+                  {notification.message}
+                </Text>
+              </View>
+            </View>
+          )}
         </View>
       )}
 
@@ -93,6 +148,20 @@ export default function OperasiScreen({ theme, userRole }) {
                 removeKpiItem={(item) => deleteKpiItem(item)}
                 persistKpi={reorderKpi}
                 showSubSeksyen={false}
+              />
+            </View>
+          )}
+          {activeTab === 'report' && (
+            <View style={{ paddingHorizontal: 16 }}>
+              <BudgetSection
+                budgetData={operasiBudget.budgetData}
+                loading={operasiBudget.loading}
+                isEditMode={isEditMode}
+                saveBudgetItem={operasiBudget.saveBudgetItem}
+                deleteBudgetItem={operasiBudget.deleteBudgetItem}
+                deleteCategory={operasiBudget.deleteCategory}
+                renameCategory={operasiBudget.renameCategory}
+                onNotify={showNotification}
               />
             </View>
           )}
