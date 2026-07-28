@@ -32,15 +32,15 @@ export const FIELD_GROUPS = {
   'Kad/Insurans': [
     { key: 'tarikh_aktif_kad', label: 'Tarikh Aktif Kad', type: 'date' },
     { key: 'tarikh_tamat_kad', label: 'Tarikh Tamat Kad', type: 'date' },
-    { key: 'tempoh_baki_aktif_kad_hari', label: 'Tempoh Baki Aktif Kad (Hari)', type: 'text' },
+    { key: 'tempoh_baki_aktif_kad_hari', label: 'Tempoh Baki Aktif Kad (Hari)', type: 'computed_days', fromDateKey: 'tarikh_tamat_kad' },
     { key: 'insuran_kelompok_individu', label: 'Insuran (Kelompok/Individu)', type: 'text' },
     { key: 'insuran_aktif_tidak', label: 'Insuran (Aktif/Tidak)', type: 'text' },
     { key: 'tarikh_tamat_insuran', label: 'Tarikh Tamat Insuran', type: 'date' },
-    { key: 'tempoh_baki_aktif_insuran_hari', label: 'Tempoh Baki Aktif Insuran (Hari)', type: 'text' },
+    { key: 'tempoh_baki_aktif_insuran_hari', label: 'Tempoh Baki Aktif Insuran (Hari)', type: 'computed_days', fromDateKey: 'tarikh_tamat_insuran' },
     { key: 'perkeso_jabatan_individu', label: 'Perkeso (Jabatan/Individu)', type: 'text' },
     { key: 'perkeso_aktif_tidak', label: 'Perkeso (Aktif/Tidak)', type: 'text' },
     { key: 'tarikh_tamat_perkeso', label: 'Tarikh Tamat Perkeso', type: 'date' },
-    { key: 'tempoh_baki_caruman_perkeso_hari', label: 'Tempoh Baki Caruman Perkeso (Hari)', type: 'text' },
+    { key: 'tempoh_baki_caruman_perkeso_hari', label: 'Tempoh Baki Caruman Perkeso (Hari)', type: 'computed_days', fromDateKey: 'tarikh_tamat_perkeso' },
   ],
   Pangkat: [
     { key: 'no_rujukan_surat_lkpl', label: 'No. Rujukan Surat L/KPL', type: 'text' },
@@ -91,4 +91,15 @@ export const formatICNumber = (value) => {
   if (digits.length > 6) formatted = `${digits.slice(0, 6)}-${digits.slice(6)}`;
   if (digits.length > 8) formatted = `${digits.slice(0, 6)}-${digits.slice(6, 8)}-${digits.slice(8)}`;
   return formatted;
+};
+
+// Calcule le nombre de jours restants jusqu'à une date de tamat (négatif si déjà expiré)
+export const computeDaysRemaining = (dateStr) => {
+  if (!dateStr) return null;
+  const target = new Date(dateStr);
+  if (isNaN(target.getTime())) return null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  target.setHours(0, 0, 0, 0);
+  return Math.round((target.getTime() - today.getTime()) / 86400000);
 };

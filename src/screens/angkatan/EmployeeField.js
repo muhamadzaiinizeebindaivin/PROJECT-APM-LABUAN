@@ -3,10 +3,23 @@ import { View, Text, TextInput, TouchableOpacity, Platform } from 'react-native'
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { PALETTE } from '../../constants/palette';
 import { angkatanStyles as styles } from './angkatanStyles';
-import { formatICNumber } from './employeeFieldGroups';
+import { formatICNumber, computeDaysRemaining } from './employeeFieldGroups';
 
 export default function EmployeeField({ field: f, form, setForm, isEditing, activeDatePickerField, setActiveDatePickerField }) {
   const value = form[f.key];
+
+  // Toujours calculé, jamais éditable — même en mode édition
+  if (f.type === 'computed_days') {
+    const days = computeDaysRemaining(form[f.fromDateKey]);
+    const displayValue = days === null ? '-' : `${days} hari${days < 0 ? ' (tamat tempoh)' : ''}`;
+    return (
+      <FieldWrapper label={f.label}>
+        <Text style={[styles.fieldValue, days !== null && days < 0 && { color: '#dc2626', fontWeight: '800' }]}>
+          {displayValue}
+        </Text>
+      </FieldWrapper>
+    );
+  }
 
   if (!isEditing) {
     if (f.type === 'multiline_list') {
