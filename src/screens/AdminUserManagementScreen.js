@@ -3,7 +3,8 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator,
 import {
   UserPlus, CheckCircle, AlertCircle, User, Mail, ShieldCheck, Briefcase,
   Trash2, Users, Search, ChevronLeft, ChevronRight, ArrowUpDown,
-  LayoutDashboard, CreditCard, Truck, GraduationCap, ShieldAlert, RefreshCw
+  LayoutDashboard, CreditCard, Truck, GraduationCap, ShieldAlert, RefreshCw,
+  Building2, Eye, EyeOff, Pencil, Check, X, KeyRound
 } from 'lucide-react-native';
 import { supabaseSandbox as supabase } from '../supabaseSandboxClient';
 import { PALETTE } from '../constants/palette';
@@ -22,6 +23,57 @@ const ROLES = [
 const PAGE_SIZE = 20;
 
 export default function AdminUserManagementScreen() {
+
+  // ---- Kod akses (agensi & pemandu) ----
+  const [accessCodes, setAccessCodes] = useState({ agency_code: '', driver_code: '' });
+  const [loadingCodes, setLoadingCodes] = useState(true);
+  const [revealCode, setRevealCode] = useState({ agency: false, driver: false });
+  const [editingCode, setEditingCode] = useState(null); // 'agency' | 'driver' | null
+  const [codeDraft, setCodeDraft] = useState('');
+  const [savingCode, setSavingCode] = useState(false);
+  const [codeFeedback, setCodeFeedback] = useState(null);
+
+  const fetchAccessCodes = async () => {
+    setLoadingCodes(true);
+    const { data, error } = await supabase.rpc('admin_get_access_codes');
+    if (!error && data?.[0]) {
+      setAccessCodes({ agency_code: data[0].agency_code || '', driver_code: data[0].driver_code || '' });
+    }
+    setLoadingCodes(false);
+  };
+
+  useEffect(() => { fetchAccessCodes(); }, []);
+
+  const startEditCode = (type) => {
+    setEditingCode(type);
+    setCodeDraft(type === 'agency' ? accessCodes.agency_code : accessCodes.driver_code);
+    setCodeFeedback(null);
+  };
+
+  const cancelEditCode = () => {
+    setEditingCode(null);
+    setCodeDraft('');
+  };
+
+  const saveEditCode = async () => {
+    if (!codeDraft.trim()) {
+      setCodeFeedback({ type: 'error', message: 'Kod tidak boleh kosong.' });
+      return;
+    }
+    setSavingCode(true);
+    const rpcName = editingCode === 'agency' ? 'admin_set_agency_code' : 'admin_set_driver_code';
+    const paramName = editingCode === 'agency' ? 'p_new_code' : 'p_new_code';
+    const { error } = await supabase.rpc(rpcName, { [paramName]: codeDraft.trim() });
+    setSavingCode(false);
+    if (error) {
+      setCodeFeedback({ type: 'error', message: 'Gagal mengemaskini kod.' });
+      return;
+    }
+    setCodeFeedback({ type: 'success', message: 'Kod berjaya dikemaskini.' });
+    setEditingCode(null);
+    fetchAccessCodes();
+  };
+  
   // --- Formulaire de création ---
   const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
@@ -185,6 +237,83 @@ export default function AdminUserManagementScreen() {
       contentContainerStyle={styles.scrollContent}
       showsVerticalScrollIndicator={false}
     >
+      {/* ============ KOD AKSES (agensi & pemandu) ============ */}
+      <View style={[styles.card, { flexDirection: 'row', gap: 14, marginBottom: 16 }]}>
+        {[
+          { key: 'agency', label: 'Kod Akses Agensi', Icon: Building2, value: accessCodes.agency_code },
+          { key: 'driver', label: 'Kod Akses Pemandu', Icon: Truck, value: accessCodes.driver_code },
+        ].map(({ key, label, Icon, value }) => (
+          <View key={key} style={{ flex: 1, backgroundColor: PALETTE.surface, borderRadius: 14, padding: 16, borderWidth: 1, borderColor: PALETTE.cardLightBorder }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+              <Icon size={16} color={PALETTE.orange} />
+              <Text style={{ fontSize: 12, fontWeight: '800', color: PALETTE.textMutedDark, textTransform: 'uppercase', letterSpacing: 0.4 }}>{label}</Text>
+            </View>
+
+            {loadingCodes ? (
+              <ActivityIndicator size="small" color={PALETTE.orange} />
+            ) : editingCode === key ? (
+              <View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <TextInput
+                    style={[styles.input, { flex: 1, marginBottom: 0 }]}
+                    value={codeDraft}
+                    onChangeText={setCodeDraft}
+                    autoCapitalize="none"
+                    autoFocus
+                  />
+                </View>
+                {!!codeFeedback && editingCode === key && (
+                  <Text style={{ fontSize: 11, color: codeFeedback.type === 'success' ? PALETTE.success : PALETTE.danger, fontWeight: '700', marginTop: 6 }}>
+                    {codeFeedback.message}
+                  </Text>
+                )}
+                <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
+                  <TouchableOpacity
+                    onPress={cancelEditCode}
+                    style={{
+                      flex: 1, height: 40, borderRadius: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+                      borderWidth: 1.5, borderColor: '#e2e8f0', backgroundColor: '#fff',
+                    }}
+                  >
+                    <X size={15} color={PALETTE.textMutedDark} />
+                    <Text style={{ fontSize: 13, fontWeight: '700', color: PALETTE.textMutedDark }}>Batal</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={saveEditCode}
+                    disabled={savingCode}
+                    style={{
+                      flex: 1, height: 40, borderRadius: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+                      backgroundColor: PALETTE.orange, opacity: savingCode ? 0.7 : 1,
+                    }}
+                  >
+                    {savingCode ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <>
+                        <Check size={15} color="#fff" />
+                        <Text style={{ fontSize: 13, fontWeight: '700', color: '#fff' }}>Simpan</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Text style={{ flex: 1, fontSize: 15, fontWeight: '800', fontFamily: 'monospace', color: PALETTE.textDark }}>
+                  {revealCode[key] ? value : '•'.repeat(Math.max(6, value.length))}
+                </Text>
+                <TouchableOpacity onPress={() => setRevealCode((p) => ({ ...p, [key]: !p[key] }))}>
+                  {revealCode[key] ? <EyeOff size={16} color={PALETTE.textMutedDark} /> : <Eye size={16} color={PALETTE.textMutedDark} />}
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => startEditCode(key)}>
+                  <Pencil size={16} color={PALETTE.orange} />
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        ))}
+      </View>
+
       {/* ============ CARTE 1 : CRÉATION DE COMPTE ============ */}
       <View style={styles.card}>
         <Text style={styles.sectionLabel}>MAKLUMAT AKAUN</Text>

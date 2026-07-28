@@ -1,7 +1,7 @@
 const ALL_TABS = ['Utama', 'Pentadbiran', 'Kewangan', 'Angkatan', 'Latihan', 'Logistik', 'Operasi', 'Sekretariat'];
 
 export const ROLE_PERMISSIONS = {
-  admin: [...ALL_TABS, 'Pengurusan Akaun'],
+  admin: [...ALL_TABS, 'Admin'],
   pentadbiran: ALL_TABS,
   kewangan: ALL_TABS,
   logistik: ALL_TABS,

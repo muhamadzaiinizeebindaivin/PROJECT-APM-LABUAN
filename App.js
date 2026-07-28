@@ -82,7 +82,7 @@ function DepartmentFlow({ userRole, theme, handleLogin, handleLogout, onLoginPre
         Utama: Info, Pentadbiran: LayoutDashboard, Sekretariat: Briefcase,
         Angkatan: Users, Kewangan: CreditCard, Latihan: GraduationCap,
         Logistik: Truck, Operasi: ShieldAlert,
-        'Pengurusan Akaun': UserCog,
+        Admin: UserCog,
       };
       const Icon = icons[route.name];
       return Icon ? <Icon size={24} color={color} strokeWidth={focused ? 2.5 : 2} /> : null;
@@ -112,7 +112,7 @@ function DepartmentFlow({ userRole, theme, handleLogin, handleLogout, onLoginPre
       },
       render: (props) => <OperasiScreen {...props} theme={theme} userRole={userRole} />
     },
-    { name: 'Pengurusan Akaun', options: { tabBarActiveTintColor: '#8b5cf6' }, render: (props) => <AdminUserManagementScreen {...props} /> },
+    { name: 'Admin', options: { tabBarActiveTintColor: '#8b5cf6' }, render: (props) => <AdminUserManagementScreen {...props} /> },
   ];
 
   const allowedTabs = ROLE_PERMISSIONS[userRole] || [];
