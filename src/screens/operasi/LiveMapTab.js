@@ -426,7 +426,7 @@ export default function LiveMapTab({ theme, userRole }) {
           )}
 
           {(() => {
-            const canAddCalamity = userRole === 'sekretariat' || userRole === 'admin';
+            const canAddCalamity = userRole === 'admin' || userRole === 'operasi';
             return (
               <>
                 <TouchableOpacity
@@ -464,7 +464,7 @@ export default function LiveMapTab({ theme, userRole }) {
             );
           })()}
 
-          {(userRole === 'sekretariat' || userRole === 'admin') && (
+          {(userRole === 'admin' || userRole === 'operasi') && (
             <View style={styles.calamityPalette}>
               <ScrollView style={{ maxHeight: 280 }} showsVerticalScrollIndicator={false}>
                 {CALAMITY_CATEGORIES.map(cat => {
