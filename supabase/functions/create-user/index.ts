@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 // ⚠️ Remplace par ton vrai domaine de production une fois déployé
-const ALLOWED_ORIGIN = "http://localhost:8081";
+const ALLOWED_ORIGIN = "https://project-apm-labuan.vercel.app";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": ALLOWED_ORIGIN,

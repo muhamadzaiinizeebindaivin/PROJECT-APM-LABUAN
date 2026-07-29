@@ -39,6 +39,10 @@ export const customHeaderStyles = StyleSheet.create({
     width: 226,
     height: 60,
   },
+  logoSmall: {
+    width: 90,
+    height: 24,
+  },
   title: {
     fontSize: 20,
     letterSpacing: 0.3,
@@ -68,9 +72,10 @@ export const customHeaderStyles = StyleSheet.create({
   loginButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 6,
     backgroundColor: '#fff',
-    paddingHorizontal: 14,
+    paddingHorizontal: 10,
     paddingVertical: 9,
     borderRadius: 10,
     ...Platform.select({
@@ -117,6 +122,11 @@ export const customHeaderStyles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1,
     borderColor: '#bbf7d0',
+  },
+  roleBadgeNarrow: {
+    paddingHorizontal: 6,
+    paddingVertical: 6,
+    marginRight: 2,
   },
   roleBadgeDot: {
     width: 6,

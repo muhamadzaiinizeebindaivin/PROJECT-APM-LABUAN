@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, Image } from 'react-native';
+import { View, Text, TouchableOpacity, Image, useWindowDimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ShieldCheck, LogOut } from 'lucide-react-native';
 import { FONTS } from '../styles/tacticalTheme';
@@ -9,6 +9,7 @@ import { customHeaderStyles as styles } from './customHeaderStyles';
 // Dégradé du header : orange (marque APM) vers bleu.
 // Modifie ces deux couleurs pour ajuster le dégradé.
 const HEADER_GRADIENT = ['#60a5fa', '#fb923c'];
+const NARROW_BREAKPOINT = 480;
 
 function HeaderRoleBadge({ userRole }) {
   return (
@@ -22,6 +23,9 @@ function HeaderRoleBadge({ userRole }) {
 }
 
 export default function CustomHeader({ title, theme, userRole, onLogout, onLoginPress }) {
+  const { width } = useWindowDimensions();
+  const isNarrow = width < NARROW_BREAKPOINT;
+
   return (
     <LinearGradient
       colors={HEADER_GRADIENT}
@@ -33,16 +37,18 @@ export default function CustomHeader({ title, theme, userRole, onLogout, onLogin
         <View style={styles.logoWrapper}>
           <Image
             source={{ uri: 'https://kceeewyadcskivtmilyf.supabase.co/storage/v1/object/public/logo/apm_labuan.png' }}
-            style={styles.logo}
+            style={isNarrow ? styles.logoSmall : styles.logo}
             resizeMode="contain"
           />
         </View>
-        <Text
-          style={[styles.title, { fontFamily: FONTS.displayBold }]}
-          numberOfLines={1}
-        >
-          {title}
-        </Text>
+        {!isNarrow && (
+          <Text
+            style={[styles.title, { fontFamily: FONTS.displayBold }]}
+            numberOfLines={1}
+          >
+            {title}
+          </Text>
+        )}
       </View>
 
       <View style={styles.actionsRow}>
@@ -58,9 +64,11 @@ export default function CustomHeader({ title, theme, userRole, onLogout, onLogin
             <HeaderRoleBadge userRole={userRole} />
             <TouchableOpacity onPress={onLogout} style={styles.logoutButton} activeOpacity={0.8}>
               <LogOut size={14} color="#ef4444" />
-              <Text style={[styles.logoutButtonText, { fontFamily: FONTS.bodyMedium }]}>
-                Log Keluar
-              </Text>
+              {!isNarrow && (
+                <Text style={[styles.logoutButtonText, { fontFamily: FONTS.bodyMedium }]}>
+                  Log Keluar
+                </Text>
+              )}
             </TouchableOpacity>
           </>
         )}
