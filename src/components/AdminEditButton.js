@@ -19,7 +19,7 @@ export default function AdminEditButton({ isEditMode, setIsEditMode, userRole, s
         {isEditMode ? <X size={13} color="#fff" /> : <Edit2 size={13} color="#fff" />}
       </View>
       <Text style={styles.adminBtnText}>
-        {isEditMode ? 'Tutup Kemaskini' : 'Kemaskini Maklumat'}
+        {isEditMode ? 'Tutup Kemaskini' : 'Kemaskini'}
       </Text>
     </TouchableOpacity>
   );
