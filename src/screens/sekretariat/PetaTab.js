@@ -730,7 +730,9 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
             </View>
           </View>
 
-          {renderHistoryTable()}
+          <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+            {renderHistoryTable()}
+          </ScrollView>
         </View>
       )}
 
@@ -762,7 +764,9 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
             </View>
           </View>
 
-          {renderSummaryContent()}
+          <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+            {renderSummaryContent()}
+          </ScrollView>
         </View>
       )}
 
