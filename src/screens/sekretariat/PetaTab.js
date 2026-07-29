@@ -1,7 +1,7 @@
 // src/screens/sekretariat/PetaTab.js
 import React, { useState, useEffect, useRef, createElement } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Platform, Modal, TextInput, ActivityIndicator, Alert, Image } from 'react-native';
-import { Map, History, ClipboardList, AlertTriangle, X, Plus, Download } from 'lucide-react-native';
+import { Map, History, ClipboardList, AlertTriangle, X, Plus, Download, Trash2 } from 'lucide-react-native';
 import { supabaseSandbox } from '../../supabaseSandboxClient';
 import { buildSekretariatMapHtml } from './sekretariatMapTemplate';
 import { useOnlineAgencies } from '../../hooks/useOnlineAgencies';
@@ -43,13 +43,13 @@ const formatDuration = (seconds) => {
   return `${m} minit`;
 };
 
-export default function PetaTab({ theme, userRole }) {
+export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
   const now = new Date();
   const petaIframeRef = useRef(null);
 
   const { onlineAgencies } = useOnlineAgencies();
   const { bencanaPoints, saveBencana, resolveBencana, deleteBencana } = useBencanaPoints();
-  const { trackingHistory, loadingHistory } = useAgencyTrackingHistory();
+  const { trackingHistory, loadingHistory, deleteTrackingHistory } = useAgencyTrackingHistory();
 
   // Liste légère des agences, uniquement pour la légende de couleurs de la carte
   const [agencyNames, setAgencyNames] = useState([]);
@@ -90,6 +90,8 @@ export default function PetaTab({ theme, userRole }) {
   const [bencanaCategory, setBencanaCategory] = useState('');
   const [bencanaDescription, setBencanaDescription] = useState('');
   const [bencanaModalVisible, setBencanaModalVisible] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null); // { type: 'bencana' | 'history', id, label }
+  const [deletingTarget, setDeletingTarget] = useState(false);
 
   // --- Panneau latéral ---
   const [sidePanel, setSidePanel] = useState('none'); // 'none' | 'history' | 'summary'
@@ -201,7 +203,14 @@ export default function PetaTab({ theme, userRole }) {
           setBencanaModalVisible(true);
           setIsPlacingBencana(false);
         } else if (data.type === 'DELETE_BENCANA_REQUEST') {
-          deleteBencana(data.id);
+          (async () => {
+            const result = await deleteBencana(data.id);
+            if (result?.cancelled) return;
+            onNotify?.(
+              !result?.error ? 'success' : 'error',
+              !result?.error ? 'Titik bencana berjaya dipadam.' : 'Gagal memadam titik bencana.'
+            );
+          })();
         } else if (data.type === 'RESOLVE_BENCANA_REQUEST') {
           resolveBencana(data.id);
         }
@@ -236,6 +245,31 @@ export default function PetaTab({ theme, userRole }) {
       setBencanaDescription('');
       setPendingBencanaPlacement(null);
     }
+  };
+
+  const handleDeleteBencanaSummary = (id, label) => {
+    setDeleteTarget({ type: 'bencana', id, label });
+  };
+
+  const handleDeleteTrackingHistory = (id, label) => {
+    setDeleteTarget({ type: 'history', id, label });
+  };
+
+  const confirmDeleteTarget = async () => {
+    if (!deleteTarget) return;
+    setDeletingTarget(true);
+    const result = deleteTarget.type === 'bencana'
+      ? await deleteBencana(deleteTarget.id, { skipConfirm: true })
+      : await deleteTrackingHistory(deleteTarget.id, { skipConfirm: true });
+    setDeletingTarget(false);
+    setDeleteTarget(null);
+    const isBencana = deleteTarget.type === 'bencana';
+    onNotify?.(
+      !result?.error ? 'success' : 'error',
+      !result?.error
+        ? (isBencana ? 'Rekod bencana berjaya dipadam.' : 'Rekod patrol agensi berjaya dipadam.')
+        : (isBencana ? 'Gagal memadam rekod bencana.' : 'Gagal memadam rekod patrol agensi.')
+    );
   };
 
   // --- Filtre/pagination : Sejarah Patrol Agensi ---
@@ -357,6 +391,11 @@ export default function PetaTab({ theme, userRole }) {
               <View style={[styles.calamityTotalColFlex, styles.calamityHeaderCellBox]}>
                 <Text style={[styles.calamityTableHeaderCell, large && { fontSize: 16 }]}>Tarikh</Text>
               </View>
+              {isEditMode && (userRole === 'sekretariat' || userRole === 'admin') && (
+                <View style={[{ width: 50 }, styles.calamityHeaderCellBox]}>
+                  <Text style={[styles.calamityTableHeaderCell, large && { fontSize: 16 }]}></Text>
+                </View>
+              )}
             </View>
             <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 380 }}>
               {pagedHistory.map((h, index) => (
@@ -374,6 +413,16 @@ export default function PetaTab({ theme, userRole }) {
                     <Text style={[styles.tableCellDate, large && { fontSize: 13 }]}>{new Date(h.ended_at).toLocaleDateString('ms-MY')}</Text>
                     <Text style={[styles.tableCellTime, large && { fontSize: 12 }]}>{new Date(h.ended_at).toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit' })}</Text>
                   </View>
+                  {isEditMode && (userRole === 'sekretariat' || userRole === 'admin') && (
+                    <View style={{ width: 50, alignItems: 'center', justifyContent: 'center' }}>
+                      <TouchableOpacity
+                        onPress={() => handleDeleteTrackingHistory(h.id, h.jpbd_directory?.agency || h.member_name)}
+                        style={{ width: 26, height: 26, borderRadius: 7, backgroundColor: 'rgba(220, 38, 38, 0.10)', alignItems: 'center', justifyContent: 'center' }}
+                      >
+                        <Trash2 size={13} color={PALETTE.danger || '#dc2626'} />
+                      </TouchableOpacity>
+                    </View>
+                  )}
                 </View>
               ))}
             </ScrollView>
@@ -459,6 +508,11 @@ export default function PetaTab({ theme, userRole }) {
               <View style={[styles.calamityTotalColFlex, styles.calamityHeaderCellBox]}>
                 <Text style={[styles.calamityTableHeaderCell, large && { fontSize: 16 }]}>Tarikh Tamat</Text>
               </View>
+              {isEditMode && (userRole === 'sekretariat' || userRole === 'admin') && (
+                <View style={[{ width: 50 }, styles.calamityHeaderCellBox]}>
+                  <Text style={[styles.calamityTableHeaderCell, large && { fontSize: 16 }]}></Text>
+                </View>
+              )}
             </View>
             <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 380 }}>
               {pagedBencanaSummary.map((b, index) => (
@@ -472,6 +526,16 @@ export default function PetaTab({ theme, userRole }) {
                   <Text style={[styles.calamityTableCell, styles.calamityTotalColFlex, !b.resolved_at && { fontStyle: 'italic', color: PALETTE.orangeDark }, large && { fontSize: 16 }]}>
                     {b.resolved_at ? new Date(b.resolved_at).toLocaleDateString('ms-MY') : 'Bencana Belum Selesai'}
                   </Text>
+                  {isEditMode && (userRole === 'sekretariat' || userRole === 'admin') && (
+                    <View style={{ width: 50, alignItems: 'center', justifyContent: 'center' }}>
+                      <TouchableOpacity
+                        onPress={() => handleDeleteBencanaSummary(b.id, b.category)}
+                        style={{ width: 26, height: 26, borderRadius: 7, backgroundColor: 'rgba(220, 38, 38, 0.10)', alignItems: 'center', justifyContent: 'center' }}
+                      >
+                        <Trash2 size={13} color={PALETTE.danger || '#dc2626'} />
+                      </TouchableOpacity>
+                    </View>
+                  )}
                 </View>
               ))}
             </ScrollView>
@@ -731,6 +795,62 @@ export default function PetaTab({ theme, userRole }) {
               />
               <TouchableOpacity style={sekretariatStyles.saveButton} onPress={handleSaveBencana}>
                 <Text style={sekretariatStyles.saveButtonText}>Simpan Titik</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal confirmation padam (Ringkasan Bencana / Sejarah Patrol Agensi), même style que Peta Kecemasan */}
+      <Modal visible={!!deleteTarget} transparent animationType="fade">
+        <View style={sekretariatStyles.modalOverlay}>
+          <View style={{ width: 340, maxWidth: '90%', borderRadius: 20, overflow: 'hidden', backgroundColor: '#fff' }}>
+            <View style={{ backgroundColor: '#111318', paddingVertical: 28, paddingHorizontal: 20, alignItems: 'center' }}>
+              <View style={{
+                width: 56, height: 56, borderRadius: 28,
+                backgroundColor: 'rgba(220,38,38,0.15)',
+                alignItems: 'center', justifyContent: 'center', marginBottom: 14,
+              }}>
+                <AlertTriangle size={26} color="#ef4444" />
+              </View>
+              <Text style={{ color: '#fff', fontSize: 17, fontWeight: '800', marginBottom: 8 }}>
+                {deleteTarget?.type === 'bencana' ? 'Padam Rekod Bencana' : 'Padam Rekod Patrol Agensi'}
+              </Text>
+              <Text style={{ color: '#93c5fd', fontSize: 13, textAlign: 'center', lineHeight: 18 }}>
+                Padam rekod "{deleteTarget?.label || '-'}"? Tindakan ini tidak boleh dibatalkan.
+              </Text>
+            </View>
+            <View style={{ flexDirection: 'row', gap: 10, padding: 16 }}>
+              <TouchableOpacity
+                disabled={deletingTarget}
+                onPress={() => setDeleteTarget(null)}
+                style={{
+                  flex: 1, paddingVertical: 13, borderRadius: 12,
+                  borderWidth: 1, borderColor: '#e2e8f0',
+                  alignItems: 'center', justifyContent: 'center',
+                  opacity: deletingTarget ? 0.5 : 1,
+                }}
+              >
+                <Text style={{ color: '#334155', fontSize: 14, fontWeight: '700' }}>Batal</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                disabled={deletingTarget}
+                onPress={confirmDeleteTarget}
+                style={{
+                  flex: 1, flexDirection: 'row', gap: 8, paddingVertical: 13, borderRadius: 12,
+                  backgroundColor: '#ef4444',
+                  alignItems: 'center', justifyContent: 'center',
+                  opacity: deletingTarget ? 0.7 : 1,
+                }}
+              >
+                {deletingTarget ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <>
+                    <Trash2 size={16} color="#fff" />
+                    <Text style={{ color: '#fff', fontSize: 14, fontWeight: '700' }}>Padam</Text>
+                  </>
+                )}
               </TouchableOpacity>
             </View>
           </View>

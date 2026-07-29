@@ -1,5 +1,6 @@
 // src/hooks/useAgencyTrackingHistory.js
 import { useState, useEffect } from 'react';
+import { Platform } from 'react-native';
 import { supabaseSandbox } from '../supabaseSandboxClient';
 
 /**
@@ -32,5 +33,15 @@ export function useAgencyTrackingHistory() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return { trackingHistory, loadingHistory };
+  const deleteTrackingHistory = async (id, opts = {}) => {
+    const confirmed = opts.skipConfirm
+      ? true
+      : (Platform.OS === 'web' ? window.confirm('Padam rekod patrol agensi ini?') : true);
+    if (!confirmed) return { cancelled: true };
+    const { error } = await supabaseSandbox.from('agency_tracking_history').delete().eq('id', id);
+    if (!error) fetchTrackingHistory();
+    return { error: !!error };
+  };
+
+  return { trackingHistory, loadingHistory, deleteTrackingHistory };
 }

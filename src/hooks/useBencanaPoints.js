@@ -53,11 +53,14 @@ export function useBencanaPoints() {
     if (!error) fetchBencanaPoints();
   };
 
-  const deleteBencana = async (id) => {
-    const confirmed = Platform.OS === 'web' ? window.confirm('Padam titik bencana ini?') : true;
-    if (!confirmed) return;
+  const deleteBencana = async (id, opts = {}) => {
+    const confirmed = opts.skipConfirm
+      ? true
+      : (Platform.OS === 'web' ? window.confirm('Padam titik bencana ini?') : true);
+    if (!confirmed) return { cancelled: true };
     const { error } = await supabaseSandbox.from('sekretariat_bencana_points').delete().eq('id', id);
     if (!error) fetchBencanaPoints();
+    return { error: !!error };
   };
 
   return { bencanaPoints, saveBencana, resolveBencana, deleteBencana };

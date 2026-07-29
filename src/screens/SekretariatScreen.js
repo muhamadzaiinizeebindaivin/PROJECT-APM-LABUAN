@@ -1,7 +1,7 @@
 // src/screens/SekretariatScreen.js
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { Users, AlertTriangle, Home, Map, UserCog, Pencil, Trash2, ChevronUp, ChevronDown, Plus } from 'lucide-react-native';
+import { Users, AlertTriangle, Home, Map, UserCog, Pencil, Trash2, ChevronUp, ChevronDown, Plus, CheckCircle2, XCircle } from 'lucide-react-native';
 
 import AdminEditButton from '../components/AdminEditButton';
 import JpbdSection from './sekretariat/JpbdSection';
@@ -35,6 +35,18 @@ const SekretariatScreen = ({ theme, userRole }) => {
     return `${date} ${hours}:${minutes}`;
   };
   const dikemaskini = formatTimestamp(dikemaskiniRaw);
+
+  const [notification, setNotification] = useState(null);
+  const notificationTimeoutRef = useRef(null);
+  const showNotification = (type, message) => {
+    setNotification({ type, message });
+    if (notificationTimeoutRef.current) clearTimeout(notificationTimeoutRef.current);
+    notificationTimeoutRef.current = setTimeout(() => setNotification(null), 3000);
+  };
+  useEffect(() => () => {
+    if (notificationTimeoutRef.current) clearTimeout(notificationTimeoutRef.current);
+  }, []);
+
   const [hoveredUnitIndex, setHoveredUnitIndex] = useState(null);
   const [unitModalVisible, setUnitModalVisible] = useState(false);
   const [editUnit, setEditUnit] = useState(null);
@@ -57,7 +69,7 @@ const SekretariatScreen = ({ theme, userRole }) => {
 
   return (
     <View style={styles.container}>
-      {canEdit && activeTab !== 'PETA' && (
+      {canEdit && (
         <View style={stickyHeaderStyles.stickyHeader}>
           <View style={[stickyHeaderStyles.stickyHeaderCenter, { pointerEvents: 'none' }]}>
             {dikemaskini ? (
@@ -68,6 +80,49 @@ const SekretariatScreen = ({ theme, userRole }) => {
             ) : null}
           </View>
           <AdminEditButton isEditMode={isEditMode} setIsEditMode={setIsEditMode} userRole={userRole} section="Sekretariat" />
+        </View>
+      )}
+
+      {notification && (
+        <View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            top: canEdit ? 130 : 78,
+            left: 0, right: 0,
+            alignItems: 'center', zIndex: 999, elevation: 30,
+          }}
+        >
+          <View
+            style={{
+              flexDirection: 'row', alignItems: 'center', gap: 10, maxWidth: '92%',
+              backgroundColor: notification.type === 'success' ? '#f0fdf4' : '#fef2f2',
+              borderWidth: 1,
+              borderColor: notification.type === 'success' ? '#bbf7d0' : '#fecaca',
+              borderRadius: 12,
+              paddingVertical: 10,
+              paddingHorizontal: 14,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.12,
+              shadowRadius: 10,
+              elevation: 30,
+            }}
+          >
+            {notification.type === 'success' ? (
+              <CheckCircle2 size={17} color="#16a34a" />
+            ) : (
+              <XCircle size={17} color="#dc2626" />
+            )}
+            <Text
+              style={{
+                color: notification.type === 'success' ? '#166534' : '#991b1b',
+                fontWeight: '700', fontSize: 13, flexShrink: 1,
+              }}
+            >
+              {notification.message}
+            </Text>
+          </View>
         </View>
       )}
 
@@ -91,7 +146,7 @@ const SekretariatScreen = ({ theme, userRole }) => {
         </View>
 
       {activeTab === 'PETA' ? (
-        <PetaTab theme={theme} userRole={userRole} />
+        <PetaTab theme={theme} userRole={userRole} isEditMode={isEditMode} onNotify={showNotification} />
       ) : (
         <ScrollView contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false}>
 
@@ -158,7 +213,16 @@ const SekretariatScreen = ({ theme, userRole }) => {
                           </View>
                         ) : null}
                       </TouchableOpacity>
-                      <TouchableOpacity style={styles.unitDeleteBtn} onPress={() => deleteUnitItem(item)}>
+                      <TouchableOpacity
+                        style={styles.unitDeleteBtn}
+                        onPress={async () => {
+                          const ok = await deleteUnitItem(item);
+                          showNotification(
+                            ok !== false ? 'success' : 'error',
+                            ok !== false ? 'Ahli unit berjaya dipadam.' : 'Gagal memadam ahli unit.'
+                          );
+                        }}
+                      >
                         <Trash2 size={13} color={PALETTE.danger} />
                       </TouchableOpacity>
                     </View>
