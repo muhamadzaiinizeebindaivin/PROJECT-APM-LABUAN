@@ -20,21 +20,18 @@ if (Platform.OS !== 'web') {
 
 const webDateInputStyle = {
   padding: '12px', borderRadius: '10px', border: '1px solid ' + PALETTE.cardLightBorder,
-  width: '100%', fontSize: '14px', outline: 'none', cursor: 'pointer',
+  width: '100%', boxSizing: 'border-box', fontSize: '14px', outline: 'none', cursor: 'pointer',
   backgroundColor: '#fafafa', color: PALETTE.textDark,
 };
 
-export default function LatihanFormModal({ visible, onClose, editingId, formData, setFormData, onSave }) {
+const STATUS_OPTIONS = ['Berjaya', 'Akan Diadakan', 'Tidak Berjaya'];
+
+export default function LatihanFormModal({ visible, onClose, editingId, formData, setFormData, onSave, error }) {
   const [showStartPicker, setShowStartPicker] = useState(false);
   const [showEndPicker, setShowEndPicker] = useState(false);
 
-  const toggleFormStatus = () => {
-    setFormData(prev => {
-      let next = 'Berjaya';
-      if (prev.status === 'Berjaya') next = 'Tidak Berjaya';
-      else if (prev.status === 'Tidak Berjaya') next = 'Akan Diadakan';
-      return { ...prev, status: next };
-    });
+  const selectFormStatus = (status) => {
+    setFormData(prev => ({ ...prev, status }));
   };
 
   const toggleSasaran = (option) => {
@@ -62,18 +59,18 @@ export default function LatihanFormModal({ visible, onClose, editingId, formData
                 <Text style={shared.inputLabel}>Tarikh Mula</Text>
                 {Platform.OS === 'web' ? (
                   createElement('input', {
-                    type: 'date', value: formData.start_date.toISOString().split('T')[0],
-                    onChange: (e) => setFormData({ ...formData, start_date: new Date(e.target.value) }),
+                    type: 'date', value: formData.start_date ? formData.start_date.toISOString().split('T')[0] : '',
+                    onChange: (e) => setFormData({ ...formData, start_date: e.target.value ? new Date(e.target.value) : null }),
                     style: webDateInputStyle,
                   })
                 ) : (
                   <View>
                     <TouchableOpacity style={styles.dateBtn} onPress={() => setShowStartPicker(true)}>
                       <CalendarDays size={16} color={PALETTE.textMutedDark} />
-                      <Text style={styles.dateBtnText}>{formData.start_date.toLocaleDateString('ms-MY')}</Text>
+                      <Text style={styles.dateBtnText}>{formData.start_date ? formData.start_date.toLocaleDateString('ms-MY') : 'Pilih tarikh'}</Text>
                     </TouchableOpacity>
                     {showStartPicker && DateTimePicker ? (
-                      <DateTimePicker value={formData.start_date} mode="date" display="default" onChange={(event, date) => { setShowStartPicker(false); if (date) setFormData({ ...formData, start_date: date, end_date: date < formData.end_date ? formData.end_date : date }); }} />
+                      <DateTimePicker value={formData.start_date || new Date()} mode="date" display="default" onChange={(event, date) => { setShowStartPicker(false); if (date) setFormData({ ...formData, start_date: date, end_date: (formData.end_date && date < formData.end_date) ? formData.end_date : date }); }} />
                     ) : null}
                   </View>
                 )}
@@ -83,36 +80,49 @@ export default function LatihanFormModal({ visible, onClose, editingId, formData
                 <Text style={shared.inputLabel}>Tarikh Tamat</Text>
                 {Platform.OS === 'web' ? (
                   createElement('input', {
-                    type: 'date', min: formData.start_date.toISOString().split('T')[0], value: formData.end_date.toISOString().split('T')[0],
-                    onChange: (e) => setFormData({ ...formData, end_date: new Date(e.target.value) }),
+                    type: 'date', min: formData.start_date ? formData.start_date.toISOString().split('T')[0] : undefined, value: formData.end_date ? formData.end_date.toISOString().split('T')[0] : '',
+                    onChange: (e) => setFormData({ ...formData, end_date: e.target.value ? new Date(e.target.value) : null }),
                     style: webDateInputStyle,
                   })
                 ) : (
                   <View>
                     <TouchableOpacity style={styles.dateBtn} onPress={() => setShowEndPicker(true)}>
                       <CalendarDays size={16} color={PALETTE.textMutedDark} />
-                      <Text style={styles.dateBtnText}>{formData.end_date.toLocaleDateString('ms-MY')}</Text>
+                      <Text style={styles.dateBtnText}>{formData.end_date ? formData.end_date.toLocaleDateString('ms-MY') : 'Pilih tarikh'}</Text>
                     </TouchableOpacity>
                     {showEndPicker && DateTimePicker ? (
-                      <DateTimePicker value={formData.end_date} mode="date" display="default" minimumDate={formData.start_date} onChange={(event, date) => { setShowEndPicker(false); if (date) setFormData({ ...formData, end_date: date }); }} />
+                      <DateTimePicker value={formData.end_date || formData.start_date || new Date()} mode="date" display="default" minimumDate={formData.start_date || undefined} onChange={(event, date) => { setShowEndPicker(false); if (date) setFormData({ ...formData, end_date: date }); }} />
                     ) : null}
                   </View>
                 )}
               </View>
             </View>
 
-            <View style={shared.row}>
-              <View style={shared.halfCol}>
-                <Text style={shared.inputLabel}>Jumlah Peserta (Pax)</Text>
-                <TextInput style={shared.input} placeholder="Cth: 50" placeholderTextColor={PALETTE.textMutedDark} keyboardType="numeric" value={formData.pax} onChangeText={(text) => setFormData({ ...formData, pax: text })} />
-              </View>
-              <View style={shared.halfCol}>
-                <Text style={shared.inputLabel}>Status</Text>
-                <TouchableOpacity style={[styles.statusToggle, { backgroundColor: statusMeta(formData.status).soft, borderColor: statusMeta(formData.status).color }]} onPress={toggleFormStatus}>
-                  <Text style={{ fontWeight: '700', color: statusMeta(formData.status).color }}>{formData.status}</Text>
-                </TouchableOpacity>
-              </View>
+            <Text style={shared.inputLabel}>Status</Text>
+            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
+              {STATUS_OPTIONS.map((status) => {
+                const meta = statusMeta(status);
+                const isSelected = formData.status === status;
+                return (
+                  <TouchableOpacity
+                    key={status}
+                    onPress={() => selectFormStatus(status)}
+                    style={{
+                      flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+                      paddingVertical: 12, borderRadius: 10,
+                      borderWidth: 1.5, borderColor: isSelected ? meta.color : PALETTE.cardLightBorder,
+                      backgroundColor: isSelected ? meta.soft : '#fafafa',
+                    }}
+                  >
+                    <meta.Icon size={14} color={isSelected ? meta.color : PALETTE.textMutedDark} />
+                    <Text style={{ fontSize: 12, fontWeight: '700', color: isSelected ? meta.color : PALETTE.textMutedDark }}>{status}</Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
+
+            <Text style={shared.inputLabel}>Jumlah Peserta (Pax)</Text>
+            <TextInput style={shared.input} placeholder="Cth: 50" placeholderTextColor={PALETTE.textMutedDark} keyboardType="numeric" value={formData.pax} onChangeText={(text) => setFormData({ ...formData, pax: text })} />
 
             <Text style={shared.inputLabel}>Kumpulan Sasaran (Boleh pilih lebih dari satu)</Text>
             <View style={shared.categoryWrap}>
@@ -126,6 +136,7 @@ export default function LatihanFormModal({ visible, onClose, editingId, formData
               })}
             </View>
 
+            {!!error && <Text style={{ fontSize: 12, color: '#dc2626', textAlign: 'center', marginBottom: 12 }}>{error}</Text>}
             <TouchableOpacity style={shared.saveButton} onPress={onSave}>
               <Text style={shared.saveButtonText}>Simpan Latihan</Text>
             </TouchableOpacity>

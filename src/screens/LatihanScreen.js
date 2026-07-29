@@ -1,7 +1,7 @@
 // src/screens/LatihanScreen.js
 import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { Users, Calendar, Plus, Edit, Trash2, TrendingUp, GraduationCap, BarChart3, PieChart, Target, CheckCircle2, XCircle } from 'lucide-react-native';
+import { Plus, Edit, Trash2, BarChart3, PieChart, Target, CheckCircle2, XCircle } from 'lucide-react-native';
 import { useLatihanBudget } from '../hooks/useLatihanBudget';
 import BudgetSection from './kewangan/BudgetSection';
 import { useLatihan } from '../hooks/useLatihan';
@@ -68,12 +68,14 @@ export default function LatihanScreen({ theme, userRole }) {
 
   const [editingId, setEditingId] = useState(null);
   const [formData, setFormData] = useState({
-    title: '', start_date: new Date(), end_date: new Date(), pax: '', status: 'Akan Diadakan', sasaran: [],
+    title: '', start_date: null, end_date: null, pax: '', status: 'Akan Diadakan', sasaran: [],
   });
+  const [formError, setFormError] = useState(null);
 
   const handleOpenAdd = () => {
     setEditingId(null);
-    setFormData({ title: '', start_date: new Date(), end_date: new Date(), pax: '', status: 'Akan Diadakan', sasaran: [] });
+    setFormData({ title: '', start_date: null, end_date: null, pax: '', status: 'Akan Diadakan', sasaran: [] });
+    setFormError(null);
     setFormModalVisible(true);
   };
 
@@ -82,16 +84,22 @@ export default function LatihanScreen({ theme, userRole }) {
     const parsedSasaran = item.note ? item.note.split(',').map(s => s.trim()).filter(s => s) : [];
     setFormData({
       title: item.title,
-      start_date: item.start_date ? new Date(item.start_date) : new Date(),
-      end_date: item.end_date ? new Date(item.end_date) : new Date(),
+      start_date: item.start_date ? new Date(item.start_date) : null,
+      end_date: item.end_date ? new Date(item.end_date) : null,
       pax: item.pax ? item.pax.toString() : '',
       status: item.status || 'Akan Diadakan',
       sasaran: parsedSasaran,
     });
+    setFormError(null);
     setFormModalVisible(true);
   };
 
   const handleSave = async () => {
+    if (!formData.title.trim() || !formData.start_date || !formData.end_date) {
+      setFormError('Tajuk, tarikh mula dan tarikh tamat mesti diisi.');
+      return;
+    }
+    setFormError(null);
     const ok = await saveLatihan(formData, editingId);
     if (ok) setFormModalVisible(false);
   };
@@ -175,6 +183,19 @@ export default function LatihanScreen({ theme, userRole }) {
         />
         <View style={{ height: 16 }} />
 
+        {/* ---- Carte statistique statique : Total Peserta (plus un onglet, plus cliquable) ---- */}
+        <View style={{
+          backgroundColor: PALETTE.ink, borderRadius: 20, padding: 24, marginBottom: 16,
+          position: 'relative', overflow: 'hidden',
+        }}>
+          <View style={{
+            position: 'absolute', top: -30, right: -30, width: 120, height: 120, borderRadius: 60,
+            backgroundColor: PALETTE.orange, opacity: 0.25,
+          }} />
+          <Text style={{ fontSize: 34, fontWeight: '900', color: '#fff' }}>{stats.totalPax}</Text>
+          <Text style={{ fontSize: 13, fontWeight: '700', color: 'rgba(255,255,255,0.6)', marginTop: 4 }}>Jumlah Peserta</Text>
+        </View>
+
         {/* ---- Statistik Bulanan ---- */}
         <View style={styles.sectionCard}>
           <View style={shared.sectionHeaderRow}>
@@ -240,30 +261,6 @@ export default function LatihanScreen({ theme, userRole }) {
 
         {/* ---- Onglets stats + liste ---- */}
         <View style={[styles.sectionCard, { marginTop: 16 }]}>
-          <View style={{ flexDirection: 'row', gap: 10, marginBottom: 14 }}>
-            {[
-              { key: 'senarai', label: 'Bil. Latihan', Icon: Calendar, color: PALETTE.orange, value: stats.totalEvents },
-              { key: 'peserta', label: 'Total Peserta', Icon: Users, color: PALETTE.blue, value: stats.totalPax },
-              { key: 'prestasi', label: 'Prestasi', Icon: TrendingUp, color: PALETTE.orange, value: `${stats.completionRate}%` },
-            ].map((tab) => {
-              const isActive = activeStatTab === tab.key;
-              return (
-                <TouchableOpacity
-                  key={tab.key}
-                  onPress={() => { setActiveStatTab(tab.key); setStatPage(1); }}
-                  style={{
-                    flex: 1, alignItems: 'center', paddingVertical: 14, borderRadius: 14,
-                    backgroundColor: isActive ? tab.color : PALETTE.surface,
-                    borderWidth: 1, borderColor: isActive ? tab.color : PALETTE.cardLightBorder,
-                  }}
-                >
-                  <tab.Icon size={18} color={isActive ? '#fff' : tab.color} style={{ marginBottom: 6 }} />
-                  <Text style={{ fontSize: 18, fontWeight: '900', color: isActive ? '#fff' : PALETTE.textDark }}>{tab.value}</Text>
-                  <Text style={{ fontSize: 11, fontWeight: '700', color: isActive ? '#fff' : PALETTE.textMutedDark, marginTop: 2 }}>{tab.label}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
 
           {activeStatTab === 'senarai' && (
             <>
@@ -312,51 +309,6 @@ export default function LatihanScreen({ theme, userRole }) {
                 })
               )}
             </>
-          )}
-
-          {activeStatTab === 'peserta' && (
-            <>
-              {paginatedLatihanList.map((item) => (
-                <View key={item.id} style={styles.listItem}>
-                  <View style={styles.dateChip}>
-                    <Text style={styles.dateText}>{formatDisplayDate(item.start_date, item.end_date)}</Text>
-                  </View>
-                  <View style={{ flex: 1, paddingLeft: 8 }}>
-                    <Text style={styles.itemTitle}>{item.title}</Text>
-                    <Text style={styles.itemSub}>{item.note || 'Tiada Kumpulan'}</Text>
-                  </View>
-                  <View style={[styles.statusBadge, { backgroundColor: `${PALETTE.blue}1F` }]}>
-                    <Users size={12} color={PALETTE.blue} />
-                    <Text style={[styles.statusBadgeText, { color: PALETTE.blue }]}>{item.pax} Pax</Text>
-                  </View>
-                </View>
-              ))}
-              <View style={styles.breakdownTotalRow}>
-                <Text style={styles.breakdownTotalLabel}>Jumlah Keseluruhan</Text>
-                <Text style={styles.breakdownTotalValue}>{stats.totalPax} Pax</Text>
-              </View>
-            </>
-          )}
-
-          {activeStatTab === 'prestasi' && (
-            paginatedLatihanList.map((item) => {
-              const meta = statusMeta(item.status);
-              return (
-                <View key={item.id} style={styles.listItem}>
-                  <View style={styles.dateChip}>
-                    <Text style={styles.dateText}>{formatDisplayDate(item.start_date, item.end_date)}</Text>
-                  </View>
-                  <View style={{ flex: 1, paddingLeft: 8 }}>
-                    <Text style={styles.itemTitle}>{item.title}</Text>
-                    <Text style={styles.itemSub}>{item.note || 'Tiada Kumpulan'} • {item.pax} Pax</Text>
-                  </View>
-                  <View style={[styles.statusBadge, { backgroundColor: meta.soft }]}>
-                    <meta.Icon size={12} color={meta.color} />
-                    <Text style={[styles.statusBadgeText, { color: meta.color }]}>{item.status}</Text>
-                  </View>
-                </View>
-              );
-            })
           )}
 
           {latihanList.length > STAT_PAGE_SIZE && (
@@ -412,6 +364,7 @@ export default function LatihanScreen({ theme, userRole }) {
         formData={formData}
         setFormData={setFormData}
         onSave={handleSave}
+        error={formError}
       />
       </View>
   );

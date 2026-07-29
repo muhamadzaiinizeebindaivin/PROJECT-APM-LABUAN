@@ -402,12 +402,24 @@ export default function KpiSection({ kpiItems, isEditing, updateKpiItem, addKpiI
                 const sasaranPct = parsePercent(item.sasaran);
                 const pencapaianPct = parsePercent(item.pencapaian_semasa);
                 if (sasaranPct === null || pencapaianPct === null) return null;
-                const ratio = sasaranPct > 0 ? Math.max(0, Math.min(1, pencapaianPct / sasaranPct)) : 0;
+                const pencapaianRatio = Math.max(0, Math.min(1, pencapaianPct / 100));
+                const sasaranRatio = Math.max(0, Math.min(1, sasaranPct / 100));
                 return (
                   <View style={styles.kpiProgressWrap}>
-                    <Text style={styles.kpiProgressLabel}>{pencapaianPct}%</Text>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2 }}>
+                      <Text style={[styles.kpiProgressLabel, { fontSize: 11 }]}>Pencapaian Semasa</Text>
+                      <Text style={[styles.kpiProgressLabel, { fontSize: 11 }]}>{pencapaianPct}%</Text>
+                    </View>
                     <View style={styles.kpiProgressTrack}>
-                      <View style={[styles.kpiProgressFill, { width: `${ratio * 100}%`, backgroundColor: statusColor }]} />
+                      <View style={[styles.kpiProgressFill, { width: `${pencapaianRatio * 100}%`, backgroundColor: statusColor }]} />
+                    </View>
+
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8, marginBottom: 2 }}>
+                      <Text style={[styles.kpiProgressLabel, { fontSize: 11, color: PALETTE.textMutedDark }]}>Sasaran</Text>
+                      <Text style={[styles.kpiProgressLabel, { fontSize: 11, color: PALETTE.textMutedDark }]}>{sasaranPct}%</Text>
+                    </View>
+                    <View style={styles.kpiProgressTrack}>
+                      <View style={[styles.kpiProgressFill, { width: `${sasaranRatio * 100}%`, backgroundColor: PALETTE.textMutedDark }]} />
                     </View>
                   </View>
                 );
