@@ -1,8 +1,7 @@
 // src/screens/operasi/LiveMapTab.js
 import React, { useState, useRef, useEffect, createElement } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Platform, ActivityIndicator, Modal, TextInput } from 'react-native';
-import { ShieldAlert, MapIcon, History, ClipboardList, Download, Route, X } from 'lucide-react-native';
-import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { ShieldAlert, MapIcon, History, ClipboardList, Download, Route, X , Trash2, AlertTriangle} from 'lucide-react-native';
 import { getVehicleIcon } from '../../utils/vehicleIcons';
 import { useVehicles } from '../../hooks/useVehicles';
 import { useCalamityPoints } from '../../hooks/useCalamityPoints';
@@ -48,7 +47,7 @@ function formatDuration(seconds) {
   return `${m}m`;
 }
 
-export default function LiveMapTab({ theme, userRole }) {
+export default function LiveMapTab({ theme, userRole, isEditMode, onNotify }) {
   const [loading, setLoading] = useState(true);
   const iframeRef = useRef(null);
 
@@ -56,6 +55,8 @@ export default function LiveMapTab({ theme, userRole }) {
   const [resolveModalVisible, setResolveModalVisible] = useState(false);
   const [pendingResolveId, setPendingResolveId] = useState(null);
   const history = usePatrolHistoryPanel(calamityPoints);
+  const [deletePatrolTarget, setDeletePatrolTarget] = useState(null);
+  const [deletingPatrol, setDeletingPatrol] = useState(false);
   const summary = useCalamitySummaryPanel(calamityPoints);
 
   const vehicles = useVehicles((updatedVehicle) => {
@@ -240,13 +241,22 @@ export default function LiveMapTab({ theme, userRole }) {
                   <Text style={[styles.tableCellDate, large && { fontSize: 13 }]}>{new Date(h.ended_at).toLocaleDateString('ms-MY')}</Text>
                   <Text style={[styles.tableCellTime, large && { fontSize: 12 }]}>{new Date(h.ended_at).toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit' })}</Text>
                 </View>
-                <View style={[styles.routeColFlex, { paddingVertical: 10, alignItems: 'center', justifyContent: 'center' }]}>
+                <View style={[styles.routeColFlex, { paddingVertical: 10, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8 }]}>
                   <TouchableOpacity
                     onPress={() => history.toggleHistoryRow(h.id)}
                     style={[styles.routeBtn, history.expandedHistoryId === h.id && styles.routeBtnActive]}
                   >
                     <Route size={16} color={history.expandedHistoryId === h.id ? '#fff' : '#1E3A8A'} />
                   </TouchableOpacity>
+                  {isEditMode && (
+                    <TouchableOpacity
+                      disabled={deletingPatrol}
+                      onPress={() => setDeletePatrolTarget({ id: h.id, vehicle_reg: h.vehicle_reg })}
+                      style={[styles.routeBtn, { backgroundColor: '#dc2626', opacity: deletingPatrol ? 0.5 : 1 }]}
+                    >
+                      <Trash2 size={16} color="#fff" />
+                    </TouchableOpacity>
+                  )}
                 </View>
               </View>
 
@@ -623,6 +633,69 @@ export default function LiveMapTab({ theme, userRole }) {
             <TouchableOpacity style={formStyles.saveBtn} onPress={handleSaveCalamity}>
               <Text style={formStyles.saveBtnText}>Simpan Titik</Text>
             </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal confirmation padam rekod patrol */}
+      <Modal visible={!!deletePatrolTarget} transparent animationType="fade">
+        <View style={formStyles.modalOverlay}>
+          <View style={{ width: 340, maxWidth: '90%', borderRadius: 20, overflow: 'hidden', backgroundColor: '#fff' }}>
+            <View style={{ backgroundColor: '#111318', paddingVertical: 28, paddingHorizontal: 20, alignItems: 'center' }}>
+              <View style={{
+                width: 56, height: 56, borderRadius: 28,
+                backgroundColor: 'rgba(220,38,38,0.15)',
+                alignItems: 'center', justifyContent: 'center', marginBottom: 14,
+              }}>
+                <AlertTriangle size={26} color="#ef4444" />
+              </View>
+              <Text style={{ color: '#fff', fontSize: 17, fontWeight: '800', marginBottom: 8 }}>
+                Padam Rekod Patrol
+              </Text>
+              <Text style={{ color: '#93c5fd', fontSize: 13, textAlign: 'center', lineHeight: 18 }}>
+                Padam rekod patrol kenderaan "{deletePatrolTarget?.vehicle_reg}"? Tindakan ini tidak boleh dibatalkan.
+              </Text>
+            </View>
+            <View style={{ flexDirection: 'row', gap: 10, padding: 16 }}>
+              <TouchableOpacity
+                disabled={deletingPatrol}
+                onPress={() => setDeletePatrolTarget(null)}
+                style={{
+                  flex: 1, paddingVertical: 13, borderRadius: 12,
+                  borderWidth: 1, borderColor: '#e2e8f0',
+                  alignItems: 'center', justifyContent: 'center',
+                  opacity: deletingPatrol ? 0.5 : 1,
+                }}
+              >
+                <Text style={{ color: '#334155', fontSize: 14, fontWeight: '700' }}>Batal</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                disabled={deletingPatrol}
+                onPress={async () => {
+                  const target = deletePatrolTarget;
+                  setDeletingPatrol(true);
+                  const ok = await history.deletePatrolRecord(target.id);
+                  setDeletingPatrol(false);
+                  setDeletePatrolTarget(null);
+                  onNotify?.(ok ? 'success' : 'error', ok ? 'Rekod patrol berjaya dipadam.' : 'Gagal memadam rekod patrol.');
+                }}
+                style={{
+                  flex: 1, flexDirection: 'row', gap: 8, paddingVertical: 13, borderRadius: 12,
+                  backgroundColor: '#ef4444',
+                  alignItems: 'center', justifyContent: 'center',
+                  opacity: deletingPatrol ? 0.7 : 1,
+                }}
+              >
+                {deletingPatrol ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <>
+                    <Trash2 size={16} color="#fff" />
+                    <Text style={{ color: '#fff', fontSize: 14, fontWeight: '700' }}>Padam</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>

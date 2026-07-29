@@ -167,6 +167,25 @@ export function usePatrolHistoryPanel(calamityPoints) {
     }
   };
 
+  const deletePatrolRecord = async (id) => {
+    // Les points intermédiaires (waypoints) référencent ce patrol_history_id — les supprimer
+    // d'abord pour éviter tout blocage de clé étrangère.
+    const { error: wpError } = await supabaseSandbox.from('vehicle_patrol_waypoints').delete().eq('patrol_history_id', id);
+    if (wpError) console.error('deletePatrolRecord (waypoints) error:', wpError);
+
+    const { error, data } = await supabaseSandbox.from('vehicle_patrol_history').delete().eq('id', id).select();
+    if (error) {
+      console.error('deletePatrolRecord error:', error);
+      return false;
+    }
+    if (!data || data.length === 0) {
+      // Aucune ligne réellement supprimée — souvent le signe d'un blocage RLS silencieux
+      console.error('deletePatrolRecord: aucune ligne supprimée (RLS probable) pour id=', id);
+      return false;
+    }
+    return true;
+  };
+
   return {
     historyYear, setHistoryYear, historyMonth, setHistoryMonth,
     historyYearOpen, setHistoryYearOpen, historyMonthOpen, setHistoryMonthOpen,
@@ -174,6 +193,6 @@ export function usePatrolHistoryPanel(calamityPoints) {
     patrolHistory, loadingHistory,
     historyPage, setHistoryPage, historyTotalPages, pagedHistory,
     expandedHistoryId, toggleHistoryRow, historyWaypoints, loadingWaypointsId,
-    exportingPdf, handleExportHistoryPdf,
+    exportingPdf, handleExportHistoryPdf, deletePatrolRecord,
   };
 }
