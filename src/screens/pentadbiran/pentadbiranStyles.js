@@ -61,7 +61,7 @@ export const pentadbiranStyles = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center',
   },
   staffAvatarText: { fontSize: 12, fontWeight: '800', color: PALETTE.orange },
-  staffName: { fontSize: 14, fontWeight: '700', color: PALETTE.textDark, marginBottom: 2 },
+  staffName: { fontSize: 14, fontWeight: '700', color: PALETTE.textDark, marginBottom: 2, flexShrink: 1 },  
   staffRole: { fontSize: 12, color: PALETTE.textMutedDark },
 
   table: { borderWidth: 1, borderColor: PALETTE.cardLightBorder, borderRadius: 14, overflow: 'hidden' },
