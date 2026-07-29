@@ -138,7 +138,7 @@ export const pentadbiranStyles = StyleSheet.create({
 
   statusDot: { width: 9, height: 9, borderRadius: 5 },
   kpiLegendRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 16, marginBottom: 16 },
-  kpiLegendItem: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, width: '100%' },
+  kpiLegendItem: { flexDirection: 'row', alignItems: 'flex-start', gap: 6 },
   kpiLegendText: { fontSize: 14, color: PALETTE.textMutedDark, flex: 1, flexShrink: 1, minWidth: 0 },
   kpiLegendLabel: { fontWeight: '800', color: PALETTE.textDark },
 

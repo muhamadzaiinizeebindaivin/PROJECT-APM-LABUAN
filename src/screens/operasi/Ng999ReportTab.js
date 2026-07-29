@@ -260,14 +260,6 @@ export default function Ng999ReportTab({ theme, userRole, isEditMode }) {
         {/* --- Filtres Senarai --- */}
         {viewMode === 'senarai' && (
           <>
-            {isEditMode && (
-              <View style={{ paddingHorizontal: 16, marginBottom: 8, flexDirection: 'row', justifyContent: 'flex-end' }}>
-                <TouchableOpacity style={styles.addBtn} onPress={() => { setForm({ id: null, category: '', tarikh: '', jumlah_kes: '1', status: 'active' }); setPendingFiles([]); setModalVisible(true); }}>
-                  <Plus size={16} color="#fff" />
-                  <Text style={styles.addBtnText}>Tambah Rekod</Text>
-                </TouchableOpacity>
-              </View>
-            )}
             <View style={[tableStyles.historyFilterRow, { marginBottom: 4 }]}>
               <View style={{ flex: 1 }}>
                 <ModalSelectField theme={theme} label="Tahun" value={String(filterYear)} placeholder="Tahun"

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { View, Text, TouchableOpacity, Animated, PanResponder, ScrollView, Modal, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, Animated, PanResponder, ScrollView, Modal, ActivityIndicator, useWindowDimensions } from 'react-native';
 import { Target, Pencil, Trash2, AlertTriangle, CheckCircle2, XCircle } from 'lucide-react-native';
 import { PALETTE } from '../../constants/palette';
 import { pentadbiranStyles as styles } from './pentadbiranStyles';
@@ -29,6 +29,8 @@ const parsePercent = (value) => {
 };
 
 export default function KpiSection({ kpiItems, isEditing, updateKpiItem, addKpiItem, removeKpiItem, persistKpi, showSubSeksyen = true, onNotify }) {
+  const { width: screenWidth } = useWindowDimensions();
+  const isMobile = screenWidth < 768;
   const [hoveredIndex, setHoveredIndex] = useState(null);
   const [modalIndex, setModalIndex] = useState(null); // null = fermé, -1 = ajout, >=0 = édition
   const [draft, setDraft] = useState(EMPTY_DRAFT);
@@ -256,7 +258,7 @@ export default function KpiSection({ kpiItems, isEditing, updateKpiItem, addKpiI
         }
       } else {
         updatedItems = kpiItems.map((it, i) => (i === modalIndex ? { ...it, ...draft } : it));
-        const ok = await updateKpiItem(modalIndex, draft);
+        const ok = await updateKpiItem(draft, kpiItems[modalIndex]);
         if (ok === false) {
           showNotification('error', 'Gagal mengemaskini KPI.');
           return;
@@ -332,7 +334,7 @@ export default function KpiSection({ kpiItems, isEditing, updateKpiItem, addKpiI
 
       <View style={styles.kpiLegendRow}>
         {STATUS_LEGEND.map((item) => (
-          <View key={item.key} style={styles.kpiLegendItem}>
+          <View key={item.key} style={[styles.kpiLegendItem, isMobile && { width: '100%' }]}>
             <View style={[styles.statusDot, { backgroundColor: item.color }]} />
             <Text style={styles.kpiLegendText}>
               <Text style={styles.kpiLegendLabel}>{item.label}:</Text> {item.desc}
