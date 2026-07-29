@@ -1,5 +1,5 @@
 // src/hooks/useCalamitySummaryPanel.js
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { supabaseSandbox } from '../supabaseSandboxClient';
 import { Alert } from 'react-native';
 import { CALAMITY_CATEGORIES } from '../constants/operasiConstants';
@@ -29,21 +29,25 @@ export function useCalamitySummaryPanel(calamityPoints) {
   const [historiqueStatus, setHistoriqueStatus] = useState({});
   const [loadingSummary, setLoadingSummary] = useState(false);
 
+  // Rendue appelable manuellement (pas seulement via useEffect/realtime) — utile quand un
+  // AUTRE composant (ex. Ng999HistoriqueModal, qui a sa propre instance de ce hook) sauvegarde
+  // une nouvelle année et doit signaler à CETTE instance-ci de se mettre à jour.
+  const refreshHistoriqueYears = useCallback(async () => {
+    const { data } = await supabaseSandbox
+      .from('ng999_historique')
+      .select('tahun');
+    if (data) setHistoriqueYears([...new Set(data.map(d => d.tahun))]);
+  }, []);
+
   useEffect(() => {
-    const fetchHistoriqueYears = async () => {
-      const { data } = await supabaseSandbox
-        .from('ng999_historique')
-        .select('tahun');
-      if (data) setHistoriqueYears([...new Set(data.map(d => d.tahun))]);
-    };
-    fetchHistoriqueYears();
+    refreshHistoriqueYears();
 
     const sub = supabaseSandbox
       .channel('historique_years_changes')
-      .on('postgres_changes', { event: '*', schema: 'sandbox', table: 'ng999_historique' }, fetchHistoriqueYears)
+      .on('postgres_changes', { event: '*', schema: 'sandbox', table: 'ng999_historique' }, refreshHistoriqueYears)
       .subscribe();
     return () => supabaseSandbox.removeChannel(sub);
-  }, []);
+  }, [refreshHistoriqueYears]);
 
   useEffect(() => {
     const fetchAllRows = async () => {
@@ -97,6 +101,28 @@ export function useCalamitySummaryPanel(calamityPoints) {
 
   const calamityYearRows = allYearRows;
 
+  // Indique juste si de vraies lignes datées existent cette année (utile pour activer la vue
+  // "par jour" seulement) — n'a plus aucun rôle dans le calcul du tableau, qui reste toujours modifiable.
+  const hasRealDailyData = useMemo(
+    () => calamityYearRows.length > 0,
+    [calamityYearRows]
+  );
+
+  // Nombre de vrais rekod harian (laporan_ng999) déjà enregistrés par mois/catégorie pour l'année
+  // sélectionnée — sert de plancher : impossible de descendre en dessous via la grille manuelle.
+  const dailyMinCounts = useMemo(() => {
+    const mins = {};
+    calamityYearRows.forEach((c) => {
+      const b = new Date(c.tarikh).getMonth() + 1;
+      if (!mins[b]) mins[b] = {};
+      mins[b][c.category] = (mins[b][c.category] || 0) + (c.jumlah_kes || 1);
+    });
+    return mins;
+  }, [calamityYearRows]);
+
+  // ng999_historique est désormais la source unique de vérité pour le tableau récapitulatif —
+  // saveCalamity (ajout d'un point sur la carte) incrémente déjà cette grille de +1 au bon endroit,
+  // donc elle reste toujours modifiable manuellement, plus de verrouillage "données réelles".
   const calamityMonthlyBreakdown = useMemo(() => {
     return BULAN_MS.map((label, monthIndex) => {
       const bulan = monthIndex + 1;
@@ -104,21 +130,7 @@ export function useCalamitySummaryPanel(calamityPoints) {
       let total = 0;
       CALAMITY_CATEGORIES.forEach(cat => { counts[cat.key] = 0; });
 
-      // Données réelles depuis laporan_ng999
-      let hasRealData = false;
-      calamityYearRows.forEach(c => {
-        const d = new Date(c.tarikh);
-        if (d.getMonth() !== monthIndex) return;
-        const cat = c.category;
-        if (counts[cat] !== undefined) {
-          counts[cat] += (c.jumlah_kes || 1);
-          total += (c.jumlah_kes || 1);
-          hasRealData = true;
-        }
-      });
-
-      // Si pas de données réelles, utiliser les données historiques
-      if (!hasRealData && historiqueGrid[bulan]) {
+      if (historiqueGrid[bulan]) {
         CALAMITY_CATEGORIES.forEach(cat => {
           const val = historiqueGrid[bulan][cat.key] || 0;
           counts[cat.key] = val;
@@ -126,14 +138,9 @@ export function useCalamitySummaryPanel(calamityPoints) {
         });
       }
 
-      return { month: label, counts, total, fromHistorique: !hasRealData && !!historiqueGrid[bulan] };
+      return { month: label, counts, total };
     });
-  }, [calamityYearRows, historiqueGrid]);
-
-  const hasDailyRows = useMemo(
-    () => calamityMonthlyBreakdown.some(r => r.total > 0 && !r.fromHistorique),
-    [calamityMonthlyBreakdown]
-  );
+  }, [historiqueGrid]);
 
   const summaryDayOptions = useMemo(() => {
     if (summaryMonth === null) return ['Semua Hari'];
@@ -226,11 +233,33 @@ export function useCalamitySummaryPanel(calamityPoints) {
     return !error;
   };
 
+  const saveHistoriqueGrid = async (tahun, entries) => {
+    const rows = entries.map(e => ({
+      tahun, bulan: e.bulan, category: e.category, jumlah_kes: parseInt(e.jumlah_kes) || 0,
+    }));
+    const { error } = await supabaseSandbox
+      .from('ng999_historique')
+      .upsert(rows, { onConflict: 'tahun,bulan,category' });
+    if (!error) {
+      setHistoriqueGrid((prev) => {
+        const next = { ...prev };
+        rows.forEach((r) => {
+          next[r.bulan] = { ...(next[r.bulan] || {}), [r.category]: r.jumlah_kes };
+        });
+        return next;
+      });
+      // Mise à jour immédiate, sans dépendre du realtime (qui peut avoir un délai ou être mal configuré)
+      setHistoriqueYears((prev) => (prev.includes(tahun) ? prev : [...prev, tahun]));
+    }
+    return !error;
+  };
+
   return {
     summaryYear, setSummaryYear, summaryYearOpen, setSummaryYearOpen,
     summaryMonth, setSummaryMonth, summaryMonthOpen, setSummaryMonthOpen,
     summaryDay, setSummaryDay, summaryDayOpen, setSummaryDayOpen, summaryDayOptions,
-    availableSummaryYears, calamitySummaryRows, calamityMonthlyBreakdown, hasDailyRows,
-    statusBreakdown, saveHistoriqueStatus, exportingLaporanPdf, handleExportLaporanPdf,
+    availableSummaryYears, calamitySummaryRows, calamityMonthlyBreakdown, hasRealDailyData, dailyMinCounts,
+    statusBreakdown, saveHistoriqueStatus, saveHistoriqueGrid, refreshHistoriqueYears,
+    exportingLaporanPdf, handleExportLaporanPdf,
   };
 }

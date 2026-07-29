@@ -118,11 +118,12 @@ export default function CalamitySummaryContent({ theme, large = false, mode = 't
   const [histModalVisible, setHistModalVisible] = useState(false);
   const [statusDraft, setStatusDraft] = useState({});
   const [savingStatus, setSavingStatus] = useState(false);
-  const editingStatus = isEditMode && !summary.hasDailyRows;
+  const editingStatus = isEditMode;
 
   const [gridDraft, setGridDraft] = useState({});
   const [savingGrid, setSavingGrid] = useState(false);
-  const editingGrid = isEditMode && !summary.hasDailyRows && summary.summaryMonth === null;
+  const [gridViolation, setGridViolation] = useState(null);
+  const editingGrid = isEditMode && summary.summaryMonth === null;
 
   useEffect(() => {
     if (!editingGrid) return;
@@ -276,16 +277,16 @@ export default function CalamitySummaryContent({ theme, large = false, mode = 't
                 onSelect={(opt) => { summary.setSummaryMonth(opt === 'Semua Bulan' ? null : BULAN_MS.indexOf(opt)); summary.setSummaryDay(null); summary.setSummaryMonthOpen(false); }}
                 stackIndex={2000} />
             </View>
-            <View style={{ flex: 1, opacity: summary.hasDailyRows ? 1 : 0.5 }}>
+            <View style={{ flex: 1, opacity: summary.hasRealDailyData ? 1 : 0.5 }}>
               <ModalSelectField theme={theme} label="Hari"
-                value={summary.hasDailyRows
+                value={summary.hasRealDailyData
                   ? (summary.summaryDay === null ? 'Semua Hari' : String(summary.summaryDay))
                   : 'Tiada rekod harian'}
                 placeholder="Hari"
-                options={summary.hasDailyRows ? summary.summaryDayOptions : []}
-                isOpen={summary.hasDailyRows && summary.summaryDayOpen}
+                options={summary.hasRealDailyData ? summary.summaryDayOptions : []}
+                isOpen={summary.hasRealDailyData && summary.summaryDayOpen}
                 onToggle={() => {
-                  if (!summary.hasDailyRows) return;
+                  if (!summary.hasRealDailyData) return;
                   summary.setSummaryDayOpen(!summary.summaryDayOpen);
                   summary.setSummaryYearOpen(false);
                   summary.setSummaryMonthOpen(false);
@@ -317,10 +318,10 @@ export default function CalamitySummaryContent({ theme, large = false, mode = 't
       {/* MODE TABLE */}
       {mode === 'table' && (
         <View>
-        {isEditMode && summary.hasDailyRows && (
-          <View style={[styles.calamityTableWrapper, { minHeight: 0, backgroundColor: '#fffbeb', borderWidth: 1, borderColor: '#fde68a', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 16, marginBottom: 10 }]}>
-            <Text style={{ fontSize: 13, fontWeight: '700', color: '#b45309', textAlign: 'center' }}>
-              🔒 Tahun {summary.summaryYear} mempunyai rekod harian — jadual ini dikira secara automatik. Sila kemaskini melalui senarai penuh kecemasan.
+        {isEditMode && (
+          <View style={[styles.calamityTableWrapper, { minHeight: 0, backgroundColor: '#eff6ff', borderWidth: 1, borderColor: '#bfdbfe', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 16, marginBottom: 10 }]}>
+            <Text style={{ fontSize: 13, fontWeight: '700', color: '#1d4ed8', textAlign: 'center' }}>
+              ℹ️ Menambah titik kecemasan pada peta akan menambah +1 secara automatik pada bulan &amp; kategori berkenaan dalam jadual ini. Jadual ini kekal boleh dikemaskini secara manual pada bila-bila masa.
             </Text>
           </View>
         )}
@@ -328,12 +329,28 @@ export default function CalamitySummaryContent({ theme, large = false, mode = 't
           <View style={[styles.calamityTableWrapper, { minHeight: 0, backgroundColor: 'transparent', borderWidth: 0, flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 10, padding: 0, shadowOpacity: 0, elevation: 0 }]}>
             <TouchableOpacity disabled={savingGrid}
               onPress={async () => {
-                setSavingGrid(true);
                 const entries = [];
+                const violations = [];
                 Object.entries(gridDraft).forEach(([key, val]) => {
                   const [bulan, ...catParts] = key.split('-');
-                  entries.push({ bulan: parseInt(bulan), category: catParts.join('-'), jumlah_kes: parseInt(val) || 0 });
+                  const bulanNum = parseInt(bulan);
+                  const category = catParts.join('-');
+                  const jumlah = parseInt(val) || 0;
+                  const min = summary.dailyMinCounts[bulanNum]?.[category] || 0;
+                  if (jumlah < min) {
+                    violations.push(`Bulan ${bulanNum} - ${category}: tidak boleh kurang daripada ${min} (terdapat ${min} rekod harian sedia ada).`);
+                    return;
+                  }
+                  entries.push({ bulan: bulanNum, category, jumlah_kes: jumlah });
                 });
+
+                if (violations.length > 0) {
+                  setGridViolation(violations.join('\n'));
+                  return;
+                }
+                setGridViolation(null);
+
+                setSavingGrid(true);
                 await summary.saveHistoriqueGrid(summary.summaryYear, entries);
                 setSavingGrid(false);
               }}
@@ -341,6 +358,11 @@ export default function CalamitySummaryContent({ theme, large = false, mode = 't
               {savingGrid ? <ActivityIndicator size="small" color="#fff" /> : <Text style={{ fontSize: 13, fontWeight: '800', color: '#fff' }}>Simpan</Text>}
             </TouchableOpacity>
           </View>
+        )}
+        {!!gridViolation && (
+          <Text style={{ fontSize: 12, fontWeight: '700', color: '#dc2626', marginBottom: 10, textAlign: 'right' }}>
+            ⚠️ {gridViolation}
+          </Text>
         )}
         <View style={[styles.calamityTableWrapper, { minHeight: 400 }]}>
           <View style={[styles.calamityTableHeaderRow, { flexDirection: 'row', alignItems: 'center' }]}>
@@ -398,10 +420,10 @@ export default function CalamitySummaryContent({ theme, large = false, mode = 't
       {mode === 'chart' && Platform.OS === 'web' && analytics && (
         <View style={{ paddingHorizontal: 16, paddingBottom: 24, gap: 14 }}>
 
-          {isEditMode && summary.hasDailyRows && (
-            <View style={{ backgroundColor: '#fffbeb', borderWidth: 1, borderColor: '#fde68a', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 16 }}>
-              <Text style={{ fontSize: 13, fontWeight: '700', color: '#b45309', textAlign: 'center' }}>
-                🔒 Tahun {summary.summaryYear} mempunyai rekod harian — statistik dikira secara automatik. Sila kemaskini melalui senarai penuh kecemasan.
+          {isEditMode && (
+            <View style={{ backgroundColor: '#eff6ff', borderWidth: 1, borderColor: '#bfdbfe', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 16 }}>
+              <Text style={{ fontSize: 13, fontWeight: '700', color: '#1d4ed8', textAlign: 'center' }}>
+                ℹ️ Menambah titik kecemasan pada peta akan menambah +1 secara automatik pada bulan &amp; kategori berkenaan dalam statistik ini. Kekal boleh dikemaskini secara manual pada bila-bila masa.
               </Text>
             </View>
           )}
@@ -529,7 +551,12 @@ export default function CalamitySummaryContent({ theme, large = false, mode = 't
       {mode === 'chart' && Platform.OS !== 'web' && (
         <Text style={styles.waypointEmptyText}>Carta trend hanya tersedia di versi web.</Text>
       )}
-      <Ng999HistoriqueModal visible={histModalVisible} onClose={() => setHistModalVisible(false)} initialYear={summary.summaryYear} />
+      <Ng999HistoriqueModal
+        visible={histModalVisible}
+        onClose={() => setHistModalVisible(false)}
+        initialYear={summary.summaryYear}
+        onSaved={summary.refreshHistoriqueYears}
+      />
     </ScrollView>
   );
 }

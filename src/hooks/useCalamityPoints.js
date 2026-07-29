@@ -27,15 +27,26 @@ export function useCalamityPoints() {
 
   const saveCalamity = async ({ category, description, latitude, longitude }) => {
     if (!category) return { error: true };
+    const now = new Date();
     const { error } = await supabaseSandbox.from('laporan_ng999').insert([{
       category,
       description: description?.trim() || null,
       latitude,
       longitude,
-      tarikh: new Date().toISOString().split('T')[0],
+      tarikh: now.toISOString().split('T')[0],
       jumlah_kes: 1,
     }]);
-    if (!error) fetchCalamityPoints();
+    if (!error) {
+      fetchCalamityPoints();
+      // Incrémente aussi la grille historique (mois/catégorie courants), pour qu'elle reste
+      // la source unique de vérité utilisée par le tableau récapitulatif — toujours modifiable.
+      const { error: incError } = await supabaseSandbox.rpc('increment_ng999_historique', {
+        p_tahun: now.getFullYear(),
+        p_bulan: now.getMonth() + 1,
+        p_category: category,
+      });
+      if (incError) console.error('increment_ng999_historique error:', incError);
+    }
     return { error: !!error };
   };
 

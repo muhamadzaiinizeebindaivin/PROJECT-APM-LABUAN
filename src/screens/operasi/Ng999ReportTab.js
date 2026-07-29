@@ -316,7 +316,7 @@ export default function Ng999ReportTab({ theme, userRole, isEditMode }) {
           ) : viewMode === 'trend' ? (
             <CalamitySummaryContent theme={theme} mode="chart" isEditMode={isEditMode} />
           ) : filteredNgData.length === 0 ? (
-            <Text style={{ color: PALETTE.textMutedDark, textAlign: 'center', marginVertical: 10 }}>No records found.</Text>
+            <Text style={{ color: PALETTE.textMutedDark, textAlign: 'center', marginVertical: 10 }}>Tiada rekod dijumpai.</Text>
           ) : (
             <View style={[tableStyles.calamityTableWrapper, { borderColor: '#475569' }]}>
               {tableHeader}

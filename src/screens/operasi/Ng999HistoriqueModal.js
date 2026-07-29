@@ -13,7 +13,7 @@ const BULAN_MS = ['Januari', 'Februari', 'Mac', 'April', 'Mei', 'Jun', 'Julai', 
 const CURRENT_YEAR = new Date().getFullYear();
 const yearOptions = Array.from({ length: CURRENT_YEAR - 1951 }, (_, i) => CURRENT_YEAR - i);
 
-export default function Ng999HistoriqueModal({ visible, onClose, initialYear }) {
+export default function Ng999HistoriqueModal({ visible, onClose, initialYear, onSaved }) {
   const { getGridForYear, saveHistoriqueRow, historiqueData } = useNg999Historique();
   const { calamityPoints } = useCalamityPoints();
   const summary = useCalamitySummaryPanel(calamityPoints);
@@ -26,27 +26,31 @@ export default function Ng999HistoriqueModal({ visible, onClose, initialYear }) 
   const [yearOpen, setYearOpen] = useState(false);
   const [successMsg, setSuccessMsg] = useState(false);
   const [infoMsg, setInfoMsg] = useState(false);
-  const [lockedMsg, setLockedMsg] = useState(false);
-  const [hasDailyData, setHasDailyData] = useState(false);
-
-  const isLocked = parseInt(year) >= CURRENT_YEAR || hasDailyData;
+  const [violationMsg, setViolationMsg] = useState(null); // texte explicatif si blocage
+  // minCounts[bulan][category] = nombre de vrais rekod harian (laporan_ng999) déjà enregistrés
+  // pour ce mois/cette catégorie cette année-là — on ne peut jamais descendre en dessous.
+  const [minCounts, setMinCounts] = useState({});
 
   const loadYear = async (y) => {
     const parsed = parseInt(y);
     setYear(y);
+    setViolationMsg(null);
     if (!parsed || parsed > CURRENT_YEAR) return;
 
-    // Vérifier si l'année a des rekod harian (kes individuels)
-    if (parsed < CURRENT_YEAR) {
-      const { count } = await supabaseSandbox
-        .from('laporan_ng999')
-        .select('id', { count: 'exact', head: true })
-        .gte('tarikh', `${parsed}-01-01`)
-        .lte('tarikh', `${parsed}-12-31`);
-      setHasDailyData((count || 0) > 0);
-    } else {
-      setHasDailyData(false);
-    }
+    // Récupère le détail des vrais rekod harian de cette année, pour calculer le minimum par mois/catégorie
+    const { data: dailyRows } = await supabaseSandbox
+      .from('laporan_ng999')
+      .select('tarikh, category')
+      .gte('tarikh', `${parsed}-01-01`)
+      .lte('tarikh', `${parsed}-12-31`);
+
+    const mins = {};
+    (dailyRows || []).forEach((r) => {
+      const b = new Date(r.tarikh).getMonth() + 1;
+      if (!mins[b]) mins[b] = {};
+      mins[b][r.category] = (mins[b][r.category] || 0) + 1;
+    });
+    setMinCounts(mins);
 
     let grid;
     if (parsed === CURRENT_YEAR) {
@@ -77,21 +81,30 @@ export default function Ng999HistoriqueModal({ visible, onClose, initialYear }) 
 
   const handleSave = async () => {
     const y = parseInt(year);
-    if (!y || y >= CURRENT_YEAR || hasDailyData) {
-      setLockedMsg(true);
-      setTimeout(() => setLockedMsg(false), 3000);
-      return;
-    }
+    if (!y || y > CURRENT_YEAR) return;
+
     const changes = [];
+    const violations = [];
     for (let b = 1; b <= 12; b++) {
       CALAMITY_CATEGORIES.forEach(cat => {
         const newVal = parseInt(draft[b]?.[cat.key] || '0') || 0;
         const oldVal = parseInt(initial[b]?.[cat.key] || '0') || 0;
+        const min = minCounts[b]?.[cat.key] || 0;
+        if (newVal < min) {
+          violations.push(`${BULAN_MS[b - 1]} - ${cat.key}: tidak boleh kurang daripada ${min} (terdapat ${min} rekod harian sedia ada bulan ini).`);
+          return;
+        }
         if (newVal !== oldVal) {
           changes.push([b, cat.key, newVal]);
         }
       });
     }
+
+    if (violations.length > 0) {
+      setViolationMsg(violations.join('\n'));
+      return;
+    }
+    setViolationMsg(null);
 
     if (changes.length === 0) {
       setInfoMsg(true);
@@ -105,6 +118,7 @@ export default function Ng999HistoriqueModal({ visible, onClose, initialYear }) 
     setInitial(JSON.parse(JSON.stringify(draft)));
     setSuccessMsg(true);
     setTimeout(() => setSuccessMsg(false), 2000);
+    onSaved?.();
   };
 
   const rowTotals = useMemo(() => {
@@ -162,12 +176,12 @@ export default function Ng999HistoriqueModal({ visible, onClose, initialYear }) 
               <Text style={s.infoBannerText}>Tiada perubahan untuk disimpan.</Text>
             </View>
           )}
-          {lockedMsg && !hasDailyData && (
+          {violationMsg && (
             <View style={s.lockedBanner}>
-              <Text style={s.lockedBannerText}>🔒 Data tahun semasa tidak boleh diubah — pengiraan dibuat secara automatik.</Text>
+              <Text style={s.lockedBannerText}>⚠️ Tidak dapat disimpan:{'\n'}{violationMsg}</Text>
             </View>
           )}
-          {hasDailyData && (
+          {false && (
             <View style={s.lockedBanner}>
               <Text style={s.lockedBannerText}>🔒 Tahun {year} mempunyai rekod harian — data tidak boleh diubah di sini. Sila rujuk senarai penuh kecemasan.</Text>
             </View>
@@ -300,8 +314,10 @@ export default function Ng999HistoriqueModal({ visible, onClose, initialYear }) 
                     {CALAMITY_CATEGORIES.map(cat => (
                       <View key={cat.key} style={[s.catCol, s.cellCenter]}>
                         <TextInput
-                          style={[s.input, isLocked && s.inputLocked]}
-                          editable={!isLocked}
+                          style={[
+                            s.input,
+                            (parseInt(draft[b]?.[cat.key] || '0') || 0) < (minCounts[b]?.[cat.key] || 0) && s.inputViolation,
+                          ]}
                           keyboardType="number-pad"
                           maxLength={5}
                           value={draft[b]?.[cat.key] ?? ''}
@@ -351,7 +367,7 @@ export default function Ng999HistoriqueModal({ visible, onClose, initialYear }) 
             <TouchableOpacity onPress={onClose} style={s.cancelBtn}>
               <Text style={s.cancelBtnText}>Batal</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={handleSave} disabled={saving || isLocked} style={[s.saveBtn, isLocked && s.saveBtnDisabled]}>
+            <TouchableOpacity onPress={handleSave} disabled={saving} style={s.saveBtn}>
               {saving
                 ? <ActivityIndicator size="small" color="#fff" />
                 : <Text style={s.saveBtnText}>Simpan</Text>}
@@ -419,6 +435,7 @@ const s = StyleSheet.create({
   lockedBanner: { backgroundColor: '#fffbeb', borderBottomWidth: 1, borderBottomColor: '#fde68a', paddingVertical: 10, paddingHorizontal: 20 },
   lockedBannerText: { fontSize: 13, fontWeight: '700', color: '#b45309', textAlign: 'center' },
   inputLocked: { backgroundColor: '#f8fafc', borderColor: '#f1f5f9', color: '#64748b' },
+  inputViolation: { borderColor: '#dc2626', borderWidth: 1.5, backgroundColor: '#fef2f2' },
   saveBtnDisabled: { backgroundColor: '#cbd5e1', shadowOpacity: 0 },
   cancelBtn: { borderWidth: 1.5, borderColor: '#e2e8f0', paddingHorizontal: 20, paddingVertical: 9, borderRadius: 10, backgroundColor: '#fff' },
   cancelBtnText: { fontSize: 13, fontWeight: '700', color: '#64748b' },
