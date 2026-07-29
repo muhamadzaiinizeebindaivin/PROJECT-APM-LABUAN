@@ -12,7 +12,7 @@ export const pentadbiranStyles = StyleSheet.create({
 
   card: {
     backgroundColor: PALETTE.cardLight, borderRadius: 18, padding: 20, marginBottom: 16,
-    borderWidth: 1, borderColor: PALETTE.cardLightBorder,
+    borderWidth: 1, borderColor: PALETTE.cardLightBorder, overflow: 'hidden',
     shadowColor: '#c9825a', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.06, shadowRadius: 14, elevation: 2,
   },
 
@@ -138,8 +138,8 @@ export const pentadbiranStyles = StyleSheet.create({
 
   statusDot: { width: 9, height: 9, borderRadius: 5 },
   kpiLegendRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 16, marginBottom: 16 },
-  kpiLegendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  kpiLegendText: { fontSize: 14, color: PALETTE.textMutedDark },
+  kpiLegendItem: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, width: '100%' },
+  kpiLegendText: { fontSize: 14, color: PALETTE.textMutedDark, flex: 1, flexShrink: 1, minWidth: 0 },
   kpiLegendLabel: { fontWeight: '800', color: PALETTE.textDark },
 
   subSeksyenRow: { flexDirection: 'row', gap: 8, marginBottom: 4 },

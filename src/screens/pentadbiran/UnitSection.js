@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Modal, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, ActivityIndicator, useWindowDimensions } from 'react-native';
 import { Users, ListChecks, Pencil, Trash2, ChevronUp, ChevronDown, AlertTriangle } from 'lucide-react-native';
 import { PALETTE } from '../../constants/palette';
 import { pentadbiranStyles as styles } from './pentadbiranStyles';
@@ -144,11 +144,14 @@ export default function UnitSection({ pageData, isEditing, updateField, onSave, 
     onNotify?.('success', 'Kakitangan berjaya dipadam.');
   };
 
+  const { width: screenWidth } = useWindowDimensions();
+  const isMobile = screenWidth < 768;
+
   return (
     <View style={styles.card}>
       <SectionHeader title="BAHAGIAN KHIDMAT PENGURUSAN" Icon={Users} />
 
-      <View style={styles.unitContainer}>
+      <View style={[styles.unitContainer, isMobile && { flexDirection: 'column' }]}>
         {/* ── Pecahan Unit ── */}
         <View style={styles.unitBox}>
           <View style={styles.unitBoxHeader}>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TextInput } from 'react-native';
+import { View, Text, TextInput, ScrollView, useWindowDimensions } from 'react-native';
 import { AlertCircle } from 'lucide-react-native';
 import { FileText } from 'lucide-react-native';
 import { pentadbiranStyles as styles } from './pentadbiranStyles';
@@ -10,6 +10,10 @@ const COLUMNS = ['kp9', 'kp5', 'kp2', 'n2', 'kp1', 'n1', 'h1', 'jumlah'];
 const COLUMN_HEADERS = ['KP9', 'KP5', 'KP2', 'N2', 'KP1', 'N1', 'H1', 'JUMLAH'];
 
 export default function WaranTable({ pageData, isEditing, updateArrayField, onSave, onNotify }) {
+  const { width: screenWidth } = useWindowDimensions();
+  const isMobile = screenWidth < 768;
+  const columnStyle = isMobile ? { width: 72 } : { flex: 1 };
+
   const lastSavedRef = useRef(JSON.stringify(pageData.waran));
   const [isDirty, setIsDirty] = useState(false);
   const [formError, setFormError] = useState(null);
@@ -54,40 +58,42 @@ export default function WaranTable({ pageData, isEditing, updateArrayField, onSa
         }
       />
 
-      <View style={styles.table}>
-        <View style={[styles.tableRow, styles.tableHeader]}>
-          <Text style={[styles.tableCell, styles.cellHeader, styles.cellHeaderGred, { width: 160, textAlign: 'left', paddingLeft: 14 }]}>GRED</Text>
-          {COLUMN_HEADERS.map((h) => (
-            <Text key={h} style={[styles.tableCell, styles.cellHeader, { flex: 1 }, h === 'JUMLAH' && styles.cellHeaderJumlah]}>{h}</Text>
-          ))}
-        </View>
-        {pageData.waran.map((row, index) => (
-          <View key={`waran-${index}`} style={[styles.tableRow, index === pageData.waran.length - 1 && styles.tableRowLast]}>
-            {isEditing ? (
-              <TextInput
-                style={[styles.tableCell, styles.tableInput, styles.rowLabel, { width: 160, textAlign: 'left' }]}
-                value={row.label}
-                onChangeText={(text) => updateArrayField('waran', index, 'label', text)}
-              />
-            ) : (
-              <Text style={[styles.tableCell, styles.rowLabel, { width: 160, textAlign: 'left', paddingLeft: 14 }]}>{row.label}</Text>
-            )}
-            {COLUMNS.map((key) => (
-              isEditing ? (
-                <TextInput
-                  key={key}
-                  style={[styles.tableCell, styles.tableInput, { flex: 1 }, key === 'jumlah' ? styles.boldCell : null]}
-                  value={row[key]}
-                  onChangeText={(text) => updateArrayField('waran', index, key, text)}
-                  keyboardType="numeric"
-                />
-              ) : (
-                <Text key={key} style={[styles.tableCell, { flex: 1 }, key === 'jumlah' ? styles.boldCell : null]}>{row[key]}</Text>
-              )
+      <ScrollView horizontal={isMobile} showsHorizontalScrollIndicator={false} contentContainerStyle={isMobile ? null : { flex: 1 }}>
+        <View style={[styles.table, isMobile ? null : { flex: 1 }]}>
+          <View style={[styles.tableRow, styles.tableHeader]}>
+            <Text style={[styles.tableCell, styles.cellHeader, styles.cellHeaderGred, { width: 160, textAlign: 'left', paddingLeft: 14 }]}>GRED</Text>
+            {COLUMN_HEADERS.map((h) => (
+              <Text key={h} style={[styles.tableCell, styles.cellHeader, columnStyle, h === 'JUMLAH' && styles.cellHeaderJumlah]}>{h}</Text>
             ))}
           </View>
-        ))}
-      </View>
+          {pageData.waran.map((row, index) => (
+            <View key={`waran-${index}`} style={[styles.tableRow, index === pageData.waran.length - 1 && styles.tableRowLast]}>
+              {isEditing ? (
+                <TextInput
+                  style={[styles.tableCell, styles.tableInput, styles.rowLabel, { width: 160, textAlign: 'left' }]}
+                  value={row.label}
+                  onChangeText={(text) => updateArrayField('waran', index, 'label', text)}
+                />
+              ) : (
+                <Text style={[styles.tableCell, styles.rowLabel, { width: 160, textAlign: 'left', paddingLeft: 14 }]}>{row.label}</Text>
+              )}
+              {COLUMNS.map((key) => (
+                isEditing ? (
+                  <TextInput
+                    key={key}
+                    style={[styles.tableCell, styles.tableInput, columnStyle, key === 'jumlah' ? styles.boldCell : null]}
+                    value={row[key]}
+                    onChangeText={(text) => updateArrayField('waran', index, key, text)}
+                    keyboardType="numeric"
+                  />
+                ) : (
+                  <Text key={key} style={[styles.tableCell, columnStyle, key === 'jumlah' ? styles.boldCell : null]}>{row[key]}</Text>
+                )
+              ))}
+            </View>
+          ))}
+        </View>
+      </ScrollView>
 
       {isEditing && !!formError && (
         <Text style={{ fontSize: 12, color: '#dc2626', textAlign: 'center', marginTop: 10 }}>{formError}</Text>

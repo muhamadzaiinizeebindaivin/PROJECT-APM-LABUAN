@@ -28,7 +28,7 @@ export const kewanganStyles = StyleSheet.create({
   // Cartes standard (mêmes conventions que Pentadbiran)
   card: {
     backgroundColor: PALETTE.cardLight, borderRadius: 18, padding: 20, marginBottom: 16,
-    borderWidth: 1, borderColor: PALETTE.cardLightBorder,
+    borderWidth: 1, borderColor: PALETTE.cardLightBorder, overflow: 'hidden',
     shadowColor: '#c9825a', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.06, shadowRadius: 14, elevation: 2,
   },
 
