@@ -10,7 +10,7 @@ const STATUS_OPTIONS = [
   { key: 'merah', label: 'Merah', color: '#dc2626', desc: 'Kritikal' },
 ];
 
-const SUB_SEKSYEN_OPTIONS = ['BKP', 'BPP', 'BPM'];
+const SUB_SEKSYEN_OPTIONS = ['USM', 'UAS', 'UK', 'UP'];
 
 export default function KpiEditModal({ visible, isNew, draft, setDraft, onSave, onDelete, onClose, showSubSeksyen = true, error }) {
   return (

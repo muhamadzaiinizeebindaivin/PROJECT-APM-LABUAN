@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, Image, useWindowDimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ShieldCheck, LogOut } from 'lucide-react-native';
+import { ShieldCheck, LogOut, Menu } from 'lucide-react-native';
 import { FONTS } from '../styles/tacticalTheme';
 import { PALETTE } from '../constants/palette';
 import { customHeaderStyles as styles } from './customHeaderStyles';
@@ -22,7 +22,7 @@ function HeaderRoleBadge({ userRole }) {
   );
 }
 
-export default function CustomHeader({ title, theme, userRole, onLogout, onLoginPress }) {
+export default function CustomHeader({ title, theme, userRole, onLogout, onLoginPress, onMenuPress }) {
   const { width } = useWindowDimensions();
   const isNarrow = width < NARROW_BREAKPOINT;
 
@@ -34,6 +34,11 @@ export default function CustomHeader({ title, theme, userRole, onLogout, onLogin
       style={styles.container}
     >
       <View style={styles.brandRow}>
+        {onMenuPress && (
+          <TouchableOpacity onPress={onMenuPress} style={styles.menuBtn}>
+            <Menu size={22} color="#fff" />
+          </TouchableOpacity>
+        )}
         <View style={styles.logoWrapper}>
           <Image
             source={{ uri: 'https://kceeewyadcskivtmilyf.supabase.co/storage/v1/object/public/logo/apm_labuan.png' }}

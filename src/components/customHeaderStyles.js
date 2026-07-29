@@ -141,4 +141,7 @@ export const customHeaderStyles = StyleSheet.create({
     letterSpacing: 1,
     fontWeight: '700',
   },
+  menuBtn: {
+    marginRight: 8, padding: 4,
+  },
 });

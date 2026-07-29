@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, StatusBar, TouchableOpacity, Alert, Platform, Text, ActivityIndicator, Modal, TextInput, KeyboardAvoidingView, Image } from 'react-native';import { NavigationContainer } from '@react-navigation/native';
+import { View, StatusBar, TouchableOpacity, Alert, Platform, Text, ActivityIndicator, Modal, TextInput, KeyboardAvoidingView, Image, Animated, useWindowDimensions } from 'react-native';
+import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { LayoutDashboard, Users, CreditCard, GraduationCap, Truck, ShieldAlert, Briefcase, Info, LogOut, UserCog, ShieldCheck, Building2, Lock, User, ArrowRight, AlertCircle, X, Eye, EyeOff, CheckCircle } from 'lucide-react-native';
+import { LayoutDashboard, Users, CreditCard, GraduationCap, Truck, ShieldAlert, Briefcase, Info, LogOut, UserCog, ShieldCheck, Building2, Lock, User, ArrowRight, AlertCircle, X, Eye, EyeOff, CheckCircle, Menu } from 'lucide-react-native';
 import { PALETTE } from './src/constants/palette';
 import { useFonts, Orbitron_600SemiBold, Orbitron_700Bold } from '@expo-google-fonts/orbitron';
 import { Inter_400Regular, Inter_500Medium } from '@expo-google-fonts/inter';
@@ -61,7 +62,32 @@ function AuthFlow({ theme, handleLogin }) {
   );
 }
 
-function DepartmentFlow({ userRole, theme, handleLogin, handleLogout, onLoginPress }) {
+const MOBILE_BREAKPOINT = 768;
+const DRAWER_WIDTH = 260;
+
+const TAB_ICONS = {
+  Utama: Info, Pentadbiran: LayoutDashboard, Sekretariat: Briefcase,
+  Angkatan: Users, Kewangan: CreditCard, Latihan: GraduationCap,
+  Logistik: Truck, Operasi: ShieldAlert,
+  Admin: UserCog,
+};
+
+function DepartmentFlow({ userRole, theme, handleLogin, handleLogout, onLoginPress, navigationRef }) {
+  const { width } = useWindowDimensions();
+  const isMobile = width < MOBILE_BREAKPOINT;
+
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [activeRouteName, setActiveRouteName] = useState('Utama');
+  const drawerAnim = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
+
+  useEffect(() => {
+    Animated.timing(drawerAnim, {
+      toValue: drawerOpen ? 0 : -DRAWER_WIDTH,
+      duration: 250,
+      useNativeDriver: false,
+    }).start();
+  }, [drawerOpen, drawerAnim]);
+
   const sharedTabOptions = ({ route }) => ({
     headerShown: true,
     header: () => (
@@ -71,20 +97,17 @@ function DepartmentFlow({ userRole, theme, handleLogin, handleLogout, onLoginPre
         userRole={userRole}
         onLogout={handleLogout}
         onLoginPress={onLoginPress}
+        onMenuPress={isMobile ? () => setDrawerOpen(true) : undefined}
       />
     ),
-    tabBarStyle: { backgroundColor: theme.card, borderTopWidth: 3, borderTopColor: '#fdba74', elevation: 10, height: 65, paddingBottom: 10, paddingTop: 10 },
+    tabBarStyle: isMobile
+      ? { display: 'none' }
+      : { backgroundColor: theme.card, borderTopWidth: 3, borderTopColor: '#fdba74', elevation: 10, height: 65, paddingBottom: 10, paddingTop: 10 },
     tabBarActiveTintColor: '#f97316', 
     tabBarInactiveTintColor: theme.textSecondary,
     tabBarLabelStyle: { fontSize: 10, fontFamily: FONTS.bodyMedium, marginTop: 4 },
     tabBarIcon: ({ color, focused }) => {
-      const icons = {
-        Utama: Info, Pentadbiran: LayoutDashboard, Sekretariat: Briefcase,
-        Angkatan: Users, Kewangan: CreditCard, Latihan: GraduationCap,
-        Logistik: Truck, Operasi: ShieldAlert,
-        Admin: UserCog,
-      };
-      const Icon = icons[route.name];
+      const Icon = TAB_ICONS[route.name];
       return Icon ? <Icon size={24} color={color} strokeWidth={focused ? 2.5 : 2} /> : null;
     },
   });
@@ -118,18 +141,80 @@ function DepartmentFlow({ userRole, theme, handleLogin, handleLogout, onLoginPre
   const allowedTabs = ROLE_PERMISSIONS[userRole] || [];
   const screens = TAB_CONFIG.filter(s => allowedTabs.includes(s.name));
 
+  const navigateTo = (name) => {
+    setActiveRouteName(name);
+    setDrawerOpen(false);
+    navigationRef?.current?.navigate(name);
+  };
+
   return (
-    <Tab.Navigator
-      initialRouteName="Utama"
-      screenOptions={sharedTabOptions}
-      sceneContainerStyle={{ backgroundColor: theme.background, flex: 1 }}
-    >
-      {screens.map(s => (
-        <Tab.Screen key={s.name} name={s.name} options={s.options}>
-          {s.render}
-        </Tab.Screen>
-      ))}
-    </Tab.Navigator>
+    <View style={{ flex: 1 }}>
+      <Tab.Navigator
+        initialRouteName="Utama"
+        screenOptions={sharedTabOptions}
+        sceneContainerStyle={{ backgroundColor: theme.background, flex: 1 }}
+        screenListeners={{
+          state: (e) => {
+            const routeName = e.data?.state?.routes?.[e.data.state.index]?.name;
+            if (routeName) setActiveRouteName(routeName);
+          },
+        }}
+      >
+        {screens.map(s => (
+          <Tab.Screen key={s.name} name={s.name} options={s.options}>
+            {s.render}
+          </Tab.Screen>
+        ))}
+      </Tab.Navigator>
+
+      {/* ── Menu latéral mobile (remplace la barre du bas quand elle est masquée) ── */}
+      {isMobile && drawerOpen && (
+        <TouchableOpacity
+          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 20 }}
+          activeOpacity={1}
+          onPress={() => setDrawerOpen(false)}
+        />
+      )}
+      {isMobile && (
+        <Animated.View
+          style={{
+            position: 'absolute', top: 0, bottom: 0, left: 0, width: DRAWER_WIDTH,
+            backgroundColor: theme.card, zIndex: 21,
+            transform: [{ translateX: drawerAnim }],
+            shadowColor: '#000', shadowOffset: { width: 2, height: 0 }, shadowOpacity: 0.2, shadowRadius: 10, elevation: 12,
+            paddingTop: Platform.OS === 'web' ? 20 : 50,
+          }}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: theme.border || '#e2e8f0' }}>
+            <Text style={{ fontSize: 16, fontWeight: '900', color: theme.text }}>Menu</Text>
+            <TouchableOpacity onPress={() => setDrawerOpen(false)}>
+              <X size={22} color={theme.textSecondary} />
+            </TouchableOpacity>
+          </View>
+          {screens.map((s) => {
+            const Icon = TAB_ICONS[s.name];
+            const isActive = activeRouteName === s.name;
+            return (
+              <TouchableOpacity
+                key={s.name}
+                onPress={() => navigateTo(s.name)}
+                style={{
+                  flexDirection: 'row', alignItems: 'center', gap: 12,
+                  paddingHorizontal: 18, paddingVertical: 14,
+                  backgroundColor: isActive ? 'rgba(249, 115, 22, 0.1)' : 'transparent',
+                  borderLeftWidth: 3, borderLeftColor: isActive ? '#f97316' : 'transparent',
+                }}
+              >
+                {Icon && <Icon size={20} color={isActive ? '#f97316' : theme.textSecondary} strokeWidth={isActive ? 2.5 : 2} />}
+                <Text style={{ fontSize: 14, fontWeight: isActive ? '800' : '600', color: isActive ? '#f97316' : theme.text }}>
+                  {s.name}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </Animated.View>
+      )}
+    </View>
   );
 }
 
@@ -170,6 +255,8 @@ function AgencyFlow({ theme, handleLogout }) {
 
 export default function App() {
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const navigationRef = useRef(null);
+  const [logoutModalVisible, setLogoutModalVisible] = useState(false);
   const theme = isDarkMode ? themes.dark : themes.light;
 
   // --- AUTHENTICATION STATE ---
@@ -182,7 +269,6 @@ export default function App() {
   const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
-  const [logoutModalVisible, setLogoutModalVisible] = useState(false);
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [resetSent, setResetSent] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
@@ -459,7 +545,7 @@ export default function App() {
   // ROOT RENDER (THE FIX: ONLY ONE CONTAINER)
   // ==========================================
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef}>
       <Modal visible={loginModalVisible} transparent animationType="fade" onRequestClose={closeLoginModal}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
           <View style={{ width: '100%', maxWidth: 560, shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 20, elevation: 20, borderRadius: 24 }}>
@@ -627,6 +713,7 @@ export default function App() {
           handleLogin={handleLogin}
           handleLogout={handleLogout}
           onLoginPress={() => setLoginModalVisible(true)}
+          navigationRef={navigationRef}
         />
       ) :
       userRole === 'driver' ? <DriverFlow theme={theme} handleLogout={handleLogout} /> :
