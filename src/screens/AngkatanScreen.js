@@ -164,11 +164,31 @@ export default function AngkatanScreen({ userRole }) {
 
   // ── Modal Communauté ──
   const [showCommunityModal, setShowCommunityModal] = useState(false);
-  const [communityForm, setCommunityForm] = useState({ id: null, category: '', label: '', detail: '', color: '#1D4E89' });
-  const openAddCommunity = () => { setCommunityForm({ id: null, category: '', label: '', detail: '', color: '#1D4E89' }); setShowCommunityModal(true); };
-  const openEditCommunity = (prog) => { setCommunityForm(prog); setShowCommunityModal(true); };
-  const handleSaveCommunity = async () => { await saveCommunityItem(communityForm); setShowCommunityModal(false); };
-  const handleDeleteCommunity = async (id) => { await deleteCommunityItem(id); };
+  const [communityForm, setCommunityForm] = useState({ id: null, category: '', label: '', detail: '' });
+  const [communityFormError, setCommunityFormError] = useState(null);
+  const [isSavingCommunity, setIsSavingCommunity] = useState(false);
+  const openAddCommunity = (defaultCategory = '') => { setCommunityForm({ id: null, category: defaultCategory, label: '', detail: '' }); setCommunityFormError(null); setShowCommunityModal(true); };
+  const openEditCommunity = (prog) => { setCommunityForm(prog); setCommunityFormError(null); setShowCommunityModal(true); };
+  const handleSaveCommunity = async () => {
+    if (!communityForm.category.trim() || !communityForm.label.trim() || !communityForm.detail.trim()) {
+      setCommunityFormError('Kategori, label dan keterangan tidak boleh kosong.');
+      return;
+    }
+    setCommunityFormError(null);
+    setIsSavingCommunity(true);
+    const ok = await saveCommunityItem(communityForm);
+    setIsSavingCommunity(false);
+    if (ok) {
+      setShowCommunityModal(false);
+      showNotification('success', communityForm.id ? 'Program berjaya dikemaskini.' : 'Program berjaya ditambah.');
+    } else {
+      showNotification('error', 'Gagal menyimpan program.');
+    }
+  };
+  const handleDeleteCommunity = async (id) => {
+    const ok = await deleteCommunityItem(id);
+    showNotification(ok ? 'success' : 'error', ok ? 'Program berjaya dipadam.' : 'Gagal memadam program.');
+  };
 
   // ── Modal Pyramide ──
   const [showPyramidModal, setShowPyramidModal] = useState(false);
@@ -419,6 +439,8 @@ export default function AngkatanScreen({ userRole }) {
         setCommunityForm={setCommunityForm}
         onSave={handleSaveCommunity}
         onClose={() => setShowCommunityModal(false)}
+        error={communityFormError}
+        isSaving={isSavingCommunity}
       />
       <PyramidEditModal
         visible={showPyramidModal}

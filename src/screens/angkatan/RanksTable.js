@@ -4,7 +4,7 @@ import { ListFilter, Plus, Pencil, Trash2 } from 'lucide-react-native';
 import { PALETTE } from '../../constants/palette';
 import { angkatanStyles as styles } from './angkatanStyles';
 
-const HEADERS = ['PERINGKAT', 'LULUS', 'NAIK', 'KBP', 'PTB', 'AKTIF', 'SIMPANAN'];
+const HEADERS = ['PERINGKAT', 'LAYAK UBKP', 'KBP', 'PTB', 'AKTIF', 'SIMPANAN'];
 
 export default function RanksTable({ ranks, isEditing, onAdd, onEdit, onDelete }) {
   return (
@@ -26,6 +26,9 @@ export default function RanksTable({ ranks, isEditing, onAdd, onEdit, onDelete }
 
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 16, marginBottom: 14 }}>
         <Text style={{ fontSize: 12, color: PALETTE.textMutedDark }}>
+          <Text style={{ fontWeight: '800', color: PALETTE.textDark }}>UBKP:</Text> Ujian Bertulis Kenaikan Pangkat
+        </Text>
+        <Text style={{ fontSize: 12, color: PALETTE.textMutedDark }}>
           <Text style={{ fontWeight: '800', color: PALETTE.textDark }}>KBP:</Text> Kursus Bakal Pegawai
         </Text>
         <Text style={{ fontSize: 12, color: PALETTE.textMutedDark }}>
@@ -43,7 +46,6 @@ export default function RanksTable({ ranks, isEditing, onAdd, onEdit, onDelete }
           {ranks.map((item, i) => (
             <View key={item.id} style={[styles.tableRow, i % 2 === 1 && styles.tableRowAlt]}>
               <Text style={[styles.tableCell, styles.tableCellRank]}>{item.rank}</Text>
-              <Text style={styles.tableCell}>{item.lulus}</Text>
               <Text style={styles.tableCell}>{item.kenaikan}</Text>
               <Text style={styles.tableCell}>{item.kbp}</Text>
               <Text style={styles.tableCell}>{item.ptb}</Text>

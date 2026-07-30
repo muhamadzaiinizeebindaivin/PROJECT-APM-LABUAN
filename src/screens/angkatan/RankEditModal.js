@@ -6,8 +6,7 @@ import { angkatanStyles as styles } from './angkatanStyles';
 
 const FIELDS = [
   { key: 'rank', label: 'Peringkat', numeric: false },
-  { key: 'lulus', label: 'Lulus', numeric: true },
-  { key: 'kenaikan', label: 'Naik', numeric: true },
+  { key: 'kenaikan', label: 'Layak UBKP', numeric: true },
   { key: 'kbp', label: 'KBP', numeric: true },
   { key: 'ptb', label: 'PTB', numeric: true },
   { key: 'aktif', label: 'Aktif', numeric: true },
