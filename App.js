@@ -425,16 +425,6 @@ export default function App() {
         return;
       }
 
-      // Session anonyme (créée via le bouton "Operasi" / code d'accès dans LaporKesScreen) —
-      // à ne JAMAIS confondre avec le vrai rôle département 'operasi' de profiles.role,
-      // même si join_operasi y écrit 'operasi' pour les besoins de RLS. Sans cette
-      // interception, un refresh élève cet utilisateur au rôle département complet.
-      if (session.user.is_anonymous) {
-        handleLogin('operasi_lapor');
-        setIsCheckingSession(false);
-        return;
-      }
-
       const userId = session.user.id;
       const email = session.user.email;
       const cleanUsername = email ? email.split('@')[0] : null;
@@ -444,6 +434,17 @@ export default function App() {
         .select('role, agency_id, username')
         .eq('id', userId)
         .maybeSingle();
+
+      // Collision précise : une session anonyme (bouton "Operasi" / code d'accès dans
+      // LaporKesScreen) a role='operasi' en base pour les besoins de RLS — mais ça ne
+      // doit JAMAIS être confondu avec un vrai compte département 'operasi'. On ne
+      // cible QUE ce cas précis ici : les autres rôles anonymes ('driver' notamment)
+      // n'entrent en collision avec rien et suivent le chemin normal plus bas.
+      if (session.user.is_anonymous && profile?.role === 'operasi') {
+        handleLogin('operasi_lapor');
+        setIsCheckingSession(false);
+        return;
+      }
 
       if (profile?.role === 'agency') {
         if (!profile.agency_id) {

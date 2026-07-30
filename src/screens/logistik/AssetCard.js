@@ -1,6 +1,15 @@
 import React, { useState, useRef } from 'react';
 import { View, Text, TouchableOpacity, Modal } from 'react-native';
-import { Ship, Truck, Hash, Pencil, Trash2, AlertTriangle } from 'lucide-react-native';
+import { Ship, Truck, Car, Bike, Bus, Siren, Sailboat, Anchor, Waves, Package, Pencil, Trash2, AlertTriangle } from 'lucide-react-native';
+
+const ICON_KEY_MAP = {
+  car: Car, lori: Truck, van: Truck, bas: Bus, motor: Bike, ambulans: Siren,
+  boat: Ship, sailboat: Sailboat, jetski: Waves, anchor: Anchor,
+};
+const getAssetIcon = (iconKey) => ICON_KEY_MAP[iconKey] || Package;
+
+const CATEGORY_COLORS = { Darat: { bg: PALETTE.orangeSoft, fg: PALETTE.orange }, Laut: { bg: PALETTE.blueSoft, fg: PALETTE.blue } };
+const getCategoryAccent = (category) => CATEGORY_COLORS[category] || { bg: '#ede9fe', fg: '#7c3aed' };
 import { PALETTE } from '../../constants/palette';
 import { logistikStyles as styles } from './logistikStyles';
 import { pentadbiranStyles } from '../pentadbiran/pentadbiranStyles';
@@ -14,9 +23,11 @@ const getStatusStyle = (status) => {
   }
 };
 
-export default function AssetCard({ item, isSea, isEditMode, onView, onEdit, onDelete }) {
+export default function AssetCard({ item, isEditMode, onView, onEdit, onDelete }) {
   const statusStyle = getStatusStyle(item.status);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const AssetIcon = getAssetIcon(item.icon_key);
+  const accent = getCategoryAccent(item.category);
 
   return (
     <TouchableOpacity
@@ -25,8 +36,8 @@ export default function AssetCard({ item, isSea, isEditMode, onView, onEdit, onD
       onPress={() => onView(item)}
     >
       <View style={styles.compactAssetHeader}>
-        <View style={[styles.compactAssetAvatar, { backgroundColor: isSea ? PALETTE.blueSoft : PALETTE.orangeSoft }]}>
-          {isSea ? <Ship size={18} color={PALETTE.blue} /> : <Truck size={18} color={PALETTE.orange} />}
+        <View style={[styles.compactAssetAvatar, { backgroundColor: accent.bg }]}>
+          <AssetIcon size={18} color={accent.fg} />
         </View>
         <View style={{ flex: 1 }}>
           <Text style={styles.compactAssetModel} numberOfLines={1}>{item.model}</Text>
@@ -50,10 +61,11 @@ export default function AssetCard({ item, isSea, isEditMode, onView, onEdit, onD
         <Text style={[styles.statusText, { color: statusStyle.text }]}>{item.status}</Text>
       </View>
 
-      <View style={isSea ? styles.qtyContainer : styles.regContainer}>
-        {isSea && <Hash size={11} color="#94a3b8" />}
-        <Text style={isSea ? styles.qtyText : styles.regText}>{isSea ? `QTY: ${item.qty}` : item.reg}</Text>
-      </View>
+      {item.reg ? (
+        <View style={styles.regContainer}>
+          <Text style={styles.regText}>{item.reg}</Text>
+        </View>
+      ) : null}
 
       <Modal visible={confirmDelete} transparent animationType="fade" onRequestClose={() => setConfirmDelete(false)}>
         <View style={pentadbiranStyles.confirmOverlay}>

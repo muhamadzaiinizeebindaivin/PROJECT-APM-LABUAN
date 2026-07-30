@@ -3,9 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, ScrollView } from 'react-nativ
 import { Search, X } from 'lucide-react-native';
 import { logistikStyles as styles } from './logistikStyles';
 
-const FILTER_OPTIONS = ['Semua', 'Bot', '4x4', 'Ambulans', 'Lori', 'Motosikal'];
-
-export default function AssetSearchFilter({ searchQuery, setSearchQuery, activeFilter, setActiveFilter, isEditMode, onAdd }) {
+export default function AssetSearchFilter({ searchQuery, setSearchQuery, activeFilter, setActiveFilter, isEditMode, onAdd, filterOptions }) {
   return (
     <>
       <View style={styles.searchContainer}>
@@ -26,7 +24,7 @@ export default function AssetSearchFilter({ searchQuery, setSearchQuery, activeF
 
       <View style={styles.filterRow}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterContainer} style={{ flex: 1 }}>
-          {FILTER_OPTIONS.map((filter) => (
+          {filterOptions.map((filter) => (
             <TouchableOpacity
               key={filter}
               style={[styles.filterChip, activeFilter === filter && styles.filterChipActive]}

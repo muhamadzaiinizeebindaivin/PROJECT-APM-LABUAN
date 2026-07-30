@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, ScrollView, ActivityIndicator, TouchableOpacity, Text } from 'react-native';
 import { ClipboardList } from 'lucide-react-native';
 import { PALETTE } from '../constants/palette';
@@ -47,31 +47,48 @@ export default function LogistikScreen({ userRole }) {
   const [formModalVisible, setFormModalVisible] = useState(false);
   const [editingAsset, setEditingAsset] = useState(null);
 
-  const seaLogistics = logistikData.filter((item) => item.category === 'Laut');
-  const landLogistics = logistikData.filter((item) => item.category === 'Darat');
-
-  const totalSea = seaLogistics.reduce((sum, item) => sum + (Number(item.qty) || 1), 0);
-  const totalLand = landLogistics.length;
-  const totalAssets = totalSea + totalLand;
-
-  const activeSea = seaLogistics.reduce((sum, item) => (item.status === 'Baik' ? sum + (Number(item.qty) || 1) : sum), 0);
-  const activeLand = landLogistics.filter((item) => item.status === 'Baik').length;
-  const totalActive = activeSea + activeLand;
+  const totalAssets = logistikData.length;
+  const totalActive = logistikData.filter((item) => item.status === 'Baik').length;
   const readinessPercent = totalAssets > 0 ? Math.round((totalActive / totalAssets) * 100) : 0;
 
-  const filteredSea = seaLogistics.filter((item) => {
-    const matchesSearch = item.model.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesFilter = activeFilter === 'Semua' || activeFilter === 'Bot';
-    return matchesSearch && matchesFilter;
-  });
+  const filterOptions = ['Semua', ...new Set(logistikData.map((item) => item.type).filter(Boolean))];
 
-  const filteredLand = landLogistics.filter((item) => {
+  // Si le filtre actif ne correspond plus à aucun type existant (ex: tous les assets
+  // de ce type ont été supprimés), on revient sur "Semua" pour éviter une liste vide
+  // sans explication visible.
+  useEffect(() => {
+    if (!loading && !filterOptions.includes(activeFilter)) {
+      setActiveFilter('Semua');
+    }
+  }, [filterOptions.join(','), loading]);
+
+  const matchesSearchAndFilter = (item) => {
     const matchesSearch =
       item.model.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (item.reg && item.reg.toLowerCase().includes(searchQuery.toLowerCase()));
-    const matchesFilter = activeFilter === 'Semua' || item.type.includes(activeFilter);
+    const matchesFilter = activeFilter === 'Semua' || (item.type || '').includes(activeFilter);
     return matchesSearch && matchesFilter;
-  });
+  };
+
+  // Ordre fixe pour Darat/Laut, puis les catégories personnalisées par ordre alphabétique
+  const KNOWN_ORDER = ['Laut', 'Darat'];
+  const CATEGORY_META = {
+    Laut: { label: 'Logistik Laut', color: PALETTE.blue, unit: 'Bot' },
+    Darat: { label: 'Logistik Darat', color: PALETTE.orange, unit: 'Kenderaan' },
+  };
+  const getCategoryMeta = (cat) => CATEGORY_META[cat] || { label: `Logistik ${cat}`, color: '#7c3aed', unit: 'Aset' };
+
+  const allCategories = [...new Set(logistikData.map((item) => item.category))];
+  const orderedCategories = [
+    ...KNOWN_ORDER.filter((c) => allCategories.includes(c)),
+    ...allCategories.filter((c) => !KNOWN_ORDER.includes(c)).sort(),
+  ];
+
+  const groupedByCategory = orderedCategories.map((category) => ({
+    category,
+    meta: getCategoryMeta(category),
+    items: logistikData.filter((item) => item.category === category).filter(matchesSearchAndFilter),
+  }));
 
   const openView = (asset) => { if (!isEditMode) { setSelectedAsset(asset); setViewModalVisible(true); } };
   const openAdd = () => { setEditingAsset(null); setFormModalVisible(true); };
@@ -118,47 +135,32 @@ export default function LogistikScreen({ userRole }) {
             setActiveFilter={setActiveFilter}
             isEditMode={isEditMode}
             onAdd={openAdd}
+            filterOptions={filterOptions}
           />
 
           {loading ? (
             <ActivityIndicator size="large" color={PALETTE.orange} style={{ marginTop: 20 }} />
           ) : (
             <>
-              {filteredSea.length > 0 && (
-                <View style={styles.sectionContainer}>
-                  <View style={styles.sectionHeader}>
-                    <Text style={styles.assetGroupTitle}>Logistik Laut</Text>
-                    <Text style={[styles.sectionSubtitle, { color: PALETTE.blue }]}>{totalSea} Aset</Text>
+              {groupedByCategory.map(({ category, meta, items }) => (
+                items.length > 0 && (
+                  <View key={category} style={styles.sectionContainer}>
+                    <View style={styles.sectionHeader}>
+                      <Text style={styles.assetGroupTitle}>{meta.label}</Text>
+                      <Text style={[styles.sectionSubtitle, { color: meta.color }]}>{items.length} {meta.unit}</Text>
+                    </View>
+                    <HorizontalCarousel
+                      items={items}
+                      cardWidth={210}
+                      pauseAutoScroll={isEditMode}
+                      interacting={viewModalVisible || formModalVisible}
+                      renderItem={(item) => (
+                        <AssetCard key={item.id} item={item} isEditMode={isEditMode} onView={openView} onEdit={openEdit} onDelete={deleteAsset} />
+                      )}
+                    />
                   </View>
-                  <HorizontalCarousel
-                    items={filteredSea}
-                    cardWidth={210}
-                    pauseAutoScroll={isEditMode}
-                    interacting={viewModalVisible || formModalVisible}
-                    renderItem={(item) => (
-                      <AssetCard key={item.id} item={item} isSea isEditMode={isEditMode} onView={openView} onEdit={openEdit} onDelete={deleteAsset} />
-                    )}
-                  />
-                </View>
-              )}
-
-              {filteredLand.length > 0 && (
-                <View style={styles.sectionContainer}>
-                  <View style={styles.sectionHeader}>
-                    <Text style={styles.assetGroupTitle}>Logistik Darat</Text>
-                    <Text style={[styles.sectionSubtitle, { color: PALETTE.orange }]}>{filteredLand.length} Kenderaan</Text>
-                  </View>
-                  <HorizontalCarousel
-                    items={filteredLand}
-                    cardWidth={210}
-                    pauseAutoScroll={isEditMode}
-                    interacting={viewModalVisible || formModalVisible}
-                    renderItem={(item) => (
-                      <AssetCard key={item.id} item={item} isSea={false} isEditMode={isEditMode} onView={openView} onEdit={openEdit} onDelete={deleteAsset} />
-                    )}
-                  />
-                </View>
-              )}
+                )
+              ))}
             </>
           )}
         </View>

@@ -1,6 +1,15 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, Modal } from 'react-native';
-import { X, Ship, Truck, Activity } from 'lucide-react-native';
+import { X, Ship, Truck, Car, Bike, Bus, Siren, Sailboat, Anchor, Waves, Package, Activity } from 'lucide-react-native';
+
+const ICON_KEY_MAP = {
+  car: Car, lori: Truck, van: Truck, bas: Bus, motor: Bike, ambulans: Siren,
+  boat: Ship, sailboat: Sailboat, jetski: Waves, anchor: Anchor,
+};
+const getAssetIcon = (iconKey) => ICON_KEY_MAP[iconKey] || Package;
+
+const CATEGORY_COLORS = { Darat: { bg: PALETTE.orangeSoft, fg: PALETTE.orange }, Laut: { bg: PALETTE.blueSoft, fg: PALETTE.blue } };
+const getCategoryAccent = (category) => CATEGORY_COLORS[category] || { bg: '#ede9fe', fg: '#7c3aed' };
 import { PALETTE } from '../../constants/palette';
 import { logistikStyles as styles } from './logistikStyles';
 
@@ -15,6 +24,8 @@ const getStatusColor = (status) => {
 
 export default function AssetViewModal({ visible, onClose, asset }) {
   if (!asset) return null;
+  const AssetIcon = getAssetIcon(asset.icon_key);
+  const accent = getCategoryAccent(asset.category);
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -22,8 +33,8 @@ export default function AssetViewModal({ visible, onClose, asset }) {
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
-              <View style={[styles.modalAvatar, { backgroundColor: asset.category === 'Darat' ? PALETTE.orangeSoft : PALETTE.blueSoft }]}>
-                {asset.category === 'Darat' ? <Truck size={20} color={PALETTE.orange} /> : <Ship size={20} color={PALETTE.blue} />}
+              <View style={[styles.modalAvatar, { backgroundColor: accent.bg }]}>
+                <AssetIcon size={20} color={accent.fg} />
               </View>
               <Text style={styles.modalTitle} numberOfLines={1}>{asset.model}</Text>
             </View>
@@ -39,11 +50,7 @@ export default function AssetViewModal({ visible, onClose, asset }) {
               </View>
             )}
 
-            {asset.qty !== null && asset.category === 'Laut' && (
-              <View style={styles.modalRegBadge}>
-                <Text style={styles.modalRegText}>QTY: {asset.qty}</Text>
-              </View>
-            )}
+            
 
             <View style={styles.modalDetailsContainer}>
               <View style={styles.detailRow}>

@@ -66,12 +66,7 @@ export const logistikStyles = StyleSheet.create({
   },
   statusDot: { width: 6, height: 6, borderRadius: 3 },
   statusText: { fontSize: 12, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.3 },
-  qtyContainer: {
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: PALETTE.surface, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6,
-  },
-  qtyText: { fontSize: 12, fontWeight: '700', color: PALETTE.textMutedDark },
-  regContainer: { backgroundColor: PALETTE.surface, paddingHorizontal: 9, paddingVertical: 5, borderRadius: 6 },
+  regContainer: { backgroundColor: PALETTE.surface, paddingHorizontal: 9, paddingVertical: 5, borderRadius: 6, alignSelf: 'flex-start' },
   regText: { fontSize: 12, fontWeight: '800', letterSpacing: 0.6, color: PALETTE.textDark },
 
   actionRow: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 14, borderTopWidth: 1, borderTopColor: PALETTE.cardLightBorder, paddingTop: 12 },
