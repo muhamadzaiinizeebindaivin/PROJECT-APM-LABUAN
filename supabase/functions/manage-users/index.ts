@@ -60,10 +60,38 @@ serve(async (req) => {
       const from = (page - 1) * pageSize;
       const to = from + pageSize - 1;
 
+      // Un seul appel à l'API Admin Auth, fait AVANT la requête profiles cette fois —
+      // pour pouvoir exclure les sessions anonymes (operasi/pemandu/agensi via kod akses)
+      // dès la requête paginée, sans fausser le compte total ni la pagination.
+      const pendingMap = new Map<string, boolean>();
+      const anonymousIds: string[] = [];
+      {
+        let authPage = 1;
+        const authPerPage = 200; // large marge, ajuste si ta base a plus de comptes que ça
+        let keepGoing = true;
+        while (keepGoing) {
+          const { data: authPageData, error: authListError } = await supabaseAdmin.auth.admin.listUsers({
+            page: authPage,
+            perPage: authPerPage,
+          });
+          if (authListError || !authPageData?.users?.length) break;
+          for (const u of authPageData.users) {
+            pendingMap.set(u.id, !u.email_confirmed_at);
+            if (u.is_anonymous) anonymousIds.push(u.id);
+          }
+          keepGoing = authPageData.users.length === authPerPage;
+          authPage += 1;
+        }
+      }
+
       let query = supabaseAdmin
         .schema("sandbox")
         .from("profiles")
         .select("id, username, role, email", { count: "exact" });
+
+      if (anonymousIds.length > 0) {
+        query = query.not("id", "in", `(${anonymousIds.join(",")})`);
+      }
 
       if (search) {
         query = query.or(`username.ilike.%${search}%,email.ilike.%${search}%`);
@@ -78,27 +106,6 @@ serve(async (req) => {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
-      }
-
-      // Un seul appel à l'API Admin Auth (au lieu d'un appel par utilisateur affiché),
-      // puis correspondance en mémoire — évite le problème N+1 qui ralentissait la liste.
-      const pendingMap = new Map<string, boolean>();
-      if (profiles && profiles.length > 0) {
-        let authPage = 1;
-        const authPerPage = 200; // large marge, ajuste si ta base a plus de comptes que ça
-        let keepGoing = true;
-        while (keepGoing) {
-          const { data: authPageData, error: authListError } = await supabaseAdmin.auth.admin.listUsers({
-            page: authPage,
-            perPage: authPerPage,
-          });
-          if (authListError || !authPageData?.users?.length) break;
-          for (const u of authPageData.users) {
-            pendingMap.set(u.id, !u.email_confirmed_at);
-          }
-          keepGoing = authPageData.users.length === authPerPage;
-          authPage += 1;
-        }
       }
 
       const usersWithStatus = (profiles || []).map((p) => ({
