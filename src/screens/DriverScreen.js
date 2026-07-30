@@ -1,7 +1,7 @@
 // src/screens/DriverScreen.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, createElement } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, FlatList, TextInput, Platform } from 'react-native';
-import { Navigation, StopCircle, ArrowLeft, Search, MapPin } from 'lucide-react-native';
+import { Navigation, StopCircle, ArrowLeft, Search, MapPin, Eye, EyeOff, Lock } from 'lucide-react-native';
 
 import { getVehicleIcon } from '../utils/vehicleIcons';
 import { useAvailableVehicles } from '../hooks/useAvailableVehicles';
@@ -10,6 +10,80 @@ import { supabaseSandbox } from '../supabaseSandboxClient';
 import { PALETTE } from '../constants/palette';
 
 const DRIVER_ACCESS_KEY = 'apm_driver_access_verified';
+
+// Rubans dégradés bleu/orange qui ondulent lentement, effet "peinture dans l'eau"
+// (repris tel quel de SetPasswordScreen.js)
+if (Platform.OS === 'web' && typeof document !== 'undefined' && !document.getElementById('flowing-ribbons-css')) {
+  const style = document.createElement('style');
+  style.id = 'flowing-ribbons-css';
+  style.textContent = `
+    @keyframes ribbonDrift1 {
+      0%, 100% { transform: translate(0px, 0px) scale(1); }
+      50% { transform: translate(60px, -30px) scale(1.05); }
+    }
+    @keyframes ribbonDrift2 {
+      0%, 100% { transform: translate(0px, 0px) scale(1); }
+      50% { transform: translate(-50px, 40px) scale(1.08); }
+    }
+    @keyframes ribbonDrift3 {
+      0%, 100% { transform: translate(0px, 0px) scale(1); }
+      50% { transform: translate(40px, 30px) scale(1.04); }
+    }
+    .ribbon-1 { animation: ribbonDrift1 11s ease-in-out infinite; }
+    .ribbon-2 { animation: ribbonDrift2 14s ease-in-out infinite; }
+    .ribbon-3 { animation: ribbonDrift3 9s ease-in-out infinite; }
+  `;
+  document.head.appendChild(style);
+}
+
+function FlowingBackground() {
+  if (Platform.OS !== 'web') return null;
+  return (
+    <View style={[bgStyles.container, { pointerEvents: 'none' }]}>
+      {createElement('svg', {
+        viewBox: '0 0 1200 800',
+        preserveAspectRatio: 'xMidYMid slice',
+        style: { width: '100%', height: '100%', position: 'absolute' },
+      },
+        createElement('defs', {},
+          createElement('linearGradient', { id: 'ribbonGrad1', x1: '0%', y1: '0%', x2: '100%', y2: '100%' },
+            createElement('stop', { offset: '0%', stopColor: '#f97316' }),
+            createElement('stop', { offset: '50%', stopColor: '#fb923c' }),
+            createElement('stop', { offset: '100%', stopColor: '#60a5fa' }),
+          ),
+          createElement('linearGradient', { id: 'ribbonGrad2', x1: '100%', y1: '0%', x2: '0%', y2: '100%' },
+            createElement('stop', { offset: '0%', stopColor: '#2563eb' }),
+            createElement('stop', { offset: '50%', stopColor: '#60a5fa' }),
+            createElement('stop', { offset: '100%', stopColor: '#f97316' }),
+          ),
+          createElement('linearGradient', { id: 'ribbonGrad3', x1: '0%', y1: '100%', x2: '100%', y2: '0%' },
+            createElement('stop', { offset: '0%', stopColor: '#fb923c' }),
+            createElement('stop', { offset: '100%', stopColor: '#2563eb' }),
+          ),
+        ),
+        createElement('path', {
+          className: 'ribbon-1',
+          d: 'M -100,150 C 200,50 400,250 700,150 C 950,70 1100,180 1300,120 L 1300,220 C 1100,280 950,170 700,250 C 400,350 200,150 -100,250 Z',
+          fill: 'url(#ribbonGrad1)', opacity: 0.35,
+        }),
+        createElement('path', {
+          className: 'ribbon-2',
+          d: 'M -100,420 C 250,320 450,480 750,380 C 1000,300 1150,420 1300,360 L 1300,460 C 1150,520 1000,400 750,480 C 450,580 250,420 -100,520 Z',
+          fill: 'url(#ribbonGrad2)', opacity: 0.3,
+        }),
+        createElement('path', {
+          className: 'ribbon-3',
+          d: 'M -100,650 C 200,580 500,700 800,600 C 1000,540 1150,650 1300,600 L 1300,700 C 1150,750 1000,640 800,700 C 500,800 200,680 -100,750 Z',
+          fill: 'url(#ribbonGrad3)', opacity: 0.28,
+        }),
+      )}
+    </View>
+  );
+}
+
+const bgStyles = StyleSheet.create({
+  container: { ...StyleSheet.absoluteFillObject, overflow: 'hidden' },
+});
 
 export default function DriverScreen({ onLogout }) {
   const { vehicles, loading: loadingVehicles } = useAvailableVehicles();
@@ -22,6 +96,8 @@ export default function DriverScreen({ onLogout }) {
   const [checkingAccess, setCheckingAccess] = useState(true);
   const [accessCode, setAccessCode] = useState('');
   const [verifying, setVerifying] = useState(false);
+  const [showAccessCode, setShowAccessCode] = useState(false);
+  const [accessFocused, setAccessFocused] = useState(false);
 
   // Vérifie s'il existe une vraie session Supabase active (pas juste un drapeau local)
   useEffect(() => {
@@ -147,30 +223,46 @@ export default function DriverScreen({ onLogout }) {
   if (!accessVerified) {
     return (
       <View style={[styles.container, { justifyContent: 'center' }]}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Kod Akses Pemandu</Text>
-          <Text style={styles.subtitle}>Masukkan kod akses untuk teruskan</Text>
-        </View>
+        <FlowingBackground />
+        <View style={styles.authCard}>
+          <View style={styles.authBanner}>
+            <Text style={styles.authKicker}>APM W.P LABUAN</Text>
+            <Text style={styles.authBannerTitle}>Kod Akses Pemandu</Text>
+            <Text style={styles.authBannerSubtitle}>Masukkan kod akses untuk teruskan</Text>
+          </View>
 
-        <View style={[styles.searchContainer, { marginBottom: 20 }]}>
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Kod akses"
-            placeholderTextColor={PALETTE.textMutedDark}
-            value={accessCode}
-            onChangeText={setAccessCode}
-            secureTextEntry
-            autoCapitalize="none"
-          />
-        </View>
+          <View style={styles.authBody}>
+            <View style={[styles.authInputGroup, accessFocused && styles.authInputGroupFocused]}>
+              <View style={styles.authInputIconWrap}>
+                <Lock size={17} color={accessFocused ? PALETTE.orange : '#94a3b8'} />
+              </View>
+              <TextInput
+                style={styles.authInput}
+                placeholder="Kod akses"
+                placeholderTextColor="#94a3b8"
+                value={accessCode}
+                onChangeText={setAccessCode}
+                secureTextEntry={!showAccessCode}
+                autoCapitalize="none"
+                returnKeyType="done"
+                onSubmitEditing={handleVerifyAccess}
+                onFocus={() => setAccessFocused(true)}
+                onBlur={() => setAccessFocused(false)}
+              />
+              <TouchableOpacity style={styles.authEyeBtn} onPress={() => setShowAccessCode(v => !v)}>
+                {showAccessCode ? <EyeOff size={17} color="#94a3b8" /> : <Eye size={17} color="#94a3b8" />}
+              </TouchableOpacity>
+            </View>
 
-        <TouchableOpacity
-          style={[styles.joinButton, verifying && { opacity: 0.7 }]}
-          onPress={handleVerifyAccess}
-          disabled={verifying}
-        >
-          {verifying ? <ActivityIndicator color="#fff" /> : <Text style={styles.joinButtonText}>Sahkan</Text>}
-        </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.authSaveButton, verifying && { opacity: 0.7 }]}
+              onPress={handleVerifyAccess}
+              disabled={verifying}
+            >
+              {verifying ? <ActivityIndicator color="#fff" /> : <Text style={styles.authSaveButtonText}>Sahkan</Text>}
+            </TouchableOpacity>
+          </View>
+        </View>
       </View>
     );
   }
@@ -327,6 +419,29 @@ export default function DriverScreen({ onLogout }) {
 const styles = StyleSheet.create({
   container: { flex: 1, alignItems: 'center', padding: 20, paddingTop: 50, backgroundColor: PALETTE.softOrangeBg },
   header: { marginBottom: 20, alignItems: 'center', width: '100%' },
+
+  authCard: {
+    width: '100%', maxWidth: 480, alignSelf: 'center', borderRadius: 24, overflow: 'hidden',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.15, shadowRadius: 20, elevation: 10,
+  },
+  authBanner: { backgroundColor: '#0c0c0e', padding: 24, paddingBottom: 28 },
+  authKicker: { fontSize: 10, fontWeight: '800', color: PALETTE.orange, letterSpacing: 2, textTransform: 'uppercase' },
+  authBannerTitle: { fontSize: 20, fontWeight: '900', color: '#fff', marginTop: 3 },
+  authBannerSubtitle: { fontSize: 12, color: '#94a3b8', marginTop: 4 },
+  authBody: { padding: 24, gap: 4, backgroundColor: '#fff' },
+  authInputGroup: {
+    flexDirection: 'row', alignItems: 'center', borderWidth: 1.5, borderColor: '#e2e8f0',
+    borderRadius: 12, paddingHorizontal: 14, height: 52, backgroundColor: '#f8fafc', marginBottom: 12,
+  },
+  authInputGroupFocused: { borderColor: PALETTE.orange, backgroundColor: 'rgba(249, 115, 22, 0.04)' },
+  authInputIconWrap: { marginRight: 10 },
+  authEyeBtn: { paddingLeft: 10 },
+  authInput: { flex: 1, fontSize: 14, fontWeight: '600', color: '#0f172a', outlineStyle: 'none' },
+  authSaveButton: {
+    flexDirection: 'row', backgroundColor: PALETTE.orange, height: 52, borderRadius: 12,
+    alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 10,
+  },
+  authSaveButtonText: { color: '#fff', fontWeight: '800', fontSize: 15 },
   title: { fontSize: 26, fontWeight: '900', color: PALETTE.textDark, marginBottom: 4 },
   subtitle: { fontSize: 13, color: PALETTE.textMutedDark, fontWeight: '600' },
   emptyText: { color: PALETTE.textMutedDark, textAlign: 'center', marginTop: 20 },

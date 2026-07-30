@@ -57,7 +57,7 @@ export function useCalamitySummaryPanel(calamityPoints) {
       const [ngRes, histRes, statusRes] = await Promise.all([
         supabaseSandbox
           .from('laporan_ng999')
-          .select('id, category, tarikh, jumlah_kes, status, created_at')
+          .select('id, category, tarikh, status, created_at')
           .gte('tarikh', `${summaryYear}-01-01`)
           .lte('tarikh', `${summaryYear}-12-31`)
           .limit(5000),
@@ -115,7 +115,7 @@ export function useCalamitySummaryPanel(calamityPoints) {
     calamityYearRows.forEach((c) => {
       const b = new Date(c.tarikh).getMonth() + 1;
       if (!mins[b]) mins[b] = {};
-      mins[b][c.category] = (mins[b][c.category] || 0) + (c.jumlah_kes || 1);
+      mins[b][c.category] = (mins[b][c.category] || 0) + 1;
     });
     return mins;
   }, [calamityYearRows]);
@@ -161,8 +161,8 @@ export function useCalamitySummaryPanel(calamityPoints) {
         if (d.getMonth() !== summaryMonth || d.getDate() !== day) return;
         const cat = c.category;
         if (counts[cat] !== undefined) {
-          counts[cat] += (c.jumlah_kes || 1);
-          total += (c.jumlah_kes || 1);
+          counts[cat] += 1;
+          total += 1;
         }
       });
       return { day, label: `${day} ${BULAN_MS[summaryMonth]}`, counts, total };

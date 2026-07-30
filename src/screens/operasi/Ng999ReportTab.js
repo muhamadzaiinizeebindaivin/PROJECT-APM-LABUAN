@@ -44,7 +44,7 @@ export default function Ng999ReportTab({ theme, userRole, isEditMode }) {
 
   // Modale
   const [modalVisible, setModalVisible] = useState(false);
-  const [form, setForm] = useState({ id: null, category: '', tarikh: '', jumlah_kes: '1', status: 'active' });
+  const [form, setForm] = useState({ id: null, category: '', tarikh: '', status: 'active' });
   const [categoryOpen, setCategoryOpen] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
   const [pendingFiles, setPendingFiles] = useState([]);
@@ -110,17 +110,12 @@ export default function Ng999ReportTab({ theme, userRole, isEditMode }) {
   };
 
   const handleSaveNg = async () => {
-    if (!form.category || !form.tarikh || !form.jumlah_kes) {
+    if (!form.category || !form.tarikh) {
       Alert.alert('Error', 'Please fill in all fields.');
       return;
     }
-    const caseAmount = parseInt(form.jumlah_kes, 10);
-    if (isNaN(caseAmount) || caseAmount < 1) {
-      Alert.alert('Error', 'Amount of cases must be a valid number greater than 0.');
-      return;
-    }
     setSavingRecord(true);
-    const { error, recordId } = await saveRecord({ id: form.id, category: form.category, tarikh: form.tarikh, jumlah_kes: caseAmount, status: form.status });
+    const { error, recordId } = await saveRecord({ id: form.id, category: form.category, tarikh: form.tarikh, status: form.status });
     if (!error && pendingFiles.length > 0) {
       await addPhotosToRecord(recordId, pendingFiles.map(p => p.file));
     }
@@ -140,7 +135,7 @@ export default function Ng999ReportTab({ theme, userRole, isEditMode }) {
   };
 
   const openEditModal = (record) => {
-    setForm({ id: record.id, category: record.category, tarikh: record.tarikh, jumlah_kes: (record.jumlah_kes || 1).toString(), status: record.status || 'active' });
+    setForm({ id: record.id, category: record.category, tarikh: record.tarikh, status: record.status || 'active' });
     setPendingFiles([]);
     setModalVisible(true);
   };
@@ -150,7 +145,7 @@ export default function Ng999ReportTab({ theme, userRole, isEditMode }) {
     setCategoryOpen(false);
     setStatusOpen(false);
     setPendingFiles([]);
-    setForm({ id: null, category: '', tarikh: '', jumlah_kes: '1', status: 'active' });
+    setForm({ id: null, category: '', tarikh: '', status: 'active' });
   };
 
   const existingPhotos = form.id ? (ngData.find(r => r.id === form.id)?.ng999_photos || []) : [];
@@ -162,9 +157,6 @@ export default function Ng999ReportTab({ theme, userRole, isEditMode }) {
       </View>
       <View style={[{ flex: 1 }, tableStyles.calamityHeaderCellBox]}>
         <Text style={tableStyles.calamityTableHeaderCell}>Tarikh</Text>
-      </View>
-      <View style={[{ flex: 1 }, tableStyles.calamityHeaderCellBox]}>
-        <Text style={tableStyles.calamityTableHeaderCell}>Jumlah</Text>
       </View>
       <View style={[{ flex: 1.2 }, tableStyles.calamityHeaderCellBox]}>
         <Text style={tableStyles.calamityTableHeaderCell}>Status</Text>
@@ -202,7 +194,6 @@ export default function Ng999ReportTab({ theme, userRole, isEditMode }) {
             {item.category}
           </Text>
           <Text style={[tableStyles.calamityTableCell, { flex: 1 }]}>{item.tarikh}</Text>
-          <Text style={[tableStyles.calamityTableCell, { flex: 1, fontWeight: '800' }]}>{item.jumlah_kes || 1}</Text>
           <View style={[{ flex: 1.2 }, tableStyles.calamitySummaryCellBox, { paddingVertical: 8, alignItems: 'center' }]}>
             <View style={{ backgroundColor: statusColor(item.status) + '18', borderWidth: 1, borderColor: statusColor(item.status), borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>
               <Text style={{ fontSize: 10, fontWeight: '800', color: statusColor(item.status) }}>{statusLabel(item.status)}</Text>
@@ -291,7 +282,7 @@ export default function Ng999ReportTab({ theme, userRole, isEditMode }) {
             </View>
             {isEditMode && (
               <View style={{ paddingHorizontal: 16, marginBottom: 12, flexDirection: 'row', justifyContent: 'flex-end' }}>
-                <TouchableOpacity style={styles.addBtn} onPress={() => { setForm({ id: null, category: '', tarikh: '', jumlah_kes: '1', status: 'active' }); setPendingFiles([]); setModalVisible(true); }}>
+                <TouchableOpacity style={styles.addBtn} onPress={() => { setForm({ id: null, category: '', tarikh: '', status: 'active' }); setPendingFiles([]); setModalVisible(true); }}>
                   <Plus size={16} color="#fff" />
                   <Text style={styles.addBtnText}>Tambah Rekod</Text>
                 </TouchableOpacity>
@@ -355,14 +346,6 @@ export default function Ng999ReportTab({ theme, userRole, isEditMode }) {
                   placeholder="YYYY-MM-DD" placeholderTextColor={theme.textSecondary}
                   value={form.tarikh} onChangeText={(t) => setForm({ ...form, tarikh: t })} />
               )}
-            </View>
-
-            <View style={[formStyles.inputGroup, { zIndex: 1 }]}>
-              <Text style={[formStyles.inputLabel, { color: PALETTE.textMutedDark }]}>Amount of Cases</Text>
-              <TextInput style={[formStyles.inputField, { backgroundColor: PALETTE.surface, color: PALETTE.textDark, borderColor: PALETTE.cardLightBorder }]}
-                placeholder="E.g., 5" placeholderTextColor={PALETTE.textMutedDark}
-                keyboardType="numeric" value={form.jumlah_kes.toString()}
-                onChangeText={(text) => setForm({ ...form, jumlah_kes: text.replace(/[^0-9]/g, '') })} />
             </View>
 
             <ModalSelectField theme={theme} label="Status" value={statusLabel(form.status)}

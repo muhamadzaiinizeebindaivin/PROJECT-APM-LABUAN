@@ -34,7 +34,7 @@ export function useNg999Report(filterYear, filterMonth) {
   const fetchAllNgData = useCallback(async () => {
     const { data, error } = await supabaseSandbox
       .from('laporan_ng999')
-      .select('id, tarikh, category, jumlah_kes')
+      .select('id, tarikh, category')
       .order('tarikh', { ascending: false })
       .order('created_at', { ascending: true });
     if (data) setAllNgData(data);
@@ -83,18 +83,18 @@ export function useNg999Report(filterYear, filterMonth) {
     await fetchNgData();
   }, [fetchNgData]);
 
-  const saveRecord = useCallback(async ({ id, category, tarikh, jumlah_kes, status }) => {
+  const saveRecord = useCallback(async ({ id, category, tarikh, status }) => {
     setLoadingNg(true);
     let error, recordId = id;
     if (id) {
       ({ error } = await supabaseSandbox
         .from('laporan_ng999')
-        .update({ category, tarikh, jumlah_kes, status })
+        .update({ category, tarikh, status })
         .eq('id', id));
     } else {
       const { data, error: insertError } = await supabaseSandbox
         .from('laporan_ng999')
-        .insert([{ category, tarikh, jumlah_kes, status }])
+        .insert([{ category, tarikh, status }])
         .select('id')
         .single();
       error = insertError;
@@ -146,13 +146,11 @@ export function useNg999Report(filterYear, filterMonth) {
   }, [allNgData]);
 
   const { totalMersCases, topCaseData } = useMemo(() => {
-    const total = allNgData.reduce((sum, item) => sum + (item.jumlah_kes || 1), 0);
+    const total = allNgData.length;
     let maxCount = 0;
     let topLabel = 'No Data Available';
     categories.forEach(cat => {
-      const count = allNgData
-        .filter(item => item.category === cat.id)
-        .reduce((sum, item) => sum + (item.jumlah_kes || 1), 0);
+      const count = allNgData.filter(item => item.category === cat.id).length;
       if (count > maxCount) { maxCount = count; topLabel = cat.label; }
     });
     return { totalMersCases: total, topCaseData: { label: topLabel, total: maxCount } };
@@ -168,7 +166,7 @@ export function useNg999Report(filterYear, filterMonth) {
           const d = new Date(item.tarikh);
           if (d.getFullYear() !== year || d.getMonth() !== m) return;
           const cat = categories.find(c => c.id === item.category);
-          if (cat) { counts[cat.id] += (item.jumlah_kes || 1); total += (item.jumlah_kes || 1); }
+          if (cat) { counts[cat.id] += 1; total += 1; }
         });
         return { label, counts, total };
       });
@@ -183,7 +181,7 @@ export function useNg999Report(filterYear, filterMonth) {
         const d = new Date(item.tarikh);
         if (d.getFullYear() !== year || d.getMonth() !== month || d.getDate() !== day) return;
         const cat = categories.find(c => c.id === item.category);
-        if (cat) { counts[cat.id] += (item.jumlah_kes || 1); total += (item.jumlah_kes || 1); }
+        if (cat) { counts[cat.id] += 1; total += 1; }
       });
       return { label: String(day), counts, total };
     });

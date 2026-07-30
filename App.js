@@ -20,6 +20,7 @@ import KewanganScreen from './src/screens/KewanganScreen';
 import LatihanScreen from './src/screens/LatihanScreen';
 import LogistikScreen from './src/screens/LogistikScreen';
 import OperasiScreen from './src/screens/OperasiScreen';
+import LaporKesScreen from './src/screens/LaporKesScreen';
 import SekretariatScreen from './src/screens/SekretariatScreen';
 import HomeScreen from './src/screens/HomeScreen'; 
 import DriverScreen from './src/screens/DriverScreen';
@@ -253,6 +254,16 @@ function AgencyFlow({ theme, handleLogout }) {
   );
 }
 
+function OperasiFlow({ theme, handleLogout }) {
+  return (
+    <Stack.Navigator>
+      <Stack.Screen name="OperasiApp" options={{ header: () => <CustomHeader title="LAPOR KES" theme={theme} userRole="operasi" onLogout={handleLogout} /> }}>
+        {(props) => <LaporKesScreen {...props} onLogout={handleLogout} />}
+      </Stack.Screen>
+    </Stack.Navigator>
+  );
+}
+
 export default function App() {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const navigationRef = useRef(null);
@@ -410,6 +421,16 @@ export default function App() {
 
       if (!session) {
         setUserRole('guest');
+        setIsCheckingSession(false);
+        return;
+      }
+
+      // Session anonyme (créée via le bouton "Operasi" / code d'accès dans LaporKesScreen) —
+      // à ne JAMAIS confondre avec le vrai rôle département 'operasi' de profiles.role,
+      // même si join_operasi y écrit 'operasi' pour les besoins de RLS. Sans cette
+      // interception, un refresh élève cet utilisateur au rôle département complet.
+      if (session.user.is_anonymous) {
+        handleLogin('operasi_lapor');
         setIsCheckingSession(false);
         return;
       }
@@ -645,7 +666,7 @@ export default function App() {
                 <View style={{ flex: 1, height: 1, backgroundColor: '#e2e8f0' }} />
               </View>
 
-              {/* Pemandu & Agensi */}
+              {/* Pemandu, Agensi & Operasi */}
               <View style={{ flexDirection: 'row', gap: 10 }}>
                 <TouchableOpacity
                   onPress={() => { handleLogin('driver'); setLoginModalVisible(false); }}
@@ -660,6 +681,13 @@ export default function App() {
                 >
                   <Building2 size={16} color={PALETTE.orange} />
                   <Text style={{ color: PALETTE.orange, fontWeight: '800', fontSize: 14 }}>Agensi</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => { handleLogin('operasi_lapor'); setLoginModalVisible(false); }}
+                  style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#fff7ed', borderWidth: 1.5, borderColor: PALETTE.orange, borderRadius: 12, height: 48 }}
+                >
+                  <ShieldAlert size={16} color={PALETTE.orange} />
+                  <Text style={{ color: PALETTE.orange, fontWeight: '800', fontSize: 14 }}>Operasi</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -717,6 +745,7 @@ export default function App() {
         />
       ) :
       userRole === 'driver' ? <DriverFlow theme={theme} handleLogout={handleLogout} /> :
+      userRole === 'operasi_lapor' ? <OperasiFlow theme={theme} handleLogout={handleLogout} /> :
       userRole === 'agency' ? <AgencyFlow theme={theme} handleLogout={handleLogout} /> :
       <GuestFlow theme={theme} handleLogout={handleLogout} onLoginPress={() => setLoginModalVisible(true)} />}
     </NavigationContainer>
