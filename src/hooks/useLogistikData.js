@@ -1,8 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Alert } from 'react-native';
+import { Alert, Platform } from 'react-native';
 import { supabaseSandbox } from '../supabaseSandboxClient';
 
 const SCHEMA = 'sandbox';
+
+const showError = (message) => {
+  if (Platform.OS === 'web') window.alert(message);
+  else Alert.alert('Ralat', message);
+};
 
 export function useLogistikData() {
   const [logistikData, setLogistikData] = useState([]);
@@ -19,8 +24,7 @@ export function useLogistikData() {
       if (error) throw error;
       if (data) setLogistikData(data);
     } catch (error) {
-      console.error('Error fetching logistik:', error);
-      Alert.alert('Ralat', 'Gagal memuat turun data logistik.');
+      showError('Gagal memuat turun data logistik.');
     } finally {
       setLoading(false);
     }
@@ -40,19 +44,21 @@ export function useLogistikData() {
       await fetchLogistik();
       return true;
     } catch (error) {
-      Alert.alert('Ralat', 'Gagal menyimpan rekod.');
+      showError('Gagal menyimpan rekod.');
       return false;
     }
   };
 
   const deleteAsset = async (asset) => {
-    if (!asset || asset.id === undefined) return;
+    if (!asset || asset.id === undefined) return { error: true };
     try {
       const { error } = await supabaseSandbox.schema(SCHEMA).from('logistik').delete().eq('id', asset.id);
       if (error) throw error;
       await fetchLogistik();
+      return { error: false };
     } catch (error) {
-      Alert.alert('Ralat', 'Gagal memadam aset.');
+      showError('Gagal memadam aset.');
+      return { error: true };
     }
   };
 

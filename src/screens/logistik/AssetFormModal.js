@@ -1,6 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Modal, ScrollView, Alert } from 'react-native';
+import { Platform } from 'react-native';
 import { X, Check, Car, Truck, Bike, Bus, Siren, Ship, Sailboat, Anchor, Waves } from 'lucide-react-native';
+
+const showError = (message) => {
+  if (Platform.OS === 'web') window.alert(message);
+  else Alert.alert('Ralat', message);
+};
 import { PALETTE } from '../../constants/palette';
 import { logistikStyles as styles } from './logistikStyles';
 
@@ -64,15 +70,15 @@ export default function AssetFormModal({ visible, onClose, editingAsset, onSave 
   }, [visible, editingAsset]);
 
   const handleSave = async () => {
-    if (!formData.model) return Alert.alert('Ralat', 'Sila masukkan model aset.');
+    if (!formData.model) return showError('Sila masukkan model aset.');
     if (categoryMode === 'custom' && !customCategory.trim()) {
-      return Alert.alert('Ralat', 'Sila masukkan nama kategori baharu.');
+      return showError('Sila masukkan nama kategori baharu.');
     }
     if (!formData.type || !formData.type.trim()) {
-      return Alert.alert('Ralat', 'Sila masukkan atau pilih jenis aset.');
+      return showError('Sila masukkan atau pilih jenis aset.');
     }
     if (formData.status === 'Selenggara' && !formData.nota_selenggara.trim()) {
-      return Alert.alert('Ralat', 'Sila masukkan catatan penyelenggaraan.');
+      return showError('Sila masukkan catatan penyelenggaraan.');
     }
 
     setIsSaving(true);

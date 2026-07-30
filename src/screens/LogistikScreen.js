@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { View, ScrollView, ActivityIndicator, TouchableOpacity, Text } from 'react-native';
-import { ClipboardList } from 'lucide-react-native';
+import { ClipboardList, CheckCircle2, XCircle } from 'lucide-react-native';
 import { PALETTE } from '../constants/palette';
 import AdminEditButton from '../components/AdminEditButton';
 import { useLogistikData } from '../hooks/useLogistikData';
@@ -18,6 +18,7 @@ import AssetCard from './logistik/AssetCard';
 import HorizontalCarousel from './logistik/HorizontalCarousel';
 import AssetViewModal from './logistik/AssetViewModal';
 import AssetFormModal from './logistik/AssetFormModal';
+
 export default function LogistikScreen({ userRole }) {
   const canEdit = canEditSection(userRole, 'Logistik');
   const { logistikData, loading, saveAsset, deleteAsset, logistikUpdatedAt } = useLogistikData();
@@ -46,6 +47,17 @@ export default function LogistikScreen({ userRole }) {
   const [selectedAsset, setSelectedAsset] = useState(null);
   const [formModalVisible, setFormModalVisible] = useState(false);
   const [editingAsset, setEditingAsset] = useState(null);
+
+  const [notification, setNotification] = useState(null);
+  const notificationTimeoutRef = useRef(null);
+  const showNotification = (type, message) => {
+    setNotification({ type, message });
+    if (notificationTimeoutRef.current) clearTimeout(notificationTimeoutRef.current);
+    notificationTimeoutRef.current = setTimeout(() => setNotification(null), 3000);
+  };
+  useEffect(() => () => {
+    if (notificationTimeoutRef.current) clearTimeout(notificationTimeoutRef.current);
+  }, []);
 
   const totalAssets = logistikData.length;
   const totalActive = logistikData.filter((item) => item.status === 'Baik').length;
@@ -94,6 +106,17 @@ export default function LogistikScreen({ userRole }) {
   const openAdd = () => { setEditingAsset(null); setFormModalVisible(true); };
   const openEdit = (asset) => { setEditingAsset(asset); setFormModalVisible(true); };
 
+  const handleSaveAsset = async (payload, asset) => {
+    const ok = await saveAsset(payload, asset);
+    showNotification(ok ? 'success' : 'error', ok ? 'Aset berjaya disimpan.' : 'Gagal menyimpan aset.');
+    return ok;
+  };
+
+  const handleDeleteAsset = async (asset) => {
+    const result = await deleteAsset(asset);
+    showNotification(result?.error ? 'error' : 'success', result?.error ? 'Gagal memadam aset.' : 'Aset berjaya dipadam.');
+  };
+
   return (
     <View style={styles.container}>
       {canEdit && (
@@ -107,6 +130,47 @@ export default function LogistikScreen({ userRole }) {
             ) : null}
           </View>
           <AdminEditButton isEditMode={isEditMode} setIsEditMode={setIsEditMode} userRole={userRole} section="Logistik" />
+        </View>
+      )}
+
+      {notification && (
+        <View
+          pointerEvents="none"
+          style={{
+            position: 'absolute', top: canEdit ? 60 : 10, left: 0, right: 0,
+            alignItems: 'center', zIndex: 30,
+          }}
+        >
+          <View
+            style={{
+              flexDirection: 'row', alignItems: 'center', gap: 10, maxWidth: '92%',
+              backgroundColor: notification.type === 'success' ? '#f0fdf4' : '#fef2f2',
+              borderWidth: 1,
+              borderColor: notification.type === 'success' ? '#bbf7d0' : '#fecaca',
+              borderRadius: 12,
+              paddingVertical: 10,
+              paddingHorizontal: 14,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.12,
+              shadowRadius: 10,
+              elevation: 5,
+            }}
+          >
+            {notification.type === 'success' ? (
+              <CheckCircle2 size={17} color="#16a34a" />
+            ) : (
+              <XCircle size={17} color="#dc2626" />
+            )}
+            <Text
+              style={{
+                color: notification.type === 'success' ? '#166534' : '#991b1b',
+                fontWeight: '700', fontSize: 13, flexShrink: 1,
+              }}
+            >
+              {notification.message}
+            </Text>
+          </View>
         </View>
       )}
 
@@ -155,7 +219,7 @@ export default function LogistikScreen({ userRole }) {
                       pauseAutoScroll={isEditMode}
                       interacting={viewModalVisible || formModalVisible}
                       renderItem={(item) => (
-                        <AssetCard key={item.id} item={item} isEditMode={isEditMode} onView={openView} onEdit={openEdit} onDelete={deleteAsset} />
+                        <AssetCard key={item.id} item={item} isEditMode={isEditMode} onView={openView} onEdit={openEdit} onDelete={handleDeleteAsset} />
                       )}
                     />
                   </View>
@@ -176,7 +240,7 @@ export default function LogistikScreen({ userRole }) {
       </ScrollView>
 
       <AssetViewModal visible={viewModalVisible} onClose={() => setViewModalVisible(false)} asset={selectedAsset} />
-      <AssetFormModal visible={formModalVisible} onClose={() => setFormModalVisible(false)} editingAsset={editingAsset} onSave={saveAsset} />
+      <AssetFormModal visible={formModalVisible} onClose={() => setFormModalVisible(false)} editingAsset={editingAsset} onSave={handleSaveAsset} />
     </View>
   );
 }
