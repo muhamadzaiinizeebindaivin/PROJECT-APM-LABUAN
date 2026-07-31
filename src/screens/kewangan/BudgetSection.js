@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, Animated, PanResponder, ScrollView, Modal, TextInput } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, Animated, PanResponder, ScrollView, Modal, TextInput, useWindowDimensions } from 'react-native';
 import { Wallet, Pencil, Trash2, FolderOpen, AlertTriangle, Check, Plus, X, TrendingUp } from 'lucide-react-native';
 import { PALETTE } from '../../constants/palette';
 import { formatCurrency, parseCurrency } from '../../utils/currency';
@@ -17,6 +17,8 @@ const MIN_THUMB_WIDTH = 28;
 const ITEMS_PER_PAGE = 5;
 
 export default function BudgetSection({ budgetData, loading, isEditMode, saveBudgetItem, deleteBudgetItem, deleteCategory, renameCategory, onNotify }) {
+  const { width: screenWidth } = useWindowDimensions();
+  const isMobile = screenWidth < 768;
   const [modalVisible, setModalVisible] = useState(false);
   const [editItem, setEditItem] = useState(null);
   const [kategori, setKategori] = useState('');
@@ -202,7 +204,7 @@ export default function BudgetSection({ budgetData, loading, isEditMode, saveBud
   const [hovered, setHovered] = useState(false);
 
   const contentWidth = Math.max(1, existingCategories.length * (CARD_WIDTH + CARD_GAP) - CARD_GAP);
-  const active = existingCategories.length > 1 && !modalVisible && !hovered;
+  const active = existingCategories.length > 1 && !modalVisible && !hovered && !isMobile;
 
   const stopAutoScroll = useCallback(() => {
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
@@ -287,8 +289,8 @@ export default function BudgetSection({ budgetData, loading, isEditMode, saveBud
   const dragStartScrollXContentRef = useRef(0);
   const contentPanResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: (evt, gestureState) => Math.abs(gestureState.dx) > 3,
+      onStartShouldSetPanResponder: () => !isMobile,
+      onMoveShouldSetPanResponder: (evt, gestureState) => !isMobile && Math.abs(gestureState.dx) > 3,
       onPanResponderGrant: () => { pauseForInteraction(); dragStartScrollXContentRef.current = scrollXRef.current; },
       onPanResponderMove: (evt, gestureState) => {
         const x = Math.max(0, Math.min(maxScroll, dragStartScrollXContentRef.current - gestureState.dx));
@@ -352,20 +354,20 @@ export default function BudgetSection({ budgetData, loading, isEditMode, saveBud
 
           <SectionHeader title="KATEGORI PERBELANJAAN" Icon={FolderOpen} />
 
-          <View style={styles.kpiRow}>
+          <View style={[styles.kpiRow, isMobile && { flexDirection: 'column' }]}>
             <View style={[styles.kpiCard, { backgroundColor: 'rgba(59, 130, 246, 0.08)', borderColor: 'rgba(59, 130, 246, 0.25)' }]}>
               <Text style={[styles.kpiTitle, { color: PALETTE.blue }]}>Jumlah Agihan</Text>
-              <Text style={[styles.kpiValue, { color: PALETTE.blue }]}>RM {formatCurrency(totalAgihan)}</Text>
+              <Text style={[styles.kpiValue, { color: PALETTE.blue }, isMobile && { fontSize: 15 }]}>RM {formatCurrency(totalAgihan)}</Text>
               <Wallet size={26} color={PALETTE.blue} style={{ position: 'absolute', top: 10, right: 10, opacity: 0.35 }} />
             </View>
             <View style={[styles.kpiCard, { backgroundColor: PALETTE.softOrangeBg, borderColor: 'rgba(249, 115, 22, 0.25)' }]}>
               <Text style={[styles.kpiTitle, { color: PALETTE.orange }]}>Jumlah Belanja</Text>
-              <Text style={[styles.kpiValue, { color: PALETTE.orange }]}>RM {formatCurrency(totalBelanja)}</Text>
+              <Text style={[styles.kpiValue, { color: PALETTE.orange }, isMobile && { fontSize: 15 }]}>RM {formatCurrency(totalBelanja)}</Text>
               <TrendingUp size={26} color={PALETTE.orange} style={{ position: 'absolute', top: 10, right: 10, opacity: 0.35 }} />
             </View>
             <View style={[styles.kpiCard, { backgroundColor: 'rgba(22, 163, 74, 0.08)', borderColor: 'rgba(22, 163, 74, 0.25)' }]}>
               <Text style={[styles.kpiTitle, { color: '#16a34a' }]}>Baki Semasa</Text>
-              <Text style={[styles.kpiValue, { color: '#16a34a' }]}>RM {formatCurrency(baki)}</Text>
+              <Text style={[styles.kpiValue, { color: '#16a34a' }, isMobile && { fontSize: 15 }]}>RM {formatCurrency(baki)}</Text>
               <Check size={26} color="#16a34a" style={{ position: 'absolute', top: 10, right: 10, opacity: 0.35 }} />
             </View>
           </View>
@@ -394,7 +396,7 @@ export default function BudgetSection({ budgetData, loading, isEditMode, saveBud
               horizontal
               showsHorizontalScrollIndicator={false}
               scrollEventThrottle={16}
-              scrollEnabled={false}
+              scrollEnabled={isMobile}
               onScroll={handleNativeScroll}
               contentContainerStyle={styles.categoryCarouselTrack}
             >
