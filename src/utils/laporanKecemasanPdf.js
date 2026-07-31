@@ -147,7 +147,7 @@ export async function generateLaporanKecemasamPdf({ historiqueGrid }) {
   const gridRows = 3;
   const cellGap = 2;
   const cellW = (CONTENT_W - cellGap * (gridCols - 1)) / gridCols;
-  const cellH = 24;
+  const cellH = 27;
   const gridTop = y;
 
   GRID_ORDER.forEach((key, idx) => {
