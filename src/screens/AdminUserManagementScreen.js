@@ -25,7 +25,7 @@ const PAGE_SIZE = 20;
 export default function AdminUserManagementScreen() {
 
   // ---- Kod akses (agensi & pemandu) ----
-  const [accessCodes, setAccessCodes] = useState({ agency_code: '', driver_code: '' });
+  const [accessCodes, setAccessCodes] = useState({ agency_code: '', driver_code: '', operasi_code: '' });
   const [loadingCodes, setLoadingCodes] = useState(true);
   const [revealCode, setRevealCode] = useState({ agency: false, driver: false });
   const [editingCode, setEditingCode] = useState(null); // 'agency' | 'driver' | null
@@ -37,16 +37,21 @@ export default function AdminUserManagementScreen() {
     setLoadingCodes(true);
     const { data, error } = await supabase.rpc('admin_get_access_codes');
     if (!error && data?.[0]) {
-      setAccessCodes({ agency_code: data[0].agency_code || '', driver_code: data[0].driver_code || '' });
+      setAccessCodes({
+        agency_code: data[0].agency_code || '',
+        driver_code: data[0].driver_code || '',
+        operasi_code: data[0].operasi_code || '',
+      });
     }
     setLoadingCodes(false);
   };
 
   useEffect(() => { fetchAccessCodes(); }, []);
 
+  const CODE_FIELD_BY_TYPE = { agency: 'agency_code', driver: 'driver_code', operasi: 'operasi_code' };
   const startEditCode = (type) => {
     setEditingCode(type);
-    setCodeDraft(type === 'agency' ? accessCodes.agency_code : accessCodes.driver_code);
+    setCodeDraft(accessCodes[CODE_FIELD_BY_TYPE[type]]);
     setCodeFeedback(null);
   };
 
@@ -61,9 +66,8 @@ export default function AdminUserManagementScreen() {
       return;
     }
     setSavingCode(true);
-    const rpcName = editingCode === 'agency' ? 'admin_set_agency_code' : 'admin_set_driver_code';
-    const paramName = editingCode === 'agency' ? 'p_new_code' : 'p_new_code';
-    const { error } = await supabase.rpc(rpcName, { [paramName]: codeDraft.trim() });
+    const RPC_BY_TYPE = { agency: 'admin_set_agency_code', driver: 'admin_set_driver_code', operasi: 'admin_set_operasi_code' };
+    const { error } = await supabase.rpc(RPC_BY_TYPE[editingCode], { p_new_code: codeDraft.trim() });
     setSavingCode(false);
     if (error) {
       setCodeFeedback({ type: 'error', message: 'Gagal mengemaskini kod.' });
@@ -242,6 +246,7 @@ export default function AdminUserManagementScreen() {
         {[
           { key: 'agency', label: 'Kod Akses Agensi', Icon: Building2, value: accessCodes.agency_code },
           { key: 'driver', label: 'Kod Akses Pemandu', Icon: Truck, value: accessCodes.driver_code },
+          { key: 'operasi', label: 'Kod Akses Operasi', Icon: ShieldAlert, value: accessCodes.operasi_code },
         ].map(({ key, label, Icon, value }) => (
           <View key={key} style={{ flex: 1, backgroundColor: PALETTE.surface, borderRadius: 14, padding: 16, borderWidth: 1, borderColor: PALETTE.cardLightBorder }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
