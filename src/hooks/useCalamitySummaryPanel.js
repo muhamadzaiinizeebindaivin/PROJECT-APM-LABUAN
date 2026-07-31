@@ -128,13 +128,17 @@ export function useCalamitySummaryPanel(calamityPoints) {
       const bulan = monthIndex + 1;
       const counts = {};
       let total = 0;
-      CALAMITY_CATEGORIES.forEach(cat => { counts[cat.key] = 0; });
+      // null = jamais disimpan (aucun rekod di ng999_historique untuk sel ini) -> "–"
+      // number (termasuk 0) = nilai sebenar yang disimpan -> dipaparkan seperti biasa
+      CALAMITY_CATEGORIES.forEach(cat => { counts[cat.key] = null; });
 
       if (historiqueGrid[bulan]) {
         CALAMITY_CATEGORIES.forEach(cat => {
-          const val = historiqueGrid[bulan][cat.key] || 0;
-          counts[cat.key] = val;
-          total += val;
+          const val = historiqueGrid[bulan][cat.key];
+          if (val !== undefined) {
+            counts[cat.key] = val;
+            total += val;
+          }
         });
       }
 

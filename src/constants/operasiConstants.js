@@ -1,9 +1,9 @@
 // src/constants/operasiConstants.js
 
 export const CATEGORY_OPTIONS = [
+  "MSS - Musnah Sarang Serangga",
   "KJR - Kemalangan Jalan Raya",
   "KMU - Kes Menangkap Ular",
-  "MSS - Musnah Sarang Serangga",
   "KBD - Kes Bunuh Diri",
   "KK - Kes Kebakaran",
   "SKT - Sakit (Medikal/Trauma)",
@@ -20,20 +20,20 @@ export const CATEGORY_OPTIONS = [
 
 export const CALAMITY_CATEGORIES = [
   { key: 'KJR', label: 'Kes Kemalangan Jalan Raya', color: '#ef4444' },
-  { key: 'KMU', label: 'Kes Menangkap Ular', color: '#f97316' },
-  { key: 'MSS', label: 'Memusnah Sarang Serangga', color: '#eab308' },
-  { key: 'KBD', label: 'Kes Bunuh Diri', color: '#64748b' },
-  { key: 'KK', label: 'Khidmat Khas', color: '#a855f7' },
   { key: 'SKT', label: 'Sakit (Medikal/Trauma)', color: '#ec4899' },
+  { key: 'MSS', label: 'Memusnah Sarang Serangga', color: '#eab308' },
   { key: 'KTK', label: 'Kemalangan Tempat Kerja', color: '#14b8a6' },
-  { key: 'PT', label: 'Pokok Tumbang', color: '#84cc16' },
+  { key: 'KBD', label: 'Kes Bunuh Diri', color: '#64748b' },
   { key: 'KBR', label: 'Kes Kebakaran', color: '#dc2626' },
-  { key: 'ML', label: 'Mangsa Lemas', color: '#0ea5e9' },
-  { key: 'KB', label: 'Kes Bergaduh', color: '#f43f5e' },
-  { key: 'MHL', label: 'Menangkap Haiwan Liar', color: '#65a30d' },
-  { key: 'MHP', label: 'Menangkap Haiwan Peliharaan', color: '#22c55e' },
   { key: 'MT', label: 'Mangsa Terperangkap', color: '#7c3aed' },
+  { key: 'ML', label: 'Mangsa Lemas', color: '#0ea5e9' },
+  { key: 'KMU', label: 'Kes Menangkap Ular', color: '#f97316' },
   { key: 'LLK', label: 'Lain-lain Kes', color: '#94a3b8' },
+  { key: 'KK', label: 'Khidmat Khas', color: '#a855f7' },
+  { key: 'KB', label: 'Kes Bergaduh', color: '#f43f5e' },
+  { key: 'MHP', label: 'Menangkap Haiwan Peliharaan', color: '#22c55e' },
+  { key: 'MHL', label: 'Menangkap Haiwan Liar', color: '#65a30d' },
+  { key: 'PT', label: 'Pokok Tumbang', color: '#84cc16' },
 ];
 
 export const getCalamityMeta = (key) =>

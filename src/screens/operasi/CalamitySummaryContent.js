@@ -130,7 +130,8 @@ export default function CalamitySummaryContent({ theme, large = false, mode = 't
     summary.calamitySummaryRows.forEach((row, idx) => {
       if (row.isCumulative) return;
       CALAMITY_CATEGORIES.forEach(cat => {
-        d[`${idx + 1}-${cat.key}`] = String(row.counts[cat.key] || '');
+        const val = row.counts[cat.key];
+        d[`${idx + 1}-${cat.key}`] = val != null ? String(val) : '';
       });
     });
     setGridDraft(d);
@@ -208,6 +209,7 @@ export default function CalamitySummaryContent({ theme, large = false, mode = 't
     const entries = [];
     const violations = [];
     Object.entries(gridDraft).forEach(([key, val]) => {
+      if (val === '') return; // sel tidak disentuh - jangan simpan sebagai 0
       const [bulan, ...catParts] = key.split('-');
       const bulanNum = parseInt(bulan);
       const category = catParts.join('-');
@@ -388,7 +390,7 @@ export default function CalamitySummaryContent({ theme, large = false, mode = 't
                       />
                     ) : (
                       <Text style={[styles.calamityTableCell, row.isCumulative && { fontWeight: '700' }, row.fromHistorique && { color: PALETTE.textDark }, large && { fontSize: 16 }]}>
-                        {(editingGrid && row.isCumulative ? liveTotals?.colTotals[cat.key] : row.counts[cat.key]) || '–'}
+                        {(editingGrid && row.isCumulative ? liveTotals?.colTotals[cat.key] : row.counts[cat.key]) ?? '–'}
                       </Text>
                     )}
                   </View>

@@ -1,7 +1,7 @@
 // src/screens/operasi/Ng999ReportTab.js
 import React, { useState, useMemo, useRef, useEffect, createElement } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Modal, TextInput, Alert, Platform, Image } from 'react-native';
-import { Plus, Edit2, Trash2, X, Camera, Image as ImageIcon, Info, LayoutGrid, ListChecks, BarChart2 } from 'lucide-react-native';
+import { Plus, Edit2, Trash2, X, Camera, Image as ImageIcon, AlertTriangle, ChevronLeft, ChevronRight, LayoutGrid, ListChecks, BarChart2, Info } from 'lucide-react-native';
 import ModalSelectField from '../../components/ModalSelectField';
 import { useNg999Report } from '../../hooks/useNg999Report';
 import { CATEGORY_OPTIONS } from '../../constants/operasiConstants';
@@ -10,7 +10,10 @@ import { formStyles } from '../../styles/formStyles';
 import { reportStyles as styles } from './reportStyles';
 import { mapStyles as tableStyles } from './mapStyles';
 import CalamitySummaryContent from './CalamitySummaryContent';
+import { pentadbiranStyles } from '../pentadbiran/pentadbiranStyles';
 import { PALETTE } from '../../constants/palette';
+
+const RECORDS_PER_PAGE = 10;
 
 const STATUS_LIST = [
   { key: 'active', label: 'Aktif', color: '#3b82f6' },
@@ -24,7 +27,7 @@ const STATUS_LIST = [
 const statusLabel = (key) => STATUS_LIST.find(s => s.key === key)?.label || 'Aktif';
 const statusColor = (key) => STATUS_LIST.find(s => s.key === key)?.color || '#3b82f6';
 
-export default function Ng999ReportTab({ theme, userRole, isEditMode, onNotify }) {
+export default function Ng999ReportTab({ theme, isEditMode, onNotify }) {
   const now = new Date();
 
   const [filterYear, setFilterYear] = useState(now.getFullYear());
@@ -52,18 +55,30 @@ export default function Ng999ReportTab({ theme, userRole, isEditMode, onNotify }
 
   // Visionneuse photo
   const [photoViewer, setPhotoViewer] = useState(null); // { photos: [], index: 0 }
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [recordPage, setRecordPage] = useState(1);
 
   const daysInFilterMonth = new Date(filterYear, filterMonth + 1, 0).getDate();
   const dayOptions = ['Semua Hari', ...Array.from({ length: daysInFilterMonth }, (_, i) => String(i + 1))];
 
   const filteredNgData = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    return ngData.filter(item => {
-      if (filterDay !== null && new Date(item.tarikh).getDate() !== filterDay) return false;
-      if (q && !(item.category || '').toLowerCase().includes(q)) return false;
-      return true;
-    });
+    return ngData
+      .filter(item => {
+        if (filterDay !== null && new Date(item.tarikh).getDate() !== filterDay) return false;
+        if (q && !(item.category || '').toLowerCase().includes(q)) return false;
+        return true;
+      })
+      .sort((a, b) => b.tarikh.localeCompare(a.tarikh));
   }, [ngData, filterDay, searchQuery]);
+
+  const totalRecordPages = Math.max(1, Math.ceil(filteredNgData.length / RECORDS_PER_PAGE));
+  const pagedNgData = filteredNgData.slice((recordPage - 1) * RECORDS_PER_PAGE, recordPage * RECORDS_PER_PAGE);
+
+  useEffect(() => {
+    setRecordPage(1);
+  }, [filterMonth, filterDay, filterYear, searchQuery, viewMode]);
 
   useEffect(() => {
     if (tableScrollRef.current) tableScrollRef.current.scrollTo({ y: 0, animated: false });
@@ -75,16 +90,6 @@ export default function Ng999ReportTab({ theme, userRole, isEditMode, onNotify }
       );
     }
   }, [filterMonth, filterDay, filterYear, viewMode]);
-
-  const groupItemsByDay = (items) => {
-    const groups = {};
-    items.forEach(item => {
-      const key = item.tarikh;
-      if (!groups[key]) groups[key] = [];
-      groups[key].push(item);
-    });
-    return Object.entries(groups).sort((a, b) => b[0].localeCompare(a[0]));
-  };
 
   const handlePickPhotos = () => {
     if (Platform.OS !== 'web') return;
@@ -111,7 +116,7 @@ export default function Ng999ReportTab({ theme, userRole, isEditMode, onNotify }
 
   const handleSaveNg = async () => {
     if (!form.category || !form.tarikh) {
-      Alert.alert('Error', 'Please fill in all fields.');
+      onNotify?.('error', 'Sila lengkapkan semua medan.');
       return;
     }
     setSavingRecord(true);
@@ -121,17 +126,17 @@ export default function Ng999ReportTab({ theme, userRole, isEditMode, onNotify }
     }
     setSavingRecord(false);
     closeModal();
+    onNotify?.(error ? 'error' : 'success', error ? 'Gagal menyimpan rekod.' : (form.id ? 'Rekod berjaya dikemaskini.' : 'Rekod berjaya ditambah.'));
   };
 
-  const handleDeleteNg = async (id) => {
-    if (Platform.OS === 'web') {
-      if (window.confirm('Are you sure you want to delete this record?')) await deleteRecord(id);
-    } else {
-      Alert.alert('Confirmation', 'Are you sure you want to delete this record?', [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete', style: 'destructive', onPress: async () => { await deleteRecord(id); } }
-      ]);
-    }
+  const handleDeleteNg = (id) => setConfirmDeleteId(id);
+
+  const confirmDelete = async () => {
+    setIsDeleting(true);
+    const result = await deleteRecord(confirmDeleteId);
+    setIsDeleting(false);
+    setConfirmDeleteId(null);
+    onNotify?.(result === false ? 'error' : 'success', result === false ? 'Gagal memadam rekod.' : 'Rekod berjaya dipadam.');
   };
 
   const openEditModal = (record) => {
@@ -183,37 +188,30 @@ export default function Ng999ReportTab({ theme, userRole, isEditMode, onNotify }
     );
   };
 
-  const renderDayGroup = (tarikh, dayItems) => (
-    <View key={tarikh} style={{ borderWidth: 1, borderColor: PALETTE.cardLightBorder, borderRadius: 10, marginBottom: 12, overflow: 'hidden' }}>
-      <View style={{ backgroundColor: PALETTE.orange, paddingHorizontal: 14, paddingVertical: 8 }}>
-        <Text style={{ color: '#fff', fontWeight: '800', fontSize: 13 }}>{tarikh}</Text>
-      </View>
-      {dayItems.map((item, index) => (
-        <View key={item.id} style={[tableStyles.calamityTableRow, { backgroundColor: index % 2 === 0 ? '#ffffff' : '#f8fafc' }]}>
-          <Text style={[tableStyles.calamityTableCell, { flex: 2, textAlign: 'left', paddingLeft: 16 }]} numberOfLines={1}>
-            {item.category}
-          </Text>
-          <Text style={[tableStyles.calamityTableCell, { flex: 1 }]}>{item.tarikh}</Text>
-          <View style={[{ flex: 1.2 }, tableStyles.calamitySummaryCellBox, { paddingVertical: 8, alignItems: 'center' }]}>
-            <View style={{ backgroundColor: statusColor(item.status) + '18', borderWidth: 1, borderColor: statusColor(item.status), borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>
-              <Text style={{ fontSize: 10, fontWeight: '800', color: statusColor(item.status) }}>{statusLabel(item.status)}</Text>
-            </View>
-          </View>
-          <View style={[{ flex: 1.2 }, tableStyles.calamitySummaryCellBox, { paddingVertical: 8 }]}>
-            {renderPhotoStrip(item.ng999_photos)}
-          </View>
-          {isEditMode && (
-            <View style={[{ flex: 1 }, styles.actionBtns, { justifyContent: 'center' }]}>
-              <TouchableOpacity onPress={() => openEditModal(item)} style={styles.iconBtn}>
-                <Edit2 size={16} color="#22c55e" />
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => handleDeleteNg(item.id)} style={styles.iconBtn}>
-                <Trash2 size={16} color="#ef4444" />
-              </TouchableOpacity>
-            </View>
-          )}
+  const renderRecordRow = (item, index) => (
+    <View key={item.id} style={[tableStyles.calamityTableRow, { backgroundColor: index % 2 === 0 ? '#ffffff' : '#f8fafc' }]}>
+      <Text style={[tableStyles.calamityTableCell, { flex: 2, textAlign: 'left', paddingLeft: 16 }]} numberOfLines={1}>
+        {item.category}
+      </Text>
+      <Text style={[tableStyles.calamityTableCell, { flex: 1 }]}>{item.tarikh}</Text>
+      <View style={[{ flex: 1.2 }, tableStyles.calamitySummaryCellBox, { paddingVertical: 8, alignItems: 'center' }]}>
+        <View style={{ backgroundColor: statusColor(item.status) + '18', borderWidth: 1, borderColor: statusColor(item.status), borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>
+          <Text style={{ fontSize: 10, fontWeight: '800', color: statusColor(item.status) }}>{statusLabel(item.status)}</Text>
         </View>
-      ))}
+      </View>
+      <View style={[{ flex: 1.2 }, tableStyles.calamitySummaryCellBox, { paddingVertical: 8 }]}>
+        {renderPhotoStrip(item.ng999_photos)}
+      </View>
+      {isEditMode && (
+        <View style={[{ flex: 1 }, styles.actionBtns, { justifyContent: 'center' }]}>
+          <TouchableOpacity onPress={() => openEditModal(item)} style={styles.iconBtn}>
+            <Edit2 size={16} color="#22c55e" />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => handleDeleteNg(item.id)} style={styles.iconBtn}>
+            <Trash2 size={16} color="#ef4444" />
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 
@@ -328,14 +326,34 @@ export default function Ng999ReportTab({ theme, userRole, isEditMode, onNotify }
           ) : filteredNgData.length === 0 ? (
             <Text style={{ color: PALETTE.textMutedDark, textAlign: 'center', marginVertical: 10 }}>Tiada rekod dijumpai.</Text>
           ) : (
-            <View style={[tableStyles.calamityTableWrapper, { borderColor: '#475569' }]}>
-              {tableHeader}
-              <ScrollView ref={tableScrollRef} showsVerticalScrollIndicator={true}>
+            <>
+              <View style={[tableStyles.calamityTableWrapper, { borderColor: '#475569' }]}>
+                {tableHeader}
                 <View style={{ padding: 8 }}>
-                  {groupItemsByDay(filteredNgData).map(([tarikh, dayItems]) => renderDayGroup(tarikh, dayItems))}
+                  {pagedNgData.map((item, index) => renderRecordRow(item, index))}
                 </View>
-              </ScrollView>
-            </View>
+              </View>
+
+              {totalRecordPages > 1 && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 16, marginTop: 14 }}>
+                  <TouchableOpacity
+                    style={[{ padding: 8, backgroundColor: PALETTE.surface, borderRadius: 8 }, recordPage === 1 && { opacity: 0.5 }]}
+                    onPress={() => setRecordPage(p => Math.max(1, p - 1))}
+                    disabled={recordPage === 1}
+                  >
+                    <ChevronLeft size={16} color={recordPage === 1 ? PALETTE.cardLightBorder : PALETTE.orange} />
+                  </TouchableOpacity>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: PALETTE.textMutedDark }}>{recordPage} / {totalRecordPages}</Text>
+                  <TouchableOpacity
+                    style={[{ padding: 8, backgroundColor: PALETTE.surface, borderRadius: 8 }, recordPage === totalRecordPages && { opacity: 0.5 }]}
+                    onPress={() => setRecordPage(p => Math.min(totalRecordPages, p + 1))}
+                    disabled={recordPage === totalRecordPages}
+                  >
+                    <ChevronRight size={16} color={recordPage === totalRecordPages ? PALETTE.cardLightBorder : PALETTE.orange} />
+                  </TouchableOpacity>
+                </View>
+              )}
+            </>
           )}
         </View>
 
@@ -444,7 +462,36 @@ export default function Ng999ReportTab({ theme, userRole, isEditMode, onNotify }
         </View>
       </Modal>
 
-{/* Visionneuse photo plein écran avec navigation */}
+      {/* --- Confirmation suppression --- */}
+      <Modal visible={confirmDeleteId !== null} transparent animationType="fade" onRequestClose={() => !isDeleting && setConfirmDeleteId(null)}>
+        <View style={pentadbiranStyles.confirmOverlay}>
+          <View style={pentadbiranStyles.confirmBox}>
+            <View style={pentadbiranStyles.confirmBanner}>
+              <View style={pentadbiranStyles.confirmIconCircle}>
+                <AlertTriangle size={26} color="#ef4444" />
+              </View>
+              <Text style={pentadbiranStyles.confirmTitle}>Padam Rekod</Text>
+              <Text style={pentadbiranStyles.confirmSubtitle}>
+                Padam rekod ini? Tindakan ini tidak boleh dibatalkan.
+              </Text>
+            </View>
+            <View style={pentadbiranStyles.confirmActions}>
+              <TouchableOpacity style={pentadbiranStyles.confirmCancelBtn} onPress={() => setConfirmDeleteId(null)} disabled={isDeleting}>
+                <Text style={pentadbiranStyles.confirmCancelText}>Batal</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[pentadbiranStyles.confirmConfirmBtn, isDeleting && { opacity: 0.7 }]}
+                onPress={confirmDelete}
+                disabled={isDeleting}
+              >
+                {isDeleting ? <ActivityIndicator size="small" color="#fff" /> : (<><Trash2 size={16} color="#fff" /><Text style={pentadbiranStyles.confirmConfirmText}>Padam</Text></>)}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* --- Visionneuse photo --- */}
       {photoViewer && (
         <Modal visible={true} transparent={true} animationType="fade">
           <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', alignItems: 'center' }}>
