@@ -139,6 +139,32 @@ export default function CalamitySummaryContent({ theme, large = false, mode = 't
     initialGridRef.current = d;
   }, [editingGrid, summary.summaryYear]);
 
+  // Resynchronise les cases pas encore touchées quand de nouvelles données arrivent
+  // (ex. rekod harian ajouté ailleurs pendant que le mode édition est déjà ouvert) —
+  // sans écraser une case que l'utilisateur est en train de modifier.
+  useEffect(() => {
+    if (!editingGrid) return;
+    setGridDraft(prev => {
+      const next = { ...prev };
+      let changed = false;
+      summary.calamitySummaryRows.forEach((row, idx) => {
+        if (row.isCumulative) return;
+        CALAMITY_CATEGORIES.forEach(cat => {
+          const key = `${idx + 1}-${cat.key}`;
+          const val = row.counts[cat.key];
+          const freshVal = val != null ? String(val) : '';
+          const untouched = prev[key] === (initialGridRef.current[key] ?? '');
+          if (untouched && prev[key] !== freshVal) {
+            next[key] = freshVal;
+            changed = true;
+          }
+        });
+      });
+      if (changed) initialGridRef.current = { ...initialGridRef.current, ...next };
+      return changed ? next : prev;
+    });
+  }, [editingGrid, summary.calamitySummaryRows]);
+
   const liveTotals = useMemo(() => {
     if (!editingGrid) return null;
     const rowTotals = {};
@@ -425,13 +451,6 @@ export default function CalamitySummaryContent({ theme, large = false, mode = 't
       {/* MODE CHART */}
       {mode === 'chart' && Platform.OS === 'web' && analytics && (
         <View style={{ paddingHorizontal: 16, paddingBottom: 24, gap: 14 }}>
-
-          <View style={{ flexDirection: 'row', gap: 10, backgroundColor: '#fef2f2', borderWidth: 1.5, borderColor: '#fecaca', borderRadius: 12, padding: 16, marginBottom: 10 }}>
-            <Info size={20} color="#dc2626" style={{ marginTop: 1 }} />
-            <Text style={{ flex: 1, fontSize: 14, fontWeight: '700', color: '#991b1b', lineHeight: 20 }}>
-              Statistik ini sudah mengira secara automatik semua rekod bertarikh yang dimasukkan di Senarai Penuh Kecemasan. Jangan masukkan semula data yang sama di jadual ini — jadual ini hanya untuk data tidak berdata harian.
-            </Text>
-          </View>
 
           {/* Résumé Statuts */}
           <SectionCard title="📋 Ringkasan Status">

@@ -220,7 +220,7 @@ export function useCalamitySummaryPanel(calamityPoints) {
   const handleExportLaporanPdf = async () => {
     setExportingLaporanPdf(true);
     try {
-      await generateLaporanKecemasamPdf({ allYearRows });
+      await generateLaporanKecemasamPdf({ historiqueGrid });
     } catch (e) {
       console.error('Gagal menjana PDF:', e);
     } finally {

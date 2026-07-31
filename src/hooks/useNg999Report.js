@@ -83,9 +83,28 @@ export function useNg999Report(filterYear, filterMonth) {
     await fetchNgData();
   }, [fetchNgData]);
 
+  // Répercute un rekod harian dans ng999_historique (+1 à l'ajout, -1 à la suppression),
+  // pour que "Ringkasan Kecemasan" et le PDF restent cohérents avec Senarai Penuh Kecemasan.
+  const adjustHistorique = useCallback(async (tarikh, category, delta) => {
+    if (!tarikh || !category || !delta) return;
+    const tahun = new Date(tarikh).getFullYear();
+    const bulan = new Date(tarikh).getMonth() + 1;
+    const { data } = await supabaseSandbox
+      .from('ng999_historique')
+      .select('jumlah_kes')
+      .eq('tahun', tahun).eq('bulan', bulan).eq('category', category)
+      .maybeSingle();
+    const current = data?.jumlah_kes || 0;
+    const next = Math.max(0, current + delta);
+    await supabaseSandbox
+      .from('ng999_historique')
+      .upsert({ tahun, bulan, category, jumlah_kes: next }, { onConflict: 'tahun,bulan,category' });
+  }, []);
+
   const saveRecord = useCallback(async ({ id, category, tarikh, status }) => {
     setLoadingNg(true);
     let error, recordId = id;
+    const oldRecord = id ? ngData.find(r => r.id === id) : null;
     if (id) {
       ({ error } = await supabaseSandbox
         .from('laporan_ng999')
@@ -100,10 +119,20 @@ export function useNg999Report(filterYear, filterMonth) {
       error = insertError;
       if (data) recordId = data.id;
     }
-    if (!error) { await fetchNgData(); await fetchAllNgData(); }
+    if (!error) {
+      if (oldRecord) {
+        if (oldRecord.tarikh !== tarikh || oldRecord.category !== category) {
+          await adjustHistorique(oldRecord.tarikh, oldRecord.category, -1);
+          await adjustHistorique(tarikh, category, 1);
+        }
+      } else {
+        await adjustHistorique(tarikh, category, 1);
+      }
+      await fetchNgData(); await fetchAllNgData();
+    }
     setLoadingNg(false);
     return { error, recordId };
-  }, [fetchNgData, fetchAllNgData]);
+  }, [fetchNgData, fetchAllNgData, ngData, adjustHistorique]);
 
   const addPhotosToRecord = useCallback(async (laporan_id, files) => {
     const urls = [];
@@ -129,10 +158,13 @@ export function useNg999Report(filterYear, filterMonth) {
       await supabaseSandbox.storage.from('ng999-photos').remove(fileNames);
     }
     const { error } = await supabaseSandbox.from('laporan_ng999').delete().eq('id', id);
-    if (!error) { await fetchNgData(); await fetchAllNgData(); }
+    if (!error) {
+      if (record) await adjustHistorique(record.tarikh, record.category, -1);
+      await fetchNgData(); await fetchAllNgData();
+    }
     setLoadingNg(false);
     return { error };
-  }, [fetchNgData, fetchAllNgData, ngData]);
+  }, [fetchNgData, fetchAllNgData, ngData, adjustHistorique]);
 
   const categories = useMemo(() => CATEGORY_OPTIONS.map(opt => {
     const [id, ...labelArr] = opt.split(" - ");

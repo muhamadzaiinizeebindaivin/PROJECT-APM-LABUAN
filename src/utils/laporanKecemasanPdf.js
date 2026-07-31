@@ -9,7 +9,7 @@ const ASSETS_BASE = 'https://kceeewyadcskivtmilyf.supabase.co/storage/v1/object/
 const CATEGORY_LABELS = {
   KJR: 'KES KEMALANGAN JALAN RAYA',
   KMU: 'KES MENANGKAP ULAR',
-  MMS: 'MEMUSNAH SARANG SERANGGA',
+  MSS: 'MEMUSNAH SARANG SERANGGA',
   KBD: 'KES BUNUH DIRI',
   KK:  'KHIDMAT KHAS',
   MT:  'MANGSA TERPERANGKAP',
@@ -25,15 +25,15 @@ const CATEGORY_LABELS = {
 };
 
 const GRID_ORDER = [
-  'KJR', 'KMU', 'MMS', 'ML', 'KB',
+  'KJR', 'KMU', 'MSS', 'ML', 'KB',
   'MT', 'KBR', 'KBD', 'SKT', 'MHL',
   'MHP', 'PT', 'LLK', 'KTK', 'KK',
 ];
 
-const TABLE_COLUMN_ORDER = ['KJR', 'SKT', 'MMS', 'KTK', 'KBD', 'KBR', 'MT', 'ML', 'KMU', 'LLK', 'KK', 'KB', 'MHP', 'MHL', 'PT'];
+const TABLE_COLUMN_ORDER = ['KJR', 'SKT', 'MSS', 'KTK', 'KBD', 'KBR', 'MT', 'ML', 'KMU', 'LLK', 'KK', 'KB', 'MHP', 'MHL', 'PT'];
 
 const PETUNJUK_COLUMNS = [
-  ['KJR', 'KMU', 'MMS', 'KBD', 'KK'],
+  ['KJR', 'KMU', 'MSS', 'KBD', 'KK'],
   ['SKT', 'KTK', 'PT', 'KBR', 'ML'],
   ['LLK', 'KB', 'MHL', 'MHP', 'MT'],
 ];
@@ -49,7 +49,7 @@ async function safeLoadImage(filename) {
   }
 }
 
-export async function generateLaporanKecemasamPdf({ allYearRows }) {
+export async function generateLaporanKecemasamPdf({ historiqueGrid }) {
   const now = new Date();
   const currentMonth = now.getMonth();
   const currentYear = now.getFullYear();
@@ -132,16 +132,8 @@ export async function generateLaporanKecemasamPdf({ allYearRows }) {
   // ═══════════════════════════════════════════════════════════════
   const allKeys = CALAMITY_CATEGORIES.map(c => c.key);
   const monthTotals = {};
-  allKeys.forEach(k => { monthTotals[k] = 0; });
-
-  allYearRows.forEach(row => {
-    const d = new Date(row.tarikh);
-    if (d.getMonth() !== currentMonth || d.getFullYear() !== currentYear) return;
-    const cat = row.category || row.kategori_kes;
-    if (monthTotals[cat] !== undefined) {
-      monthTotals[cat] += (row.jumlah_kes || 1);
-    }
-  });
+  const currentMonthGrid = historiqueGrid[currentMonth + 1] || {};
+  allKeys.forEach(k => { monthTotals[k] = currentMonthGrid[k] || 0; });
 
   const iconEntries = await Promise.all(
     GRID_ORDER.map(async key => [key, await safeLoadImage(`${key}.png`)])
@@ -277,16 +269,12 @@ export async function generateLaporanKecemasamPdf({ allYearRows }) {
   // ═══════════════════════════════════════════════════════════════
   const monthlyData = BULAN_MS.map((label, mIdx) => {
     const counts = {};
-    allKeys.forEach(k => { counts[k] = 0; });
     let total = 0;
-    allYearRows.forEach(row => {
-      const d = new Date(row.tarikh);
-      if (d.getFullYear() !== currentYear || d.getMonth() !== mIdx) return;
-      const cat = row.category || row.kategori_kes;
-      if (counts[cat] !== undefined) {
-        counts[cat] += (row.jumlah_kes || 1);
-        total += (row.jumlah_kes || 1);
-      }
+    const monthGrid = historiqueGrid[mIdx + 1] || {};
+    allKeys.forEach(k => {
+      const val = monthGrid[k] || 0;
+      counts[k] = val;
+      total += val;
     });
     return { label: label.toUpperCase(), counts, total };
   });
