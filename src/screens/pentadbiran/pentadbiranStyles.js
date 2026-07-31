@@ -136,7 +136,7 @@ export const pentadbiranStyles = StyleSheet.create({
   kpiCardPencapaian: { fontSize: 14, color: PALETTE.textDark, marginBottom: 6 },
   kpiCardAnalisis: { fontSize: 14, color: PALETTE.textMutedDark, lineHeight: 21, fontStyle: 'italic' },
 
-  statusDot: { width: 9, height: 9, borderRadius: 5 },
+  statusDot: { width: 9, height: 9, borderRadius: 5, marginTop: 5 },
   kpiLegendRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 16, marginBottom: 16 },
   kpiLegendItem: { flexDirection: 'row', alignItems: 'flex-start', gap: 6 },
   kpiLegendText: { fontSize: 14, color: PALETTE.textMutedDark, flex: 1, flexShrink: 1, minWidth: 0 },

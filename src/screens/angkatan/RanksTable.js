@@ -4,9 +4,9 @@ import { ListFilter, Plus, Pencil, Trash2 } from 'lucide-react-native';
 import { PALETTE } from '../../constants/palette';
 import { angkatanStyles as styles } from './angkatanStyles';
 
-const HEADERS = ['PERINGKAT', 'LAYAK UBKP', 'KBP', 'PTB', 'AKTIF', 'SIMPANAN'];
+const HEADERS = ['PERINGKAT', 'LAYAK UBKP', 'KBP', 'PTB', 'AKTIF', 'SIMPANAN', 'JUMLAH'];
 
-export default function RanksTable({ ranks, isEditing, onAdd, onEdit, onDelete }) {
+export default function RanksTable({ ranks, isEditing, onAdd, onEdit, onDelete, onOpenRank }) {
   return (
     <View style={styles.card}>
       <View style={styles.sectionHeaderRowSpaced}>
@@ -44,13 +44,19 @@ export default function RanksTable({ ranks, isEditing, onAdd, onEdit, onDelete }
             ))}
           </View>
           {ranks.map((item, i) => (
-            <View key={item.id} style={[styles.tableRow, i % 2 === 1 && styles.tableRowAlt]}>
+            <TouchableOpacity
+              key={item.id}
+              activeOpacity={0.7}
+              onPress={() => onOpenRank(item.rank)}
+              style={[styles.tableRow, i % 2 === 1 && styles.tableRowAlt]}
+            >
               <Text style={[styles.tableCell, styles.tableCellRank]}>{item.rank}</Text>
               <Text style={styles.tableCell}>{item.kenaikan}</Text>
               <Text style={styles.tableCell}>{item.kbp}</Text>
               <Text style={styles.tableCell}>{item.ptb}</Text>
               <Text style={[styles.tableCell, { color: PALETTE.blue, fontWeight: '800' }]}>{item.aktif}</Text>
               <Text style={[styles.tableCell, { color: PALETTE.orange, fontWeight: '800' }]}>{item.simpanan}</Text>
+              <Text style={[styles.tableCell, { fontWeight: '800', color: PALETTE.textDark }]}>{item.jumlah}</Text>
               {isEditing && (
                 <View style={styles.tableActionCell}>
                   <TouchableOpacity onPress={() => onEdit(item)}>
@@ -61,7 +67,7 @@ export default function RanksTable({ ranks, isEditing, onAdd, onEdit, onDelete }
                   </TouchableOpacity>
                 </View>
               )}
-            </View>
+            </TouchableOpacity>
           ))}
         </View>
       </ScrollView>

@@ -16,7 +16,7 @@ export const mapMyaspaLabel = (raw) => {
   return null;
 };
 
-const normalizePangkat = (raw) => String(raw || '').replace(/\(PA\)/i, '').trim().toUpperCase();
+export const normalizePangkat = (raw) => String(raw || '').replace(/\(PA\)/i, '').trim().toUpperCase();
 const norm = (v) => String(v || '').trim().toUpperCase();
 
 export function useAngkatanEmployees() {
@@ -81,6 +81,15 @@ export function useAngkatanEmployees() {
     })));
 
     // Rangs
+    const hasKbp = (kursus) => {
+      const k = String(kursus || '').toUpperCase();
+      return /(BAKAL PEGAWAI|PAKAL PEGAWAI)/.test(k) && !k.includes('BERTAULIAH');
+    };
+    const hasPtb = (kursus) => {
+      const k = String(kursus || '').toUpperCase();
+      return k.includes('BERTAULIAH') || /\bPTB\b/.test(k);
+    };
+
     setRanks(rankRows.map((r) => {
       const allInRank = data.filter((e) => normalizePangkat(e.pangkat) === normalizePangkat(r.rank));
       const activeInRank = allInRank.filter((e) => {
@@ -89,8 +98,9 @@ export function useAngkatanEmployees() {
       });
       return {
         ...r,
-        kbp: activeInRank.filter((e) => !String(e.senarai_kursus || '').toUpperCase().includes('KURSUS BAKAL PEGAWAI')).length,
-        ptb: activeInRank.filter((e) => !String(e.senarai_kursus || '').toUpperCase().includes('PTB')).length,
+        jumlah: activeInRank.length,
+        kbp: activeInRank.filter((e) => hasKbp(e.senarai_kursus)).length,
+        ptb: activeInRank.filter((e) => hasPtb(e.senarai_kursus)).length,
         aktif: activeInRank.filter((e) => norm(e.status_keaktifan) === 'AKTIF').length,
         simpanan: activeInRank.filter((e) => norm(e.status_keaktifan) === 'SIMPANAN').length,
       };

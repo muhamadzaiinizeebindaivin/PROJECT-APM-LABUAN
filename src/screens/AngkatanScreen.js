@@ -5,7 +5,7 @@ import { PALETTE } from '../constants/palette';
 import AdminEditButton from '../components/AdminEditButton';
 import { useExcelImport } from '../hooks/useExcelImport';
 import ExcelImportModal from '../components/ExcelImportModal';
-import { useAngkatanEmployees, mapMyaspaLabel } from '../hooks/useAngkatanEmployees';
+import { useAngkatanEmployees, mapMyaspaLabel, normalizePangkat } from '../hooks/useAngkatanEmployees';
 import { useAngkatanCommunity } from '../hooks/useAngkatanCommunity';
 import { useEmployeeCertificates } from '../hooks/useEmployeeCertificates';
 import { useEmployeePromotionHistory } from '../hooks/useEmployeePromotionHistory';
@@ -225,6 +225,14 @@ export default function AngkatanScreen({ userRole }) {
     const list = employees.filter((e) => String(e.status_keaktifan || '').trim().toUpperCase() === statusValue);
     setFilterModal({ visible: true, title: label, list, page: 1 });
   };
+  const openRankEmployees = (rankLabel) => {
+    const list = employees.filter((e) => {
+      if (normalizePangkat(e.pangkat) !== normalizePangkat(rankLabel)) return false;
+      const st = String(e.status_keaktifan || '').trim().toUpperCase();
+      return st === 'AKTIF' || st === 'SIMPANAN';
+    });
+    setFilterModal({ visible: true, title: rankLabel, list, page: 1 });
+  };
   const FILTER_PER_PAGE = 10;
   const filterTotalPages = Math.max(1, Math.ceil(filterModal.list.length / FILTER_PER_PAGE));
   const filterPageItems = filterModal.list.slice((filterModal.page - 1) * FILTER_PER_PAGE, filterModal.page * FILTER_PER_PAGE);
@@ -336,7 +344,7 @@ export default function AngkatanScreen({ userRole }) {
           onNotify={showNotification}
         />
 
-        <RanksTable ranks={ranks} isEditing={isEditing} onAdd={openAddRank} onEdit={openEditRank} onDelete={handleDeleteRank} />
+        <RanksTable ranks={ranks} isEditing={isEditing} onAdd={openAddRank} onEdit={openEditRank} onDelete={handleDeleteRank} onOpenRank={openRankEmployees} />
 
         <PameranTable
           pameranList={angkatanPameran.pameranList}
@@ -403,9 +411,9 @@ export default function AngkatanScreen({ userRole }) {
         page={filterModal.page}
         setPage={(updater) => setFilterModal((prev) => ({ ...prev, page: typeof updater === 'function' ? updater(prev.page) : updater }))}
         totalPages={filterTotalPages}
-        onClose={() => setFilterModal({ visible: false, title: '', list: [], page: 1 })}
+        onClose={() => setFilterModal((prev) => ({ ...prev, visible: false }))}
         onSelectEmployee={(emp) => {
-          setFilterModal({ visible: false, title: '', list: [], page: 1 });
+          setFilterModal((prev) => ({ ...prev, visible: false }));
           openEmployeeDetail(emp);
         }}
       />
