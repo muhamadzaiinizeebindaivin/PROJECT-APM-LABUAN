@@ -4,6 +4,7 @@ export const FIELD_GROUPS = {
   Identiti: [
     { key: 'nama', label: 'Nama', type: 'text' },
     { key: 'ic_no', label: 'No. IC', type: 'ic' },
+    { key: 'no_anggota', label: 'No. Anggota', type: 'text' },
     { key: 'jantina', label: 'Jantina', type: 'jantina_picker' },
     { key: 'umur', label: 'Umur', type: 'text' },
     { key: 'contact', label: 'No. Telefon', type: 'text' },
@@ -12,7 +13,6 @@ export const FIELD_GROUPS = {
     { key: 'jenis_darah', label: 'Jenis Darah', type: 'text' },
     { key: 'negeri', label: 'Negeri', type: 'text' },
     { key: 'daerah', label: 'Daerah', type: 'text' },
-    { key: 'no_anggota', label: 'No. Anggota', type: 'text' },
   ],
   Perkhidmatan: [
     { key: 'pangkat', label: 'Pangkat', type: 'text' },
