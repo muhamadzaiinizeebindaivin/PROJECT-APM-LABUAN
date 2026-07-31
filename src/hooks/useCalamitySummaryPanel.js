@@ -258,12 +258,40 @@ export function useCalamitySummaryPanel(calamityPoints) {
     return !error;
   };
 
+  // Case vidée volontairement par l'utilisateur -> supprime la ligne en base (redevient null/"–"),
+  // au lieu d'un upsert qui laisserait une valeur figée.
+  const deleteHistoriqueCells = async (tahun, cells) => {
+    let hadError = false;
+    for (const { bulan, category } of cells) {
+      const { error } = await supabaseSandbox
+        .from('ng999_historique')
+        .delete()
+        .eq('tahun', tahun)
+        .eq('bulan', bulan)
+        .eq('category', category);
+      if (error) hadError = true;
+    }
+    if (!hadError) {
+      setHistoriqueGrid((prev) => {
+        const next = { ...prev };
+        cells.forEach(({ bulan, category }) => {
+          if (next[bulan]) {
+            const { [category]: _omit, ...rest } = next[bulan];
+            next[bulan] = rest;
+          }
+        });
+        return next;
+      });
+    }
+    return !hadError;
+  };
+
   return {
     summaryYear, setSummaryYear, summaryYearOpen, setSummaryYearOpen,
     summaryMonth, setSummaryMonth, summaryMonthOpen, setSummaryMonthOpen,
     summaryDay, setSummaryDay, summaryDayOpen, setSummaryDayOpen, summaryDayOptions,
     availableSummaryYears, calamitySummaryRows, calamityMonthlyBreakdown, hasRealDailyData, dailyMinCounts,
-    statusBreakdown, saveHistoriqueStatus, saveHistoriqueGrid, refreshHistoriqueYears,
+    statusBreakdown, saveHistoriqueStatus, saveHistoriqueGrid, deleteHistoriqueCells, refreshHistoriqueYears,
     exportingLaporanPdf, handleExportLaporanPdf,
   };
 }

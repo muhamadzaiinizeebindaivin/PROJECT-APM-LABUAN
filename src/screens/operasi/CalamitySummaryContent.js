@@ -1,5 +1,5 @@
 // src/screens/operasi/CalamitySummaryContent.js
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Platform, ActivityIndicator, TextInput } from 'react-native';
 import { Download, TrendingUp, TrendingDown, Minus, Award, Calendar, Info, Check, X } from 'lucide-react-native';
 import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid, BarChart, Bar, Cell } from 'recharts';
@@ -123,6 +123,7 @@ export default function CalamitySummaryContent({ theme, large = false, mode = 't
   const [savingGrid, setSavingGrid] = useState(false);
   const [gridViolation, setGridViolation] = useState(null);
   const editingGrid = isEditMode && summary.summaryMonth === null;
+  const initialGridRef = useRef({});
 
   useEffect(() => {
     if (!editingGrid) return;
@@ -135,6 +136,7 @@ export default function CalamitySummaryContent({ theme, large = false, mode = 't
       });
     });
     setGridDraft(d);
+    initialGridRef.current = d;
   }, [editingGrid, summary.summaryYear]);
 
   const liveTotals = useMemo(() => {
@@ -207,9 +209,18 @@ export default function CalamitySummaryContent({ theme, large = false, mode = 't
 
   const handleSaveGrid = async () => {
     const entries = [];
+    const cellsToDelete = [];
     const violations = [];
     Object.entries(gridDraft).forEach(([key, val]) => {
-      if (val === '') return; // sel tidak disentuh - jangan simpan sebagai 0
+      if (val === '') {
+        // Vide maintenant : si elle avait une valeur au chargement, l'utilisateur l'a effacée
+        // volontairement -> supprimer en base. Si elle était déjà vide, jamais touchée -> ignorer.
+        if ((initialGridRef.current[key] ?? '') !== '') {
+          const [bulan, ...catParts] = key.split('-');
+          cellsToDelete.push({ bulan: parseInt(bulan), category: catParts.join('-') });
+        }
+        return;
+      }
       const [bulan, ...catParts] = key.split('-');
       const bulanNum = parseInt(bulan);
       const category = catParts.join('-');
@@ -231,7 +242,9 @@ export default function CalamitySummaryContent({ theme, large = false, mode = 't
 
     setSavingGrid(true);
     try {
-      const ok = await summary.saveHistoriqueGrid(summary.summaryYear, entries);
+      const okSave = entries.length > 0 ? await summary.saveHistoriqueGrid(summary.summaryYear, entries) : true;
+      const okDelete = cellsToDelete.length > 0 ? await summary.deleteHistoriqueCells(summary.summaryYear, cellsToDelete) : true;
+      const ok = okSave && okDelete;
       onNotify?.(ok ? 'success' : 'error', ok ? 'Data berjaya disimpan.' : 'Gagal menyimpan data.');
     } catch (error) {
       console.error('handleSaveGrid error:', error);

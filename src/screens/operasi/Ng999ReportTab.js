@@ -1,7 +1,7 @@
 // src/screens/operasi/Ng999ReportTab.js
 import React, { useState, useMemo, useRef, useEffect, createElement } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Modal, TextInput, Alert, Platform, Image } from 'react-native';
-import { Plus, Edit2, Trash2, X, Camera, Image as ImageIcon, AlertTriangle, ChevronLeft, ChevronRight, LayoutGrid, ListChecks, BarChart2, Info } from 'lucide-react-native';
+import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Modal, TextInput, Alert, Platform } from 'react-native';
+import { Plus, Edit2, Trash2, X, Image as ImageIcon, AlertTriangle, ChevronLeft, ChevronRight, LayoutGrid, ListChecks, BarChart2, Info } from 'lucide-react-native';
 import ModalSelectField from '../../components/ModalSelectField';
 import { useNg999Report } from '../../hooks/useNg999Report';
 import { CATEGORY_OPTIONS } from '../../constants/operasiConstants';
@@ -43,18 +43,15 @@ export default function Ng999ReportTab({ theme, isEditMode, onNotify }) {
   const tableTitleRef = useRef(null);
 
   // Passer filterYear et filterMonth au hook pour fetch filtré
-  const { ngData, loadingNg, saveRecord, deleteRecord, deletePhoto, addPhotosToRecord, availableYears } = useNg999Report(filterYear, filterMonth);
+  const { ngData, loadingNg, saveRecord, deleteRecord, availableYears } = useNg999Report(filterYear, filterMonth);
 
   // Modale
   const [modalVisible, setModalVisible] = useState(false);
   const [form, setForm] = useState({ id: null, category: '', tarikh: '', status: 'active' });
   const [categoryOpen, setCategoryOpen] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
-  const [pendingFiles, setPendingFiles] = useState([]);
   const [savingRecord, setSavingRecord] = useState(false);
 
-  // Visionneuse photo
-  const [photoViewer, setPhotoViewer] = useState(null); // { photos: [], index: 0 }
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [recordPage, setRecordPage] = useState(1);
@@ -91,39 +88,13 @@ export default function Ng999ReportTab({ theme, isEditMode, onNotify }) {
     }
   }, [filterMonth, filterDay, filterYear, viewMode]);
 
-  const handlePickPhotos = () => {
-    if (Platform.OS !== 'web') return;
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.jpg,.jpeg,.png,.gif,.webp,.heic';
-    input.multiple = true;
-    input.onchange = (e) => {
-      const files = Array.from(e.target.files);
-      const newPending = files.map(file => ({ file, preview: URL.createObjectURL(file) }));
-      setPendingFiles(prev => [...prev, ...newPending]);
-    };
-    input.click();
-  };
-
-  const handleRemovePendingPhoto = (index) => {
-    setPendingFiles(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const handleDeleteExistingPhoto = async (photo) => {
-    if (!window.confirm('Delete this photo?')) return;
-    await deletePhoto(photo.id, photo.photo_url);
-  };
-
   const handleSaveNg = async () => {
     if (!form.category || !form.tarikh) {
       onNotify?.('error', 'Sila lengkapkan semua medan.');
       return;
     }
     setSavingRecord(true);
-    const { error, recordId } = await saveRecord({ id: form.id, category: form.category, tarikh: form.tarikh, status: form.status });
-    if (!error && pendingFiles.length > 0) {
-      await addPhotosToRecord(recordId, pendingFiles.map(p => p.file));
-    }
+    const { error } = await saveRecord({ id: form.id, category: form.category, tarikh: form.tarikh, status: form.status });
     setSavingRecord(false);
     closeModal();
     onNotify?.(error ? 'error' : 'success', error ? 'Gagal menyimpan rekod.' : (form.id ? 'Rekod berjaya dikemaskini.' : 'Rekod berjaya ditambah.'));
@@ -141,7 +112,6 @@ export default function Ng999ReportTab({ theme, isEditMode, onNotify }) {
 
   const openEditModal = (record) => {
     setForm({ id: record.id, category: record.category, tarikh: record.tarikh, status: record.status || 'active' });
-    setPendingFiles([]);
     setModalVisible(true);
   };
 
@@ -149,11 +119,8 @@ export default function Ng999ReportTab({ theme, isEditMode, onNotify }) {
     setModalVisible(false);
     setCategoryOpen(false);
     setStatusOpen(false);
-    setPendingFiles([]);
     setForm({ id: null, category: '', tarikh: '', status: 'active' });
   };
-
-  const existingPhotos = form.id ? (ngData.find(r => r.id === form.id)?.ng999_photos || []) : [];
 
   const tableHeader = (
     <View style={tableStyles.calamityTableHeaderRow}>
@@ -166,9 +133,6 @@ export default function Ng999ReportTab({ theme, isEditMode, onNotify }) {
       <View style={[{ flex: 1.2 }, tableStyles.calamityHeaderCellBox]}>
         <Text style={tableStyles.calamityTableHeaderCell}>Status</Text>
       </View>
-      <View style={[{ flex: 1.2 }, tableStyles.calamityHeaderCellBox]}>
-        <Text style={tableStyles.calamityTableHeaderCell}>Foto</Text>
-      </View>
       {isEditMode && (
         <View style={[{ flex: 1 }, tableStyles.calamityHeaderCellBox]}>
           <Text style={tableStyles.calamityTableHeaderCell}>Aksi</Text>
@@ -176,17 +140,6 @@ export default function Ng999ReportTab({ theme, isEditMode, onNotify }) {
       )}
     </View>
   );
-
-  const renderPhotoStrip = (photos) => {
-    if (!photos || photos.length === 0) {
-      return <Text style={{ fontSize: 11, color: '#94a3b8', fontWeight: '600' }}>Tiada Foto</Text>;
-    }
-    return (
-      <TouchableOpacity onPress={() => setPhotoViewer({ photos, index: null })}>
-        <Text style={{ fontSize: 11, color: PALETTE.orange, fontWeight: '700' }}>Lihat Foto ({photos.length})</Text>
-      </TouchableOpacity>
-    );
-  };
 
   const renderRecordRow = (item, index) => (
     <View key={item.id} style={[tableStyles.calamityTableRow, { backgroundColor: index % 2 === 0 ? '#ffffff' : '#f8fafc' }]}>
@@ -198,9 +151,6 @@ export default function Ng999ReportTab({ theme, isEditMode, onNotify }) {
         <View style={{ backgroundColor: statusColor(item.status) + '18', borderWidth: 1, borderColor: statusColor(item.status), borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>
           <Text style={{ fontSize: 10, fontWeight: '800', color: statusColor(item.status) }}>{statusLabel(item.status)}</Text>
         </View>
-      </View>
-      <View style={[{ flex: 1.2 }, tableStyles.calamitySummaryCellBox, { paddingVertical: 8 }]}>
-        {renderPhotoStrip(item.ng999_photos)}
       </View>
       {isEditMode && (
         <View style={[{ flex: 1 }, styles.actionBtns, { justifyContent: 'center' }]}>
@@ -307,7 +257,7 @@ export default function Ng999ReportTab({ theme, isEditMode, onNotify }) {
             </View>
             {isEditMode && (
               <View style={{ paddingHorizontal: 16, marginBottom: 12, flexDirection: 'row', justifyContent: 'flex-end' }}>
-                <TouchableOpacity style={styles.addBtn} onPress={() => { setForm({ id: null, category: '', tarikh: '', status: 'active' }); setPendingFiles([]); setModalVisible(true); }}>
+                <TouchableOpacity style={styles.addBtn} onPress={() => { setForm({ id: null, category: '', tarikh: '', status: 'active' }); setModalVisible(true); }}>
                   <Plus size={16} color="#fff" />
                   <Text style={styles.addBtnText}>Tambah Rekod</Text>
                 </TouchableOpacity>
@@ -316,7 +266,7 @@ export default function Ng999ReportTab({ theme, isEditMode, onNotify }) {
           </>
         )}
 
-        <View style={{ minHeight: 500, paddingBottom: 16 }}>
+        <View style={{ paddingBottom: 16 }}>
           {loadingNg ? (
             <ActivityIndicator size="small" color={PALETTE.orange} style={{ marginVertical: 20 }} />
           ) : viewMode === 'ringkasan' ? (
@@ -365,7 +315,7 @@ export default function Ng999ReportTab({ theme, isEditMode, onNotify }) {
           <View style={[formStyles.modalContent, { backgroundColor: PALETTE.cardLight }]}>
             <View style={formStyles.modalHeader}>
               <Text style={{ fontSize: 18, fontWeight: '800', color: PALETTE.textDark }}>
-                {form.id ? 'Update Record' : 'Add New Record'}
+                {form.id ? 'Update Record' : 'Tambah Rekod Baru'}
               </Text>
               <TouchableOpacity onPress={closeModal}>
                 <X size={24} color={PALETTE.textMutedDark} />
@@ -398,59 +348,6 @@ export default function Ng999ReportTab({ theme, isEditMode, onNotify }) {
               onToggle={() => { setStatusOpen(!statusOpen); setCategoryOpen(false); }}
               onSelect={(opt) => { setForm({ ...form, status: STATUS_LIST.find(s => s.label === opt)?.key || 'active' }); setStatusOpen(false); }}
               stackIndex={1500} />
-
-            {/* --- Section photos --- */}
-            <View style={[formStyles.inputGroup, { zIndex: 1 }]}>
-              <Text style={[formStyles.inputLabel, { color: PALETTE.textMutedDark }]}>Foto</Text>
-
-              {existingPhotos.length > 0 && (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }}>
-                  <View style={{ flexDirection: 'row', gap: 8 }}>
-                    {existingPhotos.map((photo) => (
-                      <View key={photo.id} style={{ position: 'relative' }}>
-                        <TouchableOpacity onPress={() => setPhotoViewer({ photos: existingPhotos, index: null })}>
-                          <Image source={{ uri: photo.photo_url }} style={{ width: 80, height: 80, borderRadius: 8 }} resizeMode="cover" />
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          onPress={() => handleDeleteExistingPhoto(photo)}
-                          style={{ position: 'absolute', top: -6, right: -6, backgroundColor: '#ef4444', borderRadius: 10, width: 20, height: 20, justifyContent: 'center', alignItems: 'center' }}
-                        >
-                          <X size={12} color="#fff" />
-                        </TouchableOpacity>
-                      </View>
-                    ))}
-                  </View>
-                </ScrollView>
-              )}
-
-              {pendingFiles.length > 0 && (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }}>
-                  <View style={{ flexDirection: 'row', gap: 8 }}>
-                    {pendingFiles.map((p, index) => (
-                      <View key={index} style={{ position: 'relative' }}>
-                        <Image source={{ uri: p.preview }} style={{ width: 80, height: 80, borderRadius: 8, opacity: 0.8 }} resizeMode="cover" />
-                        <TouchableOpacity
-                          onPress={() => handleRemovePendingPhoto(index)}
-                          style={{ position: 'absolute', top: -6, right: -6, backgroundColor: '#64748b', borderRadius: 10, width: 20, height: 20, justifyContent: 'center', alignItems: 'center' }}
-                        >
-                          <X size={12} color="#fff" />
-                        </TouchableOpacity>
-                      </View>
-                    ))}
-                  </View>
-                </ScrollView>
-              )}
-
-              <TouchableOpacity
-                onPress={handlePickPhotos}
-                style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: PALETTE.surface, borderWidth: 1, borderColor: PALETTE.cardLightBorder, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 10 }}
-              >
-                <Camera size={18} color="#64748b" />
-                <Text style={{ color: '#64748b', fontWeight: '600', fontSize: 13 }}>
-                  {existingPhotos.length + pendingFiles.length > 0 ? 'Tambah Foto Lagi' : 'Pilih Foto'}
-                </Text>
-              </TouchableOpacity>
-            </View>
 
             <TouchableOpacity
               style={[formStyles.saveBtn, (savingRecord || categoryOpen) && { opacity: 0.7 }]}
@@ -491,89 +388,6 @@ export default function Ng999ReportTab({ theme, isEditMode, onNotify }) {
         </View>
       </Modal>
 
-      {/* --- Visionneuse photo --- */}
-      {photoViewer && (
-        <Modal visible={true} transparent={true} animationType="fade">
-          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', alignItems: 'center' }}>
-            {/* Bouton fermer / retour */}
-            <TouchableOpacity
-              onPress={() => {
-                if (photoViewer.index !== null) {
-                  setPhotoViewer(prev => ({ ...prev, index: null }));
-                } else {
-                  setPhotoViewer(null);
-                }
-              }}
-              style={{ position: 'absolute', top: 40, right: 24, zIndex: 10, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 20, width: 40, height: 40, justifyContent: 'center', alignItems: 'center' }}
-            >
-              <X size={20} color="#fff" />
-            </TouchableOpacity>
-
-            {/* Compteur */}
-            <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700', marginBottom: 12, opacity: 0.8 }}>
-              {photoViewer.index === null ? `${photoViewer.photos.length} foto` : `${photoViewer.index + 1} / ${photoViewer.photos.length}`}
-            </Text>
-
-            {/* Galerie */}
-            {photoViewer.index === null ? (
-              // Vue grille
-              <View style={{ width: '90%' }}>
-                <ScrollView showsVerticalScrollIndicator={false}>
-                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
-                    {photoViewer.photos.map((photo, i) => (
-                      <TouchableOpacity
-                        key={photo.id}
-                        onPress={() => setPhotoViewer(prev => ({ ...prev, index: i }))}
-                        style={{
-                          borderRadius: 12, overflow: 'hidden',
-                          shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 8,
-                        }}
-                      >
-                        <Image
-                          source={{ uri: photo.photo_url }}
-                          style={{ width: 160, height: 160 }}
-                          resizeMode="cover"
-                        />
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </ScrollView>
-              </View>
-            ) : (
-              // Vue plein écran
-              <>
-                <Image
-                  source={{ uri: photoViewer.photos[photoViewer.index].photo_url }}
-                  style={{ width: '90%', height: '65%', borderRadius: 12 }}
-                  resizeMode="contain"
-                />
-                <View style={{ flexDirection: 'row', gap: 16, marginTop: 20 }}>
-                  <TouchableOpacity
-                    onPress={() => setPhotoViewer(prev => ({ ...prev, index: prev.index - 1 }))}
-                    disabled={photoViewer.index === 0}
-                    style={{
-                      backgroundColor: photoViewer.index === 0 ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.25)',
-                      paddingHorizontal: 28, paddingVertical: 12, borderRadius: 10,
-                    }}
-                  >
-                    <Text style={{ color: photoViewer.index === 0 ? 'rgba(255,255,255,0.3)' : '#fff', fontWeight: '700' }}>← Sebelum</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => setPhotoViewer(prev => ({ ...prev, index: prev.index + 1 }))}
-                    disabled={photoViewer.index === photoViewer.photos.length - 1}
-                    style={{
-                      backgroundColor: photoViewer.index === photoViewer.photos.length - 1 ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.25)',
-                      paddingHorizontal: 28, paddingVertical: 12, borderRadius: 10,
-                    }}
-                  >
-                    <Text style={{ color: photoViewer.index === photoViewer.photos.length - 1 ? 'rgba(255,255,255,0.3)' : '#fff', fontWeight: '700' }}>Selepas →</Text>
-                  </TouchableOpacity>
-                </View>
-              </>
-            )}
-          </View>
-        </Modal>
-      )}
-    </>
+      </>
   );
 }
