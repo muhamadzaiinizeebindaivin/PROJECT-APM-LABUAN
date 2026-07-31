@@ -9,6 +9,7 @@ import KpiSection from '../pentadbiran/KpiSection';
 import { useSekretariatDocuments } from '../../hooks/useSekretariatDocuments';
 import SekretariatDocumentsSection from './SekretariatDocumentsSection';
 import { useSekretariatAssets } from '../../hooks/useSekretariatAssets';
+import { useSekretariatLogistik } from '../../hooks/useSekretariatLogistik';
 import SekretariatAssetsSection from './SekretariatAssetsSection';
 import { appStyles as styles } from '../../styles/appStyles';
 import { PALETTE } from '../../constants/palette';
@@ -39,6 +40,7 @@ export default function JpbdSection({ userRole, isEditMode }) {
   const { kpiList, saveKpiItem, deleteKpiItem, reorderKpi } = useKpi('sekretariat');
   const { documents, loading: loadingDocuments, uploading: uploadingDocument, uploadDocument, deleteDocument } = useSekretariatDocuments();
   const { assetList, saveAssetItem, deleteAssetItem } = useSekretariatAssets();
+  const { logistikList, saveLogistikItem, deleteLogistikItem } = useSekretariatLogistik();
 
   // Sélectionne automatiquement la 1re agence au chargement
   useEffect(() => {
@@ -107,7 +109,19 @@ export default function JpbdSection({ userRole, isEditMode }) {
         isEditing={isEditMode}
         saveAssetItem={saveAssetItem}
         deleteAssetItem={deleteAssetItem}
-        onNotify={(type, message) => console.log(type, message) /* même remarque que ci-dessus */}
+        onNotify={(type, message) => console.log(type, message) /* remplace par le toast réel si JpbdSection en a un */}
+      />
+
+      <SekretariatAssetsSection
+        assetList={logistikList}
+        isEditing={isEditMode}
+        saveAssetItem={saveLogistikItem}
+        deleteAssetItem={deleteLogistikItem}
+        title="Jumlah Logistik"
+        itemNoun="Logistik"
+        itemNounLower="logistik"
+        namePlaceholder="Cth: Khemah 6x6"
+        onNotify={(type, message) => console.log(type, message) /* remplace par le toast réel si JpbdSection en a un */}
       />
 
       {/* ---- KPI ---- */}

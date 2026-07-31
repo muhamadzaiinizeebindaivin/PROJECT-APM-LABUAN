@@ -84,17 +84,29 @@ const buildPdfViewerHtml = () => `
           var track = document.getElementById('track');
           track.classList.remove('ready'); // masque le track pendant le recalcul, évite tout flash
 
+          // Clone de la 1ère page ajouté juste après la dernière — permet à la boucle
+          // automatique de continuer à glisser VERS L'AVANT au lieu de faire un bond
+          // en arrière quand elle revient au début.
+          var hasClone = totalPages > 1;
+          var renderCount = totalPages + (hasClone ? 1 : 0);
+          var cloneSlide = null;
+
           track.innerHTML = '';
           track.style.transitionProperty = 'opacity'; // pas de transition sur transform pendant le rebuild
-          track.style.width = (slideWidthPx * totalPages) + 'px';
+          track.style.width = (slideWidthPx * renderCount) + 'px';
           track.style.transform = 'translateX(-' + (currentIndex * slideWidthPx) + 'px)';
 
-          for (var i = 0; i < totalPages; i++) {
+          for (var i = 0; i < renderCount; i++) {
             var slide = document.createElement('div');
+            var isClone = i === totalPages;
             slide.className = 'pageSlide' + (i === currentIndex ? ' activeSlide' : '');
             slide.style.width = slideWidthPx + 'px';
             slide.style.height = slideHeightPx + 'px';
-            slide.dataset.pageNum = i + 1;
+            if (isClone) {
+              cloneSlide = slide; // pas de data-page-num : évite toute collision avec la vraie page 1
+            } else {
+              slide.dataset.pageNum = i + 1;
+            }
             track.appendChild(slide);
           }
 
@@ -107,6 +119,9 @@ const buildPdfViewerHtml = () => `
             for (var p = 2; p <= totalPages; p++) {
               pagePromises.push(renderSinglePage(currentPdfDoc, p));
             }
+            if (cloneSlide) {
+              pagePromises.push(renderSinglePage(currentPdfDoc, 1, cloneSlide));
+            }
             Promise.all(pagePromises).then(function() {
               requestAnimationFrame(function() {
                 track.style.transitionProperty = 'transform, opacity';
@@ -117,14 +132,14 @@ const buildPdfViewerHtml = () => `
           });
         }
 
-        function renderSinglePage(pdfDoc, pageNum) {
+        function renderSinglePage(pdfDoc, pageNum, targetSlide) {
           return pdfDoc.getPage(pageNum).then(function(page) {
             var unscaled = page.getViewport({ scale: 1 });
             // Échelle calée sur la largeur uniquement : la page remplit toute la largeur du cadre
             var scale = slideWidthPx / unscaled.width;
             var viewport = page.getViewport({ scale: scale });
 
-            if (pageNum === 1) {
+            if (pageNum === 1 && !targetSlide) {
               slideHeightPx = viewport.height; // hauteur du cadre = hauteur réelle de la page 1 à cette largeur
             }
 
@@ -132,7 +147,7 @@ const buildPdfViewerHtml = () => `
             canvas.width = viewport.width;
             canvas.height = viewport.height;
 
-            var slide = document.querySelector('.pageSlide[data-page-num="' + pageNum + '"]');
+            var slide = targetSlide || document.querySelector('.pageSlide[data-page-num="' + pageNum + '"]');
             if (slide) {
               slide.innerHTML = '';
               slide.appendChild(canvas);
@@ -174,12 +189,43 @@ const buildPdfViewerHtml = () => `
           }
         }
 
+        function advanceSlide() {
+          if (totalPages <= 1) return;
+          var track = document.getElementById('track');
+          currentIndex = currentIndex + 1;
+          track.style.transform = 'translateX(-' + (currentIndex * slideWidthPx) + 'px)';
+
+          var realIndex = currentIndex % totalPages;
+          var slides = track.children;
+          for (var s = 0; s < slides.length; s++) {
+            slides[s].classList.toggle('activeSlide', s === realIndex || s === currentIndex);
+          }
+          var dots = document.getElementById('dots').children;
+          for (var i = 0; i < dots.length; i++) {
+            dots[i].className = 'dot' + (i === realIndex ? ' active' : '');
+          }
+
+          if (currentIndex === totalPages) {
+            // On vient de glisser jusqu'au clone (identique à la page 1) — une fois la
+            // transition terminée, on revient instantanément au vrai index 0, sans
+            // transition, invisible à l'œil puisque le clone a le même contenu.
+            track.addEventListener('transitionend', function snapBack() {
+              track.removeEventListener('transitionend', snapBack);
+              track.style.transitionProperty = 'opacity';
+              currentIndex = 0;
+              track.style.transform = 'translateX(0px)';
+              void track.offsetHeight; // force le reflow avant de réactiver la transition
+              requestAnimationFrame(function() {
+                track.style.transitionProperty = 'transform, opacity';
+              });
+            });
+          }
+        }
+
         function startAutoSlide() {
           if (totalPages <= 1) return;
           stopAutoSlide();
-          autoSlideTimer = setInterval(function() {
-            goToSlide(currentIndex + 1);
-          }, 5000);
+          autoSlideTimer = setInterval(advanceSlide, 5000);
         }
 
         function stopAutoSlide() {

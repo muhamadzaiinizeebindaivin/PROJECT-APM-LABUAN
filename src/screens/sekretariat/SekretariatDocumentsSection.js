@@ -156,7 +156,6 @@ export default function SekretariatDocumentsSection({ documents, loading, isEdit
   const rafRef = useRef(null);
   const lastFrameTimeRef = useRef(null);
   const scrollX = useRef(new Animated.Value(0)).current;
-  const directionRef = useRef(1);
   const [hovered, setHovered] = useState(false);
 
   // Pleine largeur sur petit écran, plafonnée à MAX_CARD_WIDTH sur grand écran
@@ -172,20 +171,22 @@ export default function SekretariatDocumentsSection({ documents, loading, isEdit
 
   const startAutoScroll = useCallback(() => {
     stopAutoScroll();
+    // contentWidth = largeur d'UN jeu complet de documents (pas les deux copies rendues).
+    // On avance continuellement, et dès qu'on a parcouru un jeu complet, on retranche
+    // contentWidth à la position — comme les deux copies sont identiques, ce rattrapage
+    // est invisible (pas de saut CSS ici : c'est nous qui pilotons chaque frame).
     const step = (timestamp) => {
       if (lastFrameTimeRef.current === null) lastFrameTimeRef.current = timestamp;
       const dt = (timestamp - lastFrameTimeRef.current) / 1000;
       lastFrameTimeRef.current = timestamp;
 
-      const maxScroll = Math.max(0, contentWidth - viewportWidthRef.current);
-      if (maxScroll <= 0) {
+      if (contentWidth <= 0) {
         rafRef.current = requestAnimationFrame(step);
         return;
       }
 
-      let next = scrollXRef.current + directionRef.current * PX_PER_SECOND * dt;
-      if (next >= maxScroll) { next = maxScroll; directionRef.current = -1; }
-      else if (next <= 0) { next = 0; directionRef.current = 1; }
+      let next = scrollXRef.current + PX_PER_SECOND * dt;
+      if (next >= contentWidth) next -= contentWidth;
 
       scrollXRef.current = next;
       scrollRef.current?.scrollTo({ x: next, animated: false });
@@ -203,16 +204,14 @@ export default function SekretariatDocumentsSection({ documents, loading, isEdit
 
   return (
     <View style={pentadbiranStyles.card}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-        <SectionHeader title="DOKUMEN & IMEJ" Icon={FileText} rightSlot={
-          isEditing && (
-            <TouchableOpacity style={styles.addButton} onPress={() => triggerFilePicker(null)} disabled={uploading}>
-              <Upload size={16} color={PALETTE.white} />
-              <Text style={styles.addButtonText}>{uploading ? 'Memuat naik...' : 'Muat Naik'}</Text>
-            </TouchableOpacity>
-          )
-        } />
-      </View>
+      <SectionHeader title="DOKUMEN & IMEJ" Icon={FileText} rightSlot={
+        isEditing && (
+          <TouchableOpacity style={styles.addButton} onPress={() => triggerFilePicker(null)} disabled={uploading}>
+            <Upload size={16} color={PALETTE.white} />
+            <Text style={styles.addButtonText}>{uploading ? 'Memuat naik...' : 'Muat Naik'}</Text>
+          </TouchableOpacity>
+        )
+      } />
 
       {Platform.OS === 'web' && isEditing &&
         createElement('input', {
@@ -249,8 +248,9 @@ export default function SekretariatDocumentsSection({ documents, loading, isEdit
             scrollEnabled={false}
             contentContainerStyle={{ flexDirection: 'row', gap: CARD_GAP, paddingVertical: 4 }}
           >
-            {documents.map((item) => (
-              <DocCard key={item.id} item={item} isEditing={isEditing} onReplace={triggerFilePicker} onDelete={setConfirmDeleteItem} width={cardWidth} />
+            {/* Deux copies bout à bout — permet de boucler en continu vers l'avant sans jamais revenir en arrière */}
+            {[...documents, ...documents].map((item, i) => (
+              <DocCard key={`${item.id}-${i}`} item={item} isEditing={isEditing} onReplace={triggerFilePicker} onDelete={setConfirmDeleteItem} width={cardWidth} />
             ))}
           </ScrollView>
         </View>

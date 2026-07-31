@@ -343,7 +343,7 @@ export const pentadbiranStyles = StyleSheet.create({
 
   sectionHeaderWithBadge: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    marginBottom: 16,
+    marginBottom: 16, width: '100%',
   },
   unsavedBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 6,

@@ -70,7 +70,10 @@ const local = StyleSheet.create({
   confirmConfirmText: { color: '#fff', fontWeight: '800', fontSize: 14 },
 });
 
-export default function SekretariatAssetsSection({ assetList, isEditing, saveAssetItem, deleteAssetItem, onNotify }) {
+export default function SekretariatAssetsSection({
+  assetList, isEditing, saveAssetItem, deleteAssetItem, onNotify,
+  title = 'Jumlah Kenderaan', itemNoun = 'Kenderaan', itemNounLower = 'kenderaan', namePlaceholder = 'Cth: Toyota Hilux',
+}) {
   const [modalVisible, setModalVisible] = useState(false);
   const [assetForm, setAssetForm] = useState({ id: null, nama: '', bilangan: '', icon_key: 'Package' });
   const [formError, setFormError] = useState(null);
@@ -219,9 +222,9 @@ export default function SekretariatAssetsSection({ assetList, isEditing, saveAss
     setIsSaving(false);
     if (ok) {
       setModalVisible(false);
-      onNotify?.('success', assetForm.id ? 'Asset berjaya dikemaskini.' : 'Asset berjaya ditambah.');
+      onNotify?.('success', assetForm.id ? `${itemNoun} berjaya dikemaskini.` : `${itemNoun} berjaya ditambah.`);
     } else {
-      onNotify?.('error', 'Gagal menyimpan asset.');
+      onNotify?.('error', `Gagal menyimpan ${itemNounLower}.`);
     }
   };
   const confirmDelete = async () => {
@@ -230,13 +233,13 @@ export default function SekretariatAssetsSection({ assetList, isEditing, saveAss
     const ok = await deleteAssetItem(item.id);
     setIsDeleting(false);
     setConfirmDeleteItem(null);
-    onNotify?.(ok === false ? 'error' : 'success', ok === false ? 'Gagal memadam asset.' : 'Asset berjaya dipadam.');
+    onNotify?.(ok === false ? 'error' : 'success', ok === false ? `Gagal memadam ${itemNounLower}.` : `${itemNoun} berjaya dipadam.`);
   };
 
   return (
     <View style={[styles.card, { padding: 16 }]}>
       <View style={styles.sectionHeaderRow}>
-        <Text style={styles.sectionHeaderTitle}>Jumlah Asset</Text>
+        <Text style={styles.sectionHeaderTitle}>{title}</Text>
         {isEditing && (
           <TouchableOpacity style={styles.addButton} onPress={openAdd}>
             <Plus size={16} color="#fff" />
@@ -246,7 +249,7 @@ export default function SekretariatAssetsSection({ assetList, isEditing, saveAss
       </View>
 
       {assetList.length === 0 ? (
-        <Text style={styles.emptyText}>Tiada asset lagi.</Text>
+        <Text style={styles.emptyText}>Tiada {itemNounLower} lagi.</Text>
       ) : (
         <>
           <View
@@ -328,9 +331,9 @@ export default function SekretariatAssetsSection({ assetList, isEditing, saveAss
               <View style={local.confirmIconCircle}>
                 <AlertTriangle size={26} color="#ef4444" />
               </View>
-              <Text style={local.confirmTitle}>Padam Asset</Text>
+              <Text style={local.confirmTitle}>Padam {itemNoun}</Text>
               <Text style={local.confirmSubtitle}>
-                Padam asset ini{displayDeleteItemRef.current?.nama ? ` "${displayDeleteItemRef.current.nama}"` : ''}? Tindakan ini tidak boleh dibatalkan.
+                Padam {itemNounLower} ini{displayDeleteItemRef.current?.nama ? ` "${displayDeleteItemRef.current.nama}"` : ''}? Tindakan ini tidak boleh dibatalkan.
               </Text>
             </View>
             <View style={local.confirmActions}>
@@ -349,7 +352,7 @@ export default function SekretariatAssetsSection({ assetList, isEditing, saveAss
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{assetForm.id ? 'Kemaskini' : 'Tambah'} Asset</Text>
+              <Text style={styles.modalTitle}>{assetForm.id ? 'Kemaskini' : 'Tambah'} {itemNoun}</Text>
               <TouchableOpacity onPress={() => setModalVisible(false)}><X size={22} color={PALETTE.textMutedDark} /></TouchableOpacity>
             </View>
             <View style={styles.modalForm}>
@@ -358,7 +361,7 @@ export default function SekretariatAssetsSection({ assetList, isEditing, saveAss
                 style={styles.input}
                 value={assetForm.nama}
                 onChangeText={(t) => setAssetForm({ ...assetForm, nama: t })}
-                placeholder="Cth: Bot Aluminium"
+                placeholder={namePlaceholder}
                 placeholderTextColor={PALETTE.textMutedDark}
               />
               <Text style={styles.inputLabel}>Bilangan</Text>
