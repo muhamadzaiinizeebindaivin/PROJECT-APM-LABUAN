@@ -51,7 +51,7 @@ export const pentadbiranStyles = StyleSheet.create({
   },
 
   staffCard: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
+    flexDirection: 'row', alignItems: 'flex-start', gap: 12,
     backgroundColor: PALETTE.cardLight, borderRadius: 12, padding: 12,
     borderWidth: 1, borderColor: PALETTE.cardLightBorder, marginBottom: 8,
   },
