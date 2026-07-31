@@ -165,7 +165,7 @@ export default function OperasiScreen({ theme, userRole }) {
               />
             </View>
           )}
-          {activeTab === 'report' && <Ng999ReportTab theme={theme} userRole={userRole} isEditMode={isEditMode} />}
+          {activeTab === 'report' && <Ng999ReportTab theme={theme} userRole={userRole} isEditMode={isEditMode} onNotify={showNotification} />}
           {activeTab === 'cemas' && <PertolonganCemasTab theme={theme} userRole={userRole} isEditMode={isEditMode} />}
 
           <View style={{ paddingHorizontal: 16 }}>

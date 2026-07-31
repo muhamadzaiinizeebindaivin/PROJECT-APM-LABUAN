@@ -1,7 +1,7 @@
 // src/screens/operasi/Ng999ReportTab.js
 import React, { useState, useMemo, useRef, useEffect, createElement } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Modal, TextInput, Alert, Platform, Image } from 'react-native';
-import { Plus, Edit2, Trash2, X, Camera, Image as ImageIcon } from 'lucide-react-native';
+import { Plus, Edit2, Trash2, X, Camera, Image as ImageIcon, Info, LayoutGrid, ListChecks, BarChart2 } from 'lucide-react-native';
 import ModalSelectField from '../../components/ModalSelectField';
 import { useNg999Report } from '../../hooks/useNg999Report';
 import { CATEGORY_OPTIONS } from '../../constants/operasiConstants';
@@ -24,7 +24,7 @@ const STATUS_LIST = [
 const statusLabel = (key) => STATUS_LIST.find(s => s.key === key)?.label || 'Aktif';
 const statusColor = (key) => STATUS_LIST.find(s => s.key === key)?.color || '#3b82f6';
 
-export default function Ng999ReportTab({ theme, userRole, isEditMode }) {
+export default function Ng999ReportTab({ theme, userRole, isEditMode, onNotify }) {
   const now = new Date();
 
   const [filterYear, setFilterYear] = useState(now.getFullYear());
@@ -226,31 +226,58 @@ export default function Ng999ReportTab({ theme, userRole, isEditMode }) {
             <Text style={styles.reportTitle}>Emergency Case Report</Text>
             <Text style={{ color: PALETTE.textMutedDark, fontWeight: '600' }}>NG 999 W.P. Labuan {now.getFullYear()}</Text>
           </View>
-          <CalamitySummaryContent theme={theme} mode="chart" statsOnly />
+          <CalamitySummaryContent theme={theme} mode="chart" statsOnly onNotify={onNotify} />
         </View>
 
         <View style={{ height: 12 }} />
 
         <View style={[styles.crudContainer, { marginBottom: 12 }]}>
-          <View style={[styles.crudHeader, { flexWrap: 'wrap', gap: 8 }]}>
-            <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', flex: 1 }}>
-              <TouchableOpacity onPress={() => setViewMode('ringkasan')} style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, backgroundColor: viewMode === 'ringkasan' ? PALETTE.orange : PALETTE.surface }}>
-                <Text style={{ fontSize: 12, fontWeight: '700', color: viewMode === 'ringkasan' ? PALETTE.white : PALETTE.textMutedDark }}>Ringkasan Kecemasan</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => setViewMode('senarai')} style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, backgroundColor: viewMode === 'senarai' ? PALETTE.orange : PALETTE.surface }}>
-                <Text style={{ fontSize: 12, fontWeight: '700', color: viewMode === 'senarai' ? PALETTE.white : PALETTE.textMutedDark }}>Senarai Penuh Kecemasan</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => setViewMode('trend')} style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, backgroundColor: viewMode === 'trend' ? PALETTE.orange : PALETTE.surface }}>
-                <Text style={{ fontSize: 12, fontWeight: '700', color: viewMode === 'trend' ? PALETTE.white : PALETTE.textMutedDark }}>Analisis & Statistik</Text>
-              </TouchableOpacity>
-            </View>
-
+          <View style={{ flexDirection: 'row', gap: 10, flexWrap: 'wrap' }}>
+            {[
+              { key: 'ringkasan', label: 'Ringkasan Kecemasan', Icon: LayoutGrid },
+              { key: 'senarai', label: 'Senarai Penuh Kecemasan', Icon: ListChecks },
+              { key: 'trend', label: 'Analisis & Statistik', Icon: BarChart2 },
+            ].map(({ key, label, Icon }) => {
+              const isActive = viewMode === key;
+              return (
+                <TouchableOpacity
+                  key={key}
+                  onPress={() => setViewMode(key)}
+                  activeOpacity={0.85}
+                  style={{
+                    flexDirection: 'row', alignItems: 'center', gap: 8,
+                    paddingHorizontal: 16, paddingVertical: 11, borderRadius: 999,
+                    backgroundColor: isActive ? PALETTE.orange : '#fff',
+                    borderWidth: 1.5, borderColor: isActive ? PALETTE.orange : PALETTE.cardLightBorder,
+                    shadowColor: isActive ? PALETTE.orange : '#000',
+                    shadowOffset: { width: 0, height: isActive ? 4 : 1 },
+                    shadowOpacity: isActive ? 0.3 : 0.04,
+                    shadowRadius: isActive ? 8 : 3,
+                    elevation: isActive ? 4 : 1,
+                  }}
+                >
+                  <Icon size={15} color={isActive ? '#fff' : PALETTE.textMutedDark} />
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: isActive ? '#fff' : PALETTE.textMutedDark }}>{label}</Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </View>
 
         {/* --- Filtres Senarai --- */}
         {viewMode === 'senarai' && (
           <>
+            <View style={{
+              flexDirection: 'row', gap: 10, backgroundColor: '#fef2f2', borderWidth: 1.5, borderColor: '#fecaca',
+              borderRadius: 12, padding: 16, marginHorizontal: 16, marginBottom: 12,
+            }}>
+              <Info size={20} color="#dc2626" style={{ marginTop: 1 }} />
+              <Text style={{ flex: 1, fontSize: 14, fontWeight: '700', color: '#991b1b', lineHeight: 20 }}>
+                PERINGATAN : Setiap rekod di sini (bertarikh) dikira secara automatik dalam{' '}
+                <Text style={{ fontWeight: '800' }}>Ringkasan Kecemasan</Text>. Jangan masukkan semula data yang
+                sama di jadual Ringkasan Kecemasan — jadual itu hanya untuk data tidak berdata harian.
+              </Text>
+            </View>
             <View style={[tableStyles.historyFilterRow, { marginBottom: 4 }]}>
               <View style={{ flex: 1 }}>
                 <ModalSelectField theme={theme} label="Tahun" value={String(filterYear)} placeholder="Tahun"
@@ -295,9 +322,9 @@ export default function Ng999ReportTab({ theme, userRole, isEditMode }) {
           {loadingNg ? (
             <ActivityIndicator size="small" color={PALETTE.orange} style={{ marginVertical: 20 }} />
           ) : viewMode === 'ringkasan' ? (
-            <CalamitySummaryContent theme={theme} mode="table" isEditMode={isEditMode} />
+            <CalamitySummaryContent theme={theme} mode="table" isEditMode={isEditMode} onNotify={onNotify} />
           ) : viewMode === 'trend' ? (
-            <CalamitySummaryContent theme={theme} mode="chart" isEditMode={isEditMode} />
+            <CalamitySummaryContent theme={theme} mode="chart" isEditMode={isEditMode} onNotify={onNotify} />
           ) : filteredNgData.length === 0 ? (
             <Text style={{ color: PALETTE.textMutedDark, textAlign: 'center', marginVertical: 10 }}>Tiada rekod dijumpai.</Text>
           ) : (

@@ -1,7 +1,7 @@
 // src/screens/operasi/Ng999HistoriqueTab.js
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, TextInput, Modal, ActivityIndicator, StyleSheet } from 'react-native';
-import { Plus, Trash2, X, ChevronLeft, ChevronRight, Save } from 'lucide-react-native';
+import { Plus, Trash2, X, ChevronLeft, ChevronRight, Save, Info } from 'lucide-react-native';
 import { useNg999Historique } from '../../hooks/useNg999Historique';
 import { CALAMITY_CATEGORIES } from '../../constants/operasiConstants';
 import { PALETTE } from '../../constants/palette';
@@ -117,6 +117,16 @@ export default function Ng999HistoriqueTab({ userRole }) {
             </TouchableOpacity>
           </View>
         ) : null}
+      </View>
+
+      {/* ---- Nota panduan ---- */}
+      <View style={histStyles.infoBox}>
+        <Info size={16} color={PALETTE.orange} style={{ marginTop: 1 }} />
+        <Text style={histStyles.infoBoxText}>
+          Kes yang mempunyai rekod harian (bertarikh) mesti dikunci masuk melalui{' '}
+          <Text style={{ fontWeight: '800' }}>Senarai Penuh Kecemasan</Text> — jangan masukkan semula di sini,
+          ia akan dikira dua kali. Halaman ini hanya untuk data tidak berdata harian.
+        </Text>
       </View>
 
       {/* ---- Sélecteur d'année ---- */}
@@ -259,6 +269,11 @@ const histStyles = StyleSheet.create({
   yearPillText: { fontSize: 13, fontWeight: '700', color: PALETTE.textMutedDark },
   yearPillTextActive: { color: '#fff' },
 
+  infoBox: {
+    flexDirection: 'row', gap: 8, backgroundColor: '#fff7ed', borderWidth: 1, borderColor: '#fed7aa',
+    borderRadius: 10, padding: 12, marginBottom: 14,
+  },
+  infoBoxText: { flex: 1, fontSize: 12, color: '#7c4a1e', lineHeight: 18 },
   totalCard: { backgroundColor: PALETTE.softOrangeBg, borderRadius: 12, padding: 12, marginBottom: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderWidth: 1, borderColor: '#F9731630' },
   totalLabel: { fontSize: 11, fontWeight: '800', color: PALETTE.orange, letterSpacing: 0.5 },
   totalValue: { fontSize: 18, fontWeight: '900', color: PALETTE.orange },

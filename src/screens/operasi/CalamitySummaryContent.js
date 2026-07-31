@@ -1,7 +1,7 @@
 // src/screens/operasi/CalamitySummaryContent.js
 import React, { useState, useMemo, useEffect } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Platform, ActivityIndicator, TextInput } from 'react-native';
-import { Download, TrendingUp, TrendingDown, Minus, Award, Calendar } from 'lucide-react-native';
+import { Download, TrendingUp, TrendingDown, Minus, Award, Calendar, Info, Check, X } from 'lucide-react-native';
 import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid, BarChart, Bar, Cell } from 'recharts';
 import { useCalamityPoints } from '../../hooks/useCalamityPoints';
 import { useCalamitySummaryPanel } from '../../hooks/useCalamitySummaryPanel';
@@ -11,7 +11,6 @@ import { PALETTE } from '../../constants/palette';
 import { BULAN_MS, BULAN_OPTIONS } from '../../constants/bulan';
 import { mapStyles as styles } from './mapStyles';
 import Ng999HistoriqueModal from './Ng999HistoriqueModal';
-import { useState as useHistState } from 'react';
 
 function CompactTooltip({ active, payload, label }) {
   if (!active || !payload || payload.length === 0) return null;
@@ -111,7 +110,7 @@ function RankRow({ rank, catKey, total, pct, color, maxTotal }) {
 // mode: 'table' -> filtres Tahun/Bulan/Hari + tableau + export PDF
 //       'chart' -> statistiques + graphiques
 // statsOnly: true -> affiche seulement les stat cards (sans filtres ni graphiques)
-export default function CalamitySummaryContent({ theme, large = false, mode = 'table', statsOnly = false, isEditMode = false }) {
+export default function CalamitySummaryContent({ theme, large = false, mode = 'table', statsOnly = false, isEditMode = false, onNotify }) {
   const { calamityPoints } = useCalamityPoints();
   const summary = useCalamitySummaryPanel(calamityPoints);
   const [selectedChartCategories, setSelectedChartCategories] = useState(CALAMITY_CATEGORIES.map(cat => cat.key));
@@ -205,6 +204,41 @@ export default function CalamitySummaryContent({ theme, large = false, mode = 't
     return { totalYear, avgMonth, peakMonth, lowMonth, slope, trend, lastVariationPct, lastVariationMonth, lastVariationPrevMonth, catTotals, quarters, peakQuarter, maxQuarter, barData };
   }, [summary.calamityMonthlyBreakdown]);
 
+  const handleSaveGrid = async () => {
+    const entries = [];
+    const violations = [];
+    Object.entries(gridDraft).forEach(([key, val]) => {
+      const [bulan, ...catParts] = key.split('-');
+      const bulanNum = parseInt(bulan);
+      const category = catParts.join('-');
+      const jumlah = parseInt(val) || 0;
+      const min = summary.dailyMinCounts[bulanNum]?.[category] || 0;
+      if (jumlah < min) {
+        violations.push(`Bulan ${bulanNum} - ${category}: tidak boleh kurang daripada ${min} (terdapat ${min} rekod harian sedia ada).`);
+        return;
+      }
+      entries.push({ bulan: bulanNum, category, jumlah_kes: jumlah });
+    });
+
+    if (violations.length > 0) {
+      setGridViolation(violations.join('\n'));
+      onNotify?.('error', violations[0] + (violations.length > 1 ? ` (+${violations.length - 1} lagi)` : ''));
+      return;
+    }
+    setGridViolation(null);
+
+    setSavingGrid(true);
+    try {
+      const ok = await summary.saveHistoriqueGrid(summary.summaryYear, entries);
+      onNotify?.(ok ? 'success' : 'error', ok ? 'Data berjaya disimpan.' : 'Gagal menyimpan data.');
+    } catch (error) {
+      console.error('handleSaveGrid error:', error);
+      onNotify?.('error', 'Gagal menyimpan data.');
+    } finally {
+      setSavingGrid(false);
+    }
+  };
+
   const trendColor = analytics?.trend === 'hausse' ? '#ef4444' : analytics?.trend === 'baisse' ? '#22c55e' : '#f59e0b';
   const trendLabel = analytics?.trend === 'hausse' ? '↑ Meningkat' : analytics?.trend === 'baisse' ? '↓ Menurun' : '→ Stabil';
   const trendBg = analytics?.trend === 'hausse' ? '#fef2f2' : analytics?.trend === 'baisse' ? '#f0fdf4' : '#fffbeb';
@@ -256,7 +290,8 @@ export default function CalamitySummaryContent({ theme, large = false, mode = 't
   }
 
   return (
-    <ScrollView showsVerticalScrollIndicator={false} style={{ marginTop: 8 }}>
+    <>
+    <ScrollView showsVerticalScrollIndicator={false} style={{ marginTop: 8 }} contentContainerStyle={editingGrid ? { paddingBottom: 90 } : undefined}>
 
       {/* Filtres */}
       <View style={[styles.historyFilterRow, { alignItems: 'flex-end', minHeight: 80, paddingBottom: 16 }]}>
@@ -277,23 +312,6 @@ export default function CalamitySummaryContent({ theme, large = false, mode = 't
                 onSelect={(opt) => { summary.setSummaryMonth(opt === 'Semua Bulan' ? null : BULAN_MS.indexOf(opt)); summary.setSummaryDay(null); summary.setSummaryMonthOpen(false); }}
                 stackIndex={2000} />
             </View>
-            <View style={{ flex: 1, opacity: summary.hasRealDailyData ? 1 : 0.5 }}>
-              <ModalSelectField theme={theme} label="Hari"
-                value={summary.hasRealDailyData
-                  ? (summary.summaryDay === null ? 'Semua Hari' : String(summary.summaryDay))
-                  : 'Tiada rekod harian'}
-                placeholder="Hari"
-                options={summary.hasRealDailyData ? summary.summaryDayOptions : []}
-                isOpen={summary.hasRealDailyData && summary.summaryDayOpen}
-                onToggle={() => {
-                  if (!summary.hasRealDailyData) return;
-                  summary.setSummaryDayOpen(!summary.summaryDayOpen);
-                  summary.setSummaryYearOpen(false);
-                  summary.setSummaryMonthOpen(false);
-                }}
-                onSelect={(opt) => { summary.setSummaryDay(opt === 'Semua Hari' ? null : Number(opt)); summary.setSummaryDayOpen(false); }}
-                stackIndex={1000} />
-            </View>
             <View style={{ flexDirection: 'row', gap: 8, alignSelf: 'flex-end', marginBottom: 16 }}>
               <TouchableOpacity onPress={summary.handleExportLaporanPdf} disabled={summary.exportingLaporanPdf}
                 style={[styles.pdfExportBtn, summary.exportingLaporanPdf && styles.pdfExportBtnDisabled, { height: 50, opacity: summary.exportingLaporanPdf ? 0.7 : 1 }]}>
@@ -308,7 +326,7 @@ export default function CalamitySummaryContent({ theme, large = false, mode = 't
               </TouchableOpacity>
               <TouchableOpacity onPress={() => setHistModalVisible(true)} style={[styles.pdfExportBtn, { height: 50, backgroundColor: PALETTE.orange }]}>
                 <Download size={14} color="#fff" />
-                <Text style={styles.pdfExportBtnText}>Tambah Rekod Tahun Sebelum</Text>
+                <Text style={styles.pdfExportBtnText}>Tambah Rekod</Text>
               </TouchableOpacity>
             </View>
           </>
@@ -318,47 +336,20 @@ export default function CalamitySummaryContent({ theme, large = false, mode = 't
       {/* MODE TABLE */}
       {mode === 'table' && (
         <View>
-        {isEditMode && (
-          <View style={[styles.calamityTableWrapper, { minHeight: 0, backgroundColor: '#eff6ff', borderWidth: 1, borderColor: '#bfdbfe', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 16, marginBottom: 10 }]}>
-            <Text style={{ fontSize: 13, fontWeight: '700', color: '#1d4ed8', textAlign: 'center' }}>
-              ℹ️ Menambah titik kecemasan pada peta akan menambah +1 secara automatik pada bulan &amp; kategori berkenaan dalam jadual ini. Jadual ini kekal boleh dikemaskini secara manual pada bila-bila masa.
-            </Text>
-          </View>
-        )}
+        <View style={[styles.calamityTableWrapper, { minHeight: 0, flexDirection: 'row', gap: 10, backgroundColor: '#fef2f2', borderWidth: 1.5, borderColor: '#fecaca', borderRadius: 12, padding: 16, marginBottom: 10 }]}>
+          <Info size={20} color="#dc2626" style={{ marginTop: 1 }} />
+          <Text style={{ flex: 1, fontSize: 14, fontWeight: '700', color: '#991b1b', lineHeight: 20 }}>
+            PERINGATAN : Jadual ini sudah mengira secara automatik semua rekod bertarikh yang dimasukkan di Senarai Penuh Kecemasan. Jangan masukkan semula data yang sama di jadual ini — jadual ini hanya untuk data tidak berdata harian.
+          </Text>
+        </View>
+
         {editingGrid && (
-          <View style={[styles.calamityTableWrapper, { minHeight: 0, backgroundColor: 'transparent', borderWidth: 0, flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 10, padding: 0, shadowOpacity: 0, elevation: 0 }]}>
-            <TouchableOpacity disabled={savingGrid}
-              onPress={async () => {
-                const entries = [];
-                const violations = [];
-                Object.entries(gridDraft).forEach(([key, val]) => {
-                  const [bulan, ...catParts] = key.split('-');
-                  const bulanNum = parseInt(bulan);
-                  const category = catParts.join('-');
-                  const jumlah = parseInt(val) || 0;
-                  const min = summary.dailyMinCounts[bulanNum]?.[category] || 0;
-                  if (jumlah < min) {
-                    violations.push(`Bulan ${bulanNum} - ${category}: tidak boleh kurang daripada ${min} (terdapat ${min} rekod harian sedia ada).`);
-                    return;
-                  }
-                  entries.push({ bulan: bulanNum, category, jumlah_kes: jumlah });
-                });
-
-                if (violations.length > 0) {
-                  setGridViolation(violations.join('\n'));
-                  return;
-                }
-                setGridViolation(null);
-
-                setSavingGrid(true);
-                await summary.saveHistoriqueGrid(summary.summaryYear, entries);
-                setSavingGrid(false);
-              }}
-              style={{ backgroundColor: '#22c55e', paddingHorizontal: 20, paddingVertical: 9, borderRadius: 10 }}>
-              {savingGrid ? <ActivityIndicator size="small" color="#fff" /> : <Text style={{ fontSize: 13, fontWeight: '800', color: '#fff' }}>Simpan</Text>}
-            </TouchableOpacity>
+          <View style={[styles.calamityTableWrapper, { minHeight: 0, flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#fef3c7', borderWidth: 1, borderColor: '#fde68a', borderRadius: 10, paddingVertical: 8, paddingHorizontal: 14, marginBottom: 10 }]}>
+            <Info size={14} color="#92400e" />
+            <Text style={{ fontSize: 12, fontWeight: '700', color: '#92400e' }}>Jangan lupa simpan data sebelum menutup kemaskini.</Text>
           </View>
         )}
+
         {!!gridViolation && (
           <Text style={{ fontSize: 12, fontWeight: '700', color: '#dc2626', marginBottom: 10, textAlign: 'right' }}>
             ⚠️ {gridViolation}
@@ -393,10 +384,10 @@ export default function CalamitySummaryContent({ theme, large = false, mode = 't
                         onChangeText={v => setGridDraft(prev => ({ ...prev, [`${bulan}-${cat.key}`]: v.replace(/[^0-9]/g, '') }))}
                         keyboardType="number-pad" maxLength={5} selectTextOnFocus
                         placeholder="–" placeholderTextColor="#94a3b8"
-                        style={{ width: 44, height: 28, textAlign: 'center', fontSize: 13, borderWidth: 1, borderColor: '#fdba74', borderRadius: 6, color: PALETTE.orange, backgroundColor: '#fff', outlineStyle: 'none' }}
+                        style={{ width: 44, height: 28, textAlign: 'center', fontSize: 13, borderWidth: 1, borderColor: '#fdba74', borderRadius: 6, color: PALETTE.textDark, backgroundColor: '#fff', outlineStyle: 'none' }}
                       />
                     ) : (
-                      <Text style={[styles.calamityTableCell, row.isCumulative && { fontWeight: '700' }, row.fromHistorique && { color: PALETTE.orange }, large && { fontSize: 16 }]}>
+                      <Text style={[styles.calamityTableCell, row.isCumulative && { fontWeight: '700' }, row.fromHistorique && { color: PALETTE.textDark }, large && { fontSize: 16 }]}>
                         {(editingGrid && row.isCumulative ? liveTotals?.colTotals[cat.key] : row.counts[cat.key]) || '–'}
                       </Text>
                     )}
@@ -420,13 +411,12 @@ export default function CalamitySummaryContent({ theme, large = false, mode = 't
       {mode === 'chart' && Platform.OS === 'web' && analytics && (
         <View style={{ paddingHorizontal: 16, paddingBottom: 24, gap: 14 }}>
 
-          {isEditMode && (
-            <View style={{ backgroundColor: '#eff6ff', borderWidth: 1, borderColor: '#bfdbfe', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 16 }}>
-              <Text style={{ fontSize: 13, fontWeight: '700', color: '#1d4ed8', textAlign: 'center' }}>
-                ℹ️ Menambah titik kecemasan pada peta akan menambah +1 secara automatik pada bulan &amp; kategori berkenaan dalam statistik ini. Kekal boleh dikemaskini secara manual pada bila-bila masa.
-              </Text>
-            </View>
-          )}
+          <View style={{ flexDirection: 'row', gap: 10, backgroundColor: '#fef2f2', borderWidth: 1.5, borderColor: '#fecaca', borderRadius: 12, padding: 16, marginBottom: 10 }}>
+            <Info size={20} color="#dc2626" style={{ marginTop: 1 }} />
+            <Text style={{ flex: 1, fontSize: 14, fontWeight: '700', color: '#991b1b', lineHeight: 20 }}>
+              Statistik ini sudah mengira secara automatik semua rekod bertarikh yang dimasukkan di Senarai Penuh Kecemasan. Jangan masukkan semula data yang sama di jadual ini — jadual ini hanya untuk data tidak berdata harian.
+            </Text>
+          </View>
 
           {/* Résumé Statuts */}
           <SectionCard title="📋 Ringkasan Status">
@@ -558,5 +548,37 @@ export default function CalamitySummaryContent({ theme, large = false, mode = 't
         onSaved={summary.refreshHistoriqueYears}
       />
     </ScrollView>
+
+    {editingGrid && (
+      <View style={{ position: 'fixed', left: 0, right: 0, bottom: 24, zIndex: 999, alignItems: 'center', pointerEvents: 'box-none' }}>
+        <View style={{
+          flexDirection: 'row', alignItems: 'center',
+          backgroundColor: '#fff', padding: 6, borderRadius: 999,
+          borderWidth: 1, borderColor: '#e2e8f0',
+          shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.18, shadowRadius: 20, elevation: 14,
+        }}>
+          <TouchableOpacity disabled={savingGrid} activeOpacity={0.6}
+            onPress={() => { setGridDraft({}); setGridViolation(null); }}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 999 }}>
+            <X size={15} color="#64748b" />
+            <Text style={{ fontSize: 13, fontWeight: '700', color: '#64748b' }}>Batal</Text>
+          </TouchableOpacity>
+
+          <View style={{ width: 1, height: 22, backgroundColor: '#e2e8f0' }} />
+
+          <TouchableOpacity disabled={savingGrid} activeOpacity={0.85}
+            onPress={handleSaveGrid}
+            style={{
+              flexDirection: 'row', alignItems: 'center', gap: 6, marginLeft: 6,
+              backgroundColor: PALETTE.orange, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 999,
+              shadowColor: PALETTE.orange, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.35, shadowRadius: 8, elevation: 4,
+            }}>
+            {savingGrid ? <ActivityIndicator size="small" color="#fff" /> : <Check size={15} color="#fff" />}
+            <Text style={{ fontSize: 13, fontWeight: '800', color: '#fff' }}>{savingGrid ? 'Menyimpan...' : 'Simpan'}</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    )}
+    </>
   );
 }

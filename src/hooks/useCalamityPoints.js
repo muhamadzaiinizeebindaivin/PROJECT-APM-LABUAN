@@ -47,6 +47,8 @@ export function useCalamityPoints() {
   const resolveTreatedCalamity = async (point, { status, description }) => {
     if (!point?.id || !status) return { error: true };
 
+    // ng999_historique se met à jour tout seul via le trigger sandbox.sync_ng999_historique
+    // (déclenché sur ce même UPDATE) — plus d'appel RPC manuel ici.
     const { error } = await supabaseSandbox
       .from('laporan_ng999')
       .update({
@@ -55,17 +57,7 @@ export function useCalamityPoints() {
       })
       .eq('id', point.id);
 
-    if (!error) {
-      fetchCalamityPoints();
-      const d = new Date(point.tarikh);
-      const { error: incError } = await supabaseSandbox.rpc('increment_ng999_historique', {
-        p_tahun: d.getFullYear(),
-        p_bulan: d.getMonth() + 1,
-        p_category: point.category,
-        p_jumlah: 1,
-      });
-      if (incError) console.error('increment_ng999_historique error:', incError);
-    }
+    if (!error) fetchCalamityPoints();
     return { error: !!error };
   };
 
@@ -80,24 +72,11 @@ export function useCalamityPoints() {
 
   // Clôture directement depuis la carte (LiveMapTab) — même logique que
   // resolveTreatedCalamity : +1 sur ng999_historique au moment de la clôture.
+  // ng999_historique se met à jour tout seul via le trigger sandbox.sync_ng999_historique
+  // (déclenché sur ce même UPDATE) — plus besoin de retrouver le point localement ni d'appel RPC manuel.
   const resolveCalamity = async (id, status) => {
-    const point = calamityPoints.find(c => c.id === id);
     const { error } = await supabaseSandbox.from('laporan_ng999').update({ status }).eq('id', id);
-    if (!error) {
-      fetchCalamityPoints();
-      if (point) {
-        const d = new Date(point.tarikh);
-        const { error: incError } = await supabaseSandbox.rpc('increment_ng999_historique', {
-          p_tahun: d.getFullYear(),
-          p_bulan: d.getMonth() + 1,
-          p_category: point.category,
-          p_jumlah: 1,
-        });
-        if (incError) console.error('increment_ng999_historique error:', incError);
-      } else {
-        console.error('resolveCalamity: point introuvable localement pour id=', id, '— historique non incrémenté.');
-      }
-    }
+    if (!error) fetchCalamityPoints();
   };
 
   return { calamityPoints, saveCalamity, deleteCalamity, resolveCalamity, resolveTreatedCalamity };
