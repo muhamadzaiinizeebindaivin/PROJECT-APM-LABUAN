@@ -455,6 +455,7 @@ export default function LiveMapTab({ theme, userRole, isEditMode, onNotify }) {
                   )}
                 </TouchableOpacity>
 
+                {false && (
                 <TouchableOpacity
                   style={[styles.summaryToggleBtn, { right: canAddCalamity ? 164 : 64 }]}
                   onPress={() => setSidePanel(sidePanel === 'summary' ? 'none' : 'summary')}
@@ -470,6 +471,7 @@ export default function LiveMapTab({ theme, userRole, isEditMode, onNotify }) {
                     </View>
                   )}
                 </TouchableOpacity>
+                )}
               </>
             );
           })()}
@@ -536,7 +538,7 @@ export default function LiveMapTab({ theme, userRole, isEditMode, onNotify }) {
           </View>
         )}
 
-        {sidePanel === 'summary' && (
+        {false && sidePanel === 'summary' && (
           <View style={styles.historyHalf}>
             <View style={styles.historyHeaderRow}>
               <Text style={styles.historyTitle}>Ringkasan Kecemasan</Text>

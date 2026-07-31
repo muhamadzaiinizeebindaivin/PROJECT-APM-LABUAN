@@ -203,6 +203,6 @@ const styles = StyleSheet.create({
   toggleText: { fontSize: 13, fontWeight: '700' },
   toggleTextActive: { color: PALETTE.white },
   contentContainer: { paddingBottom: 40 },
-  kpiWrapper: { marginBottom: -16, paddingHorizontal: 16 },
+  kpiWrapper: { paddingHorizontal: 16 },
   mapKpiWrapper: { paddingHorizontal: 16, zIndex: 10 },
 });
