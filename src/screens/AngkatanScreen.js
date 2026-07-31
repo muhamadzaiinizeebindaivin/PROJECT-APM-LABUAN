@@ -164,14 +164,14 @@ export default function AngkatanScreen({ userRole }) {
 
   // ── Modal Communauté ──
   const [showCommunityModal, setShowCommunityModal] = useState(false);
-  const [communityForm, setCommunityForm] = useState({ id: null, category: '', label: '', detail: '' });
+  const [communityForm, setCommunityForm] = useState({ id: null, category: '', tempat: '', detail: '' });
   const [communityFormError, setCommunityFormError] = useState(null);
   const [isSavingCommunity, setIsSavingCommunity] = useState(false);
-  const openAddCommunity = (defaultCategory = '') => { setCommunityForm({ id: null, category: defaultCategory, label: '', detail: '' }); setCommunityFormError(null); setShowCommunityModal(true); };
+  const openAddCommunity = (defaultCategory = '') => { setCommunityForm({ id: null, category: defaultCategory, tempat: '', detail: '' }); setCommunityFormError(null); setShowCommunityModal(true); };
   const openEditCommunity = (prog) => { setCommunityForm(prog); setCommunityFormError(null); setShowCommunityModal(true); };
   const handleSaveCommunity = async () => {
-    if (!communityForm.category.trim() || !communityForm.label.trim() || !communityForm.detail.trim()) {
-      setCommunityFormError('Kategori, label dan keterangan tidak boleh kosong.');
+    if (!communityForm.category.trim() || !communityForm.tempat.trim() || !communityForm.detail.trim()) {
+      setCommunityFormError('Kategori, tempat dan keterangan tidak boleh kosong.');
       return;
     }
     setCommunityFormError(null);

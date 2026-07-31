@@ -48,12 +48,12 @@ export default function CommunityEditModal({ visible, isNew, communityForm, setC
               })}
             </View>
 
-            <Text style={styles.inputLabel}>Label</Text>
+            <Text style={styles.inputLabel}>Tempat</Text>
             <TextInput
               style={[styles.modalInput, { marginBottom: 16 }]}
-              value={communityForm.label}
-              onChangeText={(t) => setCommunityForm({ ...communityForm, label: t })}
-              placeholder="Cth: Gotong-royong Kampung Sungai Lada"
+              value={communityForm.tempat}
+              onChangeText={(t) => setCommunityForm({ ...communityForm, tempat: t })}
+              placeholder="Cth: Kampung Sungai Lada"
               placeholderTextColor={PALETTE.textMutedDark}
             />
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Modal, ActivityIndicator } from 'react-native';
-import { Plus, Pencil, Trash2, HeartHandshake, ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react-native';
+import { Plus, Pencil, Trash2, HeartHandshake, ChevronLeft, ChevronRight, AlertTriangle, X, MapPin } from 'lucide-react-native';
 import { PALETTE } from '../../constants/palette';
 import { angkatanStyles as styles } from './angkatanStyles';
 import { pentadbiranStyles } from '../pentadbiran/pentadbiranStyles';
@@ -22,6 +22,8 @@ export default function CommunityList({ communityProgs, isEditing, onAdd, onEdit
   const [confirmDelete, setConfirmDelete] = useState(null); // le dernier programme ciblé — jamais vidé pendant la fermeture
   const [confirmVisible, setConfirmVisible] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [viewingProg, setViewingProg] = useState(null); // garde le dernier contenu — jamais vidé pendant la fermeture
+  const [viewVisible, setViewVisible] = useState(false);
 
   useEffect(() => { setPage(1); }, [activeCategory]);
 
@@ -84,10 +86,15 @@ export default function CommunityList({ communityProgs, isEditing, onAdd, onEdit
         <>
           <View style={{ gap: 10 }}>
             {pagedProgs.map((prog) => (
-              <View key={prog.id} style={commStyles.progCard}>
+              <TouchableOpacity
+                key={prog.id}
+                style={commStyles.progCard}
+                activeOpacity={0.7}
+                onPress={() => (isEditing ? onEdit(prog) : (setViewingProg(prog), setViewVisible(true)))}
+              >
                 <View style={[commStyles.progAccent, { backgroundColor: activeColor }]} />
                 <View style={{ flex: 1, marginLeft: 14 }}>
-                  <Text style={commStyles.progLabel}>{prog.label}</Text>
+                  <Text style={commStyles.progLabel}>{prog.tempat}</Text>
                   <Text style={commStyles.progDetail}>{prog.detail}</Text>
                 </View>
                 {isEditing && (
@@ -100,7 +107,7 @@ export default function CommunityList({ communityProgs, isEditing, onAdd, onEdit
                     </TouchableOpacity>
                   </View>
                 )}
-              </View>
+              </TouchableOpacity>
             ))}
           </View>
 
@@ -126,6 +133,28 @@ export default function CommunityList({ communityProgs, isEditing, onAdd, onEdit
         </>
       )}
 
+      <Modal visible={viewVisible} transparent animationType="fade" onRequestClose={() => setViewVisible(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <View style={[commStyles.viewCategoryBadge, { backgroundColor: CATEGORY_COLORS[viewingProg?.category] || PALETTE.orange }]}>
+                  <Text style={commStyles.viewCategoryBadgeText}>{viewingProg?.category}</Text>
+                </View>
+                <Text style={styles.modalTitle}>{viewingProg?.tempat}</Text>
+              </View>
+              <TouchableOpacity onPress={() => setViewVisible(false)}>
+                <X size={22} color={PALETTE.textMutedDark} />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.modalBody}>
+              <Text style={styles.inputLabel}>Keterangan</Text>
+              <Text style={commStyles.viewDetail}>{viewingProg?.detail}</Text>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       <Modal visible={confirmVisible} transparent animationType="fade" onRequestClose={() => !isDeleting && setConfirmVisible(false)}>
         <View style={pentadbiranStyles.confirmOverlay}>
           <View style={pentadbiranStyles.confirmBox}>
@@ -135,7 +164,7 @@ export default function CommunityList({ communityProgs, isEditing, onAdd, onEdit
               </View>
               <Text style={pentadbiranStyles.confirmTitle}>Padam Program</Text>
               <Text style={pentadbiranStyles.confirmSubtitle}>
-                Padam program "{confirmDelete?.label}" ini? Tindakan ini tidak boleh dibatalkan.
+                Padam program "{confirmDelete?.tempat}" ini? Tindakan ini tidak boleh dibatalkan.
               </Text>
             </View>
 
@@ -148,9 +177,11 @@ export default function CommunityList({ communityProgs, isEditing, onAdd, onEdit
                 disabled={isDeleting}
                 onPress={async () => {
                   setIsDeleting(true);
-                  await onDelete(confirmDelete.id);
+                  const tempat = confirmDelete.tempat;
+                  const ok = await onDelete(confirmDelete.id);
                   setIsDeleting(false);
                   setConfirmVisible(false);
+                  onNotify?.(ok ? 'success' : 'error', ok ? `"${tempat}" berjaya dipadam.` : `Gagal memadam "${tempat}".`);
                 }}
               >
                 {isDeleting ? <ActivityIndicator size="small" color="#fff" /> : <Trash2 size={16} color="#fff" />}
@@ -207,4 +238,8 @@ const commStyles = {
   pageBtn: { padding: 8, backgroundColor: PALETTE.surface, borderRadius: 8 },
   pageBtnDisabled: { opacity: 0.5 },
   pageIndicator: { fontSize: 12, fontWeight: '700', color: PALETTE.textMutedDark },
+
+  viewCategoryBadge: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 999 },
+  viewCategoryBadgeText: { fontSize: 11, fontWeight: '800', color: '#fff', letterSpacing: 0.5 },
+  viewDetail: { fontSize: 13, color: PALETTE.textDark, lineHeight: 20, fontWeight: '600', opacity: 0.85 },
 };

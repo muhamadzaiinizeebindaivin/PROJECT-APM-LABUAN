@@ -17,7 +17,7 @@ export function useAngkatanCommunity() {
   useEffect(() => { fetchCommunity(); }, [fetchCommunity]);
 
   const saveCommunityItem = async (form) => {
-    const payload = { category: form.category, label: form.label, detail: form.detail };
+    const payload = { category: form.category, tempat: form.tempat, detail: form.detail };
     try {
       const { error } = form.id
         ? await supabaseSandbox.from('angkatan_community').update(payload).eq('id', form.id)
