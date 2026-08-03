@@ -93,6 +93,16 @@ export default function AgencyTrackingScreen({ onLogout }) {
     const restore = async () => {
       const saved = loadSession();
       if (saved?.trackerId && saved?.selectedAgency && saved?.memberName) {
+        // Vérifie que la session Supabase Auth anonyme est toujours valide — sans ça, les
+        // update() vers agency_trackers échoueraient silencieusement côté RLS (has_role()),
+        // alors que l'écran affiche à tort un tracker actif.
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          clearSession();
+          setIsRestoring(false);
+          return;
+        }
+
         // Vérifie que le tracker existe toujours en base
         const { data } = await supabase
           .from('agency_trackers')
@@ -291,7 +301,11 @@ export default function AgencyTrackingScreen({ onLogout }) {
 
     return () => {
       isMounted = false;
-      if (subscriptionPromise) subscriptionPromise.then(sub => { if (sub) sub.remove(); });
+      if (subscriptionPromise) {
+        subscriptionPromise.then(sub => {
+          try { sub?.remove(); } catch (e) { /* expo-location web : removeSubscription non implémenté, sans impact */ }
+        });
+      }
     };
   }, [isTracking, trackerId]);
 
