@@ -4,9 +4,10 @@ import { ListFilter, Plus, Pencil, Trash2 } from 'lucide-react-native';
 import { PALETTE } from '../../constants/palette';
 import { angkatanStyles as styles } from './angkatanStyles';
 
-const HEADERS = ['PERINGKAT', 'LAYAK UBKP', 'KBP', 'PTB', 'AKTIF', 'SIMPANAN', 'JUMLAH'];
+const HEADERS = ['PERINGKAT', 'LAYAK UBKP', 'KBP', 'KBP WARAN', 'PTB', 'AKTIF', 'SIMPANAN', 'JUMLAH'];
+const NON_PROMOTABLE_RANKS = ['Mejar', 'Pegawai Waran II'];
 
-export default function RanksTable({ ranks, isEditing, onAdd, onEdit, onDelete, onOpenRank }) {
+export default function RanksTable({ ranks, isEditing, onAdd, onEdit, onDelete, onOpenRank, onOpenPromotion }) {
   return (
     <View style={styles.card}>
       <View style={styles.sectionHeaderRowSpaced}>
@@ -51,8 +52,15 @@ export default function RanksTable({ ranks, isEditing, onAdd, onEdit, onDelete, 
               style={[styles.tableRow, i % 2 === 1 && styles.tableRowAlt]}
             >
               <Text style={[styles.tableCell, styles.tableCellRank]}>{item.rank}</Text>
-              <Text style={styles.tableCell}>{item.kenaikan}</Text>
+              {NON_PROMOTABLE_RANKS.includes(item.rank) ? (
+                <Text style={styles.tableCell}>-</Text>
+              ) : (
+                <TouchableOpacity style={styles.tableCell} onPress={() => onOpenPromotion(item.rank)}>
+                  <Text style={{ color: PALETTE.orange, fontWeight: '800', textDecorationLine: 'underline', textAlign: 'center' }}>{item.kenaikan}</Text>
+                </TouchableOpacity>
+              )}
               <Text style={styles.tableCell}>{item.kbp}</Text>
+              <Text style={styles.tableCell}>{item.kbp_waran}</Text>
               <Text style={styles.tableCell}>{item.ptb}</Text>
               <Text style={[styles.tableCell, { color: PALETTE.blue, fontWeight: '800' }]}>{item.aktif}</Text>
               <Text style={[styles.tableCell, { color: PALETTE.orange, fontWeight: '800' }]}>{item.simpanan}</Text>

@@ -167,14 +167,18 @@ export const angkatanStyles = StyleSheet.create({
   seeMoreBtnText: { color: PALETTE.orange, fontWeight: '700' },
 
   tabBarScroll: { marginBottom: 20 },
-  tabBar: { flexDirection: 'row', backgroundColor: PALETTE.surface, borderRadius: 12, padding: 4, gap: 4 },
-  tabBtn: { paddingVertical: 9, paddingHorizontal: 16, borderRadius: 9 },
-  tabBtnActive: { backgroundColor: PALETTE.cardLight, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 4, elevation: 2 },
-  tabBtnText: { fontSize: 12, fontWeight: '600', color: PALETTE.textMutedDark },
-  tabBtnTextActive: { color: PALETTE.orange, fontWeight: '800' },
+  tabBar: { flexDirection: 'row', backgroundColor: PALETTE.surface, borderRadius: 14, padding: 5, gap: 5 },
+  tabBtn: { paddingVertical: 11, paddingHorizontal: 16, borderRadius: 10 },
+  tabBtnActive: { backgroundColor: PALETTE.orange, shadowColor: PALETTE.orange, shadowOpacity: 0.25, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 3 },
+  tabBtnText: { fontSize: 12, fontWeight: '700', color: PALETTE.textMutedDark, textAlign: 'center' },
+  tabBtnTextActive: { color: '#fff', fontWeight: '800' },
 
   fieldLabel: { color: PALETTE.textMutedDark, marginBottom: 6, fontSize: 12, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.3 },
   fieldValue: { color: PALETTE.textDark, fontSize: 15, fontWeight: '600' },
+  fieldReadOnlyBox: {
+    borderWidth: 1, borderColor: PALETTE.cardLightBorder, borderRadius: 10, padding: 12,
+    backgroundColor: '#f8fafc',
+  },
   fieldListItem: { color: PALETTE.textDark, fontSize: 14, fontWeight: '600', marginBottom: 4 },
   pickerRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   pickerChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: PALETTE.cardLightBorder, backgroundColor: '#fafafa' },
@@ -186,4 +190,29 @@ export const angkatanStyles = StyleSheet.create({
   certName: { color: PALETTE.textDark, fontWeight: '700', fontSize: 14 },
   certLinkBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
   certLinkText: { color: PALETTE.blue, fontSize: 12, fontWeight: '600' },
+
+  // Confirmation suppression (même pattern que pentadbiranStyles/KpiSection)
+  confirmOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 24 },
+  confirmBox: {
+    width: '100%', maxWidth: 400, borderRadius: 24, overflow: 'hidden',
+    shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 20, elevation: 20,
+  },
+  confirmBanner: { backgroundColor: '#0c0c0e', padding: 24, alignItems: 'center' },
+  confirmIconCircle: {
+    width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    alignItems: 'center', justifyContent: 'center', marginBottom: 14,
+  },
+  confirmTitle: { fontSize: 18, fontWeight: '900', color: '#fff' },
+  confirmSubtitle: { fontSize: 13, color: '#94a3b8', marginTop: 6, textAlign: 'center' },
+  confirmActions: { flexDirection: 'row', gap: 10, padding: 20, backgroundColor: '#fff' },
+  confirmCancelBtn: {
+    flex: 1, height: 48, borderRadius: 12, borderWidth: 1.5, borderColor: PALETTE.cardLightBorder,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  confirmCancelText: { color: PALETTE.textMutedDark, fontWeight: '800', fontSize: 14 },
+  confirmConfirmBtn: {
+    flex: 1, height: 48, borderRadius: 12, backgroundColor: '#ef4444',
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+  },
+  confirmConfirmText: { color: '#fff', fontWeight: '800', fontSize: 14 },
 });

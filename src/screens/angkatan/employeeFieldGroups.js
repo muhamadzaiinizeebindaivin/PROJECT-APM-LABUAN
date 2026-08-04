@@ -1,4 +1,4 @@
-export const EMPLOYEE_TABS = ['Identiti', 'Perkhidmatan', 'Kad/Insurans', 'Pangkat', 'Watikah', 'Waris', 'Sijil'];
+export const EMPLOYEE_TABS = ['Identiti', 'Perkhidmatan', 'Insurans', 'Pangkat', 'Waris', 'Sijil'];
 
 export const FIELD_GROUPS = {
   Identiti: [
@@ -29,7 +29,7 @@ export const FIELD_GROUPS = {
     { key: 'status_keaktifan', label: 'Status Keaktifan', type: 'text' },
     { key: 'senarai_hitam', label: 'Senarai Hitam', type: 'boolean' },
   ],
-  'Kad/Insurans': [
+  Insurans: [
     { key: 'tarikh_aktif_kad', label: 'Tarikh Aktif Kad', type: 'date' },
     { key: 'tarikh_tamat_kad', label: 'Tarikh Tamat Kad', type: 'date' },
     { key: 'tempoh_baki_aktif_kad_hari', label: 'Tempoh Baki Aktif Kad (Hari)', type: 'computed_days', fromDateKey: 'tarikh_tamat_kad' },
@@ -53,8 +53,6 @@ export const FIELD_GROUPS = {
     { key: 'tarikh_kenaikan_pangkat_pwi', label: 'Tarikh Kenaikan Pangkat PWI', type: 'date' },
     { key: 'no_siri_watikah_pwii', label: 'No. Siri Watikah PW II', type: 'text' },
     { key: 'tarikh_kenaikan_pangkat_pwii', label: 'Tarikh Kenaikan Pangkat PW II', type: 'date' },
-  ],
-  Watikah: [
     { key: 'no_siri_watikah_pelantikan_pertama', label: 'No. Siri Watikah Pelantikan Pertama', type: 'text' },
     { key: 'tarikh_pelantikan_pasukan_pertama', label: 'Tarikh Pelantikan Pasukan Pertama', type: 'date' },
     { key: 'tarikh_tamat_watikah_4', label: 'Tarikh Tamat Watikah 4', type: 'date' },

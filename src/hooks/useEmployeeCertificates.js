@@ -20,15 +20,35 @@ export function useEmployeeCertificates() {
   }, []);
 
   const saveCertificate = async (employeeId, certForm) => {
-    const payload = { employee_id: employeeId, nom_certificat: certForm.nom_certificat, google_drive_link: certForm.google_drive_link };
-    if (certForm.id) await supabaseSandbox.from('angkatan_certificates').update(payload).eq('id', certForm.id);
-    else await supabaseSandbox.from('angkatan_certificates').insert([payload]);
-    await fetchCertificates(employeeId);
+    try {
+      const payload = {
+        employee_id: employeeId,
+        nom_certificat: certForm.nom_certificat,
+        google_drive_link: certForm.google_drive_link,
+        kategori: certForm.kategori || 'Lain-lain',
+      };
+      const { error } = certForm.id
+        ? await supabaseSandbox.from('angkatan_certificates').update(payload).eq('id', certForm.id)
+        : await supabaseSandbox.from('angkatan_certificates').insert([payload]);
+      if (error) throw error;
+      await fetchCertificates(employeeId);
+      return true;
+    } catch (error) {
+      console.error('Error saving certificate:', error);
+      return false;
+    }
   };
 
   const deleteCertificate = async (id, employeeId) => {
-    await supabaseSandbox.from('angkatan_certificates').delete().eq('id', id);
-    await fetchCertificates(employeeId);
+    try {
+      const { error } = await supabaseSandbox.from('angkatan_certificates').delete().eq('id', id);
+      if (error) throw error;
+      await fetchCertificates(employeeId);
+      return true;
+    } catch (error) {
+      console.error('Error deleting certificate:', error);
+      return false;
+    }
   };
 
   const openCertificateLink = (link) => {

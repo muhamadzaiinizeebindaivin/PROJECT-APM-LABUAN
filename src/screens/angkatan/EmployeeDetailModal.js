@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Modal } from 'react-native';import { X, Trash2, User } from 'lucide-react-native';
+import React, { useState, useRef } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, Modal, ActivityIndicator } from 'react-native';import { X, Trash2, User, AlertTriangle } from 'lucide-react-native';
 import { PALETTE } from '../../constants/palette';
 import { angkatanStyles as styles } from './angkatanStyles';
 import { EMPLOYEE_TABS, FIELD_GROUPS } from './employeeFieldGroups';
@@ -15,17 +15,22 @@ export default function EmployeeDetailModal({
   certificates, promotionHistoryList,
   onSaveCertificate, onDeleteCertificate, onOpenCertLink,
   onSaveEmployee, onDeleteEmployee,
+  onNotify,
 }) {
   const [showFullDetail, setShowFullDetail] = useState(false);
   const [activeTab, setActiveTab] = useState('Identiti');
   const [activeDatePickerField, setActiveDatePickerField] = useState(null);
   const [certModalVisible, setCertModalVisible] = useState(false);
-  const [certForm, setCertForm] = useState({ id: null, nom_certificat: '', google_drive_link: '' });
+  const [certForm, setCertForm] = useState({ id: null, nom_certificat: '', google_drive_link: '', kategori: 'Kursus' });
+  const [confirmDeleteCertId, setConfirmDeleteCertId] = useState(null);
+  const displayDeleteCertRef = useRef(null);
+  if (confirmDeleteCertId !== null) displayDeleteCertRef.current = certificates.find((c) => c.id === confirmDeleteCertId);
+  const [isDeletingCert, setIsDeletingCert] = useState(false);
 
   const isActive = String(employeeForm.status_keaktifan).toUpperCase() === 'AKTIF';
 
   const openAddCert = () => {
-    setCertForm({ id: null, nom_certificat: '', google_drive_link: '' });
+    setCertForm({ id: null, nom_certificat: '', google_drive_link: '', kategori: 'Kursus' });
     setCertModalVisible(true);
   };
   const openEditCert = (cert) => {
@@ -33,8 +38,28 @@ export default function EmployeeDetailModal({
     setCertModalVisible(true);
   };
   const handleSaveCert = async () => {
-    await onSaveCertificate(certForm);
+    const isNew = !certForm.id;
+    const ok = await onSaveCertificate(certForm);
     setCertModalVisible(false);
+    if (ok === false) {
+      onNotify?.('error', 'Gagal menyimpan sijil.');
+    } else {
+      onNotify?.('success', isNew ? 'Sijil berjaya ditambah.' : 'Sijil berjaya dikemaskini.');
+    }
+  };
+
+  const requestDeleteCert = (id) => setConfirmDeleteCertId(id);
+  const confirmDeleteCert = async () => {
+    const cert = displayDeleteCertRef.current;
+    setIsDeletingCert(true);
+    const ok = await onDeleteCertificate(confirmDeleteCertId);
+    setConfirmDeleteCertId(null);
+    setIsDeletingCert(false);
+    if (ok === false) {
+      onNotify?.('error', `Gagal memadam sijil "${cert?.nom_certificat}".`);
+    } else {
+      onNotify?.('success', `Sijil "${cert?.nom_certificat}" berjaya dipadam.`);
+    }
   };
 
   return (
@@ -86,7 +111,7 @@ export default function EmployeeDetailModal({
                   onAdd={openAddCert}
                   onEdit={openEditCert}
                   onOpenLink={onOpenCertLink}
-                  onDelete={(id) => onDeleteCertificate(id, employeeForm.id)}
+                  onDelete={requestDeleteCert}
                 />
               </>
             ) : (
@@ -114,19 +139,17 @@ export default function EmployeeDetailModal({
 
                 {(isEditing || showFullDetail) && (
                   <>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabBarScroll}>
-                      <View style={styles.tabBar}>
-                        {EMPLOYEE_TABS.map((tab) => (
-                          <TouchableOpacity
-                            key={tab}
-                            onPress={() => setActiveTab(tab)}
-                            style={[styles.tabBtn, activeTab === tab && styles.tabBtnActive]}
-                          >
-                            <Text style={[styles.tabBtnText, activeTab === tab && styles.tabBtnTextActive]}>{tab}</Text>
-                          </TouchableOpacity>
-                        ))}
-                      </View>
-                    </ScrollView>
+                    <View style={[styles.tabBar, styles.tabBarScroll]}>
+                      {EMPLOYEE_TABS.map((tab) => (
+                        <TouchableOpacity
+                          key={tab}
+                          onPress={() => setActiveTab(tab)}
+                          style={[styles.tabBtn, { flex: 1, alignItems: 'center' }, activeTab === tab && styles.tabBtnActive]}
+                        >
+                          <Text style={[styles.tabBtnText, activeTab === tab && styles.tabBtnTextActive]}>{tab}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
 
                     {activeTab === 'Sijil' ? (
                       <CertificatesTab
@@ -135,7 +158,7 @@ export default function EmployeeDetailModal({
                         onAdd={openAddCert}
                         onEdit={openEditCert}
                         onOpenLink={onOpenCertLink}
-                        onDelete={(id) => onDeleteCertificate(id, employeeForm.id)}
+                        onDelete={requestDeleteCert}
                       />
                     ) : (
                       <>
@@ -183,6 +206,45 @@ export default function EmployeeDetailModal({
         onSave={handleSaveCert}
         onClose={() => setCertModalVisible(false)}
       />
+
+      <Modal visible={confirmDeleteCertId !== null} transparent animationType="fade" onRequestClose={() => setConfirmDeleteCertId(null)}>
+        <View style={styles.confirmOverlay}>
+          <View style={styles.confirmBox}>
+            <View style={styles.confirmBanner}>
+              <View style={styles.confirmIconCircle}>
+                <AlertTriangle size={26} color="#ef4444" />
+              </View>
+              <Text style={styles.confirmTitle}>Padam Sijil</Text>
+              <Text style={styles.confirmSubtitle}>
+                Adakah anda pasti mahu memadam sijil "{displayDeleteCertRef.current?.nom_certificat}"? Tindakan ini tidak boleh dibatalkan.
+              </Text>
+            </View>
+            <View style={styles.confirmActions}>
+              <TouchableOpacity
+                style={[styles.confirmCancelBtn, isDeletingCert && { opacity: 0.5 }]}
+                onPress={() => setConfirmDeleteCertId(null)}
+                disabled={isDeletingCert}
+              >
+                <Text style={styles.confirmCancelText}>Batal</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.confirmConfirmBtn, isDeletingCert && { opacity: 0.7 }]}
+                onPress={confirmDeleteCert}
+                disabled={isDeletingCert}
+              >
+                {isDeletingCert ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <>
+                    <Trash2 size={16} color="#fff" />
+                    <Text style={styles.confirmConfirmText}>Padam</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </Modal>
   );
 }

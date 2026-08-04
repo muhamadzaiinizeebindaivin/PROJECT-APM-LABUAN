@@ -14,9 +14,11 @@ export default function EmployeeField({ field: f, form, setForm, isEditing, acti
     const displayValue = days === null ? '-' : `${days} hari${days < 0 ? ' (tamat tempoh)' : ''}`;
     return (
       <FieldWrapper label={f.label}>
-        <Text style={[styles.fieldValue, days !== null && days < 0 && { color: '#dc2626', fontWeight: '800' }]}>
-          {displayValue}
-        </Text>
+        <View style={styles.fieldReadOnlyBox}>
+          <Text style={[styles.fieldValue, days !== null && days < 0 && { color: '#dc2626', fontWeight: '800' }]}>
+            {displayValue}
+          </Text>
+        </View>
       </FieldWrapper>
     );
   }
@@ -24,17 +26,21 @@ export default function EmployeeField({ field: f, form, setForm, isEditing, acti
   if (!isEditing) {
     if (f.type === 'multiline_list') {
       const trimmed = String(value || '').trim();
-      if (trimmed === '') return <FieldWrapper label={f.label}><Text style={styles.fieldValue}>-</Text></FieldWrapper>;
+      if (trimmed === '') return <FieldWrapper label={f.label}><View style={styles.fieldReadOnlyBox}><Text style={styles.fieldValue}>-</Text></View></FieldWrapper>;
       const lines = String(value).split(/\r?\n|(?=\d+\))/g).map((l) => l.replace(/^\d+\)\s*/, '').trim()).filter(Boolean);
       return (
         <FieldWrapper label={f.label}>
-          {lines.map((line, i) => <Text key={i} style={styles.fieldListItem}>• {line}</Text>)}
+          <View style={styles.fieldReadOnlyBox}>
+            {lines.map((line, i) => <Text key={i} style={[styles.fieldListItem, i === lines.length - 1 && { marginBottom: 0 }]}>• {line}</Text>)}
+          </View>
         </FieldWrapper>
       );
     }
     return (
       <FieldWrapper label={f.label}>
-        <Text style={styles.fieldValue}>{f.type === 'boolean' ? (value ? 'Ya' : 'Tidak') : (value || '-')}</Text>
+        <View style={styles.fieldReadOnlyBox}>
+          <Text style={styles.fieldValue}>{f.type === 'boolean' ? (value ? 'Ya' : 'Tidak') : (value || '-')}</Text>
+        </View>
       </FieldWrapper>
     );
   }

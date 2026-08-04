@@ -5,7 +5,7 @@ import { PALETTE } from '../constants/palette';
 import AdminEditButton from '../components/AdminEditButton';
 import { useExcelImport } from '../hooks/useExcelImport';
 import ExcelImportModal from '../components/ExcelImportModal';
-import { useAngkatanEmployees, mapMyaspaLabel, normalizePangkat } from '../hooks/useAngkatanEmployees';
+import { useAngkatanEmployees, mapMyaspaLabel, normalizePangkat, isEligibleForPromotion } from '../hooks/useAngkatanEmployees';
 import { useAngkatanCommunity } from '../hooks/useAngkatanCommunity';
 import { useEmployeeCertificates } from '../hooks/useEmployeeCertificates';
 import { useEmployeePromotionHistory } from '../hooks/useEmployeePromotionHistory';
@@ -128,10 +128,10 @@ export default function AngkatanScreen({ userRole }) {
     if (ok) setShowEmployeeDetailModal(false);
   };
   const handleSaveCertificate = async (certForm) => {
-    await saveCertificate(employeeForm.id, certForm);
+    return await saveCertificate(employeeForm.id, certForm);
   };
-  const handleDeleteCertificate = async (id, employeeId) => {
-    await deleteCertificate(id, employeeId);
+  const handleDeleteCertificate = async (id) => {
+    return await deleteCertificate(id, employeeForm.id);
   };
 
   // ── Modal "Résumé" ──
@@ -232,6 +232,10 @@ export default function AngkatanScreen({ userRole }) {
       return st === 'AKTIF' || st === 'SIMPANAN';
     });
     setFilterModal({ visible: true, title: rankLabel, list, page: 1 });
+  };
+  const openPromotionEligibleEmployees = (rankLabel) => {
+    const list = employees.filter((e) => normalizePangkat(e.pangkat) === normalizePangkat(rankLabel) && isEligibleForPromotion(e, rankLabel));
+    setFilterModal({ visible: true, title: `Layak Kenaikan Pangkat — ${rankLabel}`, list, page: 1 });
   };
   const FILTER_PER_PAGE = 10;
   const filterTotalPages = Math.max(1, Math.ceil(filterModal.list.length / FILTER_PER_PAGE));
@@ -344,7 +348,7 @@ export default function AngkatanScreen({ userRole }) {
           onNotify={showNotification}
         />
 
-        <RanksTable ranks={ranks} isEditing={isEditing} onAdd={openAddRank} onEdit={openEditRank} onDelete={handleDeleteRank} onOpenRank={openRankEmployees} />
+        <RanksTable ranks={ranks} isEditing={isEditing} onAdd={openAddRank} onEdit={openEditRank} onDelete={handleDeleteRank} onOpenRank={openRankEmployees} onOpenPromotion={openPromotionEligibleEmployees} />
 
         <PameranTable
           pameranList={angkatanPameran.pameranList}
@@ -402,6 +406,7 @@ export default function AngkatanScreen({ userRole }) {
         onOpenCertLink={openCertificateLink}
         onSaveEmployee={handleSaveEmployee}
         onDeleteEmployee={handleDeleteEmployee}
+        onNotify={showNotification}
       />
 
       <FilteredEmployeeListModal

@@ -19,6 +19,64 @@ export const mapMyaspaLabel = (raw) => {
 export const normalizePangkat = (raw) => String(raw || '').replace(/\(PA\)/i, '').trim().toUpperCase();
 const norm = (v) => String(v || '').trim().toUpperCase();
 
+const hasKbp = (kursus) => {
+  const k = String(kursus || '').toUpperCase();
+  return /(BAKAL PEGAWAI|PAKAL PEGAWAI)/.test(k) && !k.includes('BERTAULIAH') && !k.includes('WARAN');
+};
+const hasPtb = (kursus) => {
+  const k = String(kursus || '').toUpperCase();
+  return k.includes('BERTAULIAH') || /\bPTB\b/.test(k);
+};
+const hasKbpWaran = (kursus) => {
+  const k = String(kursus || '').toUpperCase();
+  return k.includes('PEGAWAI WARAN');
+};
+
+// ── Kenaikan Pangkat (promotion) ──
+const classifyAcademic = (raw) => {
+  const a = String(raw || '').toUpperCase();
+  if (!a || a.includes('TIDAK DIKETAHUI') || a.includes('TIDAK DI KETAHUI')) return null;
+  const highKeywords = ['STPM', 'MATRIKULASI', 'DIPLOMA', 'IJAZAH', 'SARJAN', 'DEGREE', 'BACHELOR', 'MASTER', 'SIJIL PERGURUAN'];
+  if (highKeywords.some((kw) => a.includes(kw))) return 'STPM_ABOVE';
+  const lowKeywords = ['UPSR', 'DARJAH', 'PMR', 'PT3', 'SRP', 'TINGKATAN', 'SPM', 'SVM', 'SKM'];
+  if (lowKeywords.some((kw) => a.includes(kw))) return 'SPM_BELOW';
+  return null;
+};
+
+const yearsSince = (dateStr) => {
+  if (!dateStr) return null;
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return null;
+  return (Date.now() - d.getTime()) / (1000 * 60 * 60 * 24 * 365.25);
+};
+
+export const RANK_PROMOTION_RULES = {
+  'Prebet': { years: 3, academic: 'SPM_BELOW', course: 'PTB' },
+  'Lans Koperal': { years: 3, academic: 'SPM_BELOW', course: 'PTB' },
+  'Koperal': { years: 3, academic: 'SPM_BELOW', course: 'PTB' },
+  'Sarjan': { years: 3, academic: 'STPM_ABOVE', course: 'KBP' },
+  'Staf Muda': { years: 1, academic: 'STPM_ABOVE', course: 'KBP' },
+  'Staf Kanan': { years: 1, academic: 'STPM_ABOVE', course: 'KBP' },
+  'Staf Tinggi': { years: 3, academic: 'STPM_ABOVE', course: 'KBP' },
+  'Leftenan Muda': { years: 3, academic: 'STPM_ABOVE', course: 'KBP' },
+  'Leftenan': { years: 3, academic: 'STPM_ABOVE', course: 'KBP' },
+  'Kapten': { years: 3, academic: 'STPM_ABOVE', course: 'KBP' },
+  // Mejar : rang plafond, pas de promotion
+  // Pegawai Waran II : exclu pour l'instant
+};
+
+export const isEligibleForPromotion = (emp, rankLabel) => {
+  const rule = RANK_PROMOTION_RULES[rankLabel];
+  if (!rule) return false;
+  if (norm(emp.status_keaktifan) !== 'AKTIF') return false;
+  const yrs = yearsSince(emp.tarikh_terima_pangkat_terkini);
+  if (yrs === null || yrs < rule.years) return false;
+  if (classifyAcademic(emp.akademik_tertinggi) !== rule.academic) return false;
+  if (rule.course === 'PTB' && !hasPtb(emp.senarai_kursus)) return false;
+  if (rule.course === 'KBP' && !hasKbp(emp.senarai_kursus)) return false;
+  return true;
+};
+
 export function useAngkatanEmployees() {
   const [employees, setEmployees] = useState([]);
   const [dataUpdatedAt, setDataUpdatedAt] = useState(null);
@@ -81,15 +139,6 @@ export function useAngkatanEmployees() {
     })));
 
     // Rangs
-    const hasKbp = (kursus) => {
-      const k = String(kursus || '').toUpperCase();
-      return /(BAKAL PEGAWAI|PAKAL PEGAWAI)/.test(k) && !k.includes('BERTAULIAH');
-    };
-    const hasPtb = (kursus) => {
-      const k = String(kursus || '').toUpperCase();
-      return k.includes('BERTAULIAH') || /\bPTB\b/.test(k);
-    };
-
     setRanks(rankRows.map((r) => {
       const allInRank = data.filter((e) => normalizePangkat(e.pangkat) === normalizePangkat(r.rank));
       const activeInRank = allInRank.filter((e) => {
@@ -100,9 +149,11 @@ export function useAngkatanEmployees() {
         ...r,
         jumlah: activeInRank.length,
         kbp: activeInRank.filter((e) => hasKbp(e.senarai_kursus)).length,
+        kbp_waran: activeInRank.filter((e) => hasKbpWaran(e.senarai_kursus)).length,
         ptb: activeInRank.filter((e) => hasPtb(e.senarai_kursus)).length,
         aktif: activeInRank.filter((e) => norm(e.status_keaktifan) === 'AKTIF').length,
         simpanan: activeInRank.filter((e) => norm(e.status_keaktifan) === 'SIMPANAN').length,
+        kenaikan: allInRank.filter((e) => isEligibleForPromotion(e, r.rank)).length,
       };
     }));
   }, []);
@@ -236,8 +287,6 @@ export function useAngkatanEmployees() {
     const payload = {
       rank: rankForm.rank,
       lulus: parseInt(rankForm.lulus, 10),
-      kenaikan: parseInt(rankForm.kenaikan, 10),
-      kbp: parseInt(rankForm.kbp, 10),
       ptb: parseInt(rankForm.ptb, 10),
       aktif: parseInt(rankForm.aktif, 10),
       simpanan: parseInt(rankForm.simpanan, 10),
