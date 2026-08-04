@@ -1,6 +1,6 @@
 // src/screens/operasi/LiveMapTab.js
 import React, { useState, useRef, useEffect, createElement } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Platform, ActivityIndicator, Modal, TextInput } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Platform, ActivityIndicator, Modal, TextInput, useWindowDimensions } from 'react-native';
 import { ShieldAlert, MapIcon, History, ClipboardList, Download, Route, X , Trash2, AlertTriangle} from 'lucide-react-native';
 import { getVehicleIcon } from '../../utils/vehicleIcons';
 import { useVehicles } from '../../hooks/useVehicles';
@@ -48,6 +48,8 @@ function formatDuration(seconds) {
 }
 
 export default function LiveMapTab({ theme, userRole, isEditMode, onNotify }) {
+  const { width: screenWidth } = useWindowDimensions();
+  const isMobile = screenWidth < 768;
   const [loading, setLoading] = useState(true);
   const iframeRef = useRef(null);
 
@@ -477,14 +479,18 @@ export default function LiveMapTab({ theme, userRole, isEditMode, onNotify }) {
           })()}
 
           {(userRole === 'admin' || userRole === 'operasi') && (
-            <View style={styles.calamityPalette}>
-              <ScrollView style={{ maxHeight: 280 }} showsVerticalScrollIndicator={false}>
+            <View style={[styles.calamityPalette, isMobile && styles.calamityPaletteMobile]}>
+              <ScrollView style={{ maxHeight: isMobile ? 200 : 280 }} showsVerticalScrollIndicator={false}>
                 {CALAMITY_CATEGORIES.map(cat => {
                   const isActive = activeCalamityTool === cat.key;
                   return (
                     <TouchableOpacity
                       key={cat.key}
-                      style={[styles.calamityToolBtn, { backgroundColor: isActive ? cat.color : '#fff', borderColor: cat.color }]}
+                      style={[
+                        styles.calamityToolBtn,
+                        isMobile && styles.calamityToolBtnMobile,
+                        { backgroundColor: isActive ? cat.color : '#fff', borderColor: cat.color },
+                      ]}
                       onPress={() => setActiveCalamityTool(isActive ? null : cat.key)}
                       {...(Platform.OS === 'web' ? {
                         onMouseEnter: (e) => {
@@ -494,7 +500,7 @@ export default function LiveMapTab({ theme, userRole, isEditMode, onNotify }) {
                         onMouseLeave: () => setCalamityTooltip(null),
                       } : {})}
                     >
-                      <Text style={[styles.calamityToolText, { color: isActive ? '#fff' : cat.color }]}>{cat.key}</Text>
+                      <Text style={[styles.calamityToolText, isMobile && styles.calamityToolTextMobile, { color: isActive ? '#fff' : cat.color }]}>{cat.key}</Text>
                     </TouchableOpacity>
                   );
                 })}

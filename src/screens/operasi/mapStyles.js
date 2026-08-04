@@ -35,8 +35,11 @@ export const mapStyles = StyleSheet.create({
     borderRadius: 16, padding: 10, gap: 6, shadowColor: '#000', shadowOpacity: 0.1,
     shadowRadius: 10, elevation: 4, width: 90,
   },
+  calamityPaletteMobile: { width: 60, padding: 6, gap: 4, borderRadius: 12 },
   calamityToolBtn: { paddingVertical: 8, borderRadius: 8, borderWidth: 2, justifyContent: 'center', alignItems: 'center', marginBottom: 6 },
+  calamityToolBtnMobile: { paddingVertical: 5, borderRadius: 6, borderWidth: 1.5, marginBottom: 4 },
   calamityToolText: { fontSize: 11, fontWeight: '800' },
+  calamityToolTextMobile: { fontSize: 9 },
   calamityHint: { fontSize: 10, color: '#64748b', textAlign: 'center', marginTop: 4 },
 
   historyHalf: { flex: 1, backgroundColor: '#fff', borderLeftWidth: 1, borderLeftColor: '#e2e8f0' },

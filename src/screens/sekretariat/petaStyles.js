@@ -17,7 +17,7 @@ export const petaStyles = StyleSheet.create({
   liveTagContainer: { flexDirection: 'row', alignItems: 'center', marginTop: 4, gap: 6 },
   liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: PALETTE.success },
   liveText: { fontSize: 10, fontWeight: '700' },
-  petaListContainer: { position: 'absolute', bottom: 50, left: 16, maxWidth: '85%', zIndex: 10 },
+  petaListContainer: { position: 'absolute', bottom: 50, left: 16, right: 16, zIndex: 10 },
   petaAgencyCard: { padding: 12, borderRadius: 12, backgroundColor: PALETTE.cardLight, boxShadow: '0px 0px 5px rgba(0, 0, 0, 0.05)', elevation: 3, minWidth: 160 },
   petaAgencyDot: { width: 10, height: 10, borderRadius: 5 },
   petaAgencyName: { fontSize: 12, fontWeight: '700', color: PALETTE.textDark, maxWidth: 120 },
