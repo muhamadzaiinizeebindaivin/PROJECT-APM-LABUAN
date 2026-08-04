@@ -1,6 +1,6 @@
 // src/screens/LatihanScreen.js
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, useWindowDimensions } from 'react-native';
 import { Plus, Edit, Trash2, BarChart3, PieChart, Target, CheckCircle2, XCircle } from 'lucide-react-native';
 import { useLatihanBudget } from '../hooks/useLatihanBudget';
 import BudgetSection from './kewangan/BudgetSection';
@@ -25,6 +25,8 @@ import { canEditSection } from '../permissions';
 
 export default function LatihanScreen({ theme, userRole }) {
   const canEdit = canEditSection(userRole, 'Latihan');
+  const { width: screenWidth } = useWindowDimensions();
+  const isMobile = screenWidth < 768;
   const { latihanList, isLoading, stats, saveLatihan, deleteLatihan, latihanUpdatedAt } = useLatihan();
   const unit = useUnitStaff('latihan');
 
@@ -181,7 +183,6 @@ export default function LatihanScreen({ theme, userRole }) {
           persistKpi={reorderKpi}
           showSubSeksyen={false}
         />
-        <View style={{ height: 16 }} />
 
         {/* ---- Carte statistique statique : Total Peserta (plus un onglet, plus cliquable) ---- */}
         <View style={{
@@ -227,8 +228,8 @@ export default function LatihanScreen({ theme, userRole }) {
         </View>
 
         {/* ---- Status Program + Kumpulan Sasaran ---- */}
-        <View style={styles.splitRow}>
-          <View style={[styles.sectionCard, { flex: 0.45, marginBottom: 0 }]}>
+        <View style={[styles.splitRow, isMobile && { flexDirection: 'column', gap: 16 }]}>
+          <View style={[styles.sectionCard, !isMobile && { flex: 0.45 }, { marginBottom: 0 }]}>
             <View style={shared.sectionHeaderRow}>
               <View style={styles.sectionTitleGroup}>
                 <View style={styles.sectionIconBadge}><PieChart size={16} color={PALETTE.orange} /></View>
@@ -238,7 +239,7 @@ export default function LatihanScreen({ theme, userRole }) {
             <StatusDonut completionRate={stats.completionRate} completed={stats.completed} upcoming={stats.upcoming} failed={stats.failed} />
           </View>
 
-          <View style={[styles.sectionCard, { flex: 1, marginBottom: 0 }]}>
+          <View style={[styles.sectionCard, !isMobile && { flex: 1 }, { marginBottom: 0 }]}>
             <View style={shared.sectionHeaderRow}>
               <View style={styles.sectionTitleGroup}>
                 <View style={styles.sectionIconBadge}><Target size={16} color={PALETTE.orange} /></View>
