@@ -99,6 +99,8 @@ export default function AdminUserManagementScreen() {
 
   const [currentUserId, setCurrentUserId] = useState(null);
   const [confirmModal, setConfirmModal] = useState(null); // { type: 'role'|'delete', targetId, username, newRole? }
+  const displayConfirmModalRef = useRef(null);
+  if (confirmModal) displayConfirmModalRef.current = confirmModal;
 
   const totalPages = Math.max(1, Math.ceil(totalUsers / PAGE_SIZE));
 
@@ -574,25 +576,25 @@ export default function AdminUserManagementScreen() {
 
             <View style={[
               styles.confirmBanner,
-              { backgroundColor: confirmModal?.type === 'delete' ? '#2a0f0f' : '#0c0c0e' },
+              { backgroundColor: displayConfirmModalRef.current?.type === 'delete' ? '#2a0f0f' : '#0c0c0e' },
             ]}>
               <View style={[
                 styles.confirmIconCircle,
-                { backgroundColor: confirmModal?.type === 'delete' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(249, 115, 22, 0.15)' },
+                { backgroundColor: displayConfirmModalRef.current?.type === 'delete' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(249, 115, 22, 0.15)' },
               ]}>
-                {confirmModal?.type === 'delete' ? (
+                {displayConfirmModalRef.current?.type === 'delete' ? (
                   <Trash2 size={26} color={PALETTE.danger} />
                 ) : (
                   <RefreshCw size={26} color={PALETTE.orange} />
                 )}
               </View>
               <Text style={styles.confirmTitle}>
-                {confirmModal?.type === 'delete' ? 'Padam Akaun' : 'Tukar Peranan'}
+                {displayConfirmModalRef.current?.type === 'delete' ? 'Padam Akaun' : 'Tukar Peranan'}
               </Text>
               <Text style={styles.confirmSubtitle}>
-                {confirmModal?.type === 'delete'
-                  ? `Padam akaun "${confirmModal?.username}"? Tindakan ini tidak boleh dibatalkan.`
-                  : `Tukar peranan "${confirmModal?.username}" kepada "${confirmModal?.newRole}"?`}
+                {displayConfirmModalRef.current?.type === 'delete'
+                  ? `Padam akaun "${displayConfirmModalRef.current?.username}"? Tindakan ini tidak boleh dibatalkan.`
+                  : `Tukar peranan "${displayConfirmModalRef.current?.username}" kepada "${displayConfirmModalRef.current?.newRole}"?`}
               </Text>
             </View>
 
@@ -603,17 +605,17 @@ export default function AdminUserManagementScreen() {
               <TouchableOpacity
                 style={[
                   styles.confirmConfirmBtn,
-                  { backgroundColor: confirmModal?.type === 'delete' ? PALETTE.danger : PALETTE.orange },
+                  { backgroundColor: displayConfirmModalRef.current?.type === 'delete' ? PALETTE.danger : PALETTE.orange },
                 ]}
                 onPress={executeConfirm}
               >
-                {confirmModal?.type === 'delete' ? (
+                {displayConfirmModalRef.current?.type === 'delete' ? (
                   <Trash2 size={16} color="#fff" />
                 ) : (
                   <RefreshCw size={16} color="#fff" />
                 )}
                 <Text style={styles.confirmConfirmText}>
-                  {confirmModal?.type === 'delete' ? 'Padam' : 'Tukar'}
+                  {displayConfirmModalRef.current?.type === 'delete' ? 'Padam' : 'Tukar'}
                 </Text>
               </TouchableOpacity>
             </View>
