@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, Animated, PanResponder, ScrollView, Modal } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, Animated, PanResponder, ScrollView, Modal, useWindowDimensions } from 'react-native';
 import { TrendingUp, Pencil, Trash2, AlertTriangle } from 'lucide-react-native';
 import { PALETTE } from '../../constants/palette';
 import { formatCurrency, parseCurrency } from '../../utils/currency';
@@ -47,9 +47,11 @@ export default function QuarterlySection({ processedData, loading, isEditMode, s
   const scrollX = useRef(new Animated.Value(0)).current;
   const directionRef = useRef(1);
   const [hovered, setHovered] = useState(false);
+  const { width: screenWidth } = useWindowDimensions();
+  const isMobile = screenWidth < 768;
 
   const contentWidth = Math.max(1, processedData.length * (CARD_WIDTH + CARD_GAP) - CARD_GAP);
-  const active = processedData.length > 1 && !modalVisible && !hovered;
+  const active = processedData.length > 1 && !modalVisible && !hovered && !isMobile;
 
   const stopAutoScroll = useCallback(() => {
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
@@ -134,8 +136,8 @@ export default function QuarterlySection({ processedData, loading, isEditMode, s
   const dragStartScrollXContentRef = useRef(0);
   const contentPanResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: (evt, gestureState) => Math.abs(gestureState.dx) > 3,
+      onStartShouldSetPanResponder: () => !isMobile,
+      onMoveShouldSetPanResponder: (evt, gestureState) => !isMobile && Math.abs(gestureState.dx) > 3,
       onPanResponderGrant: () => { pauseForInteraction(); dragStartScrollXContentRef.current = scrollXRef.current; },
       onPanResponderMove: (evt, gestureState) => {
         const x = Math.max(0, Math.min(maxScroll, dragStartScrollXContentRef.current - gestureState.dx));
@@ -257,7 +259,7 @@ export default function QuarterlySection({ processedData, loading, isEditMode, s
                 horizontal
                 showsHorizontalScrollIndicator={false}
                 scrollEventThrottle={16}
-                scrollEnabled={false}
+                scrollEnabled={isMobile}
                 onScroll={handleNativeScroll}
                 contentContainerStyle={styles.categoryCarouselTrack}
               >
