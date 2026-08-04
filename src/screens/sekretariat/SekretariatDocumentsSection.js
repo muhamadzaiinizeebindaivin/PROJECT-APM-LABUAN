@@ -59,13 +59,24 @@ function PdfPreview({ fileUrl }) {
 function DocCard({ item, isEditing, onReplace, onDelete, width }) {
   const [fullscreen, setFullscreen] = useState(false);
   const isImage = item.file_type === 'image';
+  // Hauteur calculée depuis le ratio réel de l'image (fallback 1197/673 tant que non chargée)
+  const [imgAspect, setImgAspect] = useState(1197 / 673);
+  const imgHeight = width / imgAspect;
 
   return (
     <View style={{ width }}>
       <View style={pentadbiranStyles.orgChartWrap}>
         {isImage ? (
           <TouchableOpacity activeOpacity={0.9} onPress={() => setFullscreen(true)}>
-            <Image source={{ uri: item.file_url }} style={pentadbiranStyles.orgChartImage} resizeMode="contain" />
+            <Image
+              source={{ uri: item.file_url }}
+              style={[pentadbiranStyles.orgChartImage, { height: imgHeight }]}
+              resizeMode="contain"
+              onLoad={(e) => {
+                const { width: w, height: h } = e.nativeEvent.source || {};
+                if (w && h) setImgAspect(w / h);
+              }}
+            />
             <View style={pentadbiranStyles.orgChartZoomHint}>
               <Maximize2 size={12} color="#fff" />
               <Text style={pentadbiranStyles.orgChartZoomHintText}>Klik untuk besarkan</Text>

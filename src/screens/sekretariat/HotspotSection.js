@@ -1,13 +1,13 @@
 // src/screens/sekretariat/HotspotSection.js
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, TextInput, Modal, ActivityIndicator, Image, StyleSheet, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, TextInput, Modal, ActivityIndicator, Image, StyleSheet, Platform, useWindowDimensions } from 'react-native';
 import {
   Droplets, Waves, Mountain, MapPin, Plus, Edit, Trash2, X,
   Flame, Wind, Tornado, CloudRain, CloudLightning, CloudFog, Zap,
   Sun, Snowflake, Umbrella, TreePine, Trees, Globe, Bug,
   AlertTriangle, Biohazard, Radiation, Siren, ShieldAlert, LifeBuoy,
   Factory, Building2, Home, Tent, Warehouse, Landmark,
-  Ship, Anchor, Truck, Car, Plane, Fuel,
+  Ship, Anchor, Truck, Car, Plane, Fuel, Maximize2,
 } from 'lucide-react-native';
 import { useHotspots } from '../../hooks/useHotspots';
 import { useHotspotCategories } from '../../hooks/useHotspotCategories';
@@ -45,6 +45,51 @@ const CATEGORY_MAPS = {
 const COLOR_CHOICES = ['#3B82F6', '#d97706', '#EA580C', '#16A34A', '#9333EA', '#DC2626', '#0891B2'];
 
 import HoverTip from '../../components/HoverTip';
+
+function MapImage({ source, caption }) {
+  const [containerWidth, setContainerWidth] = useState(1);
+  const [aspect, setAspect] = useState(1197 / 673); // fallback raisonnable tant que non chargée
+  const [fullscreen, setFullscreen] = useState(false);
+  const { width: screenWidth } = useWindowDimensions();
+  const isMobile = screenWidth < 768;
+
+  return (
+    <View
+      style={hotspotStyles.mapCard}
+      onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width - 20)} // moins le padding horizontal (10+10)
+    >
+      <TouchableOpacity activeOpacity={0.9} onPress={() => setFullscreen(true)} style={{ width: '100%' }}>
+        {isMobile ? (
+          <Image
+            source={source}
+            style={[hotspotStyles.mapImage, { height: containerWidth / aspect }]}
+            resizeMode="contain"
+            onLoad={(e) => {
+              const { width: w, height: h } = e.nativeEvent.source || {};
+              if (w && h) setAspect(w / h);
+            }}
+          />
+        ) : (
+          <Image source={source} style={[hotspotStyles.mapImage, { height: 420 }]} resizeMode="contain" />
+        )}
+        <View style={hotspotStyles.mapZoomHint}>
+          <Maximize2 size={12} color="#fff" />
+          <Text style={hotspotStyles.mapZoomHintText}>Klik untuk besarkan</Text>
+        </View>
+      </TouchableOpacity>
+      <Text style={hotspotStyles.mapCaption}>{caption}</Text>
+
+      <Modal visible={fullscreen} transparent animationType="fade" onRequestClose={() => setFullscreen(false)}>
+        <View style={hotspotStyles.mapFullscreenOverlay}>
+          <TouchableOpacity style={hotspotStyles.mapFullscreenClose} onPress={() => setFullscreen(false)}>
+            <X size={22} color="#fff" />
+          </TouchableOpacity>
+          <Image source={source} style={hotspotStyles.mapFullscreenImage} resizeMode="contain" />
+        </View>
+      </Modal>
+    </View>
+  );
+}
 
 export default function HotspotSection({ userRole, isEditMode }) {
   const [selectedCat, setSelectedCat] = useState(null);
@@ -200,12 +245,7 @@ export default function HotspotSection({ userRole, isEditMode }) {
               </View>
 
               {/* ---- Carte (Rajah) ---- */}
-              {currentMap ? (
-                <View style={hotspotStyles.mapCard}>
-                  <Image source={currentMap.source} style={hotspotStyles.mapImage} resizeMode="contain" />
-                  <Text style={hotspotStyles.mapCaption}>{currentMap.caption}</Text>
-                </View>
-              ) : null}
+              {currentMap ? <MapImage source={currentMap.source} caption={currentMap.caption} /> : null}
 
               {/* ---- Bouton Tambah ---- */}
               {userRole === 'admin' && isEditMode ? (
@@ -358,8 +398,21 @@ const hotspotStyles = StyleSheet.create({
 
   // Carte (Rajah)
   mapCard: { backgroundColor: PALETTE.cardLight, borderRadius: 14, marginBottom: 15, borderWidth: 1, borderColor: PALETTE.cardLightBorder, padding: 10, alignItems: 'center' },
-  mapImage: { width: '100%', height: 420, borderRadius: 8, backgroundColor: PALETTE.surface },
+  mapImage: { width: '100%', borderRadius: 8, backgroundColor: PALETTE.surface },
   mapCaption: { fontSize: 12, color: PALETTE.textMutedDark, marginTop: 8, fontWeight: '600' },
+  mapZoomHint: {
+    position: 'absolute', bottom: 10, right: 10,
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: 'rgba(0,0,0,0.55)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8,
+  },
+  mapZoomHintText: { color: '#fff', fontSize: 12, fontWeight: '600' },
+  mapFullscreenOverlay: { flex: 1, backgroundColor: 'rgba(11, 12, 14, 0.95)', justifyContent: 'center', alignItems: 'center' },
+  mapFullscreenClose: {
+    position: 'absolute', top: 40, right: 20, zIndex: 10,
+    width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center', alignItems: 'center',
+  },
+  mapFullscreenImage: { width: '100%', height: '90%' },
 
   // Modale catégorie
   iconGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 12 },

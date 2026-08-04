@@ -1,6 +1,6 @@
 // src/screens/SekretariatScreen.js
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, useWindowDimensions } from 'react-native';
 import { Users, AlertTriangle, Home, Map, UserCog, Pencil, Trash2, ChevronUp, ChevronDown, Plus, CheckCircle2, XCircle } from 'lucide-react-native';
 
 import AdminEditButton from '../components/AdminEditButton';
@@ -20,6 +20,8 @@ const SekretariatScreen = ({ theme, userRole }) => {
   const canEdit = canEditSection(userRole, 'Sekretariat');
   const [activeTab, setActiveTab] = useState('JPBD');
   const [isEditMode, setIsEditMode] = useState(false);
+  const { width: screenWidth } = useWindowDimensions();
+  const isMobile = screenWidth < 768;
 
   // ---- Unit Bertanggungjawab ----
   const { staffList: unitList, loading: loadingUnit, saveStaffItem: saveUnitItem, deleteStaffItem: deleteUnitItem, reorderStaff: reorderUnit } = useUnitStaff('sekretariat');
@@ -128,20 +130,20 @@ const SekretariatScreen = ({ theme, userRole }) => {
 
       <View style={styles.tabBar}>
           <TouchableOpacity style={[styles.tabItem, activeTab === 'JPBD' && styles.tabItemActive]} onPress={() => setActiveTab('JPBD')} activeOpacity={0.8}>
-            <Users size={16} color={activeTab === 'JPBD' ? PALETTE.white : PALETTE.textMutedDark} />
-            <Text style={[styles.tabText, activeTab === 'JPBD' ? styles.tabTextActive : { color: PALETTE.textMutedDark }]}>Jawatankuasa</Text>
+            {!isMobile && <Users size={16} color={activeTab === 'JPBD' ? PALETTE.white : PALETTE.textMutedDark} />}
+            <Text style={[styles.tabText, isMobile && styles.tabTextMobile, activeTab === 'JPBD' ? styles.tabTextActive : { color: PALETTE.textMutedDark }]}>Jawatankuasa</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.tabItem, activeTab === 'HOTSPOT' && styles.tabItemActive]} onPress={() => setActiveTab('HOTSPOT')} activeOpacity={0.8}>
-            <AlertTriangle size={16} color={activeTab === 'HOTSPOT' ? PALETTE.white : PALETTE.textMutedDark} />
-            <Text style={[styles.tabText, activeTab === 'HOTSPOT' ? styles.tabTextActive : { color: PALETTE.textMutedDark }]}>Hotspot</Text>
+            {!isMobile && <AlertTriangle size={16} color={activeTab === 'HOTSPOT' ? PALETTE.white : PALETTE.textMutedDark} />}
+            <Text style={[styles.tabText, isMobile && styles.tabTextMobile, activeTab === 'HOTSPOT' ? styles.tabTextActive : { color: PALETTE.textMutedDark }]}>Hotspot</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.tabItem, activeTab === 'PPS' && styles.tabItemActive]} onPress={() => setActiveTab('PPS')} activeOpacity={0.8}>
-            <Home size={16} color={activeTab === 'PPS' ? PALETTE.white : PALETTE.textMutedDark} />
-            <Text style={[styles.tabText, activeTab === 'PPS' ? styles.tabTextActive : { color: PALETTE.textMutedDark }]}>Data PPS</Text>
+            {!isMobile && <Home size={16} color={activeTab === 'PPS' ? PALETTE.white : PALETTE.textMutedDark} />}
+            <Text style={[styles.tabText, isMobile && styles.tabTextMobile, activeTab === 'PPS' ? styles.tabTextActive : { color: PALETTE.textMutedDark }]}>Data PPS</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.tabItem, activeTab === 'PETA' && styles.tabItemActive]} onPress={() => setActiveTab('PETA')} activeOpacity={0.8}>
-            <Map size={16} color={activeTab === 'PETA' ? PALETTE.white : PALETTE.textMutedDark} />
-            <Text style={[styles.tabText, activeTab === 'PETA' ? styles.tabTextActive : { color: PALETTE.textMutedDark }]}>Peta Bencana</Text>
+            {!isMobile && <Map size={16} color={activeTab === 'PETA' ? PALETTE.white : PALETTE.textMutedDark} />}
+            <Text style={[styles.tabText, isMobile && styles.tabTextMobile, activeTab === 'PETA' ? styles.tabTextActive : { color: PALETTE.textMutedDark }]}>Peta Bencana</Text>
           </TouchableOpacity>
         </View>
 
@@ -248,10 +250,11 @@ const SekretariatScreen = ({ theme, userRole }) => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: PALETTE.softOrangeBg, paddingBottom: 16 },
-  tabBar: { flexDirection: 'row', margin: 16, padding: 6, borderRadius: 16, backgroundColor: PALETTE.cardLight, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 5, elevation: 3 },
-  tabItem: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 12, borderRadius: 12, gap: 8 },
+  tabBar: { flexDirection: 'row', margin: 16, padding: 6, borderRadius: 16, backgroundColor: PALETTE.cardLight, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 5, elevation: 3, gap: 8 },
+  tabItem: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 12, borderRadius: 12, gap: 8, borderWidth: 1, borderColor: PALETTE.cardLightBorder },
   tabItemActive: { backgroundColor: PALETTE.orange },
   tabText: { fontSize: 13, fontWeight: '700' },
+  tabTextMobile: { fontSize: 10 },
   tabTextActive: { color: PALETTE.white },
   listContent: { padding: 15, paddingBottom: 50 },
 

@@ -1,11 +1,13 @@
 import React, { useRef, useState, createElement } from 'react';
-import { View, Text, TouchableOpacity, Image, Platform, ActivityIndicator, Modal } from 'react-native';
+import { View, Text, TouchableOpacity, Image, Platform, ActivityIndicator, Modal, useWindowDimensions } from 'react-native';
 import { Upload, Trash2, ImageIcon, X, Maximize2, AlertTriangle } from 'lucide-react-native';
 import { supabaseSandbox } from '../../supabaseSandboxClient';
 import { PALETTE } from '../../constants/palette';
 import { pentadbiranStyles as styles } from './pentadbiranStyles';
 
 const STORAGE_BUCKET = 'pentadbiran-assets';
+
+const MAX_ORG_CHART_WIDTH = 1100;
 
 export default function OrgChartPhoto({ isEditing, canEdit, url, onChangeUrl, onSaveUrl }) {
   const fileInputRef = useRef(null);
@@ -15,6 +17,12 @@ export default function OrgChartPhoto({ isEditing, canEdit, url, onChangeUrl, on
   const [confirmDeleteVisible, setConfirmDeleteVisible] = useState(false);
   const [confirmUploadVisible, setConfirmUploadVisible] = useState(false);
   const [pendingFile, setPendingFile] = useState(null);
+  const [containerWidth, setContainerWidth] = useState(1);
+  // Ratio réel de l'image, calculé au chargement (fallback raisonnable en attendant)
+  const [imgAspect, setImgAspect] = useState(1197 / 673);
+  const { width: screenWidth } = useWindowDimensions();
+  const isMobile = screenWidth < 768;
+  const imgWidth = isMobile ? containerWidth : Math.min(MAX_ORG_CHART_WIDTH, containerWidth);
 
   const handlePickFile = () => {
     if (Platform.OS === 'web' && fileInputRef.current) fileInputRef.current.click();
@@ -82,13 +90,27 @@ export default function OrgChartPhoto({ isEditing, canEdit, url, onChangeUrl, on
       {!!error && <Text style={styles.orgChartError}>{error}</Text>}
 
       {url ? (
-        <TouchableOpacity activeOpacity={0.9} onPress={() => setFullscreen(true)}>
-          <Image source={{ uri: url }} style={styles.orgChartImage} resizeMode="contain" />
-          <View style={styles.orgChartZoomHint}>
-            <Maximize2 size={12} color="#fff" />
-            <Text style={styles.orgChartZoomHintText}>Klik untuk besarkan</Text>
-          </View>
-        </TouchableOpacity>
+        <View style={{ width: '100%' }} onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}>
+          <TouchableOpacity
+            activeOpacity={0.9}
+            onPress={() => setFullscreen(true)}
+            style={{ alignSelf: isMobile ? 'stretch' : 'center' }}
+          >
+            <Image
+              source={{ uri: url }}
+              style={[styles.orgChartImage, { width: imgWidth, height: imgWidth / imgAspect }]}
+              resizeMode="contain"
+              onLoad={(e) => {
+                const { width: w, height: h } = e.nativeEvent.source || {};
+                if (w && h) setImgAspect(w / h);
+              }}
+            />
+            <View style={styles.orgChartZoomHint}>
+              <Maximize2 size={12} color="#fff" />
+              <Text style={styles.orgChartZoomHintText}>Klik untuk besarkan</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
       ) : (
         <View style={styles.orgChartEmpty}>
           <ImageIcon size={28} color={PALETTE.textMutedDark} />

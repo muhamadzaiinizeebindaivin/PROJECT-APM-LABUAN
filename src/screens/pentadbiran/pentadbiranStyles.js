@@ -291,7 +291,7 @@ export const pentadbiranStyles = StyleSheet.create({
     borderRadius: 14, overflow: 'hidden', backgroundColor: PALETTE.surface,
     borderWidth: 1, borderColor: PALETTE.cardLightBorder, position: 'relative',
   },
-  orgChartImage: { width: '100%', height: 520 },
+  orgChartImage: { width: '100%' },
   orgChartEmpty: {
     height: 520, justifyContent: 'center', alignItems: 'center', gap: 8,
   },
