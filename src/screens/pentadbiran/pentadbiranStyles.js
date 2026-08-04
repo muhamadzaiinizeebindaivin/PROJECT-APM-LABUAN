@@ -36,7 +36,7 @@ export const pentadbiranStyles = StyleSheet.create({
 
   unitContainer: { flexDirection: 'row', gap: 12 },
   unitBox: {
-    flex: 1, backgroundColor: PALETTE.surface, padding: 16, borderRadius: 14,
+    backgroundColor: PALETTE.surface, padding: 16, borderRadius: 14,
     borderWidth: 1, borderColor: PALETTE.cardLightBorder,
   },
   unitBoxHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
