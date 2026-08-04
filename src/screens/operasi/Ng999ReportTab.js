@@ -185,7 +185,7 @@ export default function Ng999ReportTab({ theme, isEditMode, onNotify }) {
           <View style={{ flexDirection: 'row', gap: 10, flexWrap: 'wrap' }}>
             {[
               { key: 'ringkasan', label: 'Ringkasan Kecemasan', Icon: LayoutGrid },
-              { key: 'senarai', label: 'Senarai Penuh Kecemasan', Icon: ListChecks },
+              { key: 'senarai', label: 'Data Harian', Icon: ListChecks },
               { key: 'trend', label: 'Analisis & Statistik', Icon: BarChart2 },
             ].map(({ key, label, Icon }) => {
               const isActive = viewMode === key;

@@ -385,7 +385,7 @@ export default function CalamitySummaryContent({ theme, large = false, mode = 't
         <View style={[styles.calamityTableWrapper, { minHeight: 0, flexDirection: 'row', gap: 10, backgroundColor: '#fef2f2', borderWidth: 1.5, borderColor: '#fecaca', borderRadius: 12, padding: 16, marginBottom: 10 }]}>
           <Info size={20} color="#dc2626" style={{ marginTop: 1 }} />
           <Text style={{ flex: 1, fontSize: 14, fontWeight: '700', color: '#991b1b', lineHeight: 20 }}>
-            PERINGATAN : Jadual ini sudah mengira secara automatik semua rekod bertarikh yang dimasukkan di Senarai Penuh Kecemasan. Jangan masukkan semula data yang sama di jadual ini — jadual ini hanya untuk data tidak berdata harian.
+            PERINGATAN : Jadual ini sudah mengira secara automatik semua rekod bertarikh yang dimasukkan di Data Harian. Jangan masukkan semula data yang sama di jadual ini — jadual ini hanya untuk data tidak berdata harian.
           </Text>
         </View>
 
