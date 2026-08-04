@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, createElement } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Platform, Modal } from 'react-native';
 import { PALETTE } from '../../constants/palette';
-import { FileText, Upload, X, Check } from 'lucide-react-native';
+import { FileText, Upload, X, Check, Maximize2 } from 'lucide-react-native';
 import { supabaseSandbox as supabase } from '../../supabaseSandboxClient';
 const PDFJS_VERSION = '3.11.174';
 const MAX_RECOMMENDED_SIZE_MB = 3;
@@ -326,6 +326,17 @@ export default function HomepagePdfCard({ theme, userRole, isEditing, onHeightCh
   const [previewHeight, setPreviewHeight] = useState(400);
   const [previewRenderingPages, setPreviewRenderingPages] = useState(false);
 
+  // ── État du visualiseur plein écran ──
+  const [fullscreen, setFullscreen] = useState(false);
+  const [fullscreenReady, setFullscreenReady] = useState(false);
+  const [fullscreenRenderingPages, setFullscreenRenderingPages] = useState(false);
+  const [fullscreenWidth, setFullscreenWidth] = useState(null);
+  const [fullscreenHeight, setFullscreenHeight] = useState(null);
+  const fullscreenIframeRef = useRef(null);
+
+  const estimatedFullscreenHeight = fullscreenWidth ? fullscreenWidth / PDF_ASPECT_RATIO : null;
+  const displayFullscreenHeight = fullscreenHeight || estimatedFullscreenHeight;
+
   const fileInputRef = useRef(null);
   const iframeRef = useRef(null);
   const previewIframeRef = useRef(null);
@@ -349,6 +360,7 @@ export default function HomepagePdfCard({ theme, userRole, isEditing, onHeightCh
       try { data = JSON.parse(event.data); } catch (e) { return; }
 
       const fromPreview = event.source === previewIframeRef.current?.contentWindow;
+      const fromFullscreen = event.source === fullscreenIframeRef.current?.contentWindow;
 
       if (fromPreview) {
         if (data.type === 'PDF_LOADED' || data.type === 'RENDER_START') {
@@ -359,6 +371,19 @@ export default function HomepagePdfCard({ theme, userRole, isEditing, onHeightCh
           setPreviewRenderingPages(false);
         } else if (data.type === 'PDF_ERROR') {
           setPreviewRenderingPages(false);
+        }
+        return;
+      }
+
+      if (fromFullscreen) {
+        if (data.type === 'PDF_LOADED' || data.type === 'RENDER_START') {
+          setFullscreenRenderingPages(true);
+        } else if (data.type === 'HEIGHT_READY') {
+          if (data.height) setFullscreenHeight(data.height);
+        } else if (data.type === 'ALL_PAGES_RENDERED') {
+          setFullscreenRenderingPages(false);
+        } else if (data.type === 'PDF_ERROR') {
+          setFullscreenRenderingPages(false);
         }
         return;
       }
@@ -395,6 +420,21 @@ export default function HomepagePdfCard({ theme, userRole, isEditing, onHeightCh
       postToIframe(iframeRef, { type: 'LOAD_PDF', url: pdfData.file_url });
     }
   }, [iframeReady, pdfData?.file_url]);
+
+  // ── Charge le PDF dans l'iframe plein écran à l'ouverture de la modale ──
+  useEffect(() => {
+    if (fullscreen && fullscreenReady && pdfData?.file_url) {
+      setFullscreenRenderingPages(true);
+      postToIframe(fullscreenIframeRef, { type: 'LOAD_PDF', url: pdfData.file_url });
+    }
+  }, [fullscreen, fullscreenReady, pdfData?.file_url]);
+
+  useEffect(() => {
+    if (!fullscreen) {
+      setFullscreenReady(false);
+      setFullscreenHeight(null);
+    }
+  }, [fullscreen]);
 
   // ── Demande à l'iframe d'aperçu de charger le fichier local sélectionné ──
   useEffect(() => {
@@ -540,6 +580,16 @@ export default function HomepagePdfCard({ theme, userRole, isEditing, onHeightCh
         </TouchableOpacity>
       )}
 
+      {/* ── Bouton plein écran ── */}
+      {hasDocument && Platform.OS === 'web' && (
+        <TouchableOpacity
+          style={[styles.fullscreenBtn, canEdit && styles.fullscreenBtnShifted]}
+          onPress={() => setFullscreen(true)}
+        >
+          <Maximize2 size={13} color="#fff" />
+        </TouchableOpacity>
+      )}
+
       {error && <Text style={styles.errorText}>{error}</Text>}
 
       {/* Input de fichier caché, uniquement web + admin */}
@@ -629,6 +679,35 @@ export default function HomepagePdfCard({ theme, userRole, isEditing, onHeightCh
         </View>
       </Modal>
 
+      {/* Modal plein écran */}
+      <Modal visible={fullscreen} transparent animationType="fade" onRequestClose={() => setFullscreen(false)}>
+        <View style={styles.fullscreenOverlay}>
+          <TouchableOpacity style={styles.fullscreenClose} onPress={() => setFullscreen(false)}>
+            <X size={22} color="#fff" />
+          </TouchableOpacity>
+          <View
+            style={[styles.fullscreenPageWrap, displayFullscreenHeight ? { height: displayFullscreenHeight, maxHeight: '85vh' } : { maxHeight: '85vh' }]}
+            onLayout={(e) => {
+              if (!fullscreenWidth) setFullscreenWidth(e.nativeEvent.layout.width);
+            }}
+          >
+            {fullscreenRenderingPages && (
+              <View style={styles.pageLoader}>
+                <ActivityIndicator color="#1E3A8A" />
+              </View>
+            )}
+            {fullscreen &&
+              createElement('iframe', {
+                ref: fullscreenIframeRef,
+                src: PDF_VIEWER_SRC,
+                style: { width: '100%', height: '100%', border: 'none', display: 'block' },
+                title: 'Dokumen PDF (Skrin Penuh)',
+                onLoad: () => setFullscreenReady(true),
+              })}
+          </View>
+        </View>
+      </Modal>
+
       {/* Modal confirmation remplacement PDF */}
       <Modal visible={confirmReplaceVisible} transparent animationType="fade" onRequestClose={() => setConfirmReplaceVisible(false)}>
         <View style={styles.confirmOverlay}>
@@ -682,6 +761,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#22c55e',
     paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6,
   },
+  fullscreenBtn: {
+    position: 'absolute', top: 12, right: 12, zIndex: 6,
+    width: 26, height: 26, borderRadius: 6, backgroundColor: 'rgba(0,0,0,0.55)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  fullscreenBtnShifted: { right: 110 },
+  fullscreenOverlay: { flex: 1, backgroundColor: 'rgba(11, 12, 14, 0.95)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+  fullscreenClose: {
+    position: 'absolute', top: 20, right: 20, zIndex: 10,
+    width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center', alignItems: 'center',
+  },
+  fullscreenPageWrap: { width: '100%', maxWidth: 900, position: 'relative', backgroundColor: '#fff', borderRadius: 12, overflow: 'hidden' },
 
   uploadBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#22c55e',
