@@ -12,7 +12,7 @@ export const pentadbiranStyles = StyleSheet.create({
 
   card: {
     backgroundColor: PALETTE.cardLight, borderRadius: 18, padding: 20, marginBottom: 16,
-    borderWidth: 1, borderColor: PALETTE.cardLightBorder, overflow: 'hidden',
+    borderWidth: 1, borderColor: PALETTE.cardLightBorder,
     shadowColor: '#c9825a', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.06, shadowRadius: 14, elevation: 2,
   },
 
@@ -53,7 +53,7 @@ export const pentadbiranStyles = StyleSheet.create({
   staffCard: {
     flexDirection: 'row', alignItems: 'flex-start', gap: 12, width: '100%',
     backgroundColor: PALETTE.cardLight, borderRadius: 12, padding: 12,
-    borderWidth: 1, borderColor: PALETTE.cardLightBorder, marginBottom: 8, overflow: 'hidden',
+    borderWidth: 1, borderColor: PALETTE.cardLightBorder, marginBottom: 8,
   },
   staffAvatar: {
     width: 32, height: 32, borderRadius: 16, flexShrink: 0,
