@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { View, Animated, PanResponder, ScrollView } from 'react-native';
+import { View, Animated, PanResponder, ScrollView, useWindowDimensions } from 'react-native';
 import { logistikStyles as styles } from './logistikStyles';
 
 const PX_PER_SECOND = 20;
@@ -17,9 +17,11 @@ export default function HorizontalCarousel({ items, cardWidth, cardGap = 10, ren
   const directionRef = useRef(1);
   const userInteractingRef = useRef(false);
   const [hovered, setHovered] = useState(false);
+  const { width: screenWidth } = useWindowDimensions();
+  const isMobile = screenWidth < 768;
 
   const contentWidth = Math.max(1, items.length * (cardWidth + cardGap) - cardGap);
-  const active = items.length > 1 && !pauseAutoScroll && !hovered && !interacting;
+  const active = items.length > 1 && !pauseAutoScroll && !hovered && !interacting && !isMobile;
 
   const stopAutoScroll = useCallback(() => {
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
@@ -82,8 +84,8 @@ export default function HorizontalCarousel({ items, cardWidth, cardGap = 10, ren
 
   const contentPanResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: (evt, gestureState) => Math.abs(gestureState.dx) > 3,
+      onStartShouldSetPanResponder: () => !isMobile,
+      onMoveShouldSetPanResponder: (evt, gestureState) => !isMobile && Math.abs(gestureState.dx) > 3,
       onPanResponderGrant: () => {
         pauseForInteraction();
         dragStartScrollXContentRef.current = scrollXRef.current;
@@ -152,7 +154,7 @@ export default function HorizontalCarousel({ items, cardWidth, cardGap = 10, ren
           horizontal
           showsHorizontalScrollIndicator={false}
           scrollEventThrottle={16}
-          scrollEnabled={false}
+          scrollEnabled={isMobile}
           onScroll={handleNativeScroll}
           contentContainerStyle={styles.categoryCarouselTrack}
         >
