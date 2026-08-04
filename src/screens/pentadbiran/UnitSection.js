@@ -228,7 +228,7 @@ export default function UnitSection({ pageData, isEditing, updateField, onSave, 
                 <View style={styles.staffAvatar}>
                   <Text style={styles.staffAvatarText}>{index + 1}</Text>
                 </View>
-                <View style={{ flex: 1, minWidth: 0 }}>
+                <View style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
                   <Text style={styles.staffName}>{item.name}</Text>
                   <Text style={styles.staffRole}>{item.role}</Text>
                 </View>

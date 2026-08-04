@@ -41,28 +41,28 @@ export const pentadbiranStyles = StyleSheet.create({
   },
   unitBoxHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
   boxTitle: { fontWeight: '800', color: PALETTE.textMutedDark, fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.5 },
-  listItem: { fontSize: 14, color: PALETTE.textDark, flex: 1, lineHeight: 20 },
+  listItem: { fontSize: 14, color: PALETTE.textDark, flex: 1, flexShrink: 1, width: '100%', lineHeight: 20 },
   subListItem: { fontSize: 12, color: PALETTE.textMutedDark, marginLeft: 15, marginBottom: 6, fontStyle: 'italic' },
 
-  unitListItem: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 10 },
+  unitListItem: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 10, width: '100%' },
   unitListBullet: {
     width: 6, height: 6, borderRadius: 3, backgroundColor: PALETTE.orange,
     marginTop: 7,
   },
 
   staffCard: {
-    flexDirection: 'row', alignItems: 'flex-start', gap: 12,
+    flexDirection: 'row', alignItems: 'flex-start', gap: 12, width: '100%',
     backgroundColor: PALETTE.cardLight, borderRadius: 12, padding: 12,
-    borderWidth: 1, borderColor: PALETTE.cardLightBorder, marginBottom: 8,
+    borderWidth: 1, borderColor: PALETTE.cardLightBorder, marginBottom: 8, overflow: 'hidden',
   },
   staffAvatar: {
-    width: 32, height: 32, borderRadius: 16,
+    width: 32, height: 32, borderRadius: 16, flexShrink: 0,
     backgroundColor: 'rgba(249, 115, 22, 0.14)',
     justifyContent: 'center', alignItems: 'center',
   },
   staffAvatarText: { fontSize: 12, fontWeight: '800', color: PALETTE.orange },
-  staffName: { fontSize: 14, fontWeight: '700', color: PALETTE.textDark, marginBottom: 2, flexShrink: 1 },  
-  staffRole: { fontSize: 12, color: PALETTE.textMutedDark },
+  staffName: { fontSize: 14, fontWeight: '700', color: PALETTE.textDark, marginBottom: 2, flexShrink: 1, width: '100%' },  
+  staffRole: { fontSize: 12, color: PALETTE.textMutedDark, flexShrink: 1, width: '100%' },
 
   table: { borderWidth: 1, borderColor: PALETTE.cardLightBorder, borderRadius: 14, overflow: 'hidden' },
   tableRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: PALETTE.cardLightBorder },
