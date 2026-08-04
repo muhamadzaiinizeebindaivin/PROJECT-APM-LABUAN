@@ -1,6 +1,6 @@
 // src/screens/sekretariat/PetaTab.js
 import React, { useState, useEffect, useRef, createElement } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Platform, Modal, TextInput, ActivityIndicator, Alert, Image } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Platform, Modal, TextInput, ActivityIndicator, Alert, Image, useWindowDimensions } from 'react-native';
 import { Map, History, ClipboardList, AlertTriangle, X, Plus, Download, Trash2 } from 'lucide-react-native';
 import { supabaseSandbox } from '../../supabaseSandboxClient';
 import { buildSekretariatMapHtml } from './sekretariatMapTemplate';
@@ -44,6 +44,8 @@ const formatDuration = (seconds) => {
 };
 
 export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
+  const { width: screenWidth } = useWindowDimensions();
+  const isMobile = screenWidth < 768;
   const now = new Date();
   const petaIframeRef = useRef(null);
 
@@ -630,12 +632,17 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
         )}
 
         {agencyNames.length > 0 && (
-          <View style={styles.agencyLegendPalette}>
-            <ScrollView style={{ maxHeight: 220 }} showsVerticalScrollIndicator={false}>
-              {agencyNames.map(a => (
-                <View key={a.id} style={styles.agencyLegendRow}>
-                  <AgencyMark logo={getAgencyLogo(a.agency)} color={getAgencyColorFromMap(a.agency)} size={20} />
-                  <Text style={styles.agencyLegendLabel} numberOfLines={1}>{a.agency}</Text>
+          <View style={[styles.agencyLegendPalette, isMobile && styles.agencyLegendPaletteMobile]}>
+            <Text style={[styles.agencyLegendHeader, isMobile && styles.agencyLegendHeaderMobile]}>AGENSI</Text>
+            <ScrollView style={{ maxHeight: isMobile ? 140 : 220 }} showsVerticalScrollIndicator={false}>
+              {agencyNames.map((a, index) => (
+                <View
+                  key={a.id}
+                  style={[styles.agencyLegendRow, isMobile && styles.agencyLegendRowMobile]}
+                >
+                  <View style={[styles.agencyLegendDot, { backgroundColor: getAgencyColorFromMap(a.agency) }, isMobile && styles.agencyLegendDotMobile]} />
+                  <AgencyMark logo={getAgencyLogo(a.agency)} color={getAgencyColorFromMap(a.agency)} size={isMobile ? 14 : 20} />
+                  <Text style={[styles.agencyLegendLabel, isMobile && styles.agencyLegendLabelMobile]} numberOfLines={1}>{a.agency}</Text>
                 </View>
               ))}
             </ScrollView>

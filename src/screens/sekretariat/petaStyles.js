@@ -33,12 +33,23 @@ export const petaStyles = StyleSheet.create({
   onlineLabel: { fontSize: 9, fontWeight: '800', color: PALETTE.success },
   agencyLegendPalette: {
     position: 'absolute', top: 108, left: 16, zIndex: 10, backgroundColor: PALETTE.cardLight,
-    borderRadius: 16, shadowRadius: 10, elevation: 4, width: 140,
-    shadowRadius: 10, elevation: 4, width: 140,
+    borderRadius: 16, width: 150, padding: 10,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 12, elevation: 4,
   },
-  agencyLegendRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 5 },
-  agencyLegendDot: { width: 10, height: 10, borderRadius: 5 },
+  agencyLegendPaletteMobile: { top: 96, left: 10, width: 100, padding: 6, borderRadius: 12 },
+  agencyLegendHeader: {
+    fontSize: 10, fontWeight: '800', color: PALETTE.textMutedDark, letterSpacing: 0.6,
+    textTransform: 'uppercase', marginBottom: 6, paddingHorizontal: 2,
+  },
+  agencyLegendHeaderMobile: { fontSize: 8, marginBottom: 4 },
+  agencyLegendRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 7, paddingHorizontal: 2,
+  },
+  agencyLegendRowMobile: { gap: 5, paddingVertical: 4 },
+  agencyLegendDot: { width: 8, height: 8, borderRadius: 4 },
+  agencyLegendDotMobile: { width: 6, height: 6, borderRadius: 3 },
   agencyLegendLabel: { fontSize: 11, fontWeight: '700', color: PALETTE.textDark, flex: 1 },
+  agencyLegendLabelMobile: { fontSize: 9 },
 
   mapToolbar: {
     position: 'absolute', top: 16, right: 16, zIndex: 10,
