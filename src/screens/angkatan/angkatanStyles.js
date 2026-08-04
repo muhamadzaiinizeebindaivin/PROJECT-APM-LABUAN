@@ -120,7 +120,7 @@ export const angkatanStyles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, borderRadius: 12,
     width: 220, height: 40, backgroundColor: PALETTE.surface, borderWidth: 1, borderColor: PALETTE.cardLightBorder,
   },
-  searchInput: { marginLeft: 10, fontSize: 13, fontWeight: '600', flex: 1, color: PALETTE.textDark },
+  searchInput: { marginLeft: 10, fontSize: 13, fontWeight: '600', flex: 1, color: PALETTE.textDark, outlineStyle: 'none', outlineWidth: 0 },
 
   employeeRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: PALETTE.cardLightBorder },
   employeeAvatar: { width: 44, height: 44, borderRadius: 22 },

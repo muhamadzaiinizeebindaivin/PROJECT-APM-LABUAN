@@ -4,9 +4,9 @@ import { Plus, Pencil, Trash2, Layers } from 'lucide-react-native';
 import { PALETTE } from '../../constants/palette';
 import { angkatanStyles as styles } from './angkatanStyles';
 
-export default function CategoriesCard({ categories, isEditing, onAdd, onEdit, onDelete, onOpenCategory }) {
+export default function CategoriesCard({ categories, isEditing, onAdd, onEdit, onDelete, onOpenCategory, fill = true }) {
   return (
-    <View style={[styles.card, { flex: 1 }]}>
+    <View style={[styles.card, fill && { flex: 1 }]}>
       <View style={styles.sectionHeaderRowSpaced}>
         <View style={styles.sectionHeaderRow}>
           <View style={styles.sectionIconBadge}>

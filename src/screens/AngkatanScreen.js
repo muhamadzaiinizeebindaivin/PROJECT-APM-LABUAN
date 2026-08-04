@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, ScrollView, ActivityIndicator, Text } from 'react-native';
+import { View, ScrollView, ActivityIndicator, Text, useWindowDimensions } from 'react-native';
 import { CheckCircle2, XCircle } from 'lucide-react-native';
 import { PALETTE } from '../constants/palette';
 import AdminEditButton from '../components/AdminEditButton';
@@ -44,6 +44,8 @@ const EMPLOYEES_PER_PAGE = 10;
 export default function AngkatanScreen({ userRole }) {
   const [isEditing, setIsEditing] = useState(false);
   const canEdit = canEditSection(userRole, 'Angkatan');
+  const { width: screenWidth } = useWindowDimensions();
+  const isMobile = screenWidth < 768;
 
   const {
     loading, employees, summary, categories, pyramidStats, ranks, dataUpdatedAt,
@@ -307,22 +309,40 @@ export default function AngkatanScreen({ userRole }) {
       )}
 
       <ScrollView contentContainerStyle={styles.contentGrid} showsVerticalScrollIndicator={false}>
-        <View style={styles.row}>
-          <SummaryHeroCard total={summary.total_anggota} isEditing={isEditing} onEdit={openSummaryModal} />
-          <StatusCard summary={summary} isEditing={isEditing} onEdit={openSummaryModal} onOpenStatus={openStatusEmployees} />
-        </View>
-
-        <View style={styles.row}>
-          <CategoriesCard
-            categories={categories}
-            isEditing={isEditing}
-            onAdd={openAddCategory}
-            onEdit={openEditCategory}
-            onDelete={handleDeleteCategory}
-            onOpenCategory={openCategoryEmployees}
-          />
-          <GenderCard summary={summary} isEditing={isEditing} onEdit={openSummaryModal} />
-        </View>
+        {isMobile ? (
+          <View style={{ gap: 16 }}>
+            <SummaryHeroCard total={summary.total_anggota} isEditing={isEditing} onEdit={openSummaryModal} />
+            <StatusCard summary={summary} isEditing={isEditing} onEdit={openSummaryModal} onOpenStatus={openStatusEmployees} fill={false} />
+            <CategoriesCard
+              categories={categories}
+              isEditing={isEditing}
+              onAdd={openAddCategory}
+              onEdit={openEditCategory}
+              onDelete={handleDeleteCategory}
+              onOpenCategory={openCategoryEmployees}
+              fill={false}
+            />
+            <GenderCard summary={summary} isEditing={isEditing} onEdit={openSummaryModal} fill={false} />
+          </View>
+        ) : (
+          <>
+            <View style={styles.row}>
+              <SummaryHeroCard total={summary.total_anggota} isEditing={isEditing} onEdit={openSummaryModal} />
+              <StatusCard summary={summary} isEditing={isEditing} onEdit={openSummaryModal} onOpenStatus={openStatusEmployees} />
+            </View>
+            <View style={styles.row}>
+              <CategoriesCard
+                categories={categories}
+                isEditing={isEditing}
+                onAdd={openAddCategory}
+                onEdit={openEditCategory}
+                onDelete={handleDeleteCategory}
+                onOpenCategory={openCategoryEmployees}
+              />
+              <GenderCard summary={summary} isEditing={isEditing} onEdit={openSummaryModal} />
+            </View>
+          </>
+        )}
 
         {/* ---- KPI ---- */}
         <View style={{ marginBottom: -16 }}>

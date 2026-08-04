@@ -11,9 +11,9 @@ const STATUS_ITEMS = [
   { key: 'status_aktif', label: 'Senarai Hitam', color: '#dc2626', filter: 'SENARAI HITAM' },
 ];
 
-export default function StatusCard({ summary, isEditing, onEdit, onOpenStatus }) {
+export default function StatusCard({ summary, isEditing, onEdit, onOpenStatus, fill = true }) {
   return (
-    <View style={[styles.card, { flex: 1 }]}>
+    <View style={[styles.card, fill && { flex: 1 }]}>
       {isEditing && (
         <TouchableOpacity style={styles.editBadge} onPress={onEdit}>
           <ShieldCheck size={14} color="#fff" />
