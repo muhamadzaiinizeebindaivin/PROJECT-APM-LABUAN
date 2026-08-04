@@ -1,6 +1,6 @@
 // src/screens/OperasiScreen.js
 import React, { useState, useRef, useEffect } from 'react';
-import { View, TouchableOpacity, Text, StyleSheet, ScrollView } from 'react-native';
+import { View, TouchableOpacity, Text, StyleSheet, ScrollView, useWindowDimensions } from 'react-native';
 import { MapIcon, BarChart2, HeartPulse, CheckCircle2, XCircle } from 'lucide-react-native';
 import { useOperasiBudget } from '../hooks/useOperasiBudget';
 import BudgetSection from './kewangan/BudgetSection';
@@ -21,6 +21,8 @@ export default function OperasiScreen({ theme, userRole }) {
   const canEdit = canEditSection(userRole, 'Operasi');
   const [activeTab, setActiveTab] = useState('map');
   const [isEditMode, setIsEditMode] = useState(false);
+  const { width: screenWidth } = useWindowDimensions();
+  const isMobile = screenWidth < 768;
   const { kpiList, saveKpiItem, deleteKpiItem, reorderKpi } = useKpi('operasi');
   const unit = useUnitStaff('operasi');
   const { dikemaskiniRaw } = useOperasiMeta();
@@ -112,8 +114,8 @@ export default function OperasiScreen({ theme, userRole }) {
             onPress={() => setActiveTab('map')}
             activeOpacity={0.8}
           >
-            <MapIcon size={16} color={activeTab === 'map' ? PALETTE.white : PALETTE.textMutedDark} />
-            <Text style={[styles.toggleText, activeTab === 'map' ? styles.toggleTextActive : { color: PALETTE.textMutedDark }]}>Peta Kecemasan</Text>
+            {!isMobile && <MapIcon size={16} color={activeTab === 'map' ? PALETTE.white : PALETTE.textMutedDark} />}
+            <Text style={[styles.toggleText, isMobile && styles.toggleTextMobile, activeTab === 'map' ? styles.toggleTextActive : { color: PALETTE.textMutedDark }]}>Peta Kecemasan</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -121,8 +123,8 @@ export default function OperasiScreen({ theme, userRole }) {
             onPress={() => setActiveTab('report')}
             activeOpacity={0.8}
           >
-            <BarChart2 size={16} color={activeTab === 'report' ? PALETTE.white : PALETTE.textMutedDark} />
-            <Text style={[styles.toggleText, activeTab === 'report' ? styles.toggleTextActive : { color: PALETTE.textMutedDark }]}>NG999 Report</Text>
+            {!isMobile && <BarChart2 size={16} color={activeTab === 'report' ? PALETTE.white : PALETTE.textMutedDark} />}
+            <Text style={[styles.toggleText, isMobile && styles.toggleTextMobile, activeTab === 'report' ? styles.toggleTextActive : { color: PALETTE.textMutedDark }]}>NG999 Report</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -130,8 +132,8 @@ export default function OperasiScreen({ theme, userRole }) {
             onPress={() => setActiveTab('cemas')}
             activeOpacity={0.8}
           >
-            <HeartPulse size={16} color={activeTab === 'cemas' ? PALETTE.white : PALETTE.textMutedDark} />
-            <Text style={[styles.toggleText, activeTab === 'cemas' ? styles.toggleTextActive : { color: PALETTE.textMutedDark }]}>Pertolongan Cemas</Text>
+            {!isMobile && <HeartPulse size={16} color={activeTab === 'cemas' ? PALETTE.white : PALETTE.textMutedDark} />}
+            <Text style={[styles.toggleText, isMobile && styles.toggleTextMobile, activeTab === 'cemas' ? styles.toggleTextActive : { color: PALETTE.textMutedDark }]}>Pertolongan Cemas</Text>
           </TouchableOpacity>
         </View>
       
@@ -194,13 +196,17 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
   },
   toggleWrapper: {
-    flexDirection: 'row', margin: 16, padding: 6, borderRadius: 16,
+    flexDirection: 'row', margin: 16, padding: 6, borderRadius: 16, gap: 8,
     backgroundColor: PALETTE.cardLight,
     shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 5, elevation: 3, zIndex: 20,
   },
-  toggleBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 12, borderRadius: 12, gap: 8 },
+  toggleBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 12, borderRadius: 12, gap: 8,
+    borderWidth: 1, borderColor: PALETTE.cardLightBorder,
+  },
   toggleBtnActive: { backgroundColor: PALETTE.orange },
   toggleText: { fontSize: 13, fontWeight: '700' },
+  toggleTextMobile: { fontSize: 10 },
   toggleTextActive: { color: PALETTE.white },
   contentContainer: { paddingBottom: 40 },
   kpiWrapper: { paddingHorizontal: 16 },
