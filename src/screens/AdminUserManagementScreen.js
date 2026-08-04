@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, ScrollView, Modal } from 'react-native';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, ScrollView, Modal, useWindowDimensions } from 'react-native';
 import {
   UserPlus, CheckCircle, AlertCircle, User, Mail, ShieldCheck, Briefcase,
   Trash2, Users, Search, ChevronLeft, ChevronRight, ArrowUpDown,
@@ -23,6 +23,8 @@ const ROLES = [
 const PAGE_SIZE = 20;
 
 export default function AdminUserManagementScreen() {
+  const { width: screenWidth } = useWindowDimensions();
+  const isMobile = screenWidth < 768;
 
   // ---- Kod akses (agensi & pemandu) ----
   const [accessCodes, setAccessCodes] = useState({ agency_code: '', driver_code: '', operasi_code: '' });
@@ -142,6 +144,15 @@ export default function AdminUserManagementScreen() {
     }
   };
 
+  // Remonte le compte de l'utilisateur courant en tête de la page affichée (sans changer le tri/pagination côté serveur)
+  const displayUserList = useMemo(() => {
+    const idx = userList.findIndex((u) => u.id === currentUserId);
+    if (idx <= 0) return userList;
+    const copy = [...userList];
+    const [self] = copy.splice(idx, 1);
+    return [self, ...copy];
+  }, [userList, currentUserId]);
+
   const handleSearchChange = (text) => {
     setSearchQuery(text);
     setPage(1);
@@ -242,13 +253,13 @@ export default function AdminUserManagementScreen() {
       showsVerticalScrollIndicator={false}
     >
       {/* ============ KOD AKSES (agensi & pemandu) ============ */}
-      <View style={[styles.card, { flexDirection: 'row', gap: 14, marginBottom: 16 }]}>
+      <View style={[styles.card, { flexDirection: 'row', gap: 14, marginBottom: 16 }, isMobile && { flexDirection: 'column' }]}>
         {[
           { key: 'agency', label: 'Kod Akses Agensi', Icon: Building2, value: accessCodes.agency_code },
           { key: 'driver', label: 'Kod Akses Pemandu', Icon: Truck, value: accessCodes.driver_code },
           { key: 'operasi', label: 'Kod Akses Operasi', Icon: ShieldAlert, value: accessCodes.operasi_code },
         ].map(({ key, label, Icon, value }) => (
-          <View key={key} style={{ flex: 1, backgroundColor: PALETTE.surface, borderRadius: 14, padding: 16, borderWidth: 1, borderColor: PALETTE.cardLightBorder }}>
+          <View key={key} style={{ flex: isMobile ? undefined : 1, backgroundColor: PALETTE.surface, borderRadius: 14, padding: 16, borderWidth: 1, borderColor: PALETTE.cardLightBorder }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
               <Icon size={16} color={PALETTE.orange} />
               <Text style={{ fontSize: 12, fontWeight: '800', color: PALETTE.textMutedDark, textTransform: 'uppercase', letterSpacing: 0.4 }}>{label}</Text>
@@ -385,6 +396,7 @@ export default function AdminUserManagementScreen() {
                 key={r.key}
                 style={[
                   styles.roleCard,
+                  isMobile && styles.roleCardMobile,
                   { borderColor: isActive ? r.color : PALETTE.cardLightBorder },
                   isActive && { backgroundColor: r.color + '0D' }
                 ]}
@@ -459,57 +471,74 @@ export default function AdminUserManagementScreen() {
         ) : userList.length === 0 ? (
           <Text style={styles.emptyListText}>Tiada akaun dijumpai.</Text>
         ) : (
-          userList.map((u) => (
+          displayUserList.map((u) => (
             <View
               key={u.id}
-              style={[styles.userRow, u.id === currentUserId && styles.userRowSelf]}
+              style={[styles.userRow, isMobile && { flexDirection: 'column', alignItems: 'stretch' }, u.id === currentUserId && styles.userRowSelf]}
             >
-              <View style={{ flex: 1 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                  <Text style={styles.userName}>{u.username}</Text>
-                  {u.id === currentUserId && (
-                      <View style={styles.selfBadge}>
-                      <Text style={styles.selfBadgeText}>ANDA</Text>
-                      </View>
-                  )}
-                  {u.pending && (
-                      <View style={styles.pendingBadge}>
-                      <Text style={styles.pendingBadgeText}>MENUNGGU AKTIVASI</Text>
-                      </View>
-                  )}
+              <View style={[{ flex: 1 }, isMobile && { flex: undefined, marginBottom: 10, flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }]}>
+                <View style={{ flex: 1 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                    <Text style={styles.userName}>{u.username}</Text>
+                    {u.id === currentUserId && (
+                        <View style={styles.selfBadge}>
+                        <Text style={styles.selfBadgeText}>ANDA</Text>
+                        </View>
+                    )}
+                    {u.pending && (
+                        <View style={styles.pendingBadge}>
+                        <Text style={styles.pendingBadgeText}>MENUNGGU AKTIVASI</Text>
+                        </View>
+                    )}
+                  </View>
+                  <Text style={styles.userEmail}>{u.email}</Text>
                 </View>
-                <Text style={styles.userEmail}>{u.email}</Text>
-              </View>
-            
-              <View style={styles.userRoleSwitch}>
-                {ROLES.map(r => (
+                {isMobile && (
                   <TouchableOpacity
-                    key={r.key}
-                    style={[
-                      styles.userRoleBtn,
-                      u.role === r.key && { backgroundColor: r.color },
-                      u.id === currentUserId && styles.userRoleBtnDisabled
-                    ]}
-                    onPress={() => handleChangeRole(u.id, r.key, u.username)}
+                    style={[styles.deleteIconBtn, u.id === currentUserId && styles.deleteIconBtnDisabled]}
+                    onPress={() => handleDeleteUser(u.id, u.username)}
                     disabled={u.id === currentUserId}
                   >
-                    <Text style={[
-                      styles.userRoleBtnText,
-                      { color: u.role === r.key ? '#fff' : PALETTE.textMutedDark }
-                    ]}>
-                      {r.label}
-                    </Text>
+                    <Trash2 size={16} color={u.id === currentUserId ? PALETTE.cardLightBorder : PALETTE.danger} />
                   </TouchableOpacity>
-                ))}
+                )}
               </View>
-            
-              <TouchableOpacity
-                style={[styles.deleteIconBtn, u.id === currentUserId && styles.deleteIconBtnDisabled]}
-                onPress={() => handleDeleteUser(u.id, u.username)}
-                disabled={u.id === currentUserId}
-              >
-                <Trash2 size={16} color={u.id === currentUserId ? PALETTE.cardLightBorder : PALETTE.danger} />
-              </TouchableOpacity>
+
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, width: isMobile ? '100%' : undefined }}>
+                <View style={[styles.userRoleSwitch, isMobile && { flexWrap: 'wrap', width: '100%', rowGap: 6 }]}>
+                  {ROLES.map(r => (
+                    <TouchableOpacity
+                      key={r.key}
+                      style={[
+                        styles.userRoleBtn,
+                        isMobile && styles.userRoleBtnMobile,
+                        u.role === r.key && { backgroundColor: r.color },
+                        u.id === currentUserId && styles.userRoleBtnDisabled
+                      ]}
+                      onPress={() => handleChangeRole(u.id, r.key, u.username)}
+                      disabled={u.id === currentUserId}
+                    >
+                      <Text style={[
+                        styles.userRoleBtnText,
+                        isMobile && styles.userRoleBtnTextMobile,
+                        { color: u.role === r.key ? '#fff' : PALETTE.textMutedDark }
+                      ]}>
+                        {r.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                {!isMobile && (
+                  <TouchableOpacity
+                    style={[styles.deleteIconBtn, u.id === currentUserId && styles.deleteIconBtnDisabled]}
+                    onPress={() => handleDeleteUser(u.id, u.username)}
+                    disabled={u.id === currentUserId}
+                  >
+                    <Trash2 size={16} color={u.id === currentUserId ? PALETTE.cardLightBorder : PALETTE.danger} />
+                  </TouchableOpacity>
+                )}
+              </View>
             </View>
           ))
         )}
@@ -635,6 +664,7 @@ const styles = StyleSheet.create({
   roleCard: {
     width: '31%', borderWidth: 1.5, borderRadius: 14, paddingVertical: 16, alignItems: 'center', gap: 8
   },
+  roleCardMobile: { width: '47%' },
   
   roleIconCircle: { width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
   roleCardText: { fontSize: 13 },
@@ -657,14 +687,20 @@ const styles = StyleSheet.create({
   listHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 },
   emptyListText: { color: PALETTE.textMutedDark, fontStyle: 'italic', textAlign: 'center', paddingVertical: 20 },
   userRow: {
-    flexDirection: 'row', alignItems: 'center', paddingVertical: 12,
-    borderBottomWidth: 1, borderBottomColor: PALETTE.cardLightBorder, gap: 10
+    flexDirection: 'row', alignItems: 'center', padding: 12,
+    borderWidth: 1, borderColor: PALETTE.cardLightBorder, borderRadius: 12,
+    marginBottom: 8, gap: 10, position: 'relative'
+  },
+  deleteIconBtnFloating: {
+    position: 'absolute', top: 8, right: 8, zIndex: 5,
   },
   userName: { fontSize: 14, fontWeight: '800', color: PALETTE.textDark },
   userEmail: { fontSize: 12, color: PALETTE.textMutedDark, marginTop: 2 },
   userRoleSwitch: { flexDirection: 'row', gap: 4, backgroundColor: PALETTE.surface, borderRadius: 8, padding: 3 },
   userRoleBtn: { paddingVertical: 5, paddingHorizontal: 10, borderRadius: 6 },
+  userRoleBtnMobile: { paddingVertical: 4, paddingHorizontal: 4, flexBasis: '23%', alignItems: 'center' },
   userRoleBtnText: { fontSize: 11, fontWeight: '700' },
+  userRoleBtnTextMobile: { fontSize: 9 },
   deleteIconBtn: { padding: 8, backgroundColor: PALETTE.dangerSoft, borderRadius: 8 },
 
   searchBar: {
