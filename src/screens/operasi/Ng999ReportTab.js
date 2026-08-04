@@ -1,6 +1,6 @@
 // src/screens/operasi/Ng999ReportTab.js
 import React, { useState, useMemo, useRef, useEffect, createElement } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Modal, TextInput, Alert, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Modal, TextInput, Alert, Platform, useWindowDimensions } from 'react-native';
 import { Plus, Edit2, Trash2, X, Image as ImageIcon, AlertTriangle, ChevronLeft, ChevronRight, LayoutGrid, ListChecks, BarChart2, Info } from 'lucide-react-native';
 import ModalSelectField from '../../components/ModalSelectField';
 import { useNg999Report } from '../../hooks/useNg999Report';
@@ -28,6 +28,8 @@ const statusLabel = (key) => STATUS_LIST.find(s => s.key === key)?.label || 'Akt
 const statusColor = (key) => STATUS_LIST.find(s => s.key === key)?.color || '#3b82f6';
 
 export default function Ng999ReportTab({ theme, isEditMode, onNotify }) {
+  const { width: screenWidth } = useWindowDimensions();
+  const isMobile = screenWidth < 768;
   const now = new Date();
 
   const [filterYear, setFilterYear] = useState(now.getFullYear());
@@ -193,8 +195,8 @@ export default function Ng999ReportTab({ theme, isEditMode, onNotify }) {
                   onPress={() => setViewMode(key)}
                   activeOpacity={0.85}
                   style={{
-                    flexDirection: 'row', alignItems: 'center', gap: 8,
-                    paddingHorizontal: 16, paddingVertical: 11, borderRadius: 999,
+                    flexDirection: 'row', alignItems: 'center', gap: isMobile ? 5 : 8,
+                    paddingHorizontal: isMobile ? 10 : 16, paddingVertical: isMobile ? 8 : 11, borderRadius: 999,
                     backgroundColor: isActive ? PALETTE.orange : '#fff',
                     borderWidth: 1.5, borderColor: isActive ? PALETTE.orange : PALETTE.cardLightBorder,
                     shadowColor: isActive ? PALETTE.orange : '#000',
@@ -204,8 +206,8 @@ export default function Ng999ReportTab({ theme, isEditMode, onNotify }) {
                     elevation: isActive ? 4 : 1,
                   }}
                 >
-                  <Icon size={15} color={isActive ? '#fff' : PALETTE.textMutedDark} />
-                  <Text style={{ fontSize: 13, fontWeight: '700', color: isActive ? '#fff' : PALETTE.textMutedDark }}>{label}</Text>
+                  <Icon size={isMobile ? 12 : 15} color={isActive ? '#fff' : PALETTE.textMutedDark} />
+                  <Text style={{ fontSize: isMobile ? 11 : 13, fontWeight: '700', color: isActive ? '#fff' : PALETTE.textMutedDark }}>{label}</Text>
                 </TouchableOpacity>
               );
             })}
@@ -226,22 +228,22 @@ export default function Ng999ReportTab({ theme, isEditMode, onNotify }) {
                 sama di jadual Ringkasan Kecemasan — jadual itu hanya untuk data tidak berdata harian.
               </Text>
             </View>
-            <View style={[tableStyles.historyFilterRow, { marginBottom: 4 }]}>
-              <View style={{ flex: 1 }}>
+            <View style={[tableStyles.historyFilterRow, { marginBottom: 4 }, isMobile && { flexWrap: 'wrap', rowGap: 10 }]}>
+              <View style={isMobile ? { flexBasis: '48%' } : { flex: 1 }}>
                 <ModalSelectField theme={theme} label="Tahun" value={String(filterYear)} placeholder="Tahun"
                   options={availableYears.map(String)} isOpen={filterYearOpen}
                   onToggle={() => { setFilterYearOpen(!filterYearOpen); setFilterMonthOpen(false); setFilterDayOpen(false); }}
                   onSelect={(opt) => { setFilterYear(Number(opt)); setFilterDay(null); setFilterYearOpen(false); }}
                   stackIndex={3000} />
               </View>
-              <View style={{ flex: 1 }}>
+              <View style={isMobile ? { flexBasis: '48%' } : { flex: 1 }}>
                 <ModalSelectField theme={theme} label="Bulan" value={BULAN_MS[filterMonth]}
                   placeholder="Bulan" options={BULAN_MS} isOpen={filterMonthOpen}
                   onToggle={() => { setFilterMonthOpen(!filterMonthOpen); setFilterYearOpen(false); setFilterDayOpen(false); }}
                   onSelect={(opt) => { setFilterMonth(BULAN_MS.indexOf(opt)); setFilterDay(null); setFilterMonthOpen(false); }}
                   stackIndex={2000} />
               </View>
-              <View style={{ flex: 1 }}>
+              <View style={isMobile ? { flexBasis: '100%' } : { flex: 1 }}>
                 <ModalSelectField theme={theme} label="Hari" value={filterDay === null ? 'Semua Hari' : String(filterDay)}
                   placeholder="Hari" options={dayOptions} isOpen={filterDayOpen}
                   onToggle={() => { setFilterDayOpen(!filterDayOpen); setFilterYearOpen(false); setFilterMonthOpen(false); }}

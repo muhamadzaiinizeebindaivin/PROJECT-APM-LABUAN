@@ -1,6 +1,6 @@
 // src/screens/operasi/CalamitySummaryContent.js
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Platform, ActivityIndicator, TextInput } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Platform, ActivityIndicator, TextInput, useWindowDimensions } from 'react-native';
 import { Download, TrendingUp, TrendingDown, Minus, Award, Calendar, Info, Check, X } from 'lucide-react-native';
 import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid, BarChart, Bar, Cell } from 'recharts';
 import { useCalamityPoints } from '../../hooks/useCalamityPoints';
@@ -111,6 +111,8 @@ function RankRow({ rank, catKey, total, pct, color, maxTotal }) {
 //       'chart' -> statistiques + graphiques
 // statsOnly: true -> affiche seulement les stat cards (sans filtres ni graphiques)
 export default function CalamitySummaryContent({ theme, large = false, mode = 'table', statsOnly = false, isEditMode = false, onNotify }) {
+  const { width: screenWidth } = useWindowDimensions();
+  const isMobile = screenWidth < 768;
   const { calamityPoints } = useCalamityPoints();
   const summary = useCalamitySummaryPanel(calamityPoints);
   const [selectedChartCategories, setSelectedChartCategories] = useState(CALAMITY_CATEGORIES.map(cat => cat.key));
@@ -335,8 +337,8 @@ export default function CalamitySummaryContent({ theme, large = false, mode = 't
     <ScrollView showsVerticalScrollIndicator={false} style={{ marginTop: 8 }} contentContainerStyle={editingGrid ? { paddingBottom: 90 } : undefined}>
 
       {/* Filtres */}
-      <View style={[styles.historyFilterRow, { alignItems: 'flex-end', minHeight: 80, paddingBottom: 16 }]}>
-        <View style={{ flex: 1 }}>
+      <View style={[styles.historyFilterRow, { alignItems: 'flex-end', minHeight: 80, paddingBottom: 16 }, isMobile && { flexWrap: 'wrap', rowGap: 10 }]}>
+        <View style={isMobile ? { flexBasis: '100%' } : { flex: 1 }}>
           <ModalSelectField theme={theme} label="Tahun" value={String(summary.summaryYear)} placeholder="Tahun"
             options={summary.availableSummaryYears} isOpen={summary.summaryYearOpen}
             onToggle={() => { summary.setSummaryYearOpen(!summary.summaryYearOpen); summary.setSummaryMonthOpen(false); summary.setSummaryDayOpen(false); }}
@@ -345,7 +347,7 @@ export default function CalamitySummaryContent({ theme, large = false, mode = 't
         </View>
         {mode === 'table' && (
           <>
-            <View style={{ flex: 1 }}>
+            <View style={isMobile ? { flexBasis: '100%' } : { flex: 1 }}>
               <ModalSelectField theme={theme} label="Bulan"
                 value={summary.summaryMonth === null ? 'Semua Bulan' : BULAN_MS[summary.summaryMonth]}
                 placeholder="Bulan" options={BULAN_OPTIONS} isOpen={summary.summaryMonthOpen}
@@ -353,9 +355,12 @@ export default function CalamitySummaryContent({ theme, large = false, mode = 't
                 onSelect={(opt) => { summary.setSummaryMonth(opt === 'Semua Bulan' ? null : BULAN_MS.indexOf(opt)); summary.setSummaryDay(null); summary.setSummaryMonthOpen(false); }}
                 stackIndex={2000} />
             </View>
-            <View style={{ flexDirection: 'row', gap: 8, alignSelf: 'flex-end', marginBottom: 16 }}>
+            <View style={[
+              { flexDirection: 'row', gap: 8, marginBottom: isMobile ? 0 : 16 },
+              isMobile ? { flexBasis: '100%' } : { alignSelf: 'flex-end' },
+            ]}>
               <TouchableOpacity onPress={summary.handleExportLaporanPdf} disabled={summary.exportingLaporanPdf}
-                style={[styles.pdfExportBtn, summary.exportingLaporanPdf && styles.pdfExportBtnDisabled, { height: 50, opacity: summary.exportingLaporanPdf ? 0.7 : 1 }]}>
+                style={[styles.pdfExportBtn, summary.exportingLaporanPdf && styles.pdfExportBtnDisabled, { height: 50, opacity: summary.exportingLaporanPdf ? 0.7 : 1, flex: isMobile ? 1 : undefined }]}>
                 {summary.exportingLaporanPdf ? (
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                     <ActivityIndicator size="small" color="#fff" />
@@ -365,7 +370,7 @@ export default function CalamitySummaryContent({ theme, large = false, mode = 't
                   <><Download size={14} color="#fff" /><Text style={styles.pdfExportBtnText}>Laporan</Text></>
                 )}
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => setHistModalVisible(true)} style={[styles.pdfExportBtn, { height: 50, backgroundColor: PALETTE.orange }]}>
+              <TouchableOpacity onPress={() => setHistModalVisible(true)} style={[styles.pdfExportBtn, { height: 50, backgroundColor: PALETTE.orange, flex: isMobile ? 1 : undefined }]}>
                 <Download size={14} color="#fff" />
                 <Text style={styles.pdfExportBtnText}>Tambah Rekod</Text>
               </TouchableOpacity>
@@ -396,7 +401,8 @@ export default function CalamitySummaryContent({ theme, large = false, mode = 't
             ⚠️ {gridViolation}
           </Text>
         )}
-        <View style={[styles.calamityTableWrapper, { minHeight: 400 }]}>
+        <ScrollView horizontal={isMobile} showsHorizontalScrollIndicator={isMobile}>
+        <View style={[styles.calamityTableWrapper, { minHeight: 400 }, isMobile && { minWidth: 700, marginRight: 16 }]}>
           <View style={[styles.calamityTableHeaderRow, { flexDirection: 'row', alignItems: 'center' }]}>
             <View style={[styles.calamityMonthColFlex, styles.calamityHeaderCellBox]}>
               <Text style={[styles.calamityTableHeaderCell, large && { fontSize: 16 }]}>Bulan</Text>
@@ -406,7 +412,7 @@ export default function CalamitySummaryContent({ theme, large = false, mode = 't
                 <Text style={[styles.calamityTableHeaderCell, large && { fontSize: 16 }]}>{cat.key}</Text>
               </View>
             ))}
-            <View style={[styles.calamityTotalColFlex, styles.calamityHeaderCellBox]}>
+            <View style={[styles.calamityTotalColFlex, styles.calamityHeaderCellBox, { paddingRight: 14 }]}>
               <Text style={[styles.calamityTableHeaderCell, large && { fontSize: 16 }]}>Jumlah</Text>
             </View>
           </View>
@@ -434,7 +440,7 @@ export default function CalamitySummaryContent({ theme, large = false, mode = 't
                     )}
                   </View>
                 ))}
-                <View style={[styles.calamityTotalColFlex, styles.calamityTotalBadge]}>
+                <View style={[styles.calamityTotalColFlex, styles.calamityTotalBadge, { paddingRight: 14 }]}>
                   <Text style={[styles.calamityTotalBadgeText, large && { fontSize: 18 }]}>
                     {editingGrid
                       ? (row.isCumulative ? (liveTotals?.grand || 0) : (liveTotals?.rowTotals[bulan] || 0))
@@ -445,6 +451,7 @@ export default function CalamitySummaryContent({ theme, large = false, mode = 't
             );
           })}
         </View>
+        </ScrollView>
         </View>
       )}
 
