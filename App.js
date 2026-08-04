@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, StatusBar, TouchableOpacity, Alert, Platform, Text, ActivityIndicator, Modal, TextInput, KeyboardAvoidingView, Image, Animated, useWindowDimensions } from 'react-native';
+import { View, StatusBar, TouchableOpacity, Alert, Platform, Text, ActivityIndicator, Modal, TextInput, KeyboardAvoidingView, Image, Animated, useWindowDimensions, Linking, ScrollView } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { LayoutDashboard, Users, CreditCard, GraduationCap, Truck, ShieldAlert, Briefcase, Info, LogOut, UserCog, ShieldCheck, Building2, Lock, User, ArrowRight, AlertCircle, X, Eye, EyeOff, CheckCircle, Menu } from 'lucide-react-native';
+import { LayoutDashboard, Users, CreditCard, GraduationCap, Truck, ShieldAlert, Briefcase, Info, LogOut, UserCog, ShieldCheck, Building2, Lock, User, ArrowRight, AlertCircle, X, Eye, EyeOff, CheckCircle, Menu, Search, Award, FileText, ExternalLink } from 'lucide-react-native';
 import { PALETTE } from './src/constants/palette';
 import { useFonts, Orbitron_600SemiBold, Orbitron_700Bold } from '@expo-google-fonts/orbitron';
 import { Inter_400Regular, Inter_500Medium } from '@expo-google-fonts/inter';
@@ -285,6 +285,14 @@ export default function App() {
   const [resetLoading, setResetLoading] = useState(false);
   const [forgotPasswordMode, setForgotPasswordMode] = useState(false);
 
+  // --- SEMAK STATUS ---
+  const [statusModalVisible, setStatusModalVisible] = useState(false);
+  const [statusIcInput, setStatusIcInput] = useState('');
+  const [statusLoading, setStatusLoading] = useState(false);
+  const [statusError, setStatusError] = useState('');
+  const [statusResult, setStatusResult] = useState(null);
+  const [statusCooldown, setStatusCooldown] = useState(false);
+
   const handleForgotPassword = async () => {
     if (!loginUsername.trim()) {
       setLoginError('Sila masukkan e-mel anda.');
@@ -339,6 +347,44 @@ export default function App() {
     setLoginPassword('');
     setForgotPasswordMode(false);
     setResetSent(false);
+  };
+
+  const handleCheckStatus = async () => {
+    if (!statusIcInput.trim()) {
+      setStatusError('Sila masukkan nombor kad pengenalan.');
+      return;
+    }
+    setStatusLoading(true);
+    setStatusError('');
+    setStatusResult(null);
+    const { data, error } = await supabaseSandbox.rpc('check_status', { p_ic_no: statusIcInput.trim() });
+    setStatusLoading(false);
+    if (error) {
+      setStatusError('Ralat semasa semakan. Sila cuba lagi.');
+      return;
+    }
+    if (!data) {
+      setStatusError('Tiada rekod dijumpai untuk nombor kad pengenalan ini.');
+      return;
+    }
+    setStatusResult(data);
+    setStatusCooldown(true);
+    setTimeout(() => setStatusCooldown(false), 5000);
+  };
+
+  const closeStatusModal = () => {
+    setStatusModalVisible(false);
+    setStatusIcInput('');
+    setStatusError('');
+    setStatusResult(null);
+  };
+
+  const getStatusBadgeStyle = (value) => {
+    if (!value) return { bg: '#f1f5f9', color: '#64748b' };
+    const v = value.toLowerCase();
+    if (v.includes('tidak')) return { bg: '#fef2f2', color: '#dc2626' };
+    if (v.includes('aktif')) return { bg: '#f0fdf4', color: '#16a34a' };
+    return { bg: '#f1f5f9', color: '#64748b' };
   };
 
   const [fontsLoaded] = useFonts({
@@ -667,28 +713,35 @@ export default function App() {
                 <View style={{ flex: 1, height: 1, backgroundColor: '#e2e8f0' }} />
               </View>
 
-              {/* Pemandu, Agensi & Operasi */}
-              <View style={{ flexDirection: 'row', gap: 10 }}>
+              {/* Pemandu, Agensi, Operasi & Semak Status */}
+              <View style={{ flexDirection: 'row', gap: 8 }}>
                 <TouchableOpacity
                   onPress={() => { handleLogin('driver'); setLoginModalVisible(false); }}
-                  style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#fff7ed', borderWidth: 1.5, borderColor: PALETTE.orange, borderRadius: 12, height: 48 }}
+                  style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#fff7ed', borderWidth: 1.5, borderColor: PALETTE.orange, borderRadius: 12, height: 48 }}
                 >
                   <Truck size={16} color={PALETTE.orange} />
-                  <Text style={{ color: PALETTE.orange, fontWeight: '800', fontSize: 14 }}>Pemandu</Text>
+                  <Text style={{ color: PALETTE.orange, fontWeight: '800', fontSize: 12 }}>Pemandu</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => { handleLogin('agency'); setLoginModalVisible(false); }}
-                  style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#fff7ed', borderWidth: 1.5, borderColor: PALETTE.orange, borderRadius: 12, height: 48 }}
+                  style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#fff7ed', borderWidth: 1.5, borderColor: PALETTE.orange, borderRadius: 12, height: 48 }}
                 >
                   <Building2 size={16} color={PALETTE.orange} />
-                  <Text style={{ color: PALETTE.orange, fontWeight: '800', fontSize: 14 }}>Agensi</Text>
+                  <Text style={{ color: PALETTE.orange, fontWeight: '800', fontSize: 12 }}>Agensi</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => { handleLogin('operasi_lapor'); setLoginModalVisible(false); }}
-                  style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#fff7ed', borderWidth: 1.5, borderColor: PALETTE.orange, borderRadius: 12, height: 48 }}
+                  style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#fff7ed', borderWidth: 1.5, borderColor: PALETTE.orange, borderRadius: 12, height: 48 }}
                 >
                   <ShieldAlert size={16} color={PALETTE.orange} />
-                  <Text style={{ color: PALETTE.orange, fontWeight: '800', fontSize: 14 }}>Operasi</Text>
+                  <Text style={{ color: PALETTE.orange, fontWeight: '800', fontSize: 12 }}>Operasi</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => { setLoginModalVisible(false); setStatusModalVisible(true); }}
+                  style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#fff7ed', borderWidth: 1.5, borderColor: PALETTE.orange, borderRadius: 12, height: 48 }}
+                >
+                  <Search size={16} color={PALETTE.orange} />
+                  <Text style={{ color: PALETTE.orange, fontWeight: '800', fontSize: 12 }}>Semak Status</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -729,6 +782,202 @@ export default function App() {
               </TouchableOpacity>
             </View>
 
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={statusModalVisible} transparent animationType="fade" onRequestClose={closeStatusModal}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+          <View style={{ width: '100%', maxWidth: 640, maxHeight: '85%', borderRadius: 24, overflow: 'hidden', backgroundColor: '#fff' }}>
+            <View style={{ backgroundColor: '#0c0c0e', padding: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Text style={{ fontSize: 17, fontWeight: '900', color: '#fff' }}>Semak Status</Text>
+              <TouchableOpacity onPress={closeStatusModal}>
+                <X size={20} color="#fff" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView contentContainerStyle={{ padding: 20, gap: 12 }}>
+              {!statusResult && (
+                <>
+                  <Text style={{ fontSize: 13, color: '#64748b', fontWeight: '600', marginBottom: 4 }}>
+                    Masukkan nombor kad pengenalan (IC) untuk menyemak status.
+                  </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', borderWidth: 1.5, borderColor: '#e2e8f0', borderRadius: 12, paddingHorizontal: 14, height: 52, backgroundColor: '#f8fafc', marginBottom: 12 }}>
+                    <TextInput
+                      style={{ flex: 1, fontSize: 14, fontWeight: '600', color: '#0f172a', outlineStyle: 'none' }}
+                      placeholder="Nombor Kad Pengenalan"
+                      placeholderTextColor="#94a3b8"
+                      value={statusIcInput}
+                      onChangeText={setStatusIcInput}
+                      autoCapitalize="none"
+                      editable={!statusLoading}
+                      onSubmitEditing={handleCheckStatus}
+                    />
+                  </View>
+
+                  {statusError ? (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#fef2f2', padding: 10, borderRadius: 8, borderWidth: 1, borderColor: '#fecaca', marginBottom: 12 }}>
+                      <AlertCircle size={14} color="#ef4444" />
+                      <Text style={{ color: '#ef4444', fontSize: 12, fontWeight: '700', flex: 1 }}>{statusError}</Text>
+                    </View>
+                  ) : null}
+
+                  <TouchableOpacity
+                    onPress={handleCheckStatus}
+                    disabled={statusLoading || statusCooldown}
+                    style={{ backgroundColor: PALETTE.orange, borderRadius: 12, height: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: (statusLoading || statusCooldown) ? 0.7 : 1 }}
+                  >
+                    {statusLoading ? <ActivityIndicator color="#fff" /> : <Text style={{ color: '#fff', fontSize: 15, fontWeight: '800' }}>Semak</Text>}
+                  </TouchableOpacity>
+                </>
+              )}
+
+              {statusResult && (
+                <View style={{ gap: 16 }}>
+                  <View style={{ backgroundColor: '#fff7ed', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: '#fed7aa' }}>
+                    <Text style={{ fontSize: 11, fontWeight: '800', color: PALETTE.orange, textTransform: 'uppercase', letterSpacing: 0.5 }}>Nama</Text>
+                    <Text style={{ fontSize: 17, fontWeight: '900', color: '#0f172a', marginTop: 2 }}>{statusResult.nama || '-'}</Text>
+                    <View style={{ height: 1, backgroundColor: '#fed7aa', marginVertical: 10 }} />
+                    <Text style={{ fontSize: 11, fontWeight: '800', color: PALETTE.orange, textTransform: 'uppercase', letterSpacing: 0.5 }}>Nombor Badan</Text>
+                    <Text style={{ fontSize: 15, fontWeight: '800', color: '#0f172a', marginTop: 2 }}>{statusResult.no_anggota || '-'}</Text>
+                  </View>
+
+                  <View style={{ backgroundColor: '#f8fafc', borderRadius: 16, padding: 16, gap: 8 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                      <ShieldCheck size={14} color="#64748b" />
+                      <Text style={{ fontSize: 12, fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.5 }}>Insurans</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Text style={{ fontSize: 13, color: '#64748b', fontWeight: '600' }}>Kelompok/Individu</Text>
+                      <Text style={{ fontSize: 13, color: '#0f172a', fontWeight: '700' }}>{statusResult.insurans?.insuran_kelompok_individu || '-'}</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Text style={{ fontSize: 13, color: '#64748b', fontWeight: '600' }}>Status Aktif</Text>
+                      <View style={{ backgroundColor: getStatusBadgeStyle(statusResult.insurans?.insuran_aktif_tidak).bg, paddingHorizontal: 10, paddingVertical: 3, borderRadius: 999 }}>
+                        <Text style={{ fontSize: 12, fontWeight: '800', color: getStatusBadgeStyle(statusResult.insurans?.insuran_aktif_tidak).color }}>{statusResult.insurans?.insuran_aktif_tidak || '-'}</Text>
+                      </View>
+                    </View>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Text style={{ fontSize: 13, color: '#64748b', fontWeight: '600' }}>Tarikh Tamat</Text>
+                      <Text style={{ fontSize: 13, color: '#0f172a', fontWeight: '700' }}>{statusResult.insurans?.tarikh_tamat_insuran || '-'}</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Text style={{ fontSize: 13, color: '#64748b', fontWeight: '600' }}>Baki Hari Aktif</Text>
+                      <Text style={{ fontSize: 13, color: '#0f172a', fontWeight: '700' }}>{statusResult.insurans?.tempoh_baki_aktif_insuran_hari ?? '-'}</Text>
+                    </View>
+                  </View>
+
+                  <View style={{ backgroundColor: '#f8fafc', borderRadius: 16, padding: 16, gap: 8 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                      <CreditCard size={14} color="#64748b" />
+                      <Text style={{ fontSize: 12, fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.5 }}>Kad</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Text style={{ fontSize: 13, color: '#64748b', fontWeight: '600' }}>Tarikh Aktif</Text>
+                      <Text style={{ fontSize: 13, color: '#0f172a', fontWeight: '700' }}>{statusResult.kad?.tarikh_aktif_kad || '-'}</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Text style={{ fontSize: 13, color: '#64748b', fontWeight: '600' }}>Tarikh Tamat</Text>
+                      <Text style={{ fontSize: 13, color: '#0f172a', fontWeight: '700' }}>{statusResult.kad?.tarikh_tamat_kad || '-'}</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Text style={{ fontSize: 13, color: '#64748b', fontWeight: '600' }}>Baki Hari Aktif</Text>
+                      <Text style={{ fontSize: 13, color: '#0f172a', fontWeight: '700' }}>{statusResult.kad?.tempoh_baki_aktif_kad_hari ?? '-'}</Text>
+                    </View>
+                  </View>
+
+                  <View style={{ backgroundColor: '#f8fafc', borderRadius: 16, padding: 16, gap: 8 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                      <ShieldCheck size={14} color="#64748b" />
+                      <Text style={{ fontSize: 12, fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.5 }}>Perkeso</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Text style={{ fontSize: 13, color: '#64748b', fontWeight: '600' }}>Jabatan/Individu</Text>
+                      <Text style={{ fontSize: 13, color: '#0f172a', fontWeight: '700' }}>{statusResult.perkeso?.perkeso_jabatan_individu || '-'}</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Text style={{ fontSize: 13, color: '#64748b', fontWeight: '600' }}>Status Aktif</Text>
+                      <View style={{ backgroundColor: getStatusBadgeStyle(statusResult.perkeso?.perkeso_aktif_tidak).bg, paddingHorizontal: 10, paddingVertical: 3, borderRadius: 999 }}>
+                        <Text style={{ fontSize: 12, fontWeight: '800', color: getStatusBadgeStyle(statusResult.perkeso?.perkeso_aktif_tidak).color }}>{statusResult.perkeso?.perkeso_aktif_tidak || '-'}</Text>
+                      </View>
+                    </View>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Text style={{ fontSize: 13, color: '#64748b', fontWeight: '600' }}>Tarikh Tamat</Text>
+                      <Text style={{ fontSize: 13, color: '#0f172a', fontWeight: '700' }}>{statusResult.perkeso?.tarikh_tamat_perkeso || '-'}</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Text style={{ fontSize: 13, color: '#64748b', fontWeight: '600' }}>Baki Hari Caruman</Text>
+                      <Text style={{ fontSize: 13, color: '#0f172a', fontWeight: '700' }}>{statusResult.perkeso?.tempoh_baki_caruman_perkeso_hari ?? '-'}</Text>
+                    </View>
+                  </View>
+
+                  <View style={{ backgroundColor: '#f8fafc', borderRadius: 16, padding: 16, gap: 8 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                      <Award size={14} color="#64748b" />
+                      <Text style={{ fontSize: 12, fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.5 }}>Pelantikan</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Text style={{ fontSize: 13, color: '#64748b', fontWeight: '600' }}>Tarikh Lantikan</Text>
+                      <Text style={{ fontSize: 13, color: '#0f172a', fontWeight: '700' }}>{statusResult.pelantikan?.tarikh_lantikan || '-'}</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Text style={{ fontSize: 13, color: '#64748b', fontWeight: '600' }}>Tarikh Menyertai APM</Text>
+                      <Text style={{ fontSize: 13, color: '#0f172a', fontWeight: '700' }}>{statusResult.pelantikan?.tarikh_menyertai_apm || '-'}</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Text style={{ fontSize: 13, color: '#64748b', fontWeight: '600' }}>Pelantikan Pasukan Pertama</Text>
+                      <Text style={{ fontSize: 13, color: '#0f172a', fontWeight: '700' }}>{statusResult.pelantikan?.tarikh_pelantikan_pasukan_pertama || '-'}</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Text style={{ fontSize: 13, color: '#64748b', fontWeight: '600' }}>No. Siri Watikah Pelantikan Pertama</Text>
+                      <Text style={{ fontSize: 13, color: '#0f172a', fontWeight: '700' }}>{statusResult.pelantikan?.no_siri_watikah_pelantikan_pertama || '-'}</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Text style={{ fontSize: 13, color: '#64748b', fontWeight: '600' }}>Tarikh Terima Pangkat Terkini</Text>
+                      <Text style={{ fontSize: 13, color: '#0f172a', fontWeight: '700' }}>{statusResult.pelantikan?.tarikh_terima_pangkat_terkini || '-'}</Text>
+                    </View>
+                  </View>
+
+                  <View style={{ backgroundColor: '#f8fafc', borderRadius: 16, padding: 16, gap: 8 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                      <FileText size={14} color="#64748b" />
+                      <Text style={{ fontSize: 12, fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.5 }}>Sijil</Text>
+                    </View>
+                    {(statusResult.sijil || []).length === 0 ? (
+                      <Text style={{ fontSize: 13, color: '#94a3b8' }}>Tiada sijil direkodkan.</Text>
+                    ) : (
+                      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                        {statusResult.sijil.map((s, idx) => (
+                          <TouchableOpacity
+                            key={idx}
+                            onPress={() => s.google_drive_link && Linking.openURL(s.google_drive_link)}
+                            style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#fff7ed', borderWidth: 1, borderColor: '#fed7aa', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 7 }}
+                          >
+                            <Text style={{ fontSize: 12, fontWeight: '700', color: PALETTE.orange }}>{s.nom_certificat || 'Sijil'}</Text>
+                            {s.google_drive_link ? <ExternalLink size={12} color={PALETTE.orange} /> : null}
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    )}
+                  </View>
+
+                  <View style={{ backgroundColor: '#f8fafc', borderRadius: 16, padding: 16, gap: 8 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                      <GraduationCap size={14} color="#64748b" />
+                      <Text style={{ fontSize: 12, fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.5 }}>Kursus</Text>
+                    </View>
+                    <Text style={{ fontSize: 13, color: '#0f172a', lineHeight: 19 }}>{statusResult.kursus || '-'}</Text>
+                  </View>
+
+                  <TouchableOpacity
+                    onPress={() => { setStatusResult(null); setStatusIcInput(''); }}
+                    style={{ borderRadius: 12, height: 46, borderWidth: 1.5, borderColor: '#e2e8f0', alignItems: 'center', justifyContent: 'center' }}
+                  >
+                    <Text style={{ color: '#64748b', fontWeight: '800', fontSize: 13 }}>Semak IC Lain</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </ScrollView>
           </View>
         </View>
       </Modal>
