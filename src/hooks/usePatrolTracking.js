@@ -5,6 +5,40 @@ import * as Location from 'expo-location';
 import { supabaseSandbox } from '../supabaseSandboxClient';
 import { haversineDistanceKm } from '../utils/geo';
 
+// Sur web (notamment Safari iOS), on contourne expo-location et on utilise
+// directement l'API native du navigateur — plus fiable, évite les bugs du
+// shim web d'expo-location qui peut ne jamais déclencher le callback.
+const requestPermissionCompat = async () => {
+  if (Platform.OS === 'web') {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      return { status: 'unavailable' };
+    }
+    // navigator.geolocation n'a pas d'API de permission séparée fiable sur Safari —
+    // on considère "granted" ici ; un refus réel remonte via l'erreur de watchPosition.
+    return { status: 'granted' };
+  }
+  return Location.requestForegroundPermissionsAsync();
+};
+
+const watchPositionCompat = (callback, onError) => {
+  if (Platform.OS === 'web') {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      onError?.(new Error('Geolocation tidak disokong pada pelayar ini.'));
+      return Promise.resolve(null);
+    }
+    const watchId = navigator.geolocation.watchPosition(
+      (pos) => callback({ coords: pos.coords }),
+      (err) => onError?.(err),
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 }
+    );
+    return Promise.resolve({ remove: () => navigator.geolocation.clearWatch(watchId) });
+  }
+  return Location.watchPositionAsync(
+    { accuracy: Location.Accuracy.High, timeInterval: 5000, distanceInterval: 2 },
+    callback
+  );
+};
+
 /**
  * Drives GPS tracking for the currently-selected vehicle: watches
  * position, persists the running job (start time / accumulated
@@ -53,7 +87,7 @@ export function usePatrolTracking(selectedVehicle, isTracking, onPermissionDenie
 
       let permStatus;
       try {
-        const result = await Location.requestForegroundPermissionsAsync();
+        const result = await requestPermissionCompat();
         permStatus = result.status;
       } catch (permErr) {
         console.error('requestForegroundPermissionsAsync error:', permErr);
@@ -157,42 +191,52 @@ export function usePatrolTracking(selectedVehicle, isTracking, onPermissionDenie
         .eq('id', selectedVehicle.id);
 
       try {
-        subscriptionPromise = Location.watchPositionAsync(
-          { accuracy: Location.Accuracy.High, timeInterval: 5000, distanceInterval: 2 },
+        subscriptionPromise = watchPositionCompat(
           async (loc) => {
             if (!isMounted) return;
 
             setLocation(loc.coords);
             setStatus('Mengemaskini Pangkalan Data...');
 
-          if (lastCoordsRef.current) {
-            const delta = haversineDistanceKm(
-              lastCoordsRef.current.latitude, lastCoordsRef.current.longitude,
-              loc.coords.latitude, loc.coords.longitude
-            );
-            distanceAccumRef.current += delta;
-            segmentDistanceRef.current += delta;
-          }
-          lastCoordsRef.current = loc.coords;
+            if (lastCoordsRef.current) {
+              const delta = haversineDistanceKm(
+                lastCoordsRef.current.latitude, lastCoordsRef.current.longitude,
+                loc.coords.latitude, loc.coords.longitude
+              );
+              distanceAccumRef.current += delta;
+              segmentDistanceRef.current += delta;
+            }
+            lastCoordsRef.current = loc.coords;
 
-          const { error } = await supabaseSandbox
-            .from('logistik')
-            .update({
-              latitude: loc.coords.latitude,
-              longitude: loc.coords.longitude,
-              last_updated: new Date().toISOString(),
-              job_distance_km: Number(distanceAccumRef.current.toFixed(3)),
-            })
-            .eq('id', selectedVehicle.id);
+            const { error } = await supabaseSandbox
+              .from('logistik')
+              .update({
+                latitude: loc.coords.latitude,
+                longitude: loc.coords.longitude,
+                last_updated: new Date().toISOString(),
+                job_distance_km: Number(distanceAccumRef.current.toFixed(3)),
+              })
+              .eq('id', selectedVehicle.id);
 
-          if (error) {
-            console.error("Supabase update error:", error);
-            if (isMounted) setStatus(`Ralat: ${error.message || 'Gagal kemaskini DB'}`);
-          } else if (isMounted) {
-            setStatus(`Terakhir dihantar: ${new Date().toLocaleTimeString()}`);
+            if (error) {
+              console.error("Supabase update error:", error);
+              if (isMounted) setStatus(`Ralat: ${error.message || 'Gagal kemaskini DB'}`);
+            } else if (isMounted) {
+              setStatus(`Terakhir dihantar: ${new Date().toLocaleTimeString()}`);
+            }
+          },
+          (geoErr) => {
+            console.error('Geolocation error:', geoErr);
+            if (isMounted) {
+              const code = geoErr?.code;
+              const msg = code === 1 ? 'Akses lokasi ditolak oleh pelayar.'
+                : code === 2 ? 'Lokasi tidak dapat dikesan (isyarat lemah).'
+                : code === 3 ? 'Tamat masa menunggu isyarat GPS.'
+                : (geoErr?.message || 'Ralat lokasi tidak diketahui.');
+              setStatus('Ralat GPS: ' + msg);
+            }
           }
-        }
-      );
+        );
       } catch (watchErr) {
         console.error('watchPositionAsync error:', watchErr);
         if (isMounted) setStatus('Ralat GPS: ' + (watchErr?.message || String(watchErr)));
