@@ -946,4 +946,5 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center', backgroundColor: '#dc2626',
   },
   confirmDeleteText: { fontSize: 14, fontWeight: '700', color: '#fff' },
+  
 });
