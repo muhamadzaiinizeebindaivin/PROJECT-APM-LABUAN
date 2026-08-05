@@ -2,6 +2,38 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, FlatList, TextInput, Platform, Image, Modal } from 'react-native';
 import * as Location from 'expo-location';
+
+// Sur web (notamment Safari iOS), on contourne expo-location et on utilise
+// directement l'API native du navigateur — plus fiable, évite les bugs du
+// shim web d'expo-location qui peut ne jamais déclencher le callback.
+const requestPermissionCompat = async () => {
+  if (Platform.OS === 'web') {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      return { status: 'unavailable' };
+    }
+    return { status: 'granted' };
+  }
+  return Location.requestForegroundPermissionsAsync();
+};
+
+const watchPositionCompat = (callback, onError) => {
+  if (Platform.OS === 'web') {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      onError?.(new Error('Geolocation tidak disokong pada pelayar ini.'));
+      return Promise.resolve(null);
+    }
+    const watchId = navigator.geolocation.watchPosition(
+      (pos) => callback({ coords: pos.coords }),
+      (err) => onError?.(err),
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 }
+    );
+    return Promise.resolve({ remove: () => navigator.geolocation.clearWatch(watchId) });
+  }
+  return Location.watchPositionAsync(
+    { accuracy: Location.Accuracy.High, timeInterval: 5000, distanceInterval: 2 },
+    callback
+  );
+};
 import { Navigation, StopCircle, ArrowLeft, Search, Building2, X } from 'lucide-react-native';
 import { supabaseSandbox as supabase } from '../supabaseSandboxClient';
 import { PALETTE } from '../constants/palette';
@@ -173,7 +205,7 @@ export default function AgencyTrackingScreen({ onLogout }) {
     let isMounted = true;
 
     const startWatching = async () => {
-      let { status: permStatus } = await Location.requestForegroundPermissionsAsync();
+      let { status: permStatus } = await requestPermissionCompat();
       if (permStatus !== 'granted') {
         if (isMounted) {
           Alert.alert('Akses Ditolak', 'Sila benarkan akses lokasi untuk menjejak.');
@@ -215,8 +247,7 @@ export default function AgencyTrackingScreen({ onLogout }) {
 
       await supabase.from('agency_trackers').update({ tracking_status: 'Online' }).eq('id', trackerId);
 
-      subscriptionPromise = Location.watchPositionAsync(
-        { accuracy: Location.Accuracy.High, timeInterval: 5000, distanceInterval: 2 },
+      subscriptionPromise = watchPositionCompat(
         async (loc) => {
           if (!isMounted) return;
           setLocation(loc.coords);
@@ -246,6 +277,16 @@ export default function AgencyTrackingScreen({ onLogout }) {
             if (isMounted) setStatus(`Ralat: ${error.message}`);
           } else if (isMounted) {
             setStatus(`Terakhir dihantar: ${new Date().toLocaleTimeString()}`);
+          }
+        },
+        (geoErr) => {
+          if (isMounted) {
+            const code = geoErr?.code;
+            const msg = code === 1 ? 'Akses lokasi ditolak oleh pelayar.'
+              : code === 2 ? 'Lokasi tidak dapat dikesan (isyarat lemah).'
+              : code === 3 ? 'Tamat masa menunggu isyarat GPS.'
+              : (geoErr?.message || 'Ralat lokasi tidak diketahui.');
+            setStatus('Ralat GPS: ' + msg);
           }
         }
       );
