@@ -290,6 +290,32 @@ export default function App() {
   // --- SEMAK STATUS ---
   const [statusModalVisible, setStatusModalVisible] = useState(false);
   const [statusIcInput, setStatusIcInput] = useState('');
+  const [icDigits, setIcDigits] = useState(Array(12).fill(''));
+  const icBoxRefs = useRef([]);
+
+  const handleIcDigitChange = (index, text) => {
+    const digit = text.replace(/[^0-9]/g, '').slice(-1);
+    setIcDigits((prev) => {
+      const next = [...prev];
+      next[index] = digit;
+      setStatusIcInput(next.join(''));
+      return next;
+    });
+    if (digit && index < 11) {
+      icBoxRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleIcKeyPress = (index, e) => {
+    if (e.nativeEvent.key === 'Backspace' && !icDigits[index] && index > 0) {
+      icBoxRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const resetIcInput = () => {
+    setIcDigits(Array(12).fill(''));
+    setStatusIcInput('');
+  };
   const [statusLoading, setStatusLoading] = useState(false);
   const [statusError, setStatusError] = useState('');
   const [statusResult, setStatusResult] = useState(null);
@@ -376,7 +402,7 @@ export default function App() {
 
   const closeStatusModal = () => {
     setStatusModalVisible(false);
-    setStatusIcInput('');
+    resetIcInput();
     setStatusError('');
     setStatusResult(null);
   };
@@ -807,17 +833,31 @@ export default function App() {
                   <Text style={{ fontSize: 13, color: '#64748b', fontWeight: '600', marginBottom: 4 }}>
                     Masukkan nombor kad pengenalan (IC) untuk menyemak status.
                   </Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', borderWidth: 1.5, borderColor: '#e2e8f0', borderRadius: 12, paddingHorizontal: 14, height: 52, backgroundColor: '#f8fafc', marginBottom: 12 }}>
-                    <TextInput
-                      style={{ flex: 1, fontSize: 14, fontWeight: '600', color: '#0f172a', outlineStyle: 'none' }}
-                      placeholder="Nombor Kad Pengenalan"
-                      placeholderTextColor="#94a3b8"
-                      value={statusIcInput}
-                      onChangeText={setStatusIcInput}
-                      autoCapitalize="none"
-                      editable={!statusLoading}
-                      onSubmitEditing={handleCheckStatus}
-                    />
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: isMobile ? 2 : 4, marginBottom: 12 }}>
+                    {icDigits.map((digit, index) => (
+                      <React.Fragment key={index}>
+                        <TextInput
+                          ref={(el) => { icBoxRefs.current[index] = el; }}
+                          style={{
+                            width: isMobile ? 19 : 26, height: isMobile ? 32 : 40, borderWidth: 1.5,
+                            borderColor: digit ? PALETTE.orange : '#e2e8f0',
+                            borderRadius: isMobile ? 6 : 8, backgroundColor: '#f8fafc',
+                            textAlign: 'center', fontSize: isMobile ? 13 : 16, fontWeight: '800', color: '#0f172a',
+                            outlineStyle: 'none', padding: 0,
+                          }}
+                          value={digit}
+                          onChangeText={(t) => handleIcDigitChange(index, t)}
+                          onKeyPress={(e) => handleIcKeyPress(index, e)}
+                          keyboardType="number-pad"
+                          maxLength={1}
+                          editable={!statusLoading}
+                          onSubmitEditing={index === 11 ? handleCheckStatus : undefined}
+                        />
+                        {(index === 5 || index === 7) && (
+                          <Text style={{ fontSize: isMobile ? 13 : 16, fontWeight: '800', color: '#94a3b8', marginHorizontal: isMobile ? 1 : 2 }}>-</Text>
+                        )}
+                      </React.Fragment>
+                    ))}
                   </View>
 
                   {statusError ? (
@@ -975,7 +1015,7 @@ export default function App() {
                   </View>
 
                   <TouchableOpacity
-                    onPress={() => { setStatusResult(null); setStatusIcInput(''); }}
+                    onPress={() => { setStatusResult(null); resetIcInput(); }}
                     style={{ borderRadius: 12, height: 46, borderWidth: 1.5, borderColor: '#e2e8f0', alignItems: 'center', justifyContent: 'center' }}
                   >
                     <Text style={{ color: '#64748b', fontWeight: '800', fontSize: 13 }}>Semak IC Lain</Text>
