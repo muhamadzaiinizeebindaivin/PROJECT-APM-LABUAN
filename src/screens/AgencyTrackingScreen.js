@@ -34,7 +34,7 @@ const watchPositionCompat = (callback, onError) => {
     callback
   );
 };
-import { Navigation, StopCircle, ArrowLeft, Search, Building2, X } from 'lucide-react-native';
+import { Navigation, StopCircle, ArrowLeft, Search, Building2, X, Lock, User as UserIcon, Eye, EyeOff } from 'lucide-react-native';
 import { supabaseSandbox as supabase } from '../supabaseSandboxClient';
 import { PALETTE } from '../constants/palette';
 
@@ -90,6 +90,10 @@ export default function AgencyTrackingScreen({ onLogout }) {
 
   const [memberName, setMemberName] = useState('');
   const [accessCode, setAccessCode] = useState('');
+  const [showAccessCode, setShowAccessCode] = useState(false);
+  const [nameFocused, setNameFocused] = useState(false);
+  const [codeFocused, setCodeFocused] = useState(false);
+  const accessCodeInputRef = useRef(null);
   const [trackerId, setTrackerId] = useState(null);
   const [joining, setJoining] = useState(false);
   const [joinError, setJoinError] = useState(null);
@@ -435,50 +439,72 @@ export default function AgencyTrackingScreen({ onLogout }) {
         {/* ---- Popup : rejoindre une agence (nom + code d'accès) ---- */}
         <Modal visible={!!selectedAgency && !trackerId} transparent animationType="fade" onRequestClose={closeJoinModal}>
           <View style={joinStyles.overlay}>
-            <View style={joinStyles.card}>
+            <View style={joinStyles.authCard}>
               <TouchableOpacity style={joinStyles.closeBtn} onPress={closeJoinModal}>
-                <X size={20} color={PALETTE.textMutedDark} />
+                <X size={20} color="#fff" />
               </TouchableOpacity>
 
-              <View style={styles.header}>
-                <View style={styles.agencyIconWrapLarge}>
-                  <AgencyLogo url={lastSelectedAgencyRef.current?.logo_url} size={60} fallbackSize={40} />
+              <View style={joinStyles.authBanner}>
+                <View style={{ alignItems: 'center', marginBottom: 10 }}>
+                  <AgencyLogo url={lastSelectedAgencyRef.current?.logo_url} size={56} fallbackSize={36} />
                 </View>
-                <Text style={[styles.title, { marginTop: 12 }]}>{lastSelectedAgencyRef.current?.agency}</Text>
-                <Text style={styles.subtitle}>Masukkan nama anda untuk mula</Text>
+                <Text style={joinStyles.authKicker}>APM W.P LABUAN</Text>
+                <Text style={joinStyles.authBannerTitle}>{lastSelectedAgencyRef.current?.agency}</Text>
+                <Text style={joinStyles.authBannerSubtitle}>Masukkan nama anda untuk mula</Text>
               </View>
 
-              <View style={[styles.searchContainer, { marginBottom: 14 }]}>
-                <TextInput
-                  style={styles.searchInput}
-                  placeholder="Nama anda"
-                  placeholderTextColor={PALETTE.textMutedDark}
-                  value={memberName}
-                  onChangeText={setMemberName}
-                />
+              <View style={joinStyles.authBody}>
+                <View style={[joinStyles.authInputGroup, nameFocused && joinStyles.authInputGroupFocused]}>
+                  <View style={joinStyles.authInputIconWrap}>
+                    <UserIcon size={17} color={nameFocused ? PALETTE.orange : '#94a3b8'} />
+                  </View>
+                  <TextInput
+                    style={joinStyles.authInput}
+                    placeholder="Nama anda"
+                    placeholderTextColor="#94a3b8"
+                    value={memberName}
+                    onChangeText={setMemberName}
+                    returnKeyType="next"
+                    onSubmitEditing={() => accessCodeInputRef.current?.focus()}
+                    blurOnSubmit={false}
+                    onFocus={() => setNameFocused(true)}
+                    onBlur={() => setNameFocused(false)}
+                  />
+                </View>
+
+                <View style={[joinStyles.authInputGroup, codeFocused && joinStyles.authInputGroupFocused]}>
+                  <View style={joinStyles.authInputIconWrap}>
+                    <Lock size={17} color={codeFocused ? PALETTE.orange : '#94a3b8'} />
+                  </View>
+                  <TextInput
+                    ref={accessCodeInputRef}
+                    style={joinStyles.authInput}
+                    placeholder="Kod akses agensi"
+                    placeholderTextColor="#94a3b8"
+                    value={accessCode}
+                    onChangeText={setAccessCode}
+                    secureTextEntry={!showAccessCode}
+                    autoCapitalize="none"
+                    returnKeyType="done"
+                    onSubmitEditing={handleJoin}
+                    onFocus={() => setCodeFocused(true)}
+                    onBlur={() => setCodeFocused(false)}
+                  />
+                  <TouchableOpacity style={joinStyles.authEyeBtn} onPress={() => setShowAccessCode(v => !v)}>
+                    {showAccessCode ? <EyeOff size={17} color="#94a3b8" /> : <Eye size={17} color="#94a3b8" />}
+                  </TouchableOpacity>
+                </View>
+
+                {!!joinError && <Text style={styles.joinErrorText}>{joinError}</Text>}
+
+                <TouchableOpacity
+                  style={[joinStyles.authSaveButton, joining && { opacity: 0.7 }]}
+                  onPress={handleJoin}
+                  disabled={joining}
+                >
+                  {joining ? <ActivityIndicator color="#fff" /> : <Text style={joinStyles.authSaveButtonText}>Sertai</Text>}
+                </TouchableOpacity>
               </View>
-
-              <View style={[styles.searchContainer, { marginBottom: 20 }]}>
-                <TextInput
-                  style={styles.searchInput}
-                  placeholder="Kod akses agensi"
-                  placeholderTextColor={PALETTE.textMutedDark}
-                  value={accessCode}
-                  onChangeText={setAccessCode}
-                  secureTextEntry
-                  autoCapitalize="none"
-                />
-              </View>
-
-              {!!joinError && <Text style={styles.joinErrorText}>{joinError}</Text>}
-
-              <TouchableOpacity
-                style={[styles.joinButton, joining && { opacity: 0.7 }]}
-                onPress={handleJoin}
-                disabled={joining}
-              >
-                {joining ? <ActivityIndicator color="#fff" /> : <Text style={styles.joinButtonText}>Sertai</Text>}
-              </TouchableOpacity>
             </View>
           </View>
         </Modal>
@@ -593,11 +619,27 @@ const styles = StyleSheet.create({
 
 const joinStyles = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 24 },
-  card: {
-    width: '100%', maxWidth: 420, borderRadius: 24, padding: 24,
-    backgroundColor: PALETTE.softOrangeBg,
-    shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 20, elevation: 20,
-    position: 'relative',
-  },
   closeBtn: { position: 'absolute', top: 16, right: 16, zIndex: 2, padding: 4 },
+  authCard: {
+    width: '100%', maxWidth: 480, borderRadius: 24, overflow: 'hidden', position: 'relative',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.15, shadowRadius: 20, elevation: 10,
+  },
+  authBanner: { backgroundColor: '#0c0c0e', padding: 24, paddingBottom: 28 },
+  authKicker: { fontSize: 10, fontWeight: '800', color: PALETTE.orange, letterSpacing: 2, textTransform: 'uppercase' },
+  authBannerTitle: { fontSize: 20, fontWeight: '900', color: '#fff', marginTop: 3 },
+  authBannerSubtitle: { fontSize: 12, color: '#94a3b8', marginTop: 4 },
+  authBody: { padding: 24, gap: 4, backgroundColor: '#fff' },
+  authInputGroup: {
+    flexDirection: 'row', alignItems: 'center', borderWidth: 1.5, borderColor: '#e2e8f0',
+    borderRadius: 12, paddingHorizontal: 14, height: 52, backgroundColor: '#f8fafc', marginBottom: 12,
+  },
+  authInputGroupFocused: { borderColor: PALETTE.orange, backgroundColor: 'rgba(249, 115, 22, 0.04)' },
+  authInputIconWrap: { marginRight: 10 },
+  authEyeBtn: { paddingLeft: 10 },
+  authInput: { flex: 1, fontSize: 14, fontWeight: '600', color: '#0f172a', outlineStyle: 'none' },
+  authSaveButton: {
+    flexDirection: 'row', backgroundColor: PALETTE.orange, height: 52, borderRadius: 12,
+    alignItems: 'center', justifyContent: 'center', gap: 8,
+  },
+  authSaveButtonText: { color: '#fff', fontWeight: '800', fontSize: 15 },
 });
