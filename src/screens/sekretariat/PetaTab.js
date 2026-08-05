@@ -50,6 +50,8 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
   const petaIframeRef = useRef(null);
 
   const { onlineAgencies } = useOnlineAgencies();
+  const onlineAgenciesRef = useRef([]);
+  onlineAgenciesRef.current = onlineAgencies;
   const { bencanaPoints, saveBencana, resolveBencana, deleteBencana } = useBencanaPoints();
   const { trackingHistory, loadingHistory, deleteTrackingHistory } = useAgencyTrackingHistory();
 
@@ -92,7 +94,9 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
   const [bencanaCategory, setBencanaCategory] = useState('');
   const [bencanaDescription, setBencanaDescription] = useState('');
   const [bencanaModalVisible, setBencanaModalVisible] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState(null); // { type: 'bencana' | 'history', id, label }
+  const [deleteTarget, setDeleteTarget] = useState(null); // { type: 'bencana' | 'history' | 'agency', id, label }
+  const displayDeleteTargetRef = useRef(null);
+  if (deleteTarget) displayDeleteTargetRef.current = deleteTarget;
   const [deletingTarget, setDeletingTarget] = useState(false);
 
   // --- Panneau latéral ---
@@ -215,6 +219,10 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
           })();
         } else if (data.type === 'RESOLVE_BENCANA_REQUEST') {
           resolveBencana(data.id);
+        } else if (data.type === 'DELETE_AGENCY_TRACKER_REQUEST') {
+          const agency = onlineAgenciesRef.current.find(a => a.id === data.id);
+          const label = [agency?.jpbd_directory?.agency, agency?.member_name].map(s => s?.trim()).find(s => s) || '-';
+          handleDeleteOnlineAgency(data.id, label);
         }
       } catch (e) {}
     };
@@ -625,7 +633,18 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
           <View style={styles.petaListContainer}>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
               {onlineAgencies.map(a => (
-                <View key={a.id} style={styles.petaAgencyCard}>
+                <TouchableOpacity
+                  key={a.id}
+                  activeOpacity={0.7}
+                  style={styles.petaAgencyCard}
+                  onPress={() => {
+                    if (petaIframeRef?.current?.contentWindow) {
+                      petaIframeRef.current.contentWindow.postMessage(JSON.stringify({
+                        type: 'FOCUS_AGENCY', id: a.id, lat: a.latitude, lng: a.longitude,
+                      }), '*');
+                    }
+                  }}
+                >
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                     <View style={styles.agencyMarkWrap}>
                       <AgencyMark logo={getAgencyLogo(a.jpbd_directory?.agency)} color={getAgencyColorFromMap(a.jpbd_directory?.agency)} size={22} />
@@ -639,13 +658,13 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
                       </View>
                     </View>
                     <TouchableOpacity
-                      onPress={() => handleDeleteOnlineAgency(a.id, `${a.jpbd_directory?.agency || '-'} (${a.member_name})`)}
+                      onPress={(e) => { e.stopPropagation?.(); handleDeleteOnlineAgency(a.id, `${a.jpbd_directory?.agency || '-'} (${a.member_name})`); }}
                       style={{ padding: 6 }}
                     >
                       <Trash2 size={15} color="#dc2626" />
                     </TouchableOpacity>
                   </View>
-                </View>
+                </TouchableOpacity>
               ))}
             </ScrollView>
           </View>
@@ -845,12 +864,12 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
                 <AlertTriangle size={26} color="#ef4444" />
               </View>
               <Text style={{ color: '#fff', fontSize: 17, fontWeight: '800', marginBottom: 8 }}>
-                {deleteTarget?.type === 'bencana' ? 'Padam Rekod Bencana' : deleteTarget?.type === 'agency' ? 'Putuskan Agensi' : 'Padam Rekod Patrol Agensi'}
+                {displayDeleteTargetRef.current?.type === 'bencana' ? 'Padam Rekod Bencana' : displayDeleteTargetRef.current?.type === 'agency' ? 'Putuskan Agensi' : 'Padam Rekod Patrol Agensi'}
               </Text>
               <Text style={{ color: '#93c5fd', fontSize: 13, textAlign: 'center', lineHeight: 18 }}>
-                {deleteTarget?.type === 'agency'
-                  ? `Putuskan agensi "${deleteTarget?.label || '-'}" daripada peta? Mereka perlu log masuk semula dengan kod akses.`
-                  : `Padam rekod "${deleteTarget?.label || '-'}"? Tindakan ini tidak boleh dibatalkan.`}
+                {displayDeleteTargetRef.current?.type === 'agency'
+                  ? `Putuskan agensi "${displayDeleteTargetRef.current?.label || '-'}" daripada peta? Mereka perlu log masuk semula dengan kod akses.`
+                  : `Padam rekod "${displayDeleteTargetRef.current?.label || '-'}"? Tindakan ini tidak boleh dibatalkan.`}
               </Text>
             </View>
             <View style={{ flexDirection: 'row', gap: 10, padding: 16 }}>

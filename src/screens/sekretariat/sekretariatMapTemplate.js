@@ -50,6 +50,7 @@ export function buildSekretariatMapHtml({ theme, userRole }) {
         <div id="map"></div>
         <script>
           var canDeleteBencana = ${userRole === 'admin' || userRole === 'sekretariat' ? 'true' : 'false'};
+          var canManageAgency = ${userRole === 'admin' || userRole === 'sekretariat' ? 'true' : 'false'};
 
           function initMap() {
           var map = L.map('map', { zoomControl: false, attributionControl: false, maxZoom: 19 }).setView([5.2831, 115.2308], 12);
@@ -71,6 +72,10 @@ export function buildSekretariatMapHtml({ theme, userRole }) {
 
           window.requestResolveBencana = function(id) {
             window.parent.postMessage(JSON.stringify({ type: 'RESOLVE_BENCANA_REQUEST', id: id }), '*');
+          };
+
+          window.requestDeleteAgencyTracker = function(id) {
+            window.parent.postMessage(JSON.stringify({ type: 'DELETE_AGENCY_TRACKER_REQUEST', id: id }), '*');
           };
 
           function makeClusterIcon(className) {
@@ -160,21 +165,63 @@ export function buildSekretariatMapHtml({ theme, userRole }) {
                 }
               });
 
+              var buildAgencyPopup = function(a) {
+                var popupDiv = document.createElement('div');
+                popupDiv.className = 'custom-popup';
+
+                var strongEl = document.createElement('strong');
+                strongEl.textContent = a.agency;
+                popupDiv.appendChild(strongEl);
+
+                var subEl = document.createElement('span');
+                subEl.className = 'sub';
+                subEl.textContent = a.name + ' — ' + a.updated;
+                popupDiv.appendChild(subEl);
+
+                if (canManageAgency) {
+                  var btnEl = document.createElement('button');
+                  btnEl.textContent = 'Padam';
+                  btnEl.style.marginTop = '6px';
+                  btnEl.style.backgroundColor = '#ef4444';
+                  btnEl.style.color = 'white';
+                  btnEl.style.border = 'none';
+                  btnEl.style.padding = '4px 10px';
+                  btnEl.style.borderRadius = '6px';
+                  btnEl.style.fontSize = '11px';
+                  btnEl.style.fontWeight = '700';
+                  btnEl.style.cursor = 'pointer';
+                  btnEl.style.width = '100%';
+                  btnEl.addEventListener('click', function() {
+                    window.requestDeleteAgencyTracker(a.id);
+                  });
+                  popupDiv.appendChild(btnEl);
+                }
+
+                return popupDiv;
+              };
+
               data.payload.forEach(function(a) {
                 var lat = Number(a.lat), lng = Number(a.lng);
                 if (!isFinite(lat) || !isFinite(lng)) return;
                 a.lat = lat; a.lng = lng;
-                var popupContent = '<div class="custom-popup"><strong>' + a.agency + '</strong><span class="sub">' + a.name + ' — ' + a.updated + '</span></div>';
                 if (agencyMarkers[a.id]) {
-                  agencyMarkers[a.id].setLatLng([a.lat, a.lng]).setPopupContent(popupContent);
+                  agencyMarkers[a.id].setLatLng([a.lat, a.lng]).setPopupContent(buildAgencyPopup(a));
                   agencyMarkers[a.id].setIcon(createAgencyIcon(a.color, a.logo));
                 } else {
                   agencyMarkers[a.id] = L.marker([a.lat, a.lng], { icon: createAgencyIcon(a.color, a.logo) })
-                    .bindPopup(popupContent);
+                    .bindPopup(buildAgencyPopup(a));
                   agencyLayer.addLayer(agencyMarkers[a.id]);
                 }
               });
 
+            } else if (data.type === 'FOCUS_AGENCY') {
+              var marker = agencyMarkers[data.id];
+              if (marker) {
+                map.setView(marker.getLatLng(), Math.max(map.getZoom(), 16), { animate: true });
+                marker.openPopup();
+              } else if (data.lat && data.lng) {
+                map.setView([data.lat, data.lng], Math.max(map.getZoom(), 16), { animate: true });
+              }
             } else if (data.type === 'UPDATE_BENCANA') {
               var currentBencanaIds = data.payload.map(function(b) { return b.id; });
               Object.keys(bencanaMarkers).forEach(function(id) {
