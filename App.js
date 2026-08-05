@@ -265,6 +265,8 @@ function OperasiFlow({ theme, handleLogout }) {
 }
 
 export default function App() {
+  const { width: appWidth } = useWindowDimensions();
+  const isMobile = appWidth < MOBILE_BREAKPOINT;
   const [isDarkMode, setIsDarkMode] = useState(false);
   const navigationRef = useRef(null);
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
@@ -714,34 +716,37 @@ export default function App() {
               </View>
 
               {/* Pemandu, Agensi, Operasi & Semak Status */}
-              <View style={{ flexDirection: 'row', gap: 8 }}>
+              <View style={{ flexDirection: 'row', gap: 8, marginHorizontal: 4 }}>
                 <TouchableOpacity
                   onPress={() => { handleLogin('driver'); setLoginModalVisible(false); }}
                   style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#fff7ed', borderWidth: 1.5, borderColor: PALETTE.orange, borderRadius: 12, height: 48 }}
                 >
-                  <Truck size={16} color={PALETTE.orange} />
+                  {!isMobile && <Truck size={16} color={PALETTE.orange} />}
                   <Text style={{ color: PALETTE.orange, fontWeight: '800', fontSize: 12 }}>Pemandu</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => { handleLogin('agency'); setLoginModalVisible(false); }}
                   style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#fff7ed', borderWidth: 1.5, borderColor: PALETTE.orange, borderRadius: 12, height: 48 }}
                 >
-                  <Building2 size={16} color={PALETTE.orange} />
+                  {!isMobile && <Building2 size={16} color={PALETTE.orange} />}
                   <Text style={{ color: PALETTE.orange, fontWeight: '800', fontSize: 12 }}>Agensi</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => { handleLogin('operasi_lapor'); setLoginModalVisible(false); }}
                   style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#fff7ed', borderWidth: 1.5, borderColor: PALETTE.orange, borderRadius: 12, height: 48 }}
                 >
-                  <ShieldAlert size={16} color={PALETTE.orange} />
+                  {!isMobile && <ShieldAlert size={16} color={PALETTE.orange} />}
                   <Text style={{ color: PALETTE.orange, fontWeight: '800', fontSize: 12 }}>Operasi</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => { setLoginModalVisible(false); setStatusModalVisible(true); }}
-                  style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#fff7ed', borderWidth: 1.5, borderColor: PALETTE.orange, borderRadius: 12, height: 48 }}
+                  style={[
+                    { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#fff7ed', borderWidth: 1.5, borderColor: PALETTE.orange, borderRadius: 12 },
+                    isMobile ? { minHeight: 48, paddingVertical: 6 } : { height: 48 },
+                  ]}
                 >
-                  <Search size={16} color={PALETTE.orange} />
-                  <Text style={{ color: PALETTE.orange, fontWeight: '800', fontSize: 12 }}>Semak Status</Text>
+                  {!isMobile && <Search size={16} color={PALETTE.orange} />}
+                  <Text style={{ color: PALETTE.orange, fontWeight: '800', fontSize: 12, textAlign: 'center' }}>Semak Status</Text>
                 </TouchableOpacity>
               </View>
             </View>
