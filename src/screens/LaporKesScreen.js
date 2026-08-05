@@ -220,6 +220,7 @@ export default function LaporKesScreen({ onLogout }) {
   const [accessVerified, setAccessVerified] = useState(false);
   const [checkingAccess, setCheckingAccess] = useState(true);
   const [accessCode, setAccessCode] = useState('');
+  const [accessError, setAccessError] = useState(null);
   const [verifying, setVerifying] = useState(false);
   const [showAccessCode, setShowAccessCode] = useState(false);
   const [accessFocused, setAccessFocused] = useState(false);
@@ -250,19 +251,20 @@ export default function LaporKesScreen({ onLogout }) {
 
   const handleVerifyAccess = async () => {
     if (!accessCode.trim()) {
-      Alert.alert('Ralat', 'Sila masukkan kod akses.');
+      setAccessError('Sila masukkan kod akses.');
       return;
     }
+    setAccessError(null);
     setVerifying(true);
     const { data: authData, error: authError } = await supabaseSandbox.auth.signInAnonymously();
     if (authError || !authData?.user) {
-      Alert.alert('Ralat', 'Gagal memulakan sesi. Sila cuba lagi.');
+      setAccessError('Gagal memulakan sesi. Sila cuba lagi.');
       setVerifying(false);
       return;
     }
     const { error } = await supabaseSandbox.rpc('join_operasi', { p_code: accessCode.trim() });
     if (error) {
-      Alert.alert('Ralat', error.message?.includes('Invalid access code') ? 'Kod akses tidak sah.' : 'Gagal mengesahkan kod. Sila cuba lagi.');
+      setAccessError(error.message?.includes('Invalid access code') ? 'Kod akses tidak sah.' : 'Gagal mengesahkan kod. Sila cuba lagi.');
       setVerifying(false);
       return;
     }
@@ -372,6 +374,8 @@ export default function LaporKesScreen({ onLogout }) {
                 {showAccessCode ? <EyeOff size={17} color="#94a3b8" /> : <Eye size={17} color="#94a3b8" />}
               </TouchableOpacity>
             </View>
+
+            {!!accessError && <Text style={styles.joinErrorText}>{accessError}</Text>}
 
             <TouchableOpacity
               style={[styles.authSaveButton, verifying && { opacity: 0.7 }]}
@@ -722,22 +726,11 @@ const styles = StyleSheet.create({
   authInput: { flex: 1, fontSize: 14, fontWeight: '600', color: '#0f172a', outlineStyle: 'none' },
   authSaveButton: {
     flexDirection: 'row', backgroundColor: PALETTE.orange, height: 52, borderRadius: 12,
-    alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 10,
+    alignItems: 'center', justifyContent: 'center', gap: 8,
   },
   authSaveButtonText: { color: '#fff', fontWeight: '800', fontSize: 15 },
+  joinErrorText: { color: '#dc2626', fontSize: 13, fontWeight: '700', textAlign: 'center', marginBottom: 14 },
 
-  authCard: {
-    width: '100%', maxWidth: 400, borderRadius: 24, overflow: 'hidden',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.15, shadowRadius: 24, elevation: 10,
-  },
-  authCardBanner: { backgroundColor: '#0c0c0e', paddingVertical: 32, paddingHorizontal: 24, alignItems: 'center' },
-  authCardIconWrap: {
-    width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(249,115,22,0.15)',
-    alignItems: 'center', justifyContent: 'center', marginBottom: 14,
-  },
-  authCardTitle: { fontSize: 19, fontWeight: '900', color: '#fff', marginBottom: 6, textAlign: 'center' },
-  authCardSubtitle: { fontSize: 13, color: '#94a3b8', textAlign: 'center' },
-  authCardBody: { backgroundColor: '#fff', padding: 24, gap: 14 },
   title: { fontSize: 26, fontWeight: '900', color: PALETTE.textDark, marginBottom: 4 },
   subtitle: { fontSize: 13, color: PALETTE.textMutedDark, fontWeight: '600' },
   emptyText: { color: PALETTE.textMutedDark, textAlign: 'center', marginTop: 20 },

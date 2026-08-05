@@ -96,6 +96,7 @@ export default function DriverScreen({ onLogout }) {
   const [checkingAccess, setCheckingAccess] = useState(true);
   const [accessCode, setAccessCode] = useState('');
   const [verifying, setVerifying] = useState(false);
+  const [accessError, setAccessError] = useState(null);
   const [showAccessCode, setShowAccessCode] = useState(false);
   const [accessFocused, setAccessFocused] = useState(false);
 
@@ -111,21 +112,22 @@ export default function DriverScreen({ onLogout }) {
 
   const handleVerifyAccess = async () => {
     if (!accessCode.trim()) {
-      Alert.alert('Ralat', 'Sila masukkan kod akses.');
+      setAccessError('Sila masukkan kod akses.');
       return;
     }
+    setAccessError(null);
     setVerifying(true);
 
     const { data: authData, error: authError } = await supabaseSandbox.auth.signInAnonymously();
     if (authError || !authData?.user) {
-      Alert.alert('Ralat', 'Gagal memulakan sesi. Sila cuba lagi.');
+      setAccessError('Gagal memulakan sesi. Sila cuba lagi.');
       setVerifying(false);
       return;
     }
 
     const { error } = await supabaseSandbox.rpc('join_driver', { p_code: accessCode.trim() });
     if (error) {
-      Alert.alert('Ralat', error.message?.includes('Invalid access code') ? 'Kod akses tidak sah.' : 'Gagal mengesahkan kod. Sila cuba lagi.');
+      setAccessError(error.message?.includes('Invalid access code') ? 'Kod akses tidak sah.' : 'Gagal mengesahkan kod. Sila cuba lagi.');
       setVerifying(false);
       return;
     }
@@ -260,6 +262,8 @@ export default function DriverScreen({ onLogout }) {
                 {showAccessCode ? <EyeOff size={17} color="#94a3b8" /> : <Eye size={17} color="#94a3b8" />}
               </TouchableOpacity>
             </View>
+
+            {!!accessError && <Text style={styles.joinErrorText}>{accessError}</Text>}
 
             <TouchableOpacity
               style={[styles.authSaveButton, verifying && { opacity: 0.7 }]}
@@ -446,7 +450,7 @@ const styles = StyleSheet.create({
   authInput: { flex: 1, fontSize: 14, fontWeight: '600', color: '#0f172a', outlineStyle: 'none' },
   authSaveButton: {
     flexDirection: 'row', backgroundColor: PALETTE.orange, height: 52, borderRadius: 12,
-    alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 10,
+    alignItems: 'center', justifyContent: 'center', gap: 8,
   },
   authSaveButtonText: { color: '#fff', fontWeight: '800', fontSize: 15 },
   title: { fontSize: 26, fontWeight: '900', color: PALETTE.textDark, marginBottom: 4 },
@@ -503,6 +507,7 @@ const styles = StyleSheet.create({
   actionRow: { flexDirection: 'row', gap: 20, alignItems: 'center', justifyContent: 'center' },
   joinButton: { width: '100%', paddingVertical: 16, borderRadius: 14, alignItems: 'center', backgroundColor: PALETTE.orange },
   joinButtonText: { color: '#fff', fontSize: 15, fontWeight: '800' },
+  joinErrorText: { color: '#dc2626', fontSize: 13, fontWeight: '700', textAlign: 'center', marginBottom: 14 },
   button: {
     width: 200, height: 200, borderRadius: 100, justifyContent: 'center', alignItems: 'center',
     elevation: 8, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 10, shadowOffset: { width: 0, height: 5 },
