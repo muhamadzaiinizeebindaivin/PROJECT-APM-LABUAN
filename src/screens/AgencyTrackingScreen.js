@@ -309,6 +309,27 @@ export default function AgencyTrackingScreen({ onLogout }) {
     };
   }, [isTracking, trackerId]);
 
+  // Détecte en temps réel si un admin supprime ce tracker depuis la carte — ramène
+  // immédiatement à l'écran de connexion sans attendre un rechargement de page.
+  useEffect(() => {
+    if (!trackerId) return;
+    const channel = supabase
+      .channel(`agency_tracker_self_${trackerId}`)
+      .on('postgres_changes', { event: 'DELETE', schema: 'sandbox', table: 'agency_trackers', filter: `id=eq.${trackerId}` }, () => {
+        clearSession();
+        setSelectedAgency(null);
+        setMemberName('');
+        setAccessCode('');
+        setTrackerId(null);
+        setIsTracking(false);
+        setLocation(null);
+        setStatus('Sedia');
+        Alert.alert('Sesi Ditamatkan', 'Akses anda telah ditamatkan oleh pentadbir. Sila log masuk semula.');
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [trackerId]);
+
   const filteredAgencies = agencies.filter(a => a.agency.toLowerCase().includes(searchQuery.toLowerCase()));
 
   if (isRestoring) {

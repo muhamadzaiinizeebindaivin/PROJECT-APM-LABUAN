@@ -257,21 +257,35 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
     setDeleteTarget({ type: 'history', id, label });
   };
 
+  const handleDeleteOnlineAgency = (id, label) => {
+    setDeleteTarget({ type: 'agency', id, label });
+  };
+
   const confirmDeleteTarget = async () => {
     if (!deleteTarget) return;
     setDeletingTarget(true);
-    const result = deleteTarget.type === 'bencana'
-      ? await deleteBencana(deleteTarget.id, { skipConfirm: true })
-      : await deleteTrackingHistory(deleteTarget.id, { skipConfirm: true });
+
+    let result;
+    if (deleteTarget.type === 'bencana') {
+      result = await deleteBencana(deleteTarget.id, { skipConfirm: true });
+    } else if (deleteTarget.type === 'history') {
+      result = await deleteTrackingHistory(deleteTarget.id, { skipConfirm: true });
+    } else {
+      const { error } = await supabaseSandbox.from('agency_trackers').delete().eq('id', deleteTarget.id);
+      result = { error };
+    }
+
     setDeletingTarget(false);
+    const type = deleteTarget.type;
     setDeleteTarget(null);
-    const isBencana = deleteTarget.type === 'bencana';
-    onNotify?.(
-      !result?.error ? 'success' : 'error',
-      !result?.error
-        ? (isBencana ? 'Rekod bencana berjaya dipadam.' : 'Rekod patrol agensi berjaya dipadam.')
-        : (isBencana ? 'Gagal memadam rekod bencana.' : 'Gagal memadam rekod patrol agensi.')
-    );
+
+    const messages = {
+      bencana: ['Rekod bencana berjaya dipadam.', 'Gagal memadam rekod bencana.'],
+      history: ['Rekod patrol agensi berjaya dipadam.', 'Gagal memadam rekod patrol agensi.'],
+      agency: ['Agensi berjaya diputuskan daripada peta.', 'Gagal memutuskan agensi.'],
+    };
+    const [successMsg, errorMsg] = messages[type];
+    onNotify?.(!result?.error ? 'success' : 'error', !result?.error ? successMsg : errorMsg);
   };
 
   // --- Filtre/pagination : Sejarah Patrol Agensi ---
@@ -617,13 +631,19 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
                       <AgencyMark logo={getAgencyLogo(a.jpbd_directory?.agency)} color={getAgencyColorFromMap(a.jpbd_directory?.agency)} size={22} />
                       <View style={styles.onlineBadge} />
                     </View>
-                    <View>
+                    <View style={{ flex: 1 }}>
                       <Text style={styles.petaAgencyName} numberOfLines={1}>{a.jpbd_directory?.agency || '-'}</Text>
                       <View style={styles.onlineRow}>
                         <Text style={styles.petaAgencyUser} numberOfLines={1}>{a.member_name}</Text>
                         <Text style={styles.onlineLabel}>● Online</Text>
                       </View>
                     </View>
+                    <TouchableOpacity
+                      onPress={() => handleDeleteOnlineAgency(a.id, `${a.jpbd_directory?.agency || '-'} (${a.member_name})`)}
+                      style={{ padding: 6 }}
+                    >
+                      <Trash2 size={15} color="#dc2626" />
+                    </TouchableOpacity>
                   </View>
                 </View>
               ))}
@@ -825,10 +845,12 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
                 <AlertTriangle size={26} color="#ef4444" />
               </View>
               <Text style={{ color: '#fff', fontSize: 17, fontWeight: '800', marginBottom: 8 }}>
-                {deleteTarget?.type === 'bencana' ? 'Padam Rekod Bencana' : 'Padam Rekod Patrol Agensi'}
+                {deleteTarget?.type === 'bencana' ? 'Padam Rekod Bencana' : deleteTarget?.type === 'agency' ? 'Putuskan Agensi' : 'Padam Rekod Patrol Agensi'}
               </Text>
               <Text style={{ color: '#93c5fd', fontSize: 13, textAlign: 'center', lineHeight: 18 }}>
-                Padam rekod "{deleteTarget?.label || '-'}"? Tindakan ini tidak boleh dibatalkan.
+                {deleteTarget?.type === 'agency'
+                  ? `Putuskan agensi "${deleteTarget?.label || '-'}" daripada peta? Mereka perlu log masuk semula dengan kod akses.`
+                  : `Padam rekod "${deleteTarget?.label || '-'}"? Tindakan ini tidak boleh dibatalkan.`}
               </Text>
             </View>
             <View style={{ flexDirection: 'row', gap: 10, padding: 16 }}>
