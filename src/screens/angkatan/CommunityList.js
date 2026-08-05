@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Modal, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Modal, ActivityIndicator, useWindowDimensions } from 'react-native';
 import { Plus, Pencil, Trash2, HeartHandshake, ChevronLeft, ChevronRight, AlertTriangle, X, MapPin } from 'lucide-react-native';
 import { PALETTE } from '../../constants/palette';
 import { angkatanStyles as styles } from './angkatanStyles';
@@ -17,6 +17,8 @@ const CATEGORY_COLORS = {
 const PAGE_SIZE = 5;
 
 export default function CommunityList({ communityProgs, isEditing, onAdd, onEdit, onDelete }) {
+  const { width: screenWidth } = useWindowDimensions();
+  const isMobile = screenWidth < 768;
   const [activeCategory, setActiveCategory] = useState(CATEGORIES[0]);
   const [page, setPage] = useState(1);
   const [confirmDelete, setConfirmDelete] = useState(null); // le dernier programme ciblé — jamais vidé pendant la fermeture
@@ -34,15 +36,18 @@ export default function CommunityList({ communityProgs, isEditing, onAdd, onEdit
 
   return (
     <View style={styles.card}>
-      <View style={styles.sectionHeaderRowSpaced}>
-        <View style={styles.sectionHeaderRow}>
+      <View style={[styles.sectionHeaderRowSpaced, isMobile && { flexWrap: 'wrap', rowGap: 10 }]}>
+        <View style={[styles.sectionHeaderRow, isMobile && { flexBasis: '100%' }]}>
           <View style={styles.sectionIconBadge}>
             <HeartHandshake size={16} color={PALETTE.orange} />
           </View>
           <Text style={styles.sectionTitle}>PROGRAM KOMUNITI (PASUKAN APM)</Text>
         </View>
         {isEditing && (
-          <TouchableOpacity style={[commStyles.addBtn, { marginLeft: 'auto', backgroundColor: activeColor }]} onPress={() => onAdd(activeCategory)}>
+          <TouchableOpacity
+            style={[commStyles.addBtn, isMobile ? { flexBasis: '100%', justifyContent: 'center' } : { marginLeft: 'auto' }]}
+            onPress={() => onAdd(activeCategory)}
+          >
             <Plus size={13} color="#fff" />
             <Text style={commStyles.addBtnText}>Tambah</Text>
           </TouchableOpacity>
