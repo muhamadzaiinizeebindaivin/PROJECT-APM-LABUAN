@@ -1,7 +1,7 @@
 // src/screens/LaporKesScreen.js
 import React, { useState, useEffect, createElement } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, TextInput, FlatList, ActivityIndicator, Alert, Image, Platform, ScrollView } from 'react-native';
-import { Search, ArrowLeft, Send, CheckCircle2, MapPin, FilePlus, ChevronRight, AlertCircle, Trash2, Eye, EyeOff, Lock } from 'lucide-react-native';
+import { View, Text, TouchableOpacity, StyleSheet, TextInput, FlatList, ActivityIndicator, Alert, Image, Platform, ScrollView, Modal } from 'react-native';
+import { Search, ArrowLeft, Send, CheckCircle2, MapPin, FilePlus, ChevronRight, AlertCircle, Trash2, Eye, EyeOff, Lock, AlertTriangle } from 'lucide-react-native';
 import { useCalamityPoints } from '../hooks/useCalamityPoints';
 import { CALAMITY_CATEGORIES, getCalamityLogoUrl } from '../constants/operasiConstants';
 import { supabaseSandbox } from '../supabaseSandboxClient';
@@ -216,6 +216,8 @@ function PinpointMap({ latitude, longitude, onPick }) {
 
 export default function LaporKesScreen({ onLogout }) {
   const { calamityPoints, saveCalamity, resolveTreatedCalamity, deleteCalamity } = useCalamityPoints();
+  const [pendingDeleteId, setPendingDeleteId] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const [accessVerified, setAccessVerified] = useState(false);
   const [checkingAccess, setCheckingAccess] = useState(true);
@@ -523,7 +525,7 @@ export default function LaporKesScreen({ onLogout }) {
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.pointActionBtn, styles.pointActionPadam]}
-                  onPress={() => deleteCalamity(item.id)}
+                  onPress={() => setPendingDeleteId(item.id)}
                   activeOpacity={0.8}
                 >
                   <Trash2 size={16} color="#dc2626" />
@@ -542,6 +544,49 @@ export default function LaporKesScreen({ onLogout }) {
             </View>
           }
         />
+
+        <Modal visible={!!pendingDeleteId} transparent animationType="fade" onRequestClose={() => setPendingDeleteId(null)}>
+          <View style={styles.confirmOverlay}>
+            <View style={styles.confirmCard}>
+              <View style={styles.confirmBanner}>
+                <View style={styles.confirmIconWrap}>
+                  <AlertTriangle size={22} color="#dc2626" />
+                </View>
+                <Text style={styles.confirmTitle}>Padam titik bencana ini?</Text>
+                <Text style={styles.confirmText}>Tindakan ini tidak boleh dibuat asal.</Text>
+              </View>
+
+              <View style={styles.confirmBody}>
+                <TouchableOpacity
+                  style={[styles.confirmCancelBtn, isDeleting && { opacity: 0.5 }]}
+                  onPress={() => setPendingDeleteId(null)}
+                  disabled={isDeleting}
+                >
+                  <Text style={styles.confirmCancelText}>Batal</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.confirmDeleteBtn, isDeleting && { opacity: 0.7 }]}
+                  disabled={isDeleting}
+                  onPress={async () => {
+                    setIsDeleting(true);
+                    await deleteCalamity(pendingDeleteId);
+                    setIsDeleting(false);
+                    setPendingDeleteId(null);
+                  }}
+                >
+                  {isDeleting ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <>
+                      <Trash2 size={16} color="#fff" />
+                      <Text style={styles.confirmDeleteText}>Padam</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
       </View>
     );
   }
@@ -866,10 +911,33 @@ const styles = StyleSheet.create({
   },
   statusChipText: { fontSize: 11, fontWeight: '700', color: PALETTE.textMutedDark },
   statusChipTextActive: { color: '#fff' },
-
   joinButton: {
     width: '100%', paddingVertical: 16, borderRadius: 14, alignItems: 'center', backgroundColor: PALETTE.orange,
     shadowColor: PALETTE.orange, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 10, elevation: 4,
   },
   joinButtonText: { color: '#fff', fontSize: 15, fontWeight: '800' },
+
+  confirmOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 24 },
+  confirmCard: {
+    width: '100%', maxWidth: 360, borderRadius: 20, overflow: 'hidden',
+    shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 20, elevation: 15,
+  },
+  confirmBanner: { backgroundColor: '#0c0c0e', paddingVertical: 28, paddingHorizontal: 24, alignItems: 'center' },
+  confirmIconWrap: {
+    width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(220, 38, 38, 0.15)',
+    alignItems: 'center', justifyContent: 'center', marginBottom: 14,
+  },
+  confirmTitle: { fontSize: 16, fontWeight: '900', color: '#fff', textAlign: 'center', marginBottom: 6 },
+  confirmText: { fontSize: 13, color: '#94a3b8', textAlign: 'center', lineHeight: 18 },
+  confirmBody: { flexDirection: 'row', gap: 10, padding: 24, backgroundColor: '#fff' },
+  confirmCancelBtn: {
+    flex: 1, height: 46, borderRadius: 12, borderWidth: 1.5, borderColor: '#e2e8f0',
+    alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff',
+  },
+  confirmCancelText: { fontSize: 14, fontWeight: '700', color: PALETTE.textMutedDark },
+  confirmDeleteBtn: {
+    flex: 1, height: 46, borderRadius: 12, flexDirection: 'row', gap: 6,
+    alignItems: 'center', justifyContent: 'center', backgroundColor: '#dc2626',
+  },
+  confirmDeleteText: { fontSize: 14, fontWeight: '700', color: '#fff' },
 });

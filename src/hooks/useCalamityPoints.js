@@ -62,12 +62,12 @@ export function useCalamityPoints() {
   };
 
   const deleteCalamity = async (id) => {
-    const confirmed = Platform.OS === 'web' ? window.confirm('Padam titik bencana ini?') : true;
-    if (!confirmed) return;
     // Suppression d'un point mal saisi — ne touche jamais ng999_historique
     // (le point n'a jamais été compté puisqu'il n'a pas été clôturé).
+    // La confirmation est gérée côté écran (popup stylé), plus par window.confirm ici.
     const { error } = await supabaseSandbox.from('laporan_ng999').delete().eq('id', id);
     if (!error) fetchCalamityPoints();
+    return !error;
   };
 
   // Clôture directement depuis la carte (LiveMapTab) — même logique que
