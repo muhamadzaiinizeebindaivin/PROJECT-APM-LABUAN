@@ -75,7 +75,11 @@ const haversineDistanceKm = (lat1, lon1, lat2, lon2) => {
 
 function AgencyLogo({ url, size, fallbackSize }) {
   if (url) {
-    return <Image source={{ uri: url }} style={{ width: size, height: size, borderRadius: size / 2 }} resizeMode="cover" />;
+    return (
+      <View style={{ width: size, height: size, borderRadius: size / 2, overflow: 'hidden', backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' }}>
+        <Image source={{ uri: url }} style={{ width: size, height: size }} resizeMode="contain" />
+      </View>
+    );
   }
   return <Building2 color={PALETTE.orange} size={fallbackSize} />;
 }
