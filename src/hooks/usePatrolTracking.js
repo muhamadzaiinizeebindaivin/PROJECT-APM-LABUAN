@@ -33,6 +33,17 @@ export function usePatrolTracking(selectedVehicle, isTracking, onPermissionDenie
   const lastWaypointTimeRef = useRef(null);
   const waypointSeqRef = useRef(0);
 
+  // Bug connu du portage web d'expo-location : subscription.remove() y appelle
+  // une fonction interne inexistante (LocationEventEmitter.removeSubscription).
+  // On avale l'erreur silencieusement — inoffensive, ça ne concerne que le nettoyage.
+  const safeRemoveSubscription = (subscription) => {
+    try {
+      subscription?.remove?.();
+    } catch (err) {
+      // Bug connu du portage web d'expo-location — ignoré volontairement, sans log.
+    }
+  };
+
   useEffect(() => {
     let subscriptionPromise = null;
     let isMounted = true;
@@ -40,9 +51,18 @@ export function usePatrolTracking(selectedVehicle, isTracking, onPermissionDenie
     const startWatching = async () => {
       if (!selectedVehicle) return;
 
-      let { status: permStatus } = await Location.requestForegroundPermissionsAsync();
+      let permStatus;
+      try {
+        const result = await Location.requestForegroundPermissionsAsync();
+        permStatus = result.status;
+      } catch (permErr) {
+        console.error('requestForegroundPermissionsAsync error:', permErr);
+        if (isMounted) setStatus('Ralat Kebenaran: ' + (permErr?.message || String(permErr)));
+        return;
+      }
       if (permStatus !== 'granted') {
         if (isMounted) {
+          setStatus(`Akses lokasi ditolak (status: ${permStatus}).`);
           Alert.alert('Akses Ditolak', 'Sila benarkan akses lokasi untuk menjejak kenderaan.');
           if (onPermissionDenied) onPermissionDenied();
         }
@@ -136,13 +156,14 @@ export function usePatrolTracking(selectedVehicle, isTracking, onPermissionDenie
         })
         .eq('id', selectedVehicle.id);
 
-      subscriptionPromise = Location.watchPositionAsync(
-        { accuracy: Location.Accuracy.High, timeInterval: 5000, distanceInterval: 2 },
-        async (loc) => {
-          if (!isMounted) return;
+      try {
+        subscriptionPromise = Location.watchPositionAsync(
+          { accuracy: Location.Accuracy.High, timeInterval: 5000, distanceInterval: 2 },
+          async (loc) => {
+            if (!isMounted) return;
 
-          setLocation(loc.coords);
-          setStatus('Mengemaskini Pangkalan Data...');
+            setLocation(loc.coords);
+            setStatus('Mengemaskini Pangkalan Data...');
 
           if (lastCoordsRef.current) {
             const delta = haversineDistanceKm(
@@ -172,6 +193,10 @@ export function usePatrolTracking(selectedVehicle, isTracking, onPermissionDenie
           }
         }
       );
+      } catch (watchErr) {
+        console.error('watchPositionAsync error:', watchErr);
+        if (isMounted) setStatus('Ralat GPS: ' + (watchErr?.message || String(watchErr)));
+      }
     };
 
     const recordHistoryAndStop = async () => {
@@ -236,11 +261,7 @@ export function usePatrolTracking(selectedVehicle, isTracking, onPermissionDenie
 
     return () => {
       isMounted = false;
-      if (subscriptionPromise) {
-        subscriptionPromise.then(subscription => {
-          if (subscription) subscription.remove();
-        });
-      }
+      subscriptionPromise?.then(safeRemoveSubscription).catch(() => {});
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isTracking, selectedVehicle]);
