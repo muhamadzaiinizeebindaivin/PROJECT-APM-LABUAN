@@ -1,7 +1,7 @@
 // src/screens/SekretariatScreen.js
 import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, useWindowDimensions } from 'react-native';
-import { Users, AlertTriangle, Home, Map, UserCog, Pencil, Trash2, ChevronUp, ChevronDown, Plus, CheckCircle2, XCircle } from 'lucide-react-native';
+import { Users, AlertTriangle, Home, Map, Pencil, Trash2, ChevronUp, ChevronDown, CheckCircle2, XCircle } from 'lucide-react-native';
 
 import AdminEditButton from '../components/AdminEditButton';
 import JpbdSection from './sekretariat/JpbdSection';
@@ -161,13 +161,12 @@ const SekretariatScreen = ({ theme, userRole }) => {
           {/* ---- Section Unit Bertanggungjawab (commune à tous les onglets) ---- */}
           <View style={styles.unitSection}>
             <View style={shared.sectionHeaderRow}>
-              <Text style={shared.sectionHeaderTitle}>Unit Bertanggungjawab</Text>
-              {canEdit && isEditMode ? (
-                <TouchableOpacity style={shared.addButton} onPress={openAddUnit}>
-                  <Plus size={16} color={PALETTE.white} />
-                  <Text style={shared.addButtonText}>Tambah</Text>
-                </TouchableOpacity>
-              ) : null}
+              <View style={shared.sectionHeaderTitleGroup}>
+                <View style={shared.sectionIconBadge}>
+                  <Users size={16} color={PALETTE.orange} />
+                </View>
+                <Text style={shared.sectionHeaderTitle}>UNIT SEKRETARIAT</Text>
+              </View>
             </View>
 
             {loadingUnit ? (
@@ -232,6 +231,12 @@ const SekretariatScreen = ({ theme, userRole }) => {
                 </View>
               ))
             )}
+
+            {canEdit && isEditMode && (
+              <TouchableOpacity onPress={openAddUnit} style={styles.addBtnOutline}>
+                <Text style={styles.addBtnOutlineText}>+ Tambah</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </ScrollView>
       )}
@@ -267,8 +272,8 @@ const styles = StyleSheet.create({
   sectionDivider: { height: 16 },
   unitCard: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: PALETTE.softOrangeBg, borderRadius: 12, padding: 12,
-    borderWidth: 1, borderColor: '#F9731630',
+    backgroundColor: PALETTE.cardLight, borderRadius: 12, padding: 12,
+    borderWidth: 1, borderColor: PALETTE.cardLightBorder,
   },
   unitAvatar: {
     width: 32, height: 32, borderRadius: 16,
@@ -300,6 +305,8 @@ const styles = StyleSheet.create({
     backgroundColor: PALETTE.textDark, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6,
   },
   unitTooltipText: { color: '#fff', fontSize: 12, fontWeight: '700' },
+  addBtnOutline: { marginTop: 10, padding: 10, backgroundColor: PALETTE.surface, borderRadius: 10, alignItems: 'center', borderWidth: 1, borderColor: PALETTE.cardLightBorder },
+  addBtnOutlineText: { color: PALETTE.orange, fontWeight: '800', fontSize: 12 },
 });
 
 export default SekretariatScreen;

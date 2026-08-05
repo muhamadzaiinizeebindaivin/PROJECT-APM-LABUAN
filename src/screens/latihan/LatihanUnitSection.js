@@ -1,7 +1,7 @@
 // src/screens/latihan/LatihanUnitSection.js
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { UserCog, Pencil, Trash2, ChevronUp, ChevronDown, Plus } from 'lucide-react-native';
+import { UserCog, Pencil, Trash2, ChevronUp, ChevronDown } from 'lucide-react-native';
 import { PALETTE } from '../../constants/palette';
 import { appStyles as shared } from '../../styles/appStyles';
 import { latihanStyles as styles } from './latihanStyles';
@@ -38,14 +38,8 @@ export default function LatihanUnitSection({ unitList, loadingUnit, isEditMode, 
       <View style={shared.sectionHeaderRow}>
         <View style={styles.sectionTitleGroup}>
           <View style={styles.sectionIconBadge}><UserCog size={16} color={PALETTE.orange} /></View>
-          <Text style={shared.sectionHeaderTitle}>Unit Bertanggungjawab</Text>
+          <Text style={shared.sectionHeaderTitle}>UNIT LATIHAN</Text>
         </View>
-        {isEditMode ? (
-          <TouchableOpacity style={shared.addButton} onPress={openAdd}>
-            <Plus size={16} color="#fff" />
-            <Text style={shared.addButtonText}>Tambah</Text>
-          </TouchableOpacity>
-        ) : null}
       </View>
 
       {/* ---- Liste ---- */}
@@ -106,6 +100,12 @@ export default function LatihanUnitSection({ unitList, loadingUnit, isEditMode, 
             ) : null}
           </View>
         ))
+      )}
+
+      {isEditMode && (
+        <TouchableOpacity onPress={openAdd} style={styles.addBtnOutline}>
+          <Text style={styles.addBtnOutlineText}>+ Tambah</Text>
+        </TouchableOpacity>
       )}
 
       <UnitEditModal

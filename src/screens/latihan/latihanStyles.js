@@ -162,4 +162,6 @@ export const latihanStyles = StyleSheet.create({
     backgroundColor: PALETTE.textDark, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6,
   },
   unitTooltipText: { color: '#fff', fontSize: 12, fontWeight: '700' },
+  addBtnOutline: { marginTop: 10, padding: 10, backgroundColor: PALETTE.surface, borderRadius: 10, alignItems: 'center', borderWidth: 1, borderColor: PALETTE.cardLightBorder },
+  addBtnOutlineText: { color: PALETTE.orange, fontWeight: '800', fontSize: 12 },
 });

@@ -1,10 +1,10 @@
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
-import { Plus, Pencil, Trash2, Layers } from 'lucide-react-native';
+import { Pencil, Trash2, Layers } from 'lucide-react-native';
 import { PALETTE } from '../../constants/palette';
 import { angkatanStyles as styles } from './angkatanStyles';
 
-export default function CategoriesCard({ categories, isEditing, onAdd, onEdit, onDelete, onOpenCategory, fill = true }) {
+export default function CategoriesCard({ categories, isEditing, onEdit, onDelete, onOpenCategory, fill = true }) {
   return (
     <View style={[styles.card, fill && { flex: 1 }]}>
       <View style={styles.sectionHeaderRowSpaced}>
@@ -14,11 +14,6 @@ export default function CategoriesCard({ categories, isEditing, onAdd, onEdit, o
           </View>
           <Text style={styles.sectionTitle}>PENJAWATAN UTAMA</Text>
         </View>
-        {isEditing && (
-          <TouchableOpacity style={{ marginLeft: 'auto' }} onPress={onAdd}>
-            <Plus size={20} color={PALETTE.orange} />
-          </TouchableOpacity>
-        )}
       </View>
 
       {categories.map((cat, index) => (

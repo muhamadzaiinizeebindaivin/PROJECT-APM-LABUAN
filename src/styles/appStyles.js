@@ -8,6 +8,11 @@ import { PALETTE } from '../constants/palette';
  */
 export const appStyles = StyleSheet.create({
   sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  sectionHeaderTitleGroup: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  sectionIconBadge: {
+    width: 32, height: 32, borderRadius: 10,
+    backgroundColor: 'rgba(249, 115, 22, 0.12)', justifyContent: 'center', alignItems: 'center',
+  },
   sectionHeaderTitle: { fontSize: 12, fontWeight: '800', letterSpacing: 0.6, color: PALETTE.orange, textTransform: 'uppercase', marginBottom: 0 },
   addButton: { flexDirection: 'row', backgroundColor: PALETTE.orange, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, alignItems: 'center', gap: 6 },
   addButtonText: { color: '#fff', fontSize: 12, fontWeight: '700' },

@@ -20,6 +20,8 @@ export const logistikStyles = StyleSheet.create({
   sectionTitleMain: { fontSize: 16, fontWeight: '800', color: PALETTE.textDark },
   addButton: { backgroundColor: PALETTE.orange, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10 },
   addButtonText: { color: '#fff', fontSize: 12, fontWeight: '700' },
+  addBtnOutline: { marginTop: 10, padding: 10, backgroundColor: PALETTE.surface, borderRadius: 10, alignItems: 'center', borderWidth: 1, borderColor: PALETTE.cardLightBorder },
+  addBtnOutlineText: { color: PALETTE.orange, fontWeight: '800', fontSize: 12 },
 
   searchContainer: {
     flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12,

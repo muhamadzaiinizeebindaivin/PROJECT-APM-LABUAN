@@ -1,7 +1,7 @@
 // src/screens/angkatan/AngkatanUnitSection.js
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
-import { UserCog, Pencil, Trash2, ChevronUp, ChevronDown, Plus } from 'lucide-react-native';
+import { UserCog, Pencil, Trash2, ChevronUp, ChevronDown } from 'lucide-react-native';
 import { PALETTE } from '../../constants/palette';
 import UnitEditModal from '../kewangan/UnitEditModal';
 
@@ -36,14 +36,8 @@ export default function AngkatanUnitSection({ unitList, loadingUnit, isEditMode,
       <View style={unitStyles.headerRow}>
         <View style={unitStyles.titleGroup}>
           <View style={unitStyles.iconBadge}><UserCog size={16} color={PALETTE.orange} /></View>
-          <Text style={unitStyles.title}>UNIT BERTANGGUNGJAWAB</Text>
+          <Text style={unitStyles.title}>UNIT ANGKATAN</Text>
         </View>
-        {isEditMode ? (
-          <TouchableOpacity style={unitStyles.addBtn} onPress={openAdd}>
-            <Plus size={16} color="#fff" />
-            <Text style={unitStyles.addBtnText}>Tambah</Text>
-          </TouchableOpacity>
-        ) : null}
       </View>
 
       {/* ---- Liste ---- */}
@@ -101,6 +95,12 @@ export default function AngkatanUnitSection({ unitList, loadingUnit, isEditMode,
         ))
       )}
 
+      {isEditMode && (
+        <TouchableOpacity onPress={openAdd} style={unitStyles.addBtnOutline}>
+          <Text style={unitStyles.addBtnOutlineText}>+ Tambah</Text>
+        </TouchableOpacity>
+      )}
+
       <UnitEditModal
         visible={modalVisible}
         isNew={!editItem}
@@ -128,6 +128,8 @@ const unitStyles = StyleSheet.create({
   title: { fontSize: 12, fontWeight: '800', letterSpacing: 0.6, color: PALETTE.orange, textTransform: 'uppercase' },
   addBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: PALETTE.orange, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10 },
   addBtnText: { color: '#fff', fontWeight: '700', fontSize: 12 },
+  addBtnOutline: { marginTop: 10, padding: 10, backgroundColor: PALETTE.surface, borderRadius: 10, alignItems: 'center', borderWidth: 1, borderColor: PALETTE.cardLightBorder },
+  addBtnOutlineText: { color: PALETTE.orange, fontWeight: '800', fontSize: 12 },
   emptyText: { textAlign: 'center', color: PALETTE.textMutedDark, marginTop: 10, fontStyle: 'italic' },
   itemCard: {
     flexDirection: 'row', alignItems: 'center', gap: 12,

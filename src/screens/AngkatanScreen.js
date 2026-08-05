@@ -311,23 +311,22 @@ export default function AngkatanScreen({ userRole }) {
       <ScrollView contentContainerStyle={styles.contentGrid} showsVerticalScrollIndicator={false}>
         {isMobile ? (
           <View style={{ gap: 16 }}>
-            <SummaryHeroCard total={summary.total_anggota} isEditing={isEditing} onEdit={openSummaryModal} />
-            <StatusCard summary={summary} isEditing={isEditing} onEdit={openSummaryModal} onOpenStatus={openStatusEmployees} fill={false} />
+            <SummaryHeroCard total={summary.total_anggota} />
+            <StatusCard summary={summary} onOpenStatus={openStatusEmployees} fill={false} />
             <CategoriesCard
               categories={categories}
               isEditing={isEditing}
-              onAdd={openAddCategory}
               onEdit={openEditCategory}
               onDelete={handleDeleteCategory}
               onOpenCategory={openCategoryEmployees}
               fill={false}
             />
-            <GenderCard summary={summary} isEditing={isEditing} onEdit={openSummaryModal} fill={false} />
+            <GenderCard summary={summary} fill={false} />
           </View>
         ) : (
           <>
             <View style={styles.row}>
-              <SummaryHeroCard total={summary.total_anggota} isEditing={isEditing} onEdit={openSummaryModal} />
+              <SummaryHeroCard total={summary.total_anggota} />
               <StatusCard summary={summary} isEditing={isEditing} onEdit={openSummaryModal} onOpenStatus={openStatusEmployees} />
             </View>
             <View style={styles.row}>

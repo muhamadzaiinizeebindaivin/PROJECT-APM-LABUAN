@@ -45,6 +45,8 @@ export const kewanganStyles = StyleSheet.create({
     backgroundColor: PALETTE.orange, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10,
   },
   addBtnText: { color: '#fff', fontWeight: '700', fontSize: 12 },
+  addBtnOutline: { marginTop: 10, padding: 10, backgroundColor: PALETTE.surface, borderRadius: 10, alignItems: 'center', borderWidth: 1, borderColor: PALETTE.cardLightBorder },
+  addBtnOutlineText: { color: PALETTE.orange, fontWeight: '800', fontSize: 12 },
 
   unitBox: { backgroundColor: PALETTE.surface, padding: 14, borderRadius: 14 },
   boxTitle: { fontWeight: '800', marginBottom: 8, color: PALETTE.textMutedDark, fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.5 },
@@ -207,7 +209,7 @@ export const kewanganStyles = StyleSheet.create({
   categoryScrollThumb: { height: 4, borderRadius: 2, backgroundColor: PALETTE.orange },
   categoryAddBtnFloating: {
     position: 'absolute', top: 20, right: 20, zIndex: 6,
-    backgroundColor: PALETTE.blue, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10,
+    backgroundColor: PALETTE.orange, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10,
   },
   categoryPickerHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 },
   categoryPickerLabel: { fontSize: 12, fontWeight: '700', color: PALETTE.textMutedDark },

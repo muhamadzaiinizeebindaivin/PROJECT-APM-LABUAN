@@ -49,17 +49,13 @@ export default function UnitInfoCard({ staffList, loading, isEditMode, saveStaff
     <View style={styles.card}>
       <View style={[styles.sectionHeaderRowSpaced, { marginBottom: 0 }]}>
         <SectionHeader title="UNIT LOGISTIK" Icon={Users} />
-        {isEditMode && (
-          <TouchableOpacity style={[styles.addButton, { marginLeft: 'auto' }]} onPress={openAdd}>
-            <Text style={styles.addButtonText}>+ Tambah</Text>
-          </TouchableOpacity>
-        )}
       </View>
 
       {loading && <ActivityIndicator size="large" color={PALETTE.orange} style={{ marginVertical: 20 }} />}
 
       {!loading && staffList.map((item, index) => (
-        <View key={item.id} style={[styles.staffCard, { marginBottom: 8 }]}>
+        <View key={item.id} style={{ marginBottom: 10 }}>
+        <View style={[styles.staffCard, { marginBottom: 8 }]}>
             {isEditMode && (
               <View style={styles.staffReorderGroup}>
                 <TouchableOpacity
@@ -108,7 +104,14 @@ export default function UnitInfoCard({ staffList, loading, isEditMode, saveStaff
               </View>
             )}
           </View>
+        </View>
       ))}
+
+      {isEditMode && (
+        <TouchableOpacity onPress={openAdd} style={styles.addBtnOutline}>
+          <Text style={styles.addBtnOutlineText}>+ Tambah</Text>
+        </TouchableOpacity>
+      )}
 
       <Modal visible={confirmDeleteItem !== null} transparent animationType="fade" onRequestClose={() => setConfirmDeleteItem(null)}>
         <View style={pentadbiranStyles.confirmOverlay}>
