@@ -19,7 +19,7 @@ import { haversineDistanceKm } from '../utils/geo';
  * so the caller can flip `isTracking` back off (mirrors the original
  * `setIsTracking(false)` call).
  */
-export function usePatrolTracking(selectedVehicle, isTracking, onPermissionDenied) {
+export function usePatrolTracking(selectedVehicle, isTracking, onPermissionDenied, onKicked) {
   const [location, setLocation] = useState(null);
   const [status, setStatus] = useState('Idle');
 
@@ -250,6 +250,21 @@ export function usePatrolTracking(selectedVehicle, isTracking, onPermissionDenie
    * distance/duration since the previous waypoint (or since the trip
    * started, if this is the first one), then resets the segment counters.
    */
+  // Détecte en temps réel si un admin remet ce véhicule en "Idle" depuis la carte —
+  // arrête immédiatement le suivi local sans attendre un rechargement de page.
+  useEffect(() => {
+    if (!isTracking || !selectedVehicle) return;
+    const channel = supabaseSandbox
+      .channel(`vehicle_self_${selectedVehicle.id}`)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'sandbox', table: 'logistik', filter: `id=eq.${selectedVehicle.id}` }, (payload) => {
+        if (payload.new?.tracking_status !== 'Patrol') {
+          onKicked?.();
+        }
+      })
+      .subscribe();
+    return () => { supabaseSandbox.removeChannel(channel); };
+  }, [isTracking, selectedVehicle]);
+
   const markPoint = async () => {
     if (!selectedVehicle || !isTracking) return;
     if (!lastCoordsRef.current) {

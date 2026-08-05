@@ -151,7 +151,14 @@ export default function DriverScreen({ onLogout }) {
   const { location, status, markPoint } = usePatrolTracking(
     selectedVehicle,
     isTracking,
-    () => setIsTracking(false)
+    () => setIsTracking(false),
+    () => {
+      setIsTracking(false);
+      if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+        localStorage.removeItem('apm_driver_active_vehicle');
+      }
+      Alert.alert('Syif Ditamatkan', 'Syif anda telah ditamatkan oleh pentadbir.');
+    }
   );
 
   const handleToggleTracking = async () => {

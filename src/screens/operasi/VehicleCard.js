@@ -1,10 +1,11 @@
 // src/screens/operasi/VehicleCard.js
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { Trash2 } from 'lucide-react-native';
 
-export default function VehicleCard({ name, status, icon, theme }) {
+export default function VehicleCard({ name, status, icon, theme, onForceIdle, onPress }) {
   return (
-    <View style={[styles.vehicleCard, { backgroundColor: theme.card }]}>
+    <TouchableOpacity activeOpacity={0.7} onPress={onPress} style={[styles.vehicleCard, { backgroundColor: theme.card }]}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
         {icon}
         <View>
@@ -12,8 +13,15 @@ export default function VehicleCard({ name, status, icon, theme }) {
           <Text style={{ fontSize: 10, color: theme.textSecondary }}>{status}</Text>
         </View>
       </View>
-      <View style={[styles.statusDot, { backgroundColor: '#22c55e' }]} />
-    </View>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <View style={[styles.statusDot, { backgroundColor: '#22c55e' }]} />
+        {onForceIdle && (
+          <TouchableOpacity onPress={(e) => { e.stopPropagation?.(); onForceIdle(); }} style={{ padding: 4 }}>
+            <Trash2 size={14} color="#dc2626" />
+          </TouchableOpacity>
+        )}
+      </View>
+    </TouchableOpacity>
   );
 }
 

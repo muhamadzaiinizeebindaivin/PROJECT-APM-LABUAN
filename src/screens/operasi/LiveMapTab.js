@@ -13,6 +13,7 @@ import { BULAN_MS, BULAN_OPTIONS } from '../../constants/bulan';
 import ModalSelectField from '../../components/ModalSelectField';
 import FullscreenViewer from '../../components/FullscreenViewer';
 import { formStyles } from '../../styles/formStyles';
+import { supabaseSandbox } from '../../supabaseSandboxClient';
 import VehicleCard from './VehicleCard';
 import { mapStyles as styles } from './mapStyles';
 
@@ -58,9 +59,30 @@ export default function LiveMapTab({ theme, userRole, isEditMode, onNotify }) {
   const [pendingResolveId, setPendingResolveId] = useState(null);
   const history = usePatrolHistoryPanel(calamityPoints);
   const [deletePatrolTarget, setDeletePatrolTarget] = useState(null);
+  const [forceIdleTarget, setForceIdleTarget] = useState(null); // { id, label }
+  const [forcingIdle, setForcingIdle] = useState(false);
+  const displayForceIdleTargetRef = useRef(null);
+  if (forceIdleTarget) displayForceIdleTargetRef.current = forceIdleTarget;
+
+  const handleForceIdleVehicle = (id, label) => {
+    setForceIdleTarget({ id, label });
+  };
+
+  const confirmForceIdleVehicle = async () => {
+    if (!forceIdleTarget) return;
+    setForcingIdle(true);
+    const { error } = await supabaseSandbox
+      .from('logistik')
+      .update({ tracking_status: 'Idle', job_started_at: null, job_distance_km: 0 })
+      .eq('id', forceIdleTarget.id);
+    setForcingIdle(false);
+    setForceIdleTarget(null);
+    onNotify?.(!error ? 'success' : 'error', !error ? 'Kenderaan berjaya diputuskan daripada peta.' : 'Gagal memutuskan kenderaan.');
+  };
   const [deletingPatrol, setDeletingPatrol] = useState(false);
   const summary = useCalamitySummaryPanel(calamityPoints);
 
+  const vehiclesRef = useRef([]);
   const vehicles = useVehicles((updatedVehicle) => {
     if (iframeRef?.current?.contentWindow) {
       iframeRef.current.contentWindow.postMessage(JSON.stringify({
@@ -102,6 +124,10 @@ export default function LiveMapTab({ theme, userRole, isEditMode, onNotify }) {
       } else if (data.type === 'RESOLVE_CALAMITY_REQUEST') {
         setPendingResolveId(data.id);
         setResolveModalVisible(true);
+      } else if (data.type === 'FORCE_IDLE_VEHICLE_REQUEST') {
+        const vehicle = vehiclesRef.current.find(v => v.id === data.id);
+        const label = [vehicle?.reg, vehicle?.model].map(s => s?.trim()).find(s => s) || '-';
+        handleForceIdleVehicle(data.id, label);
       }
     };
     window.addEventListener('message', handleMapMessage);
@@ -161,6 +187,8 @@ export default function LiveMapTab({ theme, userRole, isEditMode, onNotify }) {
 
   const mapHtml = buildOperasiMapHtml({ theme, userRole });
   const mapSrc = `data:text/html;charset=utf-8,${encodeURIComponent(mapHtml)}`;
+
+  vehiclesRef.current = vehicles;
 
   const activeVehicles = vehicles.filter(v => v.tracking_status === 'Patrol');
   const activeVehiclesCount = activeVehicles.length;
@@ -431,6 +459,14 @@ export default function LiveMapTab({ theme, userRole, isEditMode, onNotify }) {
                     status={v.tracking_status}
                     icon={getVehicleIcon(v.icon_key, v.color, 16)}
                     theme={theme}
+                    onForceIdle={() => handleForceIdleVehicle(v.id, [v.reg, v.model].map(s => s?.trim()).find(s => s) || '-')}
+                    onPress={() => {
+                      if (iframeRef?.current?.contentWindow) {
+                        iframeRef.current.contentWindow.postMessage(JSON.stringify({
+                          type: 'FOCUS_VEHICLE', id: v.id, lat: v.latitude, lng: v.longitude,
+                        }), '*');
+                      }
+                    }}
                   />
                 ))}
               </ScrollView>
@@ -695,6 +731,62 @@ export default function LiveMapTab({ theme, userRole, isEditMode, onNotify }) {
                 }}
               >
                 {deletingPatrol ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <>
+                    <Trash2 size={16} color="#fff" />
+                    <Text style={{ color: '#fff', fontSize: 14, fontWeight: '700' }}>Padam</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal confirmation putuskan kenderaan daripada peta */}
+      <Modal visible={!!forceIdleTarget} transparent animationType="fade">
+        <View style={formStyles.modalOverlay}>
+          <View style={{ width: 340, maxWidth: '90%', borderRadius: 20, overflow: 'hidden', backgroundColor: '#fff' }}>
+            <View style={{ backgroundColor: '#111318', paddingVertical: 28, paddingHorizontal: 20, alignItems: 'center' }}>
+              <View style={{
+                width: 56, height: 56, borderRadius: 28,
+                backgroundColor: 'rgba(220,38,38,0.15)',
+                alignItems: 'center', justifyContent: 'center', marginBottom: 14,
+              }}>
+                <AlertTriangle size={26} color="#ef4444" />
+              </View>
+              <Text style={{ color: '#fff', fontSize: 17, fontWeight: '800', marginBottom: 8 }}>
+                Padam Kenderaan
+              </Text>
+              <Text style={{ color: '#93c5fd', fontSize: 13, textAlign: 'center', lineHeight: 18 }}>
+                Padam kenderaan "{displayForceIdleTargetRef.current?.label}" daripada peta? Pemandu perlu memulakan syif baharu.
+              </Text>
+            </View>
+            <View style={{ flexDirection: 'row', gap: 10, padding: 16 }}>
+              <TouchableOpacity
+                disabled={forcingIdle}
+                onPress={() => setForceIdleTarget(null)}
+                style={{
+                  flex: 1, paddingVertical: 13, borderRadius: 12,
+                  borderWidth: 1, borderColor: '#e2e8f0',
+                  alignItems: 'center', justifyContent: 'center',
+                  opacity: forcingIdle ? 0.5 : 1,
+                }}
+              >
+                <Text style={{ color: '#334155', fontSize: 14, fontWeight: '700' }}>Batal</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                disabled={forcingIdle}
+                onPress={confirmForceIdleVehicle}
+                style={{
+                  flex: 1, flexDirection: 'row', gap: 8, paddingVertical: 13, borderRadius: 12,
+                  backgroundColor: '#ef4444',
+                  alignItems: 'center', justifyContent: 'center',
+                  opacity: forcingIdle ? 0.7 : 1,
+                }}
+              >
+                {forcingIdle ? (
                   <ActivityIndicator size="small" color="#fff" />
                 ) : (
                   <>

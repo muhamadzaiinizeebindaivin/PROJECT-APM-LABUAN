@@ -60,6 +60,7 @@ export function buildOperasiMapHtml({ theme, userRole }) {
         <div id="map"></div>
         <script>
           var canDeleteCalamity = ${userRole === 'admin' ? 'true' : 'false'};
+          var canManageVehicle = ${(userRole === 'admin' || userRole === 'operasi') ? 'true' : 'false'};
           function initMap() {
           var map = L.map('map', { zoomControl: false, attributionControl: false, maxZoom: 19 }).setView([5.2831, 115.2308], 13);
 
@@ -76,6 +77,10 @@ export function buildOperasiMapHtml({ theme, userRole }) {
 
           window.requestResolveCalamity = function(id) {
             window.parent.postMessage(JSON.stringify({ type: 'RESOLVE_CALAMITY_REQUEST', id: id }), '*');
+          };
+
+          window.requestForceIdleVehicle = function(id) {
+            window.parent.postMessage(JSON.stringify({ type: 'FORCE_IDLE_VEHICLE_REQUEST', id: id }), '*');
           };
 
           // ---- Cluster groups (one for vehicles, one for calamity points) ----
@@ -152,12 +157,49 @@ export function buildOperasiMapHtml({ theme, userRole }) {
             });
           };
 
-          var createPopupContent = (name, reg, type, status) => {
+          var createPopupContent = (name, reg, type, status, id) => {
             var statusClass = status === 'Patrol' ? 'status-patrol' : 'status-idle';
             var subLine = (reg ? reg : '') + (reg && type ? ' &middot; ' : '') + (type ? type : '');
-            return '<div class="custom-popup"><strong>' + name + '</strong>' +
-                   (subLine ? '<span class="sub">' + subLine + '</span>' : '') +
-                   '<span class="badge ' + statusClass + '">' + status + '</span></div>';
+
+            var popupDiv = document.createElement('div');
+            popupDiv.className = 'custom-popup';
+
+            var strongEl = document.createElement('strong');
+            strongEl.textContent = name;
+            popupDiv.appendChild(strongEl);
+
+            if (subLine) {
+              var subEl = document.createElement('span');
+              subEl.className = 'sub';
+              subEl.textContent = subLine;
+              popupDiv.appendChild(subEl);
+            }
+
+            var badgeEl = document.createElement('span');
+            badgeEl.className = 'badge ' + statusClass;
+            badgeEl.textContent = status;
+            popupDiv.appendChild(badgeEl);
+
+            if (canManageVehicle) {
+              var deleteBtnEl = document.createElement('button');
+              deleteBtnEl.textContent = 'Padam';
+              deleteBtnEl.style.marginTop = '6px';
+              deleteBtnEl.style.backgroundColor = '#dc2626';
+              deleteBtnEl.style.color = 'white';
+              deleteBtnEl.style.border = 'none';
+              deleteBtnEl.style.padding = '4px 10px';
+              deleteBtnEl.style.borderRadius = '6px';
+              deleteBtnEl.style.fontSize = '11px';
+              deleteBtnEl.style.fontWeight = '700';
+              deleteBtnEl.style.cursor = 'pointer';
+              deleteBtnEl.style.width = '100%';
+              deleteBtnEl.addEventListener('click', function() {
+                window.requestForceIdleVehicle(id);
+              });
+              popupDiv.appendChild(deleteBtnEl);
+            }
+
+            return popupDiv;
           };
 
           var formatTimeAgo = (iso) => {
@@ -183,7 +225,7 @@ export function buildOperasiMapHtml({ theme, userRole }) {
                 if (v.latitude && v.longitude && v.status === 'Patrol' && !markers[v.id]) {
                   vehicleMeta[v.id] = { iconKey: v.icon_key, type: v.type, reg: v.reg };
                   markers[v.id] = L.marker([v.latitude, v.longitude], { icon: createIcon(v.color || '#ef4444', v.icon_key) })
-                    .bindPopup(createPopupContent(v.name, v.reg, v.type, v.status));
+                    .bindPopup(createPopupContent(v.name, v.reg, v.type, v.status, v.id));
                   vehicleLayer.addLayer(markers[v.id]);
                 }
               });
@@ -198,10 +240,10 @@ export function buildOperasiMapHtml({ theme, userRole }) {
                 if (markers[data.id]) {
                   markers[data.id].setLatLng([data.lat, data.lng]);
                   markers[data.id].setIcon(createIcon(data.color, meta.iconKey));
-                  markers[data.id].setPopupContent(createPopupContent(data.name, meta.reg, meta.type, data.status));
+                  markers[data.id].setPopupContent(createPopupContent(data.name, meta.reg, meta.type, data.status, data.id));
                 } else if (data.lat && data.lng) {
                   markers[data.id] = L.marker([data.lat, data.lng], { icon: createIcon(data.color, meta.iconKey) })
-                    .bindPopup(createPopupContent(data.name, meta.reg, meta.type, data.status));
+                    .bindPopup(createPopupContent(data.name, meta.reg, meta.type, data.status, data.id));
                   vehicleLayer.addLayer(markers[data.id]);
                 }
               } else {
@@ -209,6 +251,14 @@ export function buildOperasiMapHtml({ theme, userRole }) {
                   vehicleLayer.removeLayer(markers[data.id]);
                   delete markers[data.id];
                 }
+              }
+            } else if (data.type === 'FOCUS_VEHICLE') {
+              var marker = markers[data.id];
+              if (marker) {
+                map.setView(marker.getLatLng(), Math.max(map.getZoom(), 16), { animate: true });
+                marker.openPopup();
+              } else if (data.lat && data.lng) {
+                map.setView([data.lat, data.lng], Math.max(map.getZoom(), 16), { animate: true });
               }
             } else if (data.type === 'UPDATE_CALAMITIES') {
               var currentCalamityIds = data.payload.map(function(c) { return c.id; });
