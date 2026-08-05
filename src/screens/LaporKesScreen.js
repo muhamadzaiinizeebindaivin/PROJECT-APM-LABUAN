@@ -308,14 +308,19 @@ export default function LaporKesScreen({ onLogout }) {
     setSelectedPoint(point);
     setDescription(point.description || '');
     setStatus('berjaya');
-    setMode('form-peta');
+  };
+
+  const closeResolveModal = () => {
+    setSelectedPoint(null);
+    setDescription('');
+    setStatus('berjaya');
   };
 
   const handleSubmitResolve = async () => {
     setSubmitting(true);
     const result = await resolveTreatedCalamity(selectedPoint, { status, description });
     setSubmitting(false);
-    if (!result.error) setSubmitted(true);
+    if (!result.error) closeResolveModal();
   };
 
   const handleSubmitBaru = async () => {
@@ -587,6 +592,71 @@ export default function LaporKesScreen({ onLogout }) {
             </View>
           </View>
         </Modal>
+
+        <Modal visible={!!selectedPoint} transparent animationType="fade" onRequestClose={closeResolveModal}>
+          <View style={styles.confirmOverlay}>
+            <View style={styles.confirmCard}>
+              <View style={[styles.confirmBanner, { backgroundColor: '#0c0c0e' }]}>
+                <View style={[styles.confirmIconWrap, { backgroundColor: 'rgba(22, 163, 74, 0.15)' }]}>
+                  <CheckCircle2 size={22} color="#16a34a" />
+                </View>
+                <Text style={styles.confirmTitle}>Tandakan Selesai</Text>
+                <Text style={styles.confirmText}>Pilih status penyelesaian untuk kes ini.</Text>
+              </View>
+
+              <View style={[styles.confirmBody, { flexDirection: 'column', gap: 0 }]}>
+                <Text style={styles.fieldLabel}>Status</Text>
+                <View style={styles.statusWrap}>
+                  {STATUS_OPTIONS.map(s => (
+                    <TouchableOpacity
+                      key={s.key}
+                      onPress={() => setStatus(s.key)}
+                      style={[styles.statusChip, status === s.key && styles.statusChipActive]}
+                    >
+                      <Text style={[styles.statusChipText, status === s.key && styles.statusChipTextActive]}>{s.label}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                <Text style={styles.fieldLabel}>Keterangan (pilihan)</Text>
+                <View style={[styles.searchContainer, { height: 90, alignItems: 'flex-start', paddingTop: 12, marginBottom: 20 }]}>
+                  <TextInput
+                    style={[styles.searchInput, { height: '100%', textAlignVertical: 'top' }]}
+                    placeholder="Catatan tambahan..."
+                    placeholderTextColor={PALETTE.textMutedDark}
+                    value={description}
+                    onChangeText={setDescription}
+                    multiline
+                  />
+                </View>
+
+                <View style={{ flexDirection: 'row', gap: 10 }}>
+                  <TouchableOpacity
+                    style={[styles.confirmCancelBtn, submitting && { opacity: 0.5 }]}
+                    onPress={closeResolveModal}
+                    disabled={submitting}
+                  >
+                    <Text style={styles.confirmCancelText}>Batal</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.confirmDeleteBtn, { backgroundColor: PALETTE.orange }, submitting && { opacity: 0.7 }]}
+                    onPress={handleSubmitResolve}
+                    disabled={submitting}
+                  >
+                    {submitting ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <>
+                        <Send size={16} color="#fff" />
+                        <Text style={styles.confirmDeleteText}>Hantar</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          </View>
+        </Modal>
       </View>
     );
   }
@@ -679,71 +749,7 @@ export default function LaporKesScreen({ onLogout }) {
     );
   }
 
-  // View 3b: form-peta — clôturer un cas existant (Senarai Kecemasan)
-  return (
-    <ScrollView style={styles.screenScroll} contentContainerStyle={styles.scrollContent}>
-      <TouchableOpacity style={styles.backButton} onPress={backToChoice}>
-        <ArrowLeft color={PALETTE.textDark} size={22} />
-        <Text style={styles.backText}>Kembali</Text>
-      </TouchableOpacity>
-
-      <View style={styles.header}>
-        <Text style={styles.title}>Rekod Kes</Text>
-        <View style={styles.activeVehicleCard}>
-          <View style={styles.activeVehicleIconWrap}>
-            <Image source={{ uri: getCalamityLogoUrl(selectedCategory.key) }} style={{ width: 32, height: 32 }} resizeMode="contain" />
-          </View>
-          <Text style={styles.activeVehiclePlate}>{selectedCategory.label}</Text>
-        </View>
-      </View>
-
-      {submitted ? (
-        <View style={styles.statusBox}>
-          <CheckCircle2 size={40} color={PALETTE.success} style={{ marginBottom: 10 }} />
-          <Text style={styles.statusText}>Kes telah direkodkan.</Text>
-          <TouchableOpacity style={[styles.joinButton, { marginTop: 16 }]} onPress={resetAll}>
-            <Text style={styles.joinButtonText}>Rekod Kes Lain</Text>
-          </TouchableOpacity>
-        </View>
-      ) : (
-        <View style={{ width: '100%' }}>
-          <Text style={styles.fieldLabel}>Status</Text>
-          <View style={styles.statusWrap}>
-            {STATUS_OPTIONS.map(s => (
-              <TouchableOpacity
-                key={s.key}
-                onPress={() => setStatus(s.key)}
-                style={[styles.statusChip, status === s.key && styles.statusChipActive]}
-              >
-                <Text style={[styles.statusChipText, status === s.key && styles.statusChipTextActive]}>{s.label}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          <Text style={styles.fieldLabel}>Keterangan (pilihan)</Text>
-          <View style={[styles.searchContainer, { height: 90, alignItems: 'flex-start', paddingTop: 12, marginBottom: 20 }]}>
-            <TextInput
-              style={[styles.searchInput, { height: '100%', textAlignVertical: 'top' }]}
-              placeholder="Catatan tambahan..."
-              placeholderTextColor={PALETTE.textMutedDark}
-              value={description}
-              onChangeText={setDescription}
-              multiline
-            />
-          </View>
-
-          <TouchableOpacity
-            style={[styles.joinButton, { flexDirection: 'row', justifyContent: 'center', gap: 8 }, submitting && { opacity: 0.6 }]}
-            onPress={handleSubmitResolve}
-            disabled={submitting}
-          >
-            {!submitting && <Send color="#fff" size={16} />}
-            <Text style={styles.joinButtonText}>{submitting ? '...' : 'Hantar Rekod'}</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-    </ScrollView>
-  );
+  return null;
 }
 
 const styles = StyleSheet.create({
