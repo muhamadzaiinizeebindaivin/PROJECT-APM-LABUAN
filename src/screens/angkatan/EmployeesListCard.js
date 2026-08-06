@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TextInput, TouchableOpacity, Pressable, FlatList, Image, useWindowDimensions } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Pressable, Image, useWindowDimensions } from 'react-native';
 import { User, Search, Plus, Upload, Award, Users, Pencil } from 'lucide-react-native';
 import { PALETTE } from '../../constants/palette';
 import { angkatanStyles as styles } from './angkatanStyles';
@@ -50,18 +50,12 @@ export default function EmployeesListCard({
 
       <Text style={styles.employeeHint}>Ketik pada profil untuk lihat lebih maklumat</Text>
 
-      <FlatList
-        data={paginatedEmployees}
-        keyExtractor={(emp) => String(emp.id)}
-        scrollEnabled={false}
-        initialNumToRender={20}
-        maxToRenderPerBatch={20}
-        windowSize={5}
-        removeClippedSubviews
-        renderItem={({ item: emp }) => {
+      <View>
+        {paginatedEmployees.map((emp) => {
           const isActive = String(emp.status_keaktifan).toUpperCase() === 'AKTIF';
           return (
             <Pressable
+              key={String(emp.id)}
               style={[styles.employeeRow, isMobile && { alignItems: 'flex-start', flexWrap: 'wrap' }]}
               onPress={() => onOpenDetail(emp)}
             >
@@ -123,8 +117,8 @@ export default function EmployeesListCard({
               )}
             </Pressable>
           );
-        }}
-      />
+        })}
+      </View>
 
       <View style={styles.paginationRow}>
         <TouchableOpacity
