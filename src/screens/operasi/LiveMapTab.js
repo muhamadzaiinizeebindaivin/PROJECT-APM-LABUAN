@@ -120,7 +120,9 @@ export default function LiveMapTab({ theme, userRole, isEditMode, onNotify }) {
         setPendingPlacement({ lat: data.lat, lng: data.lng });
         setCalamityModalVisible(true);
       } else if (data.type === 'DELETE_CALAMITY_REQUEST') {
-        deleteCalamity(data.id);
+        deleteCalamity(data.id).then((ok) => {
+          if (!ok) onNotify?.('error', 'Gagal memadam titik. Sila cuba lagi.');
+        });
       } else if (data.type === 'RESOLVE_CALAMITY_REQUEST') {
         setPendingResolveId(data.id);
         setResolveModalVisible(true);
