@@ -143,9 +143,14 @@ const buildPdfViewerHtml = () => `
               slideHeightPx = viewport.height; // hauteur du cadre = hauteur réelle de la page 1 à cette largeur
             }
 
+            // Résolution du buffer calée sur la densité de pixels de l'écran (Retina/iPhone)
+            var outputScale = window.devicePixelRatio || 1;
+
             var canvas = document.createElement('canvas');
-            canvas.width = viewport.width;
-            canvas.height = viewport.height;
+            canvas.width = Math.floor(viewport.width * outputScale);
+            canvas.height = Math.floor(viewport.height * outputScale);
+            canvas.style.width = viewport.width + 'px';
+            canvas.style.height = viewport.height + 'px';
 
             var slide = targetSlide || document.querySelector('.pageSlide[data-page-num="' + pageNum + '"]');
             if (slide) {
@@ -154,7 +159,11 @@ const buildPdfViewerHtml = () => `
               slide.style.height = viewport.height + 'px';
             }
 
-            return page.render({ canvasContext: canvas.getContext('2d'), viewport: viewport }).promise;
+            var renderContext = { canvasContext: canvas.getContext('2d'), viewport: viewport };
+            if (outputScale !== 1) {
+              renderContext.transform = [outputScale, 0, 0, outputScale, 0, 0];
+            }
+            return page.render(renderContext).promise;
           });
         }
 
