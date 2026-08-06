@@ -1,6 +1,6 @@
 // src/screens/operasi/LiveMapTab.js
 import React, { useState, useRef, useEffect, createElement } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Platform, ActivityIndicator, Modal, TextInput, useWindowDimensions } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Platform, ActivityIndicator, Modal, TextInput, KeyboardAvoidingView, useWindowDimensions } from 'react-native';
 import { ShieldAlert, MapIcon, History, ClipboardList, Download, Route, X , Trash2, AlertTriangle} from 'lucide-react-native';
 import { getVehicleIcon } from '../../utils/vehicleIcons';
 import { useVehicles } from '../../hooks/useVehicles';
@@ -654,31 +654,36 @@ export default function LiveMapTab({ theme, userRole, isEditMode, onNotify }) {
       </Modal>
 
       <Modal visible={calamityModalVisible} transparent animationType="fade">
-        <View style={formStyles.modalOverlay}>
-          <View style={[formStyles.modalContent, { backgroundColor: theme.card }]}>
+        <KeyboardAvoidingView
+          style={formStyles.modalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          <View style={[formStyles.modalContent, { backgroundColor: theme.card, maxHeight: '80%' }]}>
             <View style={formStyles.modalHeader}>
               <Text style={{ fontSize: 16, fontWeight: '800', color: theme.text }}>Tambah Titik Bencana</Text>
               <TouchableOpacity onPress={() => { setCalamityModalVisible(false); setPendingPlacement(null); }}>
                 <X size={24} color={theme.textSecondary} />
               </TouchableOpacity>
             </View>
-            <Text style={[formStyles.inputLabel, { color: theme.textSecondary }]}>
-              Kategori: {getCalamityMeta(activeCalamityTool).label}
-            </Text>
-            <Text style={[formStyles.inputLabel, { color: theme.textSecondary, marginTop: 10 }]}>Keterangan (pilihan)</Text>
-            <TextInput
-              style={[formStyles.inputField, { backgroundColor: theme.background, color: theme.text, borderColor: theme.border, height: 80, textAlignVertical: 'top' }]}
-              placeholder="Cth: Air naik setinggi 1 meter"
-              placeholderTextColor={theme.textSecondary}
-              multiline
-              value={calamityDescription}
-              onChangeText={setCalamityDescription}
-            />
-            <TouchableOpacity style={formStyles.saveBtn} onPress={handleSaveCalamity}>
-              <Text style={formStyles.saveBtnText}>Simpan Titik</Text>
-            </TouchableOpacity>
+            <ScrollView keyboardShouldPersistTaps="handled">
+              <Text style={[formStyles.inputLabel, { color: theme.textSecondary }]}>
+                Kategori: {getCalamityMeta(activeCalamityTool).label}
+              </Text>
+              <Text style={[formStyles.inputLabel, { color: theme.textSecondary, marginTop: 10 }]}>Keterangan (pilihan)</Text>
+              <TextInput
+                style={[formStyles.inputField, { backgroundColor: theme.background, color: theme.text, borderColor: theme.border, height: 80, textAlignVertical: 'top' }]}
+                placeholder="Cth: Air naik setinggi 1 meter"
+                placeholderTextColor={theme.textSecondary}
+                multiline
+                value={calamityDescription}
+                onChangeText={setCalamityDescription}
+              />
+              <TouchableOpacity style={formStyles.saveBtn} onPress={handleSaveCalamity}>
+                <Text style={formStyles.saveBtnText}>Simpan Titik</Text>
+              </TouchableOpacity>
+            </ScrollView>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Modal confirmation padam rekod patrol */}
