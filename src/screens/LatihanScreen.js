@@ -1,7 +1,7 @@
 // src/screens/LatihanScreen.js
 import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, useWindowDimensions } from 'react-native';
-import { Plus, Edit, Trash2, BarChart3, PieChart, Target, CheckCircle2, XCircle } from 'lucide-react-native';
+import { Plus, Edit, Trash2, BarChart3, PieChart, Target, CheckCircle2, XCircle, ClipboardList } from 'lucide-react-native';
 import { useLatihanBudget } from '../hooks/useLatihanBudget';
 import BudgetSection from './kewangan/BudgetSection';
 import { useLatihan } from '../hooks/useLatihan';
@@ -262,15 +262,21 @@ export default function LatihanScreen({ theme, userRole }) {
 
         {/* ---- Onglets stats + liste ---- */}
         <View style={[styles.sectionCard, { marginTop: 16 }]}>
+          <View style={[shared.sectionHeaderRow, { justifyContent: 'space-between' }]}>
+            <View style={styles.sectionTitleGroup}>
+              <View style={styles.sectionIconBadge}><ClipboardList size={16} color={PALETTE.orange} /></View>
+              <Text style={shared.sectionHeaderTitle}>Senarai Latihan</Text>
+            </View>
+            {isEditMode && activeStatTab === 'senarai' && (
+              <TouchableOpacity style={shared.addButton} onPress={handleOpenAdd}>
+                <Plus size={16} color="#fff" />
+                <Text style={shared.addButtonText}>Tambah</Text>
+              </TouchableOpacity>
+            )}
+          </View>
 
           {activeStatTab === 'senarai' && (
             <>
-              {isEditMode && (
-                <TouchableOpacity style={[shared.addButton, { alignSelf: 'flex-end', marginBottom: 10 }]} onPress={handleOpenAdd}>
-                  <Plus size={16} color="#fff" />
-                  <Text style={shared.addButtonText}>Tambah</Text>
-                </TouchableOpacity>
-              )}
               {latihanList.length === 0 ? (
                 <Text style={shared.emptyText}>Tiada data latihan.</Text>
               ) : (
