@@ -28,7 +28,7 @@ export function useCalamityPoints() {
   // Crée un point sur la carte (actif). N'incrémente plus ng999_historique ici — le compteur
   // ne bouge qu'à la clôture (resolveCalamity / resolveTreatedCalamity), pas au pinpoint.
   const saveCalamity = async ({ category, description, latitude, longitude }) => {
-    if (!category) return { error: true };
+    if (!category) return { error: { message: 'Kategori tiada.' } };
     const now = new Date();
     const { error } = await supabaseSandbox.from('laporan_ng999').insert([{
       category,
@@ -38,7 +38,7 @@ export function useCalamityPoints() {
       tarikh: now.toISOString().split('T')[0],
     }]);
     if (!error) fetchCalamityPoints();
-    return { error: !!error };
+    return { error };
   };
 
   // Clôture un point existant (créé via saveCalamity) avec un statut final.
@@ -58,7 +58,7 @@ export function useCalamityPoints() {
       .eq('id', point.id);
 
     if (!error) fetchCalamityPoints();
-    return { error: !!error };
+    return { error };
   };
 
   const deleteCalamity = async (id) => {

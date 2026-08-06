@@ -174,12 +174,14 @@ export default function LiveMapTab({ theme, userRole, isEditMode, onNotify }) {
       latitude: pendingPlacement.lat,
       longitude: pendingPlacement.lng,
     });
-    
+
     if (!error) {
       setCalamityModalVisible(false);
       setCalamityDescription('');
       setPendingPlacement(null);
       setActiveCalamityTool(null);
+    } else {
+      onNotify?.('error', `Gagal menyimpan titik: ${error.message || JSON.stringify(error)}`);
     }
   };
 
