@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Modal } from 'react-native';
-import { Pencil, Trash2, AlertTriangle } from 'lucide-react-native';
+import { View, Text, TouchableOpacity, Modal, ScrollView, useWindowDimensions } from 'react-native';
+import { Pencil, Trash2, AlertTriangle, ClipboardCheck } from 'lucide-react-native';
 import { PALETTE } from '../../constants/palette';
 import { pentadbiranStyles as styles } from './pentadbiranStyles';
 import SectionHeader from './SectionHeader';
@@ -16,7 +16,28 @@ function formatTarikh(value) {
   return `${day}/${month}/${year}`;
 }
 
+// Cellule de table : le View porte la bordure verticale (pleine hauteur), le Text porte la typo.
+function TableCell({ children, colStyle, header, align = 'center', last }) {
+  return (
+    <View style={[styles.pematuhanCellWrap, colStyle, last && styles.pematuhanCellWrapLast]}>
+      <Text style={[
+        header ? styles.pematuhanHeaderText : styles.pematuhanCellText,
+        align === 'left' && styles.pematuhanCellTextLeft,
+      ]}>
+        {children}
+      </Text>
+    </View>
+  );
+}
+
 export default function ComplianceSection({ pageData, isEditing, updateField, onSave, onNotify }) {
+  const { width: screenWidth } = useWindowDimensions();
+  const isMobile = screenWidth < 768;
+  const colTarikh = { width: isMobile ? 110 : 110 };
+  const colAgensi = isMobile ? { width: 200 } : { flex: 1 };
+  const colTajuk = isMobile ? { width: 260 } : { flex: 1 };
+  const colAction = { width: isMobile ? 90 : 100 };
+
   const [hoveredIndex, setHoveredIndex] = useState(null);
   const [modalIndex, setModalIndex] = useState(null); // null = fermé, -1 = ajout, >=0 = édition
   const [draft, setDraft] = useState(EMPTY_DRAFT);
@@ -99,56 +120,66 @@ export default function ComplianceSection({ pageData, isEditing, updateField, on
 
   return (
     <View style={styles.card}>
-      <SectionHeader title="PENILAIAN SEMASA/TAHUNAN" />
+      <SectionHeader title="PENILAIAN SEMASA/TAHUNAN" Icon={ClipboardCheck} />
 
-      <View style={styles.table}>
-        <View style={[styles.tableRow, styles.tableHeader]}>
-          <Text style={[styles.tableCell, styles.cellHeader, { width: 110 }]}>TARIKH</Text>
-          <Text style={[styles.tableCell, styles.cellHeader, { flex: 1, textAlign: 'left' }]}>AGENSI</Text>
-          <Text style={[styles.tableCell, styles.cellHeader, { flex: 1, textAlign: 'left' }]}>TAJUK PENILAIAN</Text>
-          {isEditing && <Text style={[styles.tableCell, styles.cellHeader, { width: 100 }]}></Text>}
+      <ScrollView
+        horizontal={isMobile}
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={isMobile ? null : { flex: 1 }}
+        style={styles.pematuhanScroll}
+      >
+      <View style={[styles.pematuhanTable, isMobile ? null : { flex: 1 }]}>
+        <View style={[styles.pematuhanRow, styles.pematuhanHeaderRow]}>
+          <TableCell colStyle={colTarikh} header>TARIKH</TableCell>
+          <TableCell colStyle={colAgensi} header align="left">AGENSI</TableCell>
+          <TableCell colStyle={colTajuk} header align="left">TAJUK PENILAIAN</TableCell>
+          {isEditing && <TableCell colStyle={colAction} header last></TableCell>}
         </View>
 
-        {pageData.pematuhan.map((item, index) => (
-          <View key={`pematuhan-${index}`} style={[styles.tableRow, index === pageData.pematuhan.length - 1 && styles.tableRowLast]}>
-            <Text style={[styles.tableCell, { width: 110 }]}>{formatTarikh(item.tarikh)}</Text>
-            <Text style={[styles.tableCell, { flex: 1, textAlign: 'left', paddingLeft: 10 }]}>{item.agensi}</Text>
-            <Text style={[styles.tableCell, { flex: 1, textAlign: 'left', paddingLeft: 10 }]}>{item.tajukPenilaian}</Text>
+        {pageData.pematuhan.map((item, index) => {
+          const isLastRow = index === pageData.pematuhan.length - 1;
+          return (
+            <View key={`pematuhan-${index}`} style={[styles.pematuhanRow, isLastRow && styles.pematuhanRowLast]}>
+              <TableCell colStyle={colTarikh}>{formatTarikh(item.tarikh)}</TableCell>
+              <TableCell colStyle={colAgensi} align="left">{item.agensi}</TableCell>
+              <TableCell colStyle={colTajuk} align="left">{item.tajukPenilaian}</TableCell>
 
-            {isEditing && (
-              <View style={[styles.tableCell, { width: 100, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6 }]}>
-                <TouchableOpacity
-                  style={styles.kpiPencilBtnInline}
-                  onPress={() => openEdit(index)}
-                  onMouseEnter={() => setHoveredIndex(index)}
-                  onMouseLeave={() => setHoveredIndex(null)}
-                >
-                  <Pencil size={14} color={PALETTE.orange} />
-                  {hoveredIndex === index && (
-                    <View style={styles.kpiTooltip}>
-                      <Text style={styles.kpiTooltipText}>Ubah</Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
+              {isEditing && (
+                <View style={[styles.pematuhanCellWrap, colAction, styles.pematuhanCellWrapLast, { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6 }]}>
+                  <TouchableOpacity
+                    style={styles.kpiPencilBtnInline}
+                    onPress={() => openEdit(index)}
+                    onMouseEnter={() => setHoveredIndex(index)}
+                    onMouseLeave={() => setHoveredIndex(null)}
+                  >
+                    <Pencil size={14} color={PALETTE.orange} />
+                    {hoveredIndex === index && (
+                      <View style={styles.kpiTooltip}>
+                        <Text style={styles.kpiTooltipText}>Ubah</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
 
-                <TouchableOpacity
-                  style={[styles.kpiPencilBtnInline, { backgroundColor: 'rgba(220, 38, 38, 0.10)' }]}
-                  onPress={() => setConfirmDeleteIndex(index)}
-                  onMouseEnter={() => setHoveredDeleteIndex(index)}
-                  onMouseLeave={() => setHoveredDeleteIndex(null)}
-                >
-                  <Trash2 size={14} color="#dc2626" />
-                  {hoveredDeleteIndex === index && (
-                    <View style={styles.kpiTooltip}>
-                      <Text style={styles.kpiTooltipText}>Padam</Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
-        ))}
+                  <TouchableOpacity
+                    style={[styles.kpiPencilBtnInline, { backgroundColor: 'rgba(220, 38, 38, 0.10)' }]}
+                    onPress={() => setConfirmDeleteIndex(index)}
+                    onMouseEnter={() => setHoveredDeleteIndex(index)}
+                    onMouseLeave={() => setHoveredDeleteIndex(null)}
+                  >
+                    <Trash2 size={14} color="#dc2626" />
+                    {hoveredDeleteIndex === index && (
+                      <View style={styles.kpiTooltip}>
+                        <Text style={styles.kpiTooltipText}>Padam</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+          );
+        })}
       </View>
+      </ScrollView>
 
       {isEditing && (
         <TouchableOpacity onPress={openAdd} style={[styles.addBtn, { marginTop: 10 }]}>

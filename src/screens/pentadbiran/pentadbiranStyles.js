@@ -1,4 +1,4 @@
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Platform } from 'react-native';
 import { PALETTE } from '../../constants/palette';
 
 export const pentadbiranStyles = StyleSheet.create({
@@ -85,6 +85,30 @@ export const pentadbiranStyles = StyleSheet.create({
   cellHeaderGred: { color: '#854d0e', backgroundColor: 'rgba(234, 179, 8, 0.22)' },
   boldCell: { fontWeight: '800', color: '#be185d', fontSize: 14, backgroundColor: 'rgba(236, 72, 153, 0.10)' },
   cellHeaderJumlah: { color: '#be185d', backgroundColor: 'rgba(236, 72, 153, 0.14)' },
+
+  // ── Table "PENILAIAN SEMASA/TAHUNAN" (ComplianceSection) — table dédiée, responsive web/mobile ──
+  // Largeurs de colonnes gérées dans le composant (comme WaranTable, via useWindowDimensions),
+  // ici on ne garde que ce qui ne dépend pas de isMobile.
+  complianceScroll: { width: '100%' },
+  complianceTable: { borderWidth: 1, borderColor: PALETTE.cardLightBorder, borderRadius: 14, overflow: 'hidden' },
+  pematuhanScroll: { width: '100%' },
+  pematuhanTable: { borderWidth: 1, borderColor: PALETTE.cardLightBorder, borderRadius: 14, overflow: 'hidden' },
+  pematuhanRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: PALETTE.cardLightBorder },
+  pematuhanRowLast: { borderBottomWidth: 0 },
+  pematuhanHeaderRow: { backgroundColor: 'rgba(249, 115, 22, 0.06)' },
+  // Wrapper (View) : porte uniquement la bordure verticale, s'étire sur toute la hauteur de la ligne
+  pematuhanCellWrap: {
+    alignSelf: 'stretch', justifyContent: 'center',
+    borderRightWidth: 1, borderRightColor: PALETTE.cardLightBorder,
+    paddingVertical: 16, paddingHorizontal: 10,
+  },
+  pematuhanCellWrapLast: { borderRightWidth: 0 },
+  pematuhanCellText: { textAlign: 'center', color: PALETTE.textMutedDark, fontSize: 14 },
+  pematuhanCellTextLeft: { textAlign: 'left' },
+  pematuhanHeaderText: {
+    fontWeight: '800', color: PALETTE.textDark, textAlign: 'center',
+    fontSize: 12, lineHeight: 16, letterSpacing: 0.4,
+  },
 
   progressItem: { marginBottom: 15 },
   progressLabel: { fontSize: 14, color: PALETTE.textMutedDark, marginBottom: 5 },
