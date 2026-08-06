@@ -1,5 +1,5 @@
 // src/screens/operasi/LiveMapTab.js
-import React, { useState, useRef, useEffect, createElement } from 'react';
+import React, { useState, useRef, useEffect, useMemo, createElement } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Platform, ActivityIndicator, Modal, TextInput, KeyboardAvoidingView, useWindowDimensions } from 'react-native';
 import { ShieldAlert, MapIcon, History, ClipboardList, Download, Route, X , Trash2, AlertTriangle} from 'lucide-react-native';
 import { getVehicleIcon } from '../../utils/vehicleIcons';
@@ -115,7 +115,9 @@ export default function LiveMapTab({ theme, userRole, isEditMode, onNotify }) {
       if (event.source !== iframeRef.current?.contentWindow) return;
       let data;
       try { data = JSON.parse(event.data); } catch (e) { return; }
-      if (data.type === 'MAP_CLICKED' && activeCalamityTool) {
+      if (data.type === 'REQUEST_CALAMITY_REFRESH') {
+        sendCalamities();
+      } else if (data.type === 'MAP_CLICKED' && activeCalamityTool) {
         
         setPendingPlacement({ lat: data.lat, lng: data.lng });
         setCalamityModalVisible(true);
@@ -137,8 +139,7 @@ export default function LiveMapTab({ theme, userRole, isEditMode, onNotify }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeCalamityTool]);
 
-  useEffect(() => {
-    
+  const sendCalamities = () => {
     if (iframeRef?.current?.contentWindow) {
       const payload = calamityPoints
         .filter(c => c.status === 'active')
@@ -155,7 +156,18 @@ export default function LiveMapTab({ theme, userRole, isEditMode, onNotify }) {
         }));
       iframeRef.current.contentWindow.postMessage(JSON.stringify({ type: 'UPDATE_CALAMITIES', payload }), '*');
     }
-  }, [calamityPoints, loading]);
+  };
+
+  useEffect(() => { sendCalamities(); }, [calamityPoints, loading]);
+
+  useEffect(() => {
+    if (iframeRef?.current?.contentWindow) {
+      const canDelete = userRole === 'admin' || userRole === 'operasi';
+      iframeRef.current.contentWindow.postMessage(JSON.stringify({
+        type: 'UPDATE_PERMISSIONS', canDelete, canManage: canDelete,
+      }), '*');
+    }
+  }, [userRole, loading]);
 
   useEffect(() => {
     if (!loading && iframeRef?.current?.contentWindow && vehicles.length > 0) {
@@ -189,8 +201,8 @@ export default function LiveMapTab({ theme, userRole, isEditMode, onNotify }) {
 
   const handleIframeLoad = () => setLoading(false);
 
-  const mapHtml = buildOperasiMapHtml({ theme, userRole });
-  const mapSrc = `data:text/html;charset=utf-8,${encodeURIComponent(mapHtml)}`;
+  const mapHtml = useMemo(() => buildOperasiMapHtml({ theme }), [theme]);
+  const mapSrc = useMemo(() => `data:text/html;charset=utf-8,${encodeURIComponent(mapHtml)}`, [mapHtml]);
 
   vehiclesRef.current = vehicles;
 

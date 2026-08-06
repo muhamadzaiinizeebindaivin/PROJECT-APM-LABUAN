@@ -59,8 +59,8 @@ export function buildOperasiMapHtml({ theme, userRole }) {
       <body>
         <div id="map"></div>
         <script>
-          var canDeleteCalamity = ${(userRole === 'admin' || userRole === 'operasi') ? 'true' : 'false'};
-          var canManageVehicle = ${(userRole === 'admin' || userRole === 'operasi') ? 'true' : 'false'};
+          var canDeleteCalamity = false;
+          var canManageVehicle = false;
           function initMap() {
           var map = L.map('map', { zoomControl: false, attributionControl: false, maxZoom: 19 }).setView([5.2831, 115.2308], 13);
 
@@ -220,7 +220,15 @@ export function buildOperasiMapHtml({ theme, userRole }) {
           window.addEventListener('message', function(event) {
             var data = JSON.parse(event.data);
 
-            if (data.type === 'INIT_VEHICLES') {
+            if (data.type === 'UPDATE_PERMISSIONS') {
+              canDeleteCalamity = !!data.canDelete;
+              canManageVehicle = !!data.canManage;
+              Object.keys(calamityMarkers).forEach(function(id) {
+                calamityCluster.removeLayer(calamityMarkers[id]);
+                delete calamityMarkers[id];
+              });
+              window.parent.postMessage(JSON.stringify({ type: 'REQUEST_CALAMITY_REFRESH' }), '*');
+            } else if (data.type === 'INIT_VEHICLES') {
               data.payload.forEach(v => {
                 if (v.latitude && v.longitude && v.status === 'Patrol' && !markers[v.id]) {
                   vehicleMeta[v.id] = { iconKey: v.icon_key, type: v.type, reg: v.reg };
