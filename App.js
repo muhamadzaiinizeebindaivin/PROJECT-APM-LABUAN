@@ -320,6 +320,7 @@ export default function App() {
       <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>Debug ({debugLogs.length})</Text>
     </TouchableOpacity>
   );
+
   const [isCheckingSession, setIsCheckingSession] = useState(true);
   const [isInvitedUser, setIsInvitedUser] = useState(false);
   const [loginModalVisible, setLoginModalVisible] = useState(false);
@@ -549,11 +550,15 @@ export default function App() {
       const email = session.user.email;
       const cleanUsername = email ? email.split('@')[0] : null;
 
-      const { data: profile } = await supabaseSandbox
+      const { data: profile, error: profileError } = await supabaseSandbox
         .from('profiles')
         .select('role, agency_id, username')
         .eq('id', userId)
         .maybeSingle();
+
+      if (profileError) {
+        console.error('profile fetch error:', profileError.message, profileError.code, profileError.details);
+      }
 
       // Collision précise : une session anonyme (bouton "Operasi" / code d'accès dans
       // LaporKesScreen) a role='operasi' en base pour les besoins de RLS — mais ça ne
