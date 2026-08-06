@@ -233,7 +233,10 @@ export function buildOperasiMapHtml({ theme, userRole }) {
                 if (v.latitude && v.longitude && v.status === 'Patrol' && !markers[v.id]) {
                   vehicleMeta[v.id] = { iconKey: v.icon_key, type: v.type, reg: v.reg };
                   markers[v.id] = L.marker([v.latitude, v.longitude], { icon: createIcon(v.color || '#ef4444', v.icon_key) })
-                    .bindPopup(createPopupContent(v.name, v.reg, v.type, v.status, v.id));
+                    .bindPopup(createPopupContent(v.name, v.reg, v.type, v.status, v.id), {
+                      autoPanPaddingTopLeft: L.point(20, 20),
+                      autoPanPaddingBottomRight: L.point(20, 170)
+                    });
                   vehicleLayer.addLayer(markers[v.id]);
                 }
               });
@@ -251,7 +254,10 @@ export function buildOperasiMapHtml({ theme, userRole }) {
                   markers[data.id].setPopupContent(createPopupContent(data.name, meta.reg, meta.type, data.status, data.id));
                 } else if (data.lat && data.lng) {
                   markers[data.id] = L.marker([data.lat, data.lng], { icon: createIcon(data.color, meta.iconKey) })
-                    .bindPopup(createPopupContent(data.name, meta.reg, meta.type, data.status, data.id));
+                    .bindPopup(createPopupContent(data.name, meta.reg, meta.type, data.status, data.id), {
+                      autoPanPaddingTopLeft: L.point(20, 20),
+                      autoPanPaddingBottomRight: L.point(20, 170)
+                    });
                   vehicleLayer.addLayer(markers[data.id]);
                 }
               } else {
@@ -311,9 +317,13 @@ export function buildOperasiMapHtml({ theme, userRole }) {
                     resolveBtnEl.style.fontWeight = '700';
                     resolveBtnEl.style.cursor = 'pointer';
                     resolveBtnEl.style.width = '100%';
-                    resolveBtnEl.addEventListener('click', function() {
+                    var handleResolveTap = function(e) {
+                      e.preventDefault();
+                      e.stopPropagation();
                       window.requestResolveCalamity(c.id);
-                    });
+                    };
+                    resolveBtnEl.addEventListener('click', handleResolveTap);
+                    resolveBtnEl.addEventListener('touchend', handleResolveTap);
                     popupDiv.appendChild(resolveBtnEl);
 
                     var btnEl = document.createElement('button');
@@ -328,14 +338,21 @@ export function buildOperasiMapHtml({ theme, userRole }) {
                     btnEl.style.fontWeight = '700';
                     btnEl.style.cursor = 'pointer';
                     btnEl.style.width = '100%';
-                    btnEl.addEventListener('click', function() {
+                    var handleDeleteTap = function(e) {
+                      e.preventDefault();
+                      e.stopPropagation();
                       window.requestDeleteCalamity(c.id);
-                    });
+                    };
+                    btnEl.addEventListener('click', handleDeleteTap);
+                    btnEl.addEventListener('touchend', handleDeleteTap);
                     popupDiv.appendChild(btnEl);
                   }
 
                   calamityMarkers[c.id] = L.marker([c.lat, c.lng], { icon: createCalamityIcon(c.color, c.category, c.logo) })
-                    .bindPopup(popupDiv);
+                    .bindPopup(popupDiv, {
+                      autoPanPaddingTopLeft: L.point(20, 20),
+                      autoPanPaddingBottomRight: L.point(20, 170)
+                    });
                   calamityCluster.addLayer(calamityMarkers[c.id]);
                 }
               });
