@@ -275,6 +275,51 @@ export default function App() {
   // --- AUTHENTICATION STATE ---
   const [userRole, setUserRole] = useState(null); 
   const [agencyInfo, setAgencyInfo] = useState(null);
+
+  // --- TEMPORARY DEBUG OVERLAY : capture les erreurs visibles à l'écran sur iPhone (à retirer une fois le bug trouvé) ---
+  const [debugLogs, setDebugLogs] = useState([]);
+  const [debugVisible, setDebugVisible] = useState(true);
+  useEffect(() => {
+    const log = (msg) => setDebugLogs(prev => [...prev.slice(-14), `${new Date().toLocaleTimeString()} — ${msg}`]);
+    const origError = console.error;
+    console.error = (...args) => { log(args.map(String).join(' ')); origError(...args); };
+    const onErr = (e) => log(`window.onerror: ${e.message}`);
+    const onRej = (e) => log(`unhandledrejection: ${e.reason}`);
+    if (typeof window !== 'undefined') {
+      window.addEventListener('error', onErr);
+      window.addEventListener('unhandledrejection', onRej);
+    }
+    log('debug overlay mounted');
+    return () => {
+      console.error = origError;
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('error', onErr);
+        window.removeEventListener('unhandledrejection', onRej);
+      }
+    };
+  }, []);
+
+  const DebugOverlay = () => debugVisible ? (
+    <View style={{
+      position: 'absolute', bottom: 0, left: 0, right: 0, maxHeight: 220, zIndex: 99999,
+      backgroundColor: 'rgba(0,0,0,0.88)', padding: 8,
+    }}>
+      <TouchableOpacity onPress={() => setDebugVisible(false)} style={{ alignSelf: 'flex-end', padding: 4 }}>
+        <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>Tutup ✕</Text>
+      </TouchableOpacity>
+      <ScrollView style={{ maxHeight: 180 }}>
+        {debugLogs.length === 0 ? (
+          <Text style={{ color: '#94a3b8', fontSize: 10 }}>Tiada log lagi...</Text>
+        ) : debugLogs.map((l, i) => (
+          <Text key={i} style={{ color: '#4ade80', fontSize: 10, marginBottom: 2 }}>{l}</Text>
+        ))}
+      </ScrollView>
+    </View>
+  ) : (
+    <TouchableOpacity onPress={() => setDebugVisible(true)} style={{ position: 'absolute', bottom: 20, right: 20, zIndex: 99999, backgroundColor: '#dc2626', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 8 }}>
+      <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>Debug ({debugLogs.length})</Text>
+    </TouchableOpacity>
+  );
   const [isCheckingSession, setIsCheckingSession] = useState(true);
   const [isInvitedUser, setIsInvitedUser] = useState(false);
   const [loginModalVisible, setLoginModalVisible] = useState(false);
@@ -639,6 +684,7 @@ export default function App() {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.background }}>
         <ActivityIndicator size="large" color="#f97316" />
+        <DebugOverlay />
       </View>
     );
   }
@@ -647,6 +693,7 @@ export default function App() {
   // ROOT RENDER (THE FIX: ONLY ONE CONTAINER)
   // ==========================================
   return (
+    <>
     <NavigationContainer ref={navigationRef}>
       <Modal visible={loginModalVisible} transparent animationType="fade" onRequestClose={closeLoginModal}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
@@ -1050,5 +1097,7 @@ export default function App() {
       userRole === 'agency' ? <AgencyFlow theme={theme} handleLogout={handleLogout} /> :
       <GuestFlow theme={theme} handleLogout={handleLogout} onLoginPress={() => setLoginModalVisible(true)} />}
     </NavigationContainer>
+    <DebugOverlay />
+    </>
   );
 }
