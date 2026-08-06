@@ -13,7 +13,7 @@ export const supabaseSandbox = createClient(supabaseUrl, supabaseKey, {
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true,
-    storage: AsyncStorage,
+    storage: Platform.OS === 'web' ? undefined : AsyncStorage,
   },
 });
 

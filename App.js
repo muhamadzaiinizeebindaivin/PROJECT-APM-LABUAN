@@ -273,7 +273,7 @@ export default function App() {
   const theme = isDarkMode ? themes.dark : themes.light;
 
   // --- AUTHENTICATION STATE ---
-  const [userRole, setUserRole] = useState('guest'); 
+  const [userRole, setUserRole] = useState(null); 
   const [agencyInfo, setAgencyInfo] = useState(null);
   const [isCheckingSession, setIsCheckingSession] = useState(true);
   const [isInvitedUser, setIsInvitedUser] = useState(false);
@@ -480,6 +480,7 @@ export default function App() {
 
   useEffect(() => {
     const restoreSession = async () => {
+     try {
       // 1. Vérifie d'abord si une session "agency" (sans compte) existe en localStorage
       if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
         const agencySession = localStorage.getItem('apm_agency_session');
@@ -556,6 +557,11 @@ export default function App() {
       }
 
       setIsCheckingSession(false);
+     } catch (err) {
+       console.error('restoreSession error:', err);
+       setUserRole('guest');
+       setIsCheckingSession(false);
+     }
     };
 
     restoreSession();
