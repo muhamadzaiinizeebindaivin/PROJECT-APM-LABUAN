@@ -171,6 +171,7 @@ export const angkatanStyles = StyleSheet.create({
   tabBarScroll: { marginBottom: 20 },
   tabBar: { flexDirection: 'row', backgroundColor: PALETTE.surface, borderRadius: 14, padding: 5, gap: 5 },
   tabBtn: { paddingVertical: 11, paddingHorizontal: 16, borderRadius: 10 },
+  tabBtnMobile: { minWidth: 100, flex: 0 },
   tabBtnActive: { backgroundColor: PALETTE.orange, shadowColor: PALETTE.orange, shadowOpacity: 0.25, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 3 },
   tabBtnText: { fontSize: 12, fontWeight: '700', color: PALETTE.textMutedDark, textAlign: 'center' },
   tabBtnTextActive: { color: '#fff', fontWeight: '800' },

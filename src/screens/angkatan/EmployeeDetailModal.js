@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Modal, ActivityIndicator } from 'react-native';import { X, Trash2, User, AlertTriangle } from 'lucide-react-native';
+import { View, Text, TouchableOpacity, ScrollView, Modal, ActivityIndicator, useWindowDimensions } from 'react-native';
+import { X, Trash2, User, AlertTriangle } from 'lucide-react-native';
 import { PALETTE } from '../../constants/palette';
 import { angkatanStyles as styles } from './angkatanStyles';
 import { EMPLOYEE_TABS, FIELD_GROUPS } from './employeeFieldGroups';
@@ -17,6 +18,8 @@ export default function EmployeeDetailModal({
   onSaveEmployee, onDeleteEmployee,
   onNotify,
 }) {
+  const { width: screenWidth } = useWindowDimensions();
+  const isMobile = screenWidth < 768;
   const [showFullDetail, setShowFullDetail] = useState(false);
   const [activeTab, setActiveTab] = useState('Identiti');
   const [activeDatePickerField, setActiveDatePickerField] = useState(null);
@@ -139,17 +142,33 @@ export default function EmployeeDetailModal({
 
                 {(isEditing || showFullDetail) && (
                   <>
-                    <View style={[styles.tabBar, styles.tabBarScroll]}>
-                      {EMPLOYEE_TABS.map((tab) => (
-                        <TouchableOpacity
-                          key={tab}
-                          onPress={() => setActiveTab(tab)}
-                          style={[styles.tabBtn, { flex: 1, alignItems: 'center' }, activeTab === tab && styles.tabBtnActive]}
-                        >
-                          <Text style={[styles.tabBtnText, activeTab === tab && styles.tabBtnTextActive]}>{tab}</Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
+                    <ScrollView
+                      horizontal={isMobile}
+                      showsHorizontalScrollIndicator={false}
+                      style={styles.tabBarScroll}
+                    >
+                      <View style={[styles.tabBar, !isMobile && { flex: 1 }]}>
+                        {EMPLOYEE_TABS.map((tab) => (
+                          <TouchableOpacity
+                            key={tab}
+                            onPress={() => setActiveTab(tab)}
+                            style={[
+                              styles.tabBtn,
+                              { alignItems: 'center' },
+                              isMobile ? styles.tabBtnMobile : { flex: 1 },
+                              activeTab === tab && styles.tabBtnActive,
+                            ]}
+                          >
+                            <Text
+                              style={[styles.tabBtnText, activeTab === tab && styles.tabBtnTextActive]}
+                              numberOfLines={1}
+                            >
+                              {tab}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    </ScrollView>
 
                     {activeTab === 'Sijil' ? (
                       <CertificatesTab
