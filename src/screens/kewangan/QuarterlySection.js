@@ -187,31 +187,33 @@ export default function QuarterlySection({ processedData, loading, isEditMode, s
 
   return (
     <>
-      <View style={[styles.card, { position: 'relative' }]}>
-        {isEditMode && (
-          <TouchableOpacity style={styles.categoryAddBtnFloating} onPress={openAdd}>
-            <Text style={styles.addBtnText}>+ Tambah</Text>
-          </TouchableOpacity>
-        )}
-
-        <View style={styles.sectionHeaderRow}>
-          <View style={styles.sectionIconBadge}>
-            <TrendingUp size={16} color="#f97316" />
+      <View style={styles.card}>
+        <View style={styles.quarterHeaderRow}>
+          <View style={styles.quarterHeaderRowLeft}>
+            <View style={styles.sectionIconBadge}>
+              <TrendingUp size={16} color="#f97316" />
+            </View>
+            <Text style={styles.sectionTitle} numberOfLines={1}>PRESTASI MENGIKUT SUKUAN</Text>
+            <TouchableOpacity
+              style={styles.quarterHelpBtn}
+              onPress={() => setHelpVisible(true)}
+              onMouseEnter={() => setHelpHovered(true)}
+              onMouseLeave={() => setHelpHovered(false)}
+            >
+              <Text style={styles.quarterHelpBtnText}>?</Text>
+              {helpHovered && (
+                <View style={styles.kpiTooltip}>
+                  <Text style={styles.kpiTooltipText}>Bantuan</Text>
+                </View>
+              )}
+            </TouchableOpacity>
           </View>
-          <Text style={styles.sectionTitle}>PRESTASI MENGIKUT SUKUAN</Text>
-          <TouchableOpacity
-            style={styles.quarterHelpBtn}
-            onPress={() => setHelpVisible(true)}
-            onMouseEnter={() => setHelpHovered(true)}
-            onMouseLeave={() => setHelpHovered(false)}
-          >
-            <Text style={styles.quarterHelpBtnText}>?</Text>
-            {helpHovered && (
-              <View style={styles.kpiTooltip}>
-                <Text style={styles.kpiTooltipText}>Bantuan</Text>
-              </View>
-            )}
-          </TouchableOpacity>
+
+          {isEditMode && (
+            <TouchableOpacity style={styles.quarterAddBtnInline} onPress={openAdd}>
+              <Text style={styles.addBtnText}>+ Tambah</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {loading && <ActivityIndicator size="large" color={PALETTE.orange} style={{ marginVertical: 20 }} />}

@@ -34,6 +34,8 @@ export const kewanganStyles = StyleSheet.create({
 
   sectionHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 16 },
   sectionHeaderRowSpaced: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
+  quarterHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 16 },
+  quarterHeaderRowLeft: { flexDirection: 'row', alignItems: 'center', gap: 10, flexShrink: 1 },
   sectionIconBadge: {
     width: 32, height: 32, borderRadius: 10,
     backgroundColor: 'rgba(249, 115, 22, 0.12)', justifyContent: 'center', alignItems: 'center',
@@ -210,6 +212,10 @@ export const kewanganStyles = StyleSheet.create({
   categoryAddBtnFloating: {
     position: 'absolute', top: 20, right: 20, zIndex: 6,
     backgroundColor: PALETTE.orange, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10,
+  },
+  quarterAddBtnInline: {
+    backgroundColor: PALETTE.orange, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10,
+    flexShrink: 0,
   },
   categoryPickerHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 },
   categoryPickerLabel: { fontSize: 12, fontWeight: '700', color: PALETTE.textMutedDark },

@@ -15,6 +15,8 @@ export const angkatanStyles = StyleSheet.create({
 
   sectionHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 16 },
   sectionHeaderRowSpaced: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
+  quarterHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 16 },
+  quarterHeaderRowLeft: { flexDirection: 'row', alignItems: 'center', gap: 10, flexShrink: 1 },
   sectionIconBadge: {
     width: 32, height: 32, borderRadius: 10,
     backgroundColor: 'rgba(249, 115, 22, 0.12)', justifyContent: 'center', alignItems: 'center',
