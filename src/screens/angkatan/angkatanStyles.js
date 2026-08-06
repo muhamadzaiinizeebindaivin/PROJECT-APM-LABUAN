@@ -124,7 +124,7 @@ export const angkatanStyles = StyleSheet.create({
   },
   searchInput: { marginLeft: 10, fontSize: 13, fontWeight: '600', flex: 1, color: PALETTE.textDark, outlineStyle: 'none', outlineWidth: 0 },
 
-  employeeRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: PALETTE.cardLightBorder },
+  employeeRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: PALETTE.cardLightBorder, touchAction: 'pan-y' },
   employeeAvatar: { width: 44, height: 44, borderRadius: 22 },
   employeeAvatarPlaceholder: { backgroundColor: PALETTE.surface, justifyContent: 'center', alignItems: 'center' },
   employeeName: { color: PALETTE.textDark, fontWeight: '700', fontSize: 15 },

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Modal, Image } from 'react-native';
+import { View, Text, TouchableOpacity, Pressable, ScrollView, Modal, Image } from 'react-native';
 import { X, User } from 'lucide-react-native';
 import { PALETTE } from '../../constants/palette';
 import { angkatanStyles as styles } from './angkatanStyles';
@@ -18,7 +18,7 @@ export default function FilteredEmployeeListModal({
 
           <ScrollView style={{ maxHeight: 400 }} contentContainerStyle={styles.modalBody}>
             {employees.map((emp) => (
-              <TouchableOpacity
+              <Pressable
                 key={emp.id}
                 style={styles.employeeRow}
                 onPress={() => onSelectEmployee(emp)}
@@ -34,7 +34,7 @@ export default function FilteredEmployeeListModal({
                   <Text style={styles.employeeName}>{emp.nama}</Text>
                   <Text style={styles.employeeRank}>{emp.pangkat}</Text>
                 </View>
-              </TouchableOpacity>
+              </Pressable>
             ))}
           </ScrollView>
 

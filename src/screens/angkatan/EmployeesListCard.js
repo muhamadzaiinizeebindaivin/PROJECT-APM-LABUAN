@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TextInput, TouchableOpacity, FlatList, Image, useWindowDimensions } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Pressable, FlatList, Image, useWindowDimensions } from 'react-native';
 import { User, Search, Plus, Upload, Award, Users, Pencil } from 'lucide-react-native';
 import { PALETTE } from '../../constants/palette';
 import { angkatanStyles as styles } from './angkatanStyles';
@@ -61,7 +61,7 @@ export default function EmployeesListCard({
         renderItem={({ item: emp }) => {
           const isActive = String(emp.status_keaktifan).toUpperCase() === 'AKTIF';
           return (
-            <TouchableOpacity
+            <Pressable
               style={[styles.employeeRow, isMobile && { alignItems: 'flex-start', flexWrap: 'wrap' }]}
               onPress={() => onOpenDetail(emp)}
             >
@@ -121,7 +121,7 @@ export default function EmployeesListCard({
                   )}
                 </View>
               )}
-            </TouchableOpacity>
+            </Pressable>
           );
         }}
       />
