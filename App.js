@@ -538,7 +538,20 @@ export default function App() {
       }
 
       // 2. Sinon, comportement existant (vérifie la vraie session Supabase Auth)
-      const { data: { session } } = await supabaseSandbox.auth.getSession();
+      const { data: { session }, error: sessionError } = await supabaseSandbox.auth.getSession();
+
+      if (sessionError) {
+        console.error('getSession error:', sessionError.message, sessionError.status);
+        const isRateLimited = sessionError.status === 429 || /rate limit/i.test(sessionError.message || '');
+        if (isRateLimited) {
+          // Ne pas déconnecter sur un simple rate limit — réessayer une fois après un court délai
+          await new Promise(r => setTimeout(r, 2500));
+          const retry = await supabaseSandbox.auth.getSession();
+          if (retry.data?.session) {
+            return restoreSession();
+          }
+        }
+      }
 
       if (!session) {
         setUserRole('guest');
