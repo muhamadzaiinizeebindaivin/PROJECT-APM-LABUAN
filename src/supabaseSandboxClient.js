@@ -1,6 +1,6 @@
 // src/supabaseSandboxClient.js
 import { createClient } from '@supabase/supabase-js';
-import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
@@ -12,6 +12,6 @@ export const supabaseSandbox = createClient(supabaseUrl, supabaseKey, {
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true,
-    storage: Platform.OS === 'web' ? window.localStorage : undefined,
+    storage: AsyncStorage,
   },
 });

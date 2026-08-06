@@ -59,7 +59,7 @@ export function buildOperasiMapHtml({ theme, userRole }) {
       <body>
         <div id="map"></div>
         <script>
-          var canDeleteCalamity = ${userRole === 'admin' ? 'true' : 'false'};
+          var canDeleteCalamity = ${(userRole === 'admin' || userRole === 'operasi') ? 'true' : 'false'};
           var canManageVehicle = ${(userRole === 'admin' || userRole === 'operasi') ? 'true' : 'false'};
           function initMap() {
           var map = L.map('map', { zoomControl: false, attributionControl: false, maxZoom: 19 }).setView([5.2831, 115.2308], 13);
