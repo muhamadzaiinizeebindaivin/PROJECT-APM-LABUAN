@@ -142,17 +142,13 @@ export default function HomeScreen({ isAuthFlow, onGuestLogin, onDriverLogin, on
         </View>
       )}
 
+      {isConnected && <ActiveAlertsBanner />}
+
       <Animated.ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         scrollEventThrottle={16}
       >
-        {isConnected && (
-          <View style={{ marginTop: -12 }}>
-            <ActiveAlertsBanner />
-          </View>
-        )}
-
         <View style={{ paddingHorizontal: 20, marginTop: 16 }}>
           <LinearGradient
             colors={['rgba(29, 78, 216, 0.55)', 'rgba(249, 115, 22, 0.55)']}
