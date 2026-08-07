@@ -37,6 +37,9 @@ export function buildSekretariatMapHtml({ theme, userRole }) {
 
           .cluster-badge { display: flex; align-items: center; justify-content: center; border-radius: 50%; color: #fff; font-weight: 800; font-family: sans-serif; box-shadow: 0 2px 6px rgba(0,0,0,0.35); border: 2px solid white; }
           .cluster-bencana { background-color: #ea580c; }
+          .cluster-agency { background-color: #2563eb; }
+          .cluster-wrap { display: flex; flex-direction: column; align-items: center; }
+          .cluster-label { font-family: sans-serif; font-size: 10px; font-weight: 800; color: #1f2937; background: #fff; padding: 1px 6px; border-radius: 6px; margin-bottom: 2px; box-shadow: 0 1px 3px rgba(0,0,0,0.25); white-space: nowrap; }
 
           @keyframes pulse-ring {
             0% { transform: scale(1); opacity: 0.8; }
@@ -53,9 +56,9 @@ export function buildSekretariatMapHtml({ theme, userRole }) {
           var canManageAgency = ${userRole === 'admin' || userRole === 'sekretariat' ? 'true' : 'false'};
 
           function initMap() {
-          var map = L.map('map', { zoomControl: false, attributionControl: false, maxZoom: 19 }).setView([5.2831, 115.2308], 12);
+          var map = L.map('map', { zoomControl: false, attributionControl: false, maxZoom: 20 }).setView([5.2831, 115.2308], 12);
 
-          L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(map);
+          L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { maxZoom: 20, maxNativeZoom: 19 }).addTo(map);
           L.control.zoom({ position: 'bottomright' }).addTo(map);
 
           window.addEventListener('resize', function() {
@@ -78,26 +81,38 @@ export function buildSekretariatMapHtml({ theme, userRole }) {
             window.parent.postMessage(JSON.stringify({ type: 'DELETE_AGENCY_TRACKER_REQUEST', id: id }), '*');
           };
 
-          function makeClusterIcon(className) {
+          function makeClusterIcon(className, label) {
             return function(cluster) {
               var count = cluster.getChildCount();
               var size = count < 10 ? 34 : count < 50 ? 40 : 48;
               return L.divIcon({
-                html: '<div class="cluster-badge ' + className + '" style="width:' + size + 'px;height:' + size + 'px;font-size:' + (size < 40 ? 12 : 14) + 'px;">' + count + '</div>',
+                html: '<div class="cluster-wrap">' +
+                        '<div class="cluster-label">' + label + '</div>' +
+                        '<div class="cluster-badge ' + className + '" style="width:' + size + 'px;height:' + size + 'px;font-size:' + (size < 40 ? 12 : 14) + 'px;">' + count + '</div>' +
+                      '</div>',
                 className: '',
-                iconSize: [size, size]
+                iconSize: [size, size + 18],
+                iconAnchor: [size / 2, (size + 18) / 2]
               });
             };
           }
 
-          // Agences en ligne : non clusterisées (position en direct, comme les véhicules d'Operasi)
-          var agencyLayer = L.layerGroup().addTo(map);
+          // Agences en ligne : clusterisées. Contrairement aux véhicules d'Operasi,
+          // on ne fait pas setLatLng() sur un marker existant en cas de déplacement —
+          // on le retire et le recrée à chaque update, pour que markercluster réindexe
+          // correctement sa position dans l'arbre spatial du cluster.
+          var agencyCluster = L.markerClusterGroup({
+            maxClusterRadius: 50,
+            spiderfyOnMaxZoom: false,
+            disableClusteringAtZoom: 18,
+            iconCreateFunction: makeClusterIcon('cluster-agency', 'Agensi')
+          }).addTo(map);
 
           // Bencana : clusterisés (peuvent s'accumuler avec le temps)
           var bencanaCluster = L.markerClusterGroup({
             maxClusterRadius: 60,
             spiderfyOnMaxZoom: true,
-            iconCreateFunction: makeClusterIcon('cluster-bencana')
+            iconCreateFunction: makeClusterIcon('cluster-bencana', 'Bencana')
           }).addTo(map);
 
           var createAgencyIcon = (color, logo) => {
@@ -160,7 +175,7 @@ export function buildSekretariatMapHtml({ theme, userRole }) {
               var currentIds = data.payload.map(function(a) { return a.id; });
               Object.keys(agencyMarkers).forEach(function(id) {
                 if (currentIds.indexOf(id) === -1) {
-                  agencyLayer.removeLayer(agencyMarkers[id]);
+                  agencyCluster.removeLayer(agencyMarkers[id]);
                   delete agencyMarkers[id];
                 }
               });
@@ -199,40 +214,16 @@ export function buildSekretariatMapHtml({ theme, userRole }) {
 
                 return popupDiv;
               };
-              // Écarte légèrement les agences situées (quasi) au même endroit,
-              // sinon leurs logos se superposent exactement et deviennent
-              // invisibles/incliquables.
-              var agencyGroups = {};
-              data.payload.forEach(function(a) {
-                var lat = Number(a.lat), lng = Number(a.lng);
-                if (!isFinite(lat) || !isFinite(lng)) return;
-                var key = lat.toFixed(4) + ',' + lng.toFixed(4);
-                if (!agencyGroups[key]) agencyGroups[key] = [];
-                agencyGroups[key].push(a);
-              });
-              Object.keys(agencyGroups).forEach(function(key) {
-                var group = agencyGroups[key];
-                if (group.length <= 1) return;
-                var offsetDeg = 0.00015;
-                group.forEach(function(a, i) {
-                  var angle = (2 * Math.PI / group.length) * i;
-                  a.lat = Number(a.lat) + offsetDeg * Math.cos(angle);
-                  a.lng = Number(a.lng) + offsetDeg * Math.sin(angle);
-                });
-              });
-
               data.payload.forEach(function(a) {
                 var lat = Number(a.lat), lng = Number(a.lng);
                 if (!isFinite(lat) || !isFinite(lng)) return;
                 a.lat = lat; a.lng = lng;
                 if (agencyMarkers[a.id]) {
-                  agencyMarkers[a.id].setLatLng([a.lat, a.lng]).setPopupContent(buildAgencyPopup(a));
-                  agencyMarkers[a.id].setIcon(createAgencyIcon(a.color, a.logo));
-                } else {
-                  agencyMarkers[a.id] = L.marker([a.lat, a.lng], { icon: createAgencyIcon(a.color, a.logo) })
-                    .bindPopup(buildAgencyPopup(a));
-                  agencyLayer.addLayer(agencyMarkers[a.id]);
+                  agencyCluster.removeLayer(agencyMarkers[a.id]);
                 }
+                agencyMarkers[a.id] = L.marker([a.lat, a.lng], { icon: createAgencyIcon(a.color, a.logo) })
+                  .bindPopup(buildAgencyPopup(a));
+                agencyCluster.addLayer(agencyMarkers[a.id]);
               });
 
             } else if (data.type === 'FOCUS_AGENCY') {

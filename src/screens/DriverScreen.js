@@ -282,6 +282,7 @@ export default function DriverScreen({ onLogout }) {
   if (!selectedVehicle) {
     return (
       <View style={styles.container}>
+        <FlowingBackground />
         <View style={styles.header}>
           <Text style={styles.title}>Pilih Kenderaan</Text>
           <Text style={styles.subtitle}>Sila pilih kenderaan untuk syif anda</Text>
@@ -353,7 +354,7 @@ export default function DriverScreen({ onLogout }) {
   // View 2: Tracking Screen
   return (
     <View style={styles.container}>
-
+      <FlowingBackground />
       <TouchableOpacity
         style={styles.backButton}
         onPress={() => {
@@ -368,67 +369,68 @@ export default function DriverScreen({ onLogout }) {
         <Text style={styles.backText}>Tukar Kenderaan</Text>
       </TouchableOpacity>
 
-      <View style={styles.header}>
-        <Text style={styles.title}>Pemandu</Text>
-        <View style={styles.activeVehicleCard}>
-          <View style={styles.activeVehicleIconWrap}>
-            {getVehicleIcon(selectedVehicle.icon_key, PALETTE.orange, 32)}
+      <View style={{ width: '100%', maxWidth: 900, alignSelf: 'center', alignItems: 'center' }}>
+        <View style={styles.header}>
+          <Text style={styles.title}>Pemandu</Text>
+          <View style={styles.activeVehicleCard}>
+            <View style={styles.activeVehicleIconWrap}>
+              {getVehicleIcon(selectedVehicle.icon_key, PALETTE.orange, 32)}
+            </View>
+            <Text style={styles.activeVehiclePlate}>{selectedVehicle.reg || 'TIADA PLAT'}</Text>
+            <Text style={styles.activeVehicleModel}>{selectedVehicle.model}</Text>
           </View>
-          <Text style={styles.activeVehiclePlate}>{selectedVehicle.reg || 'TIADA PLAT'}</Text>
-          <Text style={styles.activeVehicleModel}>{selectedVehicle.model}</Text>
         </View>
-      </View>
 
-      <View style={styles.statusBox}>
-        <Text style={styles.statusText}>Status: {status}</Text>
-        {location && (
-          <Text style={styles.statusCoords}>
-            Lat: {location.latitude.toFixed(5)} | Lng: {location.longitude.toFixed(5)}
-          </Text>
-        )}
-      </View>
+        <View style={styles.statusBox}>
+          <Text style={styles.statusText}>Status: {status}</Text>
+          {location && (
+            <Text style={styles.statusCoords}>
+              Lat: {location.latitude.toFixed(5)} | Lng: {location.longitude.toFixed(5)}
+            </Text>
+          )}
+        </View>
 
-      <View style={styles.actionRow}>
-        <TouchableOpacity
-          style={[
-            styles.button,
-            styles.buttonSmall,
-            { backgroundColor: isTracking ? PALETTE.danger : PALETTE.success }
-          ]}
-          onPress={handleToggleTracking}
-          activeOpacity={0.85}
-        >
-          {isTracking ? <StopCircle color="#fff" size={30} /> : <Navigation color="#fff" size={30} />}
-          <Text style={styles.btnTextSmall}>{isTracking ? 'TAMAT SYIF' : 'MULA SYIF'}</Text>
-        </TouchableOpacity>
-
-        {isTracking && (
+        <View style={styles.actionRow}>
           <TouchableOpacity
             style={[
               styles.button,
               styles.buttonSmall,
-              { backgroundColor: location ? PALETTE.orange : PALETTE.cardLightBorder }
+              { backgroundColor: isTracking ? PALETTE.danger : PALETTE.orange }
             ]}
-            onPress={handleMarkPoint}
-            disabled={!location}
-            activeOpacity={location ? 0.85 : 1}
+            onPress={handleToggleTracking}
+            activeOpacity={0.85}
           >
-            <MapPin color="#fff" size={30} />
-            <Text style={styles.btnTextSmall}>
-              {location ? 'TANDA TITIK' : 'MENUNGGU GPS...'}
-            </Text>
+            {isTracking ? <StopCircle color="#fff" size={30} /> : <Navigation color="#fff" size={30} />}
+            <Text style={styles.btnTextSmall}>{isTracking ? 'TAMAT SYIF' : 'MULA SYIF'}</Text>
           </TouchableOpacity>
-        )}
+
+          {isTracking && (
+            <TouchableOpacity
+              style={[
+                styles.button,
+                styles.buttonSmall,
+                { backgroundColor: location ? PALETTE.orange : PALETTE.cardLightBorder }
+              ]}
+              onPress={handleMarkPoint}
+              disabled={!location}
+              activeOpacity={location ? 0.85 : 1}
+            >
+              <MapPin color="#fff" size={30} />
+              <Text style={styles.btnTextSmall}>
+                {location ? 'TANDA TITIK' : 'MENUNGGU GPS...'}
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {isTracking && <ActivityIndicator size="large" color={PALETTE.orange} style={{ marginTop: 20 }} />}
       </View>
-
-      {isTracking && <ActivityIndicator size="large" color={PALETTE.orange} style={{ marginTop: 20 }} />}
-
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, alignItems: 'center', padding: 20, paddingTop: 50, backgroundColor: PALETTE.softOrangeBg },
+  container: { flex: 1, alignItems: 'center', padding: 20, paddingTop: 50, backgroundColor: PALETTE.softOrangeBg, position: 'relative', overflow: 'hidden' },
   header: { marginBottom: 20, alignItems: 'center', width: '100%' },
 
   authCard: {
@@ -497,9 +499,9 @@ const styles = StyleSheet.create({
   activeVehicleModel: { color: PALETTE.textMutedDark, fontSize: 13, textAlign: 'center', marginTop: 4, fontWeight: '600' },
 
   statusBox: {
-    marginBottom: 40, alignItems: 'center', padding: 18, borderRadius: 16, width: '100%',
+    marginBottom: 32, alignItems: 'center', padding: 20, borderRadius: 20, width: '100%',
     backgroundColor: PALETTE.cardLight, borderWidth: 1, borderColor: PALETTE.cardLightBorder,
-    shadowColor: '#c9825a', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 10, elevation: 1,
+    shadowColor: '#c9825a', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.08, shadowRadius: 14, elevation: 2,
   },
   statusText: { fontSize: 15, fontWeight: '800', color: PALETTE.textDark },
   statusCoords: { color: PALETTE.textMutedDark, fontSize: 12, marginTop: 5 },

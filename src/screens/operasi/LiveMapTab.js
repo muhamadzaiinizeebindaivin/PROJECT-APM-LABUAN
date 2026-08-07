@@ -592,7 +592,9 @@ export default function LiveMapTab({ theme, userRole, isEditMode, onNotify }) {
               </View>
             </View>
 
-            {renderHistoryTable()}
+            <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+              {renderHistoryTable()}
+            </ScrollView>
           </View>
         )}
 

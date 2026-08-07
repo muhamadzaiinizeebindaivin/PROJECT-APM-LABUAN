@@ -76,6 +76,83 @@ const haversineDistanceKm = (lat1, lon1, lat2, lon2) => {
   return R * c;
 };
 
+// Rubans dégradés bleu/orange qui ondulent lentement en fond (même pattern que SetPasswordScreen.js)
+if (Platform.OS === 'web' && typeof document !== 'undefined' && !document.getElementById('flowing-ribbons-css')) {
+  const style = document.createElement('style');
+  style.id = 'flowing-ribbons-css';
+  style.textContent = `
+    @keyframes ribbonDrift1 {
+      0%, 100% { transform: translate(0px, 0px) scale(1); }
+      50% { transform: translate(60px, -30px) scale(1.05); }
+    }
+    @keyframes ribbonDrift2 {
+      0%, 100% { transform: translate(0px, 0px) scale(1); }
+      50% { transform: translate(-50px, 40px) scale(1.08); }
+    }
+    @keyframes ribbonDrift3 {
+      0%, 100% { transform: translate(0px, 0px) scale(1); }
+      50% { transform: translate(40px, 30px) scale(1.04); }
+    }
+    .ribbon-1 { animation: ribbonDrift1 11s ease-in-out infinite; }
+    .ribbon-2 { animation: ribbonDrift2 14s ease-in-out infinite; }
+    .ribbon-3 { animation: ribbonDrift3 9s ease-in-out infinite; }
+  `;
+  document.head.appendChild(style);
+}
+
+function FlowingBackground() {
+  if (Platform.OS !== 'web') return null;
+
+  return (
+    <View style={[bgStyles.container, { pointerEvents: 'none' }]}>
+      {createElement('svg', {
+        viewBox: '0 0 1200 800',
+        preserveAspectRatio: 'xMidYMid slice',
+        style: { width: '100%', height: '100%', position: 'absolute' },
+      },
+        createElement('defs', {},
+          createElement('linearGradient', { id: 'ribbonGrad1', x1: '0%', y1: '0%', x2: '100%', y2: '100%' },
+            createElement('stop', { offset: '0%', stopColor: '#f97316' }),
+            createElement('stop', { offset: '50%', stopColor: '#fb923c' }),
+            createElement('stop', { offset: '100%', stopColor: '#60a5fa' }),
+          ),
+          createElement('linearGradient', { id: 'ribbonGrad2', x1: '100%', y1: '0%', x2: '0%', y2: '100%' },
+            createElement('stop', { offset: '0%', stopColor: '#2563eb' }),
+            createElement('stop', { offset: '50%', stopColor: '#60a5fa' }),
+            createElement('stop', { offset: '100%', stopColor: '#f97316' }),
+          ),
+          createElement('linearGradient', { id: 'ribbonGrad3', x1: '0%', y1: '100%', x2: '100%', y2: '0%' },
+            createElement('stop', { offset: '0%', stopColor: '#fb923c' }),
+            createElement('stop', { offset: '100%', stopColor: '#2563eb' }),
+          ),
+        ),
+        createElement('path', {
+          className: 'ribbon-1',
+          d: 'M -100,150 C 200,50 400,250 700,150 C 950,70 1100,180 1300,120 L 1300,220 C 1100,280 950,170 700,250 C 400,350 200,150 -100,250 Z',
+          fill: 'url(#ribbonGrad1)',
+          opacity: 0.35,
+        }),
+        createElement('path', {
+          className: 'ribbon-2',
+          d: 'M -100,420 C 250,320 450,480 750,380 C 1000,300 1150,420 1300,360 L 1300,460 C 1150,520 1000,400 750,480 C 450,580 250,420 -100,520 Z',
+          fill: 'url(#ribbonGrad2)',
+          opacity: 0.3,
+        }),
+        createElement('path', {
+          className: 'ribbon-3',
+          d: 'M -100,650 C 200,580 500,700 800,600 C 1000,540 1150,650 1300,600 L 1300,700 C 1150,750 1000,640 800,700 C 500,800 200,680 -100,750 Z',
+          fill: 'url(#ribbonGrad3)',
+          opacity: 0.28,
+        }),
+      )}
+    </View>
+  );
+}
+
+const bgStyles = StyleSheet.create({
+  container: { ...StyleSheet.absoluteFillObject, overflow: 'hidden' },
+});
+
 function AgencyLogo({ url, size, fallbackSize }) {
   if (url) {
     return (
@@ -578,10 +655,12 @@ export default function AgencyTrackingScreen({ onLogout }) {
 
   // VIEW 3 : Tracking
   return (
-    <ScrollView
-      contentContainerStyle={{ alignItems: 'center', padding: 20, paddingTop: 50, paddingBottom: 40, backgroundColor: PALETTE.softOrangeBg }}
-      style={{ flex: 1, backgroundColor: PALETTE.softOrangeBg }}
-    >
+    <View style={{ flex: 1, position: 'relative', overflow: 'hidden', backgroundColor: PALETTE.softOrangeBg }}>
+      <FlowingBackground />
+      <ScrollView
+        contentContainerStyle={{ alignItems: 'center', padding: 20, paddingTop: 50, paddingBottom: 40 }}
+        style={{ flex: 1, backgroundColor: 'transparent' }}
+      >
       <TouchableOpacity
         style={styles.backButton}
         onPress={() => {
@@ -599,57 +678,64 @@ export default function AgencyTrackingScreen({ onLogout }) {
         <Text style={styles.backText}>Tukar Agensi</Text>
       </TouchableOpacity>
 
-      <View style={styles.header}>
-        <View style={styles.agencyIconWrapLarge}>
-          <AgencyLogo url={selectedAgency.logo_url} size={56} fallbackSize={36} />
+      <View style={{ width: '100%', maxWidth: 900, alignSelf: 'center', alignItems: 'center' }}>
+        <View style={styles.header}>
+          <View style={styles.agencyIconWrapLarge}>
+            <AgencyLogo url={selectedAgency.logo_url} size={56} fallbackSize={36} />
+          </View>
+          <Text style={styles.title}>{selectedAgency.agency}</Text>
+          <Text style={styles.subtitle}>{memberName}</Text>
         </View>
-        <Text style={styles.title}>{selectedAgency.agency}</Text>
-        <Text style={styles.subtitle}>{memberName}</Text>
-      </View>
 
-      <View style={styles.statusBox}>
-        <Text style={styles.statusText}>Status: {status}</Text>
-        {location && (
-          <Text style={styles.statusCoords}>
-            Lat: {location.latitude.toFixed(5)} | Lng: {location.longitude.toFixed(5)}
-          </Text>
-        )}
-      </View>
-
-      <TouchableOpacity
-        style={[styles.button, { backgroundColor: isTracking ? PALETTE.danger : PALETTE.success }]}
-        onPress={() => setIsTracking(!isTracking)}
-        activeOpacity={0.85}
-      >
-        {isTracking ? <StopCircle color="#fff" size={36} /> : <Navigation color="#fff" size={36} />}
-        <Text style={styles.btnText}>{isTracking ? 'TAMAT JEJAK' : 'MULA JEJAK'}</Text>
-      </TouchableOpacity>
-
-      {isTracking && <ActivityIndicator size="large" color={PALETTE.orange} style={{ marginTop: 20 }} />}
-
-      <View style={{ width: '100%', height: 300, borderRadius: 16, overflow: 'hidden', marginTop: 20, position: 'relative' }}>
-        {Platform.OS === 'web' ? (
-          createElement('iframe', {
-            ref: trackerMapIframeRef,
-            src: trackerMapSrc,
-            style: { width: '100%', height: '100%', border: 'none' },
-            title: 'Peta Agensi & Bencana',
-            onLoad: handleTrackerMapLoad,
-          })
-        ) : (
-          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: PALETTE.cardLight }}>
-            <Text style={{ color: PALETTE.textMutedDark, fontWeight: '600', textAlign: 'center', padding: 16 }}>
-              Peta memerlukan 'react-native-webview' pada peranti mudah alih.
+        <View style={styles.statusBox}>
+          <Text style={styles.statusText}>Status: {status}</Text>
+          {location && (
+            <Text style={styles.statusCoords}>
+              Lat: {location.latitude.toFixed(5)} | Lng: {location.longitude.toFixed(5)}
             </Text>
-          </View>
-        )}
-        {trackerMapLoading && Platform.OS === 'web' && (
-          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center', backgroundColor: PALETTE.softOrangeBg }}>
-            <ActivityIndicator size="large" color={PALETTE.orange} />
-          </View>
-        )}
+          )}
+        </View>
+
+        <TouchableOpacity
+          style={[styles.button, { backgroundColor: isTracking ? PALETTE.danger : PALETTE.orange }]}
+          onPress={() => setIsTracking(!isTracking)}
+          activeOpacity={0.85}
+        >
+          {isTracking ? <StopCircle color="#fff" size={36} /> : <Navigation color="#fff" size={36} />}
+          <Text style={styles.btnText}>{isTracking ? 'TAMAT JEJAK' : 'MULA JEJAK'}</Text>
+        </TouchableOpacity>
+
+        {isTracking && <ActivityIndicator size="large" color={PALETTE.orange} style={{ marginTop: 20 }} />}
+
+        <View style={{
+          width: '100%', maxWidth: 800, aspectRatio: 1, alignSelf: 'center', borderRadius: 16, overflow: 'hidden', marginTop: 20, position: 'relative',
+          borderWidth: 2, borderColor: 'rgba(249, 115, 22, 0.45)',
+          shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.12, shadowRadius: 14, elevation: 3,
+        }}>
+          {Platform.OS === 'web' ? (
+            createElement('iframe', {
+              ref: trackerMapIframeRef,
+              src: trackerMapSrc,
+              style: { width: '100%', height: '100%', border: 'none' },
+              title: 'Peta Agensi & Bencana',
+              onLoad: handleTrackerMapLoad,
+            })
+          ) : (
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: PALETTE.cardLight }}>
+              <Text style={{ color: PALETTE.textMutedDark, fontWeight: '600', textAlign: 'center', padding: 16 }}>
+                Peta memerlukan 'react-native-webview' pada peranti mudah alih.
+              </Text>
+            </View>
+          )}
+          {trackerMapLoading && Platform.OS === 'web' && (
+            <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center', backgroundColor: PALETTE.softOrangeBg }}>
+              <ActivityIndicator size="large" color={PALETTE.orange} />
+            </View>
+          )}
+        </View>
       </View>
     </ScrollView>
+    </View>
   );
 }
 
@@ -689,9 +775,9 @@ const styles = StyleSheet.create({
   backText: { fontSize: 14, fontWeight: '700', color: PALETTE.textDark },
 
   statusBox: {
-    marginBottom: 40, alignItems: 'center', padding: 18, borderRadius: 16, width: '100%',
+    marginBottom: 32, alignItems: 'center', padding: 20, borderRadius: 20, width: '100%',
     backgroundColor: PALETTE.cardLight, borderWidth: 1, borderColor: PALETTE.cardLightBorder,
-    shadowColor: '#c9825a', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 10, elevation: 1,
+    shadowColor: '#c9825a', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.08, shadowRadius: 14, elevation: 2,
   },
   statusText: { fontSize: 15, fontWeight: '800', color: PALETTE.textDark },
   statusCoords: { color: PALETTE.textMutedDark, fontSize: 12, marginTop: 5 },
