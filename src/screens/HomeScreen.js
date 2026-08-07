@@ -6,6 +6,7 @@ import HomepagePdfCard from './home/HomepagePdfCard';
 import AuthGate from './home/AuthGate';
 import InfoWidgets from './home/InfoWidgets';
 import { homeScreenStyles as styles } from './home/homeScreenStyles';
+import ActiveAlertsBanner from './home/ActiveAlertsBanner';
 import { useHomeData } from '../hooks/useHomeData';
 import { PALETTE } from '../constants/palette';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -50,6 +51,7 @@ export default function HomeScreen({ isAuthFlow, onGuestLogin, onDriverLogin, on
     return `${date} ${hours}:${minutes}`;
   };
   const dikemaskini = formatTimestamp(updatedAt);
+  const isConnected = !!userRole && userRole !== 'guest';
 
   const onSave = async (section) => {
     setSavingSection(section);
@@ -145,6 +147,12 @@ export default function HomeScreen({ isAuthFlow, onGuestLogin, onDriverLogin, on
         showsVerticalScrollIndicator={false}
         scrollEventThrottle={16}
       >
+        {isConnected && (
+          <View style={{ marginTop: 16 }}>
+            <ActiveAlertsBanner />
+          </View>
+        )}
+
         <View style={{ paddingHorizontal: 20 }}>
           <LinearGradient
             colors={['rgba(29, 78, 216, 0.55)', 'rgba(249, 115, 22, 0.55)']}
