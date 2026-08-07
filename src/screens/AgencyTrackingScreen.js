@@ -1,6 +1,6 @@
 // src/screens/AgencyTrackingScreen.js
-import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, FlatList, TextInput, Platform, Image, Modal } from 'react-native';
+import React, { useState, useEffect, useRef, useMemo, createElement } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, FlatList, TextInput, Platform, Image, Modal, ScrollView } from 'react-native';
 import * as Location from 'expo-location';
 
 // Sur web (notamment Safari iOS), on contourne expo-location et on utilise
@@ -37,6 +37,9 @@ const watchPositionCompat = (callback, onError) => {
 import { Navigation, StopCircle, ArrowLeft, Search, Building2, X, Lock, User as UserIcon, Eye, EyeOff } from 'lucide-react-native';
 import { supabaseSandbox as supabase } from '../supabaseSandboxClient';
 import { PALETTE } from '../constants/palette';
+import { buildSekretariatMapHtml } from './sekretariat/sekretariatMapTemplate';
+import { useOnlineAgencies } from '../hooks/useOnlineAgencies';
+import { useBencanaPoints } from '../hooks/useBencanaPoints';
 
 const STORAGE_KEY = 'apm_agency_session';
 
@@ -112,6 +115,63 @@ export default function AgencyTrackingScreen({ onLogout }) {
   const distanceAccumRef = useRef(0);
   const wasTrackingRef = useRef(false);
 
+  const { onlineAgencies } = useOnlineAgencies();
+  const { bencanaPoints } = useBencanaPoints();
+  const trackerMapIframeRef = useRef(null);
+  const [trackerMapLoading, setTrackerMapLoading] = useState(true);
+  const [trackerMapReady, setTrackerMapReady] = useState(false);
+
+  const agencyLogoMap = useMemo(() => {
+    const map = {};
+    agencies.forEach((a) => { if (a.logo_url) map[a.agency] = a.logo_url; });
+    return map;
+  }, [agencies]);
+
+  const trackerMapHtml = useMemo(() => buildSekretariatMapHtml({ theme: { background: PALETTE.softOrangeBg } }), []);
+  const trackerMapSrc = useMemo(() => `data:text/html;charset=utf-8,${encodeURIComponent(trackerMapHtml)}`, [trackerMapHtml]);
+
+  useEffect(() => {
+    if (Platform.OS !== 'web') return undefined;
+    const onMessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data?.type === 'MAP_READY') setTrackerMapReady(true);
+      } catch (e) { /* messages non-JSON */ }
+    };
+    window.addEventListener('message', onMessage);
+    return () => window.removeEventListener('message', onMessage);
+  }, []);
+
+  useEffect(() => {
+    if (trackerMapReady && trackerMapIframeRef?.current?.contentWindow) {
+      const payload = onlineAgencies
+        .map((a) => ({
+          id: a.id,
+          name: a.member_name,
+          agency: a.jpbd_directory?.agency || '',
+          lat: a.latitude,
+          lng: a.longitude,
+          color: PALETTE.orange,
+          logo: agencyLogoMap[a.jpbd_directory?.agency || ''] || null,
+          updated: a.last_updated ? new Date(a.last_updated).toLocaleTimeString() : '',
+        }));
+      trackerMapIframeRef.current.contentWindow.postMessage(JSON.stringify({ type: 'UPDATE_AGENCIES', payload }), '*');
+    }
+  }, [onlineAgencies, trackerId, agencyLogoMap, trackerMapReady]);
+
+  useEffect(() => {
+    if (trackerMapReady && trackerMapIframeRef?.current?.contentWindow) {
+      const payload = bencanaPoints
+        .filter((b) => b.status !== 'resolved')
+        .map((b) => ({
+          id: b.id, category: b.category, description: b.description || '',
+          lat: b.latitude, lng: b.longitude, created_at: b.created_at,
+        }));
+      trackerMapIframeRef.current.contentWindow.postMessage(JSON.stringify({ type: 'UPDATE_BENCANA', payload }), '*');
+    }
+  }, [bencanaPoints, trackerMapReady]);
+
+  const handleTrackerMapLoad = () => setTrackerMapLoading(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -518,7 +578,10 @@ export default function AgencyTrackingScreen({ onLogout }) {
 
   // VIEW 3 : Tracking
   return (
-    <View style={styles.container}>
+    <ScrollView
+      contentContainerStyle={{ alignItems: 'center', padding: 20, paddingTop: 50, paddingBottom: 40, backgroundColor: PALETTE.softOrangeBg }}
+      style={{ flex: 1, backgroundColor: PALETTE.softOrangeBg }}
+    >
       <TouchableOpacity
         style={styles.backButton}
         onPress={() => {
@@ -563,7 +626,30 @@ export default function AgencyTrackingScreen({ onLogout }) {
       </TouchableOpacity>
 
       {isTracking && <ActivityIndicator size="large" color={PALETTE.orange} style={{ marginTop: 20 }} />}
-    </View>
+
+      <View style={{ width: '100%', height: 300, borderRadius: 16, overflow: 'hidden', marginTop: 20, position: 'relative' }}>
+        {Platform.OS === 'web' ? (
+          createElement('iframe', {
+            ref: trackerMapIframeRef,
+            src: trackerMapSrc,
+            style: { width: '100%', height: '100%', border: 'none' },
+            title: 'Peta Agensi & Bencana',
+            onLoad: handleTrackerMapLoad,
+          })
+        ) : (
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: PALETTE.cardLight }}>
+            <Text style={{ color: PALETTE.textMutedDark, fontWeight: '600', textAlign: 'center', padding: 16 }}>
+              Peta memerlukan 'react-native-webview' pada peranti mudah alih.
+            </Text>
+          </View>
+        )}
+        {trackerMapLoading && Platform.OS === 'web' && (
+          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center', backgroundColor: PALETTE.softOrangeBg }}>
+            <ActivityIndicator size="large" color={PALETTE.orange} />
+          </View>
+        )}
+      </View>
+    </ScrollView>
   );
 }
 

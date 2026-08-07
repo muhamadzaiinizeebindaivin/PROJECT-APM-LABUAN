@@ -199,6 +199,27 @@ export function buildSekretariatMapHtml({ theme, userRole }) {
 
                 return popupDiv;
               };
+              // Écarte légèrement les agences situées (quasi) au même endroit,
+              // sinon leurs logos se superposent exactement et deviennent
+              // invisibles/incliquables.
+              var agencyGroups = {};
+              data.payload.forEach(function(a) {
+                var lat = Number(a.lat), lng = Number(a.lng);
+                if (!isFinite(lat) || !isFinite(lng)) return;
+                var key = lat.toFixed(4) + ',' + lng.toFixed(4);
+                if (!agencyGroups[key]) agencyGroups[key] = [];
+                agencyGroups[key].push(a);
+              });
+              Object.keys(agencyGroups).forEach(function(key) {
+                var group = agencyGroups[key];
+                if (group.length <= 1) return;
+                var offsetDeg = 0.00015;
+                group.forEach(function(a, i) {
+                  var angle = (2 * Math.PI / group.length) * i;
+                  a.lat = Number(a.lat) + offsetDeg * Math.cos(angle);
+                  a.lng = Number(a.lng) + offsetDeg * Math.sin(angle);
+                });
+              });
 
               data.payload.forEach(function(a) {
                 var lat = Number(a.lat), lng = Number(a.lng);

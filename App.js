@@ -276,50 +276,9 @@ export default function App() {
   const [userRole, setUserRole] = useState(null); 
   const [agencyInfo, setAgencyInfo] = useState(null);
 
-  // --- TEMPORARY DEBUG OVERLAY : capture les erreurs visibles à l'écran sur iPhone (à retirer une fois le bug trouvé) ---
-  const [debugLogs, setDebugLogs] = useState([]);
-  const [debugVisible, setDebugVisible] = useState(true);
-  useEffect(() => {
-    const log = (msg) => setDebugLogs(prev => [...prev.slice(-14), `${new Date().toLocaleTimeString()} — ${msg}`]);
-    const origError = console.error;
-    console.error = (...args) => { log(args.map(String).join(' ')); origError(...args); };
-    const onErr = (e) => log(`window.onerror: ${e.message}`);
-    const onRej = (e) => log(`unhandledrejection: ${e.reason}`);
-    if (typeof window !== 'undefined') {
-      window.addEventListener('error', onErr);
-      window.addEventListener('unhandledrejection', onRej);
-    }
-    log('debug overlay mounted');
-    return () => {
-      console.error = origError;
-      if (typeof window !== 'undefined') {
-        window.removeEventListener('error', onErr);
-        window.removeEventListener('unhandledrejection', onRej);
-      }
-    };
-  }, []);
+  
 
-  const DebugOverlay = () => debugVisible ? (
-    <View style={{
-      position: 'absolute', bottom: 0, left: 0, right: 0, maxHeight: 220, zIndex: 99999,
-      backgroundColor: 'rgba(0,0,0,0.88)', padding: 8,
-    }}>
-      <TouchableOpacity onPress={() => setDebugVisible(false)} style={{ alignSelf: 'flex-end', padding: 4 }}>
-        <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>Tutup ✕</Text>
-      </TouchableOpacity>
-      <ScrollView style={{ maxHeight: 180 }}>
-        {debugLogs.length === 0 ? (
-          <Text style={{ color: '#94a3b8', fontSize: 10 }}>Tiada log lagi...</Text>
-        ) : debugLogs.map((l, i) => (
-          <Text key={i} style={{ color: '#4ade80', fontSize: 10, marginBottom: 2 }}>{l}</Text>
-        ))}
-      </ScrollView>
-    </View>
-  ) : (
-    <TouchableOpacity onPress={() => setDebugVisible(true)} style={{ position: 'absolute', bottom: 20, right: 20, zIndex: 99999, backgroundColor: '#dc2626', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 8 }}>
-      <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>Debug ({debugLogs.length})</Text>
-    </TouchableOpacity>
-  );
+  
 
   const [isCheckingSession, setIsCheckingSession] = useState(true);
   const [isInvitedUser, setIsInvitedUser] = useState(false);
@@ -338,6 +297,8 @@ export default function App() {
   const [statusIcInput, setStatusIcInput] = useState('');
   const [icDigits, setIcDigits] = useState(Array(12).fill(''));
   const icBoxRefs = useRef([]);
+
+  
 
   const handleIcDigitChange = (index, text) => {
     const digit = text.replace(/[^0-9]/g, '').slice(-1);
@@ -431,7 +392,10 @@ export default function App() {
     setStatusLoading(true);
     setStatusError('');
     setStatusResult(null);
-    const { data, error } = await supabaseSandbox.rpc('check_status', { p_ic_no: statusIcInput.trim() });
+    const formattedIc = statusIcInput.trim().length === 12
+      ? `${statusIcInput.slice(0, 6)}-${statusIcInput.slice(6, 8)}-${statusIcInput.slice(8, 12)}`
+      : statusIcInput.trim();
+    const { data, error } = await supabaseSandbox.rpc('check_status', { p_ic_no: formattedIc });
     setStatusLoading(false);
     if (error) {
       setStatusError('Ralat semasa semakan. Sila cuba lagi.');
@@ -702,7 +666,7 @@ export default function App() {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.background }}>
         <ActivityIndicator size="large" color="#f97316" />
-        <DebugOverlay />
+        
       </View>
     );
   }
@@ -888,7 +852,13 @@ export default function App() {
         </View>
       </Modal>
 
-      <Modal visible={statusModalVisible} transparent animationType="fade" onRequestClose={closeStatusModal}>
+      <Modal
+        visible={statusModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={closeStatusModal}
+        onShow={() => setTimeout(() => icBoxRefs.current[0]?.focus(), 50)}
+      >
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
           <View style={{ width: '100%', maxWidth: 640, maxHeight: '85%', borderRadius: 24, overflow: 'hidden', backgroundColor: '#fff' }}>
             <View style={{ backgroundColor: '#0c0c0e', padding: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -1085,12 +1055,7 @@ export default function App() {
                     <Text style={{ fontSize: 13, color: '#0f172a', lineHeight: 19 }}>{statusResult.kursus || '-'}</Text>
                   </View>
 
-                  <TouchableOpacity
-                    onPress={() => { setStatusResult(null); resetIcInput(); }}
-                    style={{ borderRadius: 12, height: 46, borderWidth: 1.5, borderColor: '#e2e8f0', alignItems: 'center', justifyContent: 'center' }}
-                  >
-                    <Text style={{ color: '#64748b', fontWeight: '800', fontSize: 13 }}>Semak IC Lain</Text>
-                  </TouchableOpacity>
+                  
                 </View>
               )}
             </ScrollView>
@@ -1115,7 +1080,7 @@ export default function App() {
       userRole === 'agency' ? <AgencyFlow theme={theme} handleLogout={handleLogout} /> :
       <GuestFlow theme={theme} handleLogout={handleLogout} onLoginPress={() => setLoginModalVisible(true)} />}
     </NavigationContainer>
-    <DebugOverlay />
+    
     </>
   );
 }
