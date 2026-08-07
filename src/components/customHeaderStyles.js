@@ -75,6 +75,8 @@ export const customHeaderStyles = StyleSheet.create({
     justifyContent: 'center',
     gap: 6,
     backgroundColor: '#fff',
+    borderWidth: 1.5,
+    borderColor: PALETTE.orange,
     paddingHorizontal: 10,
     paddingVertical: 9,
     borderRadius: 10,

@@ -6,9 +6,8 @@ import { FONTS } from '../styles/tacticalTheme';
 import { PALETTE } from '../constants/palette';
 import { customHeaderStyles as styles } from './customHeaderStyles';
 
-// Dégradé du header : orange (marque APM) vers bleu.
-// Modifie ces deux couleurs pour ajuster le dégradé.
-const HEADER_GRADIENT = ['#60a5fa', '#fb923c'];
+// Dégradé du header : blanc vers orange (marque APM) vers bleu.
+const HEADER_GRADIENT = ['#ffffff', '#fb923c', '#60a5fa'];
 const NARROW_BREAKPOINT = 480;
 
 function HeaderRoleBadge({ userRole }) {
@@ -36,7 +35,7 @@ export default function CustomHeader({ title, theme, userRole, onLogout, onLogin
       <View style={styles.brandRow}>
         {onMenuPress && (
           <TouchableOpacity onPress={onMenuPress} style={styles.menuBtn}>
-            <Menu size={22} color="#fff" />
+            <Menu size={22} color={PALETTE.textDark} />
           </TouchableOpacity>
         )}
         <View style={styles.logoWrapper}>
@@ -48,7 +47,7 @@ export default function CustomHeader({ title, theme, userRole, onLogout, onLogin
         </View>
         {!isNarrow && (
           <Text
-            style={[styles.title, { fontFamily: FONTS.displayBold }]}
+            style={[styles.title, { fontFamily: FONTS.displayBold, color: PALETTE.textDark, textShadowColor: 'transparent' }]}
             numberOfLines={1}
           >
             {title}
