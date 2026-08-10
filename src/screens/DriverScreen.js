@@ -1,13 +1,17 @@
 // src/screens/DriverScreen.js
-import React, { useState, useEffect, createElement } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, FlatList, TextInput, Platform } from 'react-native';
+import React, { useState, useEffect, useRef, useMemo, createElement } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, FlatList, TextInput, Platform, ScrollView } from 'react-native';
 import { Navigation, StopCircle, ArrowLeft, Search, MapPin, Eye, EyeOff, Lock } from 'lucide-react-native';
 
 import { getVehicleIcon } from '../utils/vehicleIcons';
 import { useAvailableVehicles } from '../hooks/useAvailableVehicles';
 import { usePatrolTracking } from '../hooks/usePatrolTracking';
+import { useCalamityPoints } from '../hooks/useCalamityPoints';
+import { useVehicles } from '../hooks/useVehicles';
 import { supabaseSandbox } from '../supabaseSandboxClient';
 import { PALETTE } from '../constants/palette';
+import { getCalamityMeta, getCalamityLogoUrl } from '../constants/operasiConstants';
+import { buildOperasiMapHtml } from './operasi/operasiMapTemplate';
 
 const DRIVER_ACCESS_KEY = 'apm_driver_access_verified';
 
@@ -162,6 +166,56 @@ export default function DriverScreen({ onLogout }) {
       Alert.alert('Syif Ditamatkan', 'Syif anda telah ditamatkan oleh pentadbir.');
     }
   );
+
+  const { calamityPoints } = useCalamityPoints();
+  const mapIframeRef = useRef(null);
+  const [mapLoading, setMapLoading] = useState(true);
+
+  const mapHtml = useMemo(() => buildOperasiMapHtml({ theme: { background: PALETTE.softOrangeBg } }), []);
+  const mapSrc = useMemo(() => `data:text/html;charset=utf-8,${encodeURIComponent(mapHtml)}`, [mapHtml]);
+
+  const handleMapLoad = () => setMapLoading(false);
+
+  const vehiclesLive = useVehicles((updatedVehicle) => {
+    if (mapIframeRef?.current?.contentWindow) {
+      mapIframeRef.current.contentWindow.postMessage(JSON.stringify({
+        type: 'UPDATE_LOCATION',
+        id: updatedVehicle.id,
+        name: updatedVehicle.model,
+        reg: updatedVehicle.reg,
+        vehicleType: updatedVehicle.type,
+        iconKey: updatedVehicle.icon_key,
+        lat: updatedVehicle.latitude,
+        lng: updatedVehicle.longitude,
+        color: updatedVehicle.color || '#ef4444',
+        status: updatedVehicle.tracking_status,
+      }), '*');
+    }
+  });
+
+  useEffect(() => {
+    if (!mapLoading && mapIframeRef?.current?.contentWindow && vehiclesLive.length > 0) {
+      const payload = vehiclesLive.map((v) => ({ ...v, name: v.model, status: v.tracking_status }));
+      mapIframeRef.current.contentWindow.postMessage(JSON.stringify({ type: 'INIT_VEHICLES', payload }), '*');
+    }
+  }, [vehiclesLive, mapLoading]);
+
+  useEffect(() => {
+    if (!mapLoading && mapIframeRef?.current?.contentWindow) {
+      const payload = calamityPoints.map((c) => ({
+        id: c.id,
+        category: c.category,
+        description: c.description || '',
+        lat: c.latitude,
+        lng: c.longitude,
+        color: getCalamityMeta(c.category).color,
+        label: getCalamityMeta(c.category).label,
+        logo: getCalamityLogoUrl(c.category),
+        created_at: c.created_at,
+      }));
+      mapIframeRef.current.contentWindow.postMessage(JSON.stringify({ type: 'UPDATE_CALAMITIES', payload }), '*');
+    }
+  }, [calamityPoints, mapLoading]);
 
   const handleToggleTracking = async () => {
     if (isTracking) {
@@ -353,8 +407,12 @@ export default function DriverScreen({ onLogout }) {
 
   // View 2: Tracking Screen
   return (
-    <View style={styles.container}>
+    <View style={{ flex: 1, position: 'relative', overflow: 'hidden', backgroundColor: PALETTE.softOrangeBg }}>
       <FlowingBackground />
+      <ScrollView
+        contentContainerStyle={{ alignItems: 'center', padding: 20, paddingTop: 50, paddingBottom: 40 }}
+        style={{ flex: 1, backgroundColor: 'transparent' }}
+      >
       <TouchableOpacity
         style={styles.backButton}
         onPress={() => {
@@ -387,6 +445,33 @@ export default function DriverScreen({ onLogout }) {
             <Text style={styles.statusCoords}>
               Lat: {location.latitude.toFixed(5)} | Lng: {location.longitude.toFixed(5)}
             </Text>
+          )}
+        </View>
+
+        <View style={{
+          width: '100%', maxWidth: 800, aspectRatio: 1, alignSelf: 'center', borderRadius: 16, overflow: 'hidden', marginTop: 20, position: 'relative',
+          borderWidth: 2, borderColor: 'rgba(249, 115, 22, 0.45)',
+          shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.12, shadowRadius: 14, elevation: 3,
+        }}>
+          {Platform.OS === 'web' ? (
+            createElement('iframe', {
+              ref: mapIframeRef,
+              src: mapSrc,
+              style: { width: '100%', height: '100%', border: 'none' },
+              title: 'Peta Kedudukan',
+              onLoad: handleMapLoad,
+            })
+          ) : (
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: PALETTE.cardLight }}>
+              <Text style={{ color: PALETTE.textMutedDark, fontWeight: '600', textAlign: 'center', padding: 16 }}>
+                Peta memerlukan 'react-native-webview' pada peranti mudah alih.
+              </Text>
+            </View>
+          )}
+          {mapLoading && Platform.OS === 'web' && (
+            <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center', backgroundColor: PALETTE.softOrangeBg }}>
+              <ActivityIndicator size="large" color={PALETTE.orange} />
+            </View>
           )}
         </View>
 
@@ -425,6 +510,7 @@ export default function DriverScreen({ onLogout }) {
 
         {isTracking && <ActivityIndicator size="large" color={PALETTE.orange} style={{ marginTop: 20 }} />}
       </View>
+      </ScrollView>
     </View>
   );
 }
