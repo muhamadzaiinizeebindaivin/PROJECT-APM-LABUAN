@@ -141,6 +141,7 @@ export function useExcelImport() {
   const [parsedRows, setParsedRows] = useState([]);
   const [unmatchedHeaders, setUnmatchedHeaders] = useState([]);
   const [debugInfo, setDebugInfo] = useState(null);
+  const [pickedFile, setPickedFile] = useState(null);
 
   const pickAndParseFile = async () => {
     const result = await DocumentPicker.getDocumentAsync({
@@ -156,6 +157,7 @@ export function useExcelImport() {
     try {
       setParsing(true);
       const file = result.assets[0];
+      setPickedFile(file);
       const response = await fetch(file.uri);
       const arrayBuffer = await response.arrayBuffer();
       const workbook = XLSX.read(arrayBuffer, { type: 'array', cellDates: false });
@@ -251,7 +253,8 @@ export function useExcelImport() {
   const reset = () => {
     setParsedRows([]);
     setUnmatchedHeaders([]);
+    setPickedFile(null);
   };
 
-  return { parsing, parsedRows, unmatchedHeaders, pickAndParseFile, reset, debugInfo };
+  return { parsing, parsedRows, unmatchedHeaders, pickAndParseFile, reset, debugInfo, pickedFile };
 }

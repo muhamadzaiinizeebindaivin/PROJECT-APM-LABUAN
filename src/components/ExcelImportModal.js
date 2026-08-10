@@ -4,8 +4,8 @@ import { X, Upload, CheckCircle } from 'lucide-react-native';
 import { supabaseSandbox } from '../supabaseSandboxClient';
 import { PALETTE } from '../constants/palette';
 
-export default function ExcelImportModal({ visible, onClose, importHook, onImportComplete }) {
-  const { parsing, parsedRows, unmatchedHeaders, pickAndParseFile, reset } = importHook;
+export default function ExcelImportModal({ visible, onClose, importHook, onImportComplete, onSaveImportMeta }) {
+  const { parsing, parsedRows, unmatchedHeaders, pickAndParseFile, reset, pickedFile } = importHook;
   const [importing, setImporting] = React.useState(false);
   const [progress, setProgress] = React.useState({ done: 0, total: 0 });
 
@@ -44,6 +44,31 @@ export default function ExcelImportModal({ visible, onClose, importHook, onImpor
         }
 
         setProgress((p) => ({ ...p, done: p.done + 1 }));
+      }
+
+      // Fichier stocké séparément (bucket privé, seul le plus récent est gardé —
+      // écrasé à chaque import) — un échec ici n'annule pas l'import des rekod.
+      if (pickedFile) {
+        try {
+          const fileResponse = await fetch(pickedFile.uri);
+          const blob = await fileResponse.blob();
+          const { error: uploadError } = await supabaseSandbox.storage
+            .from('angkatan-imports')
+            .upload('data_keseluruhan_anggota_daerah.xlsx', blob, {
+              upsert: true,
+              contentType: pickedFile.mimeType || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            });
+          if (uploadError) {
+            console.error('Excel storage upload error:', uploadError);
+          } else {
+            await onSaveImportMeta?.({
+              latest_import_filename: pickedFile.name,
+              latest_import_at: new Date().toISOString(),
+            });
+          }
+        } catch (uploadErr) {
+          console.error('Excel storage upload error:', uploadErr);
+        }
       }
 
       Alert.alert('Berjaya', `${parsedRows.length} rekod berjaya diimport.`);

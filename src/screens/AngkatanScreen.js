@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, ScrollView, ActivityIndicator, Text, useWindowDimensions } from 'react-native';
+import { View, ScrollView, ActivityIndicator, Text, useWindowDimensions, Alert, Platform, Linking } from 'react-native';
 import { CheckCircle2, XCircle } from 'lucide-react-native';
 import { PALETTE } from '../constants/palette';
+import { supabaseSandbox } from '../supabaseSandboxClient';
 import AdminEditButton from '../components/AdminEditButton';
 import { useExcelImport } from '../hooks/useExcelImport';
 import ExcelImportModal from '../components/ExcelImportModal';
@@ -149,6 +150,18 @@ export default function AngkatanScreen({ userRole }) {
   const handleDeleteEmployee = async (id) => {
     const ok = await deleteEmployee(id);
     if (ok) closeEmployeeDetailModal();
+  };
+
+  const handleDownloadLatestImport = async () => {
+    const { data, error } = await supabaseSandbox.storage
+      .from('angkatan-imports')
+      .createSignedUrl('data_keseluruhan_anggota_daerah.xlsx', 60);
+    if (error || !data?.signedUrl) {
+      Alert.alert('Ralat', 'Gagal menjana pautan muat turun.');
+      return;
+    }
+    if (Platform.OS === 'web') window.open(data.signedUrl, '_blank');
+    else Linking.openURL(data.signedUrl);
   };
   const handleSaveCertificate = async (certForm) => {
     return await saveCertificate(employeeForm.id, certForm);
@@ -439,6 +452,10 @@ export default function AngkatanScreen({ userRole }) {
           onOpenCertificates={openCertificatesOnly}
           onAddNew={openAddEmployee}
           onImportExcel={() => setShowExcelImportModal(true)}
+          canViewLatestImport={canEdit}
+          latestImportFilename={summary.latest_import_filename}
+          latestImportAt={summary.latest_import_at}
+          onDownloadLatestImport={handleDownloadLatestImport}
         />
         <AngkatanUnitSection
           unitList={unit.staffList}
@@ -530,6 +547,7 @@ export default function AngkatanScreen({ userRole }) {
         onClose={() => setShowExcelImportModal(false)}
         importHook={excelImportHook}
         onImportComplete={fetchEmployees}
+        onSaveImportMeta={saveSummaryExtra}
       />
     </View>
   );

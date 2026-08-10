@@ -9,6 +9,7 @@ export default function EmployeesListCard({
   employeeSearch, setEmployeeSearch,
   employeePage, setEmployeePage, totalEmployeePages,
   isEditing, onOpenDetail, onOpenCertificates, onAddNew, onImportExcel,
+  canViewLatestImport, latestImportFilename, latestImportAt, onDownloadLatestImport,
 }) {
   const { width: screenWidth } = useWindowDimensions();
   const isMobile = screenWidth < 768;
@@ -49,6 +50,25 @@ export default function EmployeesListCard({
       </View>
 
       <Text style={styles.employeeHint}>Ketik pada profil untuk lihat lebih maklumat</Text>
+
+      {canViewLatestImport && latestImportFilename && (
+        <TouchableOpacity
+          onPress={onDownloadLatestImport}
+          style={{
+            flexDirection: 'row', alignItems: 'center', gap: 10,
+            backgroundColor: PALETTE.surface, borderRadius: 10, padding: 12, marginBottom: 14,
+          }}
+        >
+          <Upload size={16} color={PALETTE.blue} />
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 13, fontWeight: '700', color: PALETTE.textDark }}>{latestImportFilename}</Text>
+            <Text style={{ fontSize: 11, color: PALETTE.textMutedDark, marginTop: 2 }}>
+              Fail Excel terkini diimport{latestImportAt ? ` pada ${new Date(latestImportAt).toLocaleString('ms-MY')}` : ''}
+            </Text>
+          </View>
+          <Text style={{ fontSize: 12, fontWeight: '700', color: PALETTE.blue }}>Muat Turun</Text>
+        </TouchableOpacity>
+      )}
 
       <View>
         {paginatedEmployees.map((emp) => {
