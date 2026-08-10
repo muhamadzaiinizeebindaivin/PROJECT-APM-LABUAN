@@ -5,7 +5,7 @@ import { PALETTE } from '../constants/palette';
 import AdminEditButton from '../components/AdminEditButton';
 import { useExcelImport } from '../hooks/useExcelImport';
 import ExcelImportModal from '../components/ExcelImportModal';
-import { useAngkatanEmployees, mapMyaspaLabel, normalizePangkat, isEligibleForPromotion } from '../hooks/useAngkatanEmployees';
+import { useAngkatanEmployees, mapMyaspaLabel, normalizePangkat, isEligibleForPromotion, isEligibleForPegawaiWaranII, PANGKAT_HIERARCHY } from '../hooks/useAngkatanEmployees';
 import { useAngkatanCommunity } from '../hooks/useAngkatanCommunity';
 import { useEmployeeCertificates } from '../hooks/useEmployeeCertificates';
 import { useEmployeePromotionHistory } from '../hooks/useEmployeePromotionHistory';
@@ -257,7 +257,19 @@ export default function AngkatanScreen({ userRole }) {
     setFilterModal({ visible: true, title: rankLabel, list, page: 1 });
   };
   const openPromotionEligibleEmployees = (rankLabel) => {
-    const list = employees.filter((e) => normalizePangkat(e.pangkat) === normalizePangkat(rankLabel) && isEligibleForPromotion(e, rankLabel));
+    // Même règle que la colonne LAYAK UBKP : ce sont les employés du rang
+    // JUSTE EN DESSOUS de rankLabel qui sont éligibles à monter DANS rankLabel.
+    // Pegawai Waran II a sa propre règle dédiée (basée sur les Sarjan).
+    let list;
+    if (normalizePangkat(rankLabel) === normalizePangkat('Pegawai Waran II')) {
+      list = employees.filter((e) => normalizePangkat(e.pangkat) === normalizePangkat('Sarjan') && isEligibleForPegawaiWaranII(e));
+    } else {
+      const rankIdx = PANGKAT_HIERARCHY.findIndex((p) => normalizePangkat(p) === normalizePangkat(rankLabel));
+      const lowerRank = rankIdx > -1 && rankIdx + 1 < PANGKAT_HIERARCHY.length ? PANGKAT_HIERARCHY[rankIdx + 1] : undefined;
+      list = lowerRank
+        ? employees.filter((e) => normalizePangkat(e.pangkat) === normalizePangkat(lowerRank) && isEligibleForPromotion(e, lowerRank))
+        : [];
+    }
     setFilterModal({ visible: true, title: `Layak Kenaikan Pangkat — ${rankLabel}`, list, page: 1 });
   };
   const FILTER_PER_PAGE = 10;
@@ -458,6 +470,7 @@ export default function AngkatanScreen({ userRole }) {
       <FilteredEmployeeListModal
         visible={filterModal.visible}
         title={filterModal.title}
+        totalCount={filterModal.list.length}
         employees={filterPageItems}
         page={filterModal.page}
         setPage={(updater) => setFilterModal((prev) => ({ ...prev, page: typeof updater === 'function' ? updater(prev.page) : updater }))}

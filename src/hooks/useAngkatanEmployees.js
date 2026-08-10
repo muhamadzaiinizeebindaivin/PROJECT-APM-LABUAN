@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabaseSandbox } from '../supabaseSandboxClient';
 
-const PANGKAT_HIERARCHY = [
+export const PANGKAT_HIERARCHY = [
   'Mejar', 'Kapten', 'Leftenan', 'Leftenan Muda', 'Staf Tinggi',
   'Staf Kanan', 'Staf Muda', 'Sarjan', 'Koperal', 'Lans Koperal', 'Prebet',
 ];
@@ -77,6 +77,20 @@ export const isEligibleForPromotion = (emp, rankLabel) => {
   return true;
 };
 
+// Pegawai Waran II : mêmes conditions années/académique que la règle Sarjan
+// (3 ans, SPM et en dessous), mais le cours requis est le KBP WARAN — pas le
+// KBP normal (hasKbp() exclut d'ailleurs tout texte contenant "WARAN", donc on
+// ne peut pas passer par isEligibleForPromotion(emp, 'Sarjan') ici). Rang
+// plafond : ne mène à rien de plus haut.
+export const isEligibleForPegawaiWaranII = (emp) => {
+  if (norm(emp.status_keaktifan) !== 'AKTIF') return false;
+  const yrs = yearsSince(emp.tarikh_terima_pangkat_terkini);
+  if (yrs === null || yrs < 3) return false;
+  if (classifyAcademic(emp.akademik_tertinggi) !== 'SPM_BELOW') return false;
+  if (!hasKbpWaran(emp.senarai_kursus)) return false;
+  return true;
+};
+
 export function useAngkatanEmployees() {
   const [employees, setEmployees] = useState([]);
   const [dataUpdatedAt, setDataUpdatedAt] = useState(null);
@@ -145,6 +159,23 @@ export function useAngkatanEmployees() {
         const st = norm(e.status_keaktifan);
         return st === 'AKTIF' || st === 'SIMPANAN';
       });
+
+      // LAYAK UBKP = nombre d'employés du rang JUSTE EN DESSOUS de r (dans la
+      // hiérarchie) qui remplissent les conditions pour être promus DANS r.
+      // Le rang le plus bas (Prebet) n'a rien en dessous -> toujours 0.
+      // Pegawai Waran II n'est pas dans PANGKAT_HIERARCHY (rang plafond, hors
+      // parcours normal) -> règle dédiée basée sur les Sarjan (isEligibleForPegawaiWaranII).
+      let kenaikan;
+      if (normalizePangkat(r.rank) === normalizePangkat('Pegawai Waran II')) {
+        kenaikan = data.filter((e) => normalizePangkat(e.pangkat) === normalizePangkat('Sarjan') && isEligibleForPegawaiWaranII(e)).length;
+      } else {
+        const rankIdx = PANGKAT_HIERARCHY.findIndex((p) => normalizePangkat(p) === normalizePangkat(r.rank));
+        const lowerRank = rankIdx > -1 && rankIdx + 1 < PANGKAT_HIERARCHY.length ? PANGKAT_HIERARCHY[rankIdx + 1] : undefined;
+        kenaikan = lowerRank
+          ? data.filter((e) => normalizePangkat(e.pangkat) === normalizePangkat(lowerRank) && isEligibleForPromotion(e, lowerRank)).length
+          : 0;
+      }
+
       return {
         ...r,
         jumlah: activeInRank.length,
@@ -153,7 +184,7 @@ export function useAngkatanEmployees() {
         ptb: activeInRank.filter((e) => hasPtb(e.senarai_kursus)).length,
         aktif: activeInRank.filter((e) => norm(e.status_keaktifan) === 'AKTIF').length,
         simpanan: activeInRank.filter((e) => norm(e.status_keaktifan) === 'SIMPANAN').length,
-        kenaikan: allInRank.filter((e) => isEligibleForPromotion(e, r.rank)).length,
+        kenaikan,
       };
     }));
   }, []);

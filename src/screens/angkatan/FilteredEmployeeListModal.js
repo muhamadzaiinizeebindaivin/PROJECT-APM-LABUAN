@@ -5,14 +5,14 @@ import { PALETTE } from '../../constants/palette';
 import { angkatanStyles as styles } from './angkatanStyles';
 
 export default function FilteredEmployeeListModal({
-  visible, title, employees, page, setPage, totalPages, onClose, onSelectEmployee,
+  visible, title, totalCount, employees, page, setPage, totalPages, onClose, onSelectEmployee,
 }) {
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.modalOverlay}>
         <View style={[styles.modalContainer, { maxHeight: '80%' }]}>
           <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>{title} ({employees.length})</Text>
+            <Text style={styles.modalTitle}>{title} ({totalCount ?? employees.length})</Text>
             <TouchableOpacity onPress={onClose}><X size={22} color={PALETTE.textMutedDark} /></TouchableOpacity>
           </View>
 
@@ -33,6 +33,9 @@ export default function FilteredEmployeeListModal({
                 <View style={{ flex: 1, marginLeft: 15 }}>
                   <Text style={styles.employeeName}>{emp.nama}</Text>
                   <Text style={styles.employeeRank}>{emp.pangkat}</Text>
+                </View>
+                <View style={[styles.employeeStatusBadge, { backgroundColor: PALETTE.surface }]}>
+                  <Text style={[styles.employeeStatusBadgeText, { color: PALETTE.textMutedDark }]}>{emp.status_keaktifan}</Text>
                 </View>
               </Pressable>
             ))}
