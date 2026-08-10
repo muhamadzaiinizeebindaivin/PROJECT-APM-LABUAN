@@ -1,5 +1,5 @@
-import React, { useState, useRef } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Modal, ActivityIndicator, useWindowDimensions } from 'react-native';
+import React, { useState, useRef, useEffect } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, Modal, ActivityIndicator, useWindowDimensions, Animated, PanResponder, Platform } from 'react-native';
 import { X, Trash2, User, AlertTriangle } from 'lucide-react-native';
 import { PALETTE } from '../../constants/palette';
 import { angkatanStyles as styles } from './angkatanStyles';
@@ -29,6 +29,72 @@ export default function EmployeeDetailModal({
   const displayDeleteCertRef = useRef(null);
   if (confirmDeleteCertId !== null) displayDeleteCertRef.current = certificates.find((c) => c.id === confirmDeleteCertId);
   const [isDeletingCert, setIsDeletingCert] = useState(false);
+
+  const pan = useRef(new Animated.ValueXY()).current;
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => {
+        pan.setOffset({ x: pan.x._value, y: pan.y._value });
+        pan.setValue({ x: 0, y: 0 });
+      },
+      onPanResponderMove: Animated.event(
+        [null, { dx: pan.x, dy: pan.y }],
+        { useNativeDriver: false }
+      ),
+      onPanResponderRelease: () => {
+        pan.flattenOffset();
+      },
+    })
+  ).current;
+
+  useEffect(() => {
+    if (visible) {
+      pan.setValue({ x: 0, y: 0 });
+      pan.setOffset({ x: 0, y: 0 });
+    }
+  }, [visible]);
+
+  // Overlay transparent aux clics/scroll côté web (voir pointerEvents plus bas) —
+  // on ré-intercepte manuellement les clics HORS de la boîte du modal (capture phase)
+  // pour empêcher de cliquer sur le tableau en arrière-plan, sans bloquer le scroll/wheel.
+  const modalBoxRef = useRef(null);
+  useEffect(() => {
+    if (Platform.OS !== 'web' || !visible) return undefined;
+    const handleCapture = (e) => {
+      if (modalBoxRef.current && !modalBoxRef.current.contains(e.target)) {
+        e.stopPropagation();
+        e.preventDefault();
+      }
+    };
+    document.addEventListener('click', handleCapture, true);
+    document.addEventListener('mousedown', handleCapture, true);
+    return () => {
+      document.removeEventListener('click', handleCapture, true);
+      document.removeEventListener('mousedown', handleCapture, true);
+    };
+  }, [visible]);
+
+  // react-native-web's <Modal> wraps our content in its own backdrop <div>s
+  // (outside our own styles.modalOverlay node), which still swallow scroll/click
+  // even though our overlay is set to pointerEvents="none" below. Fix: walk up
+  // from our overlay's actual DOM node and force pointer-events: none on every
+  // ancestor up to <body> — the popup itself stays clickable since it declares
+  // its own pointerEvents="auto" (CSS lets a descendant override an ancestor).
+  const overlayRef = useRef(null);
+  useEffect(() => {
+    if (Platform.OS !== 'web' || !visible) return undefined;
+    const touched = [];
+    let node = overlayRef.current;
+    while (node && node !== document.body) {
+      touched.push([node, node.style.pointerEvents]);
+      node.style.pointerEvents = 'none';
+      node = node.parentElement;
+    }
+    return () => {
+      touched.forEach(([el, prevValue]) => { el.style.pointerEvents = prevValue; });
+    };
+  }, [visible]);
 
   const isActive = String(employeeForm.status_keaktifan).toUpperCase() === 'AKTIF';
 
@@ -67,9 +133,13 @@ export default function EmployeeDetailModal({
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <View style={styles.modalOverlay}>
-        <View style={styles.employeeModalContainer}>
-          <View style={styles.modalHeader}>
+      <View ref={overlayRef} style={styles.modalOverlay} pointerEvents={Platform.OS === 'web' ? 'none' : 'auto'}>
+        <Animated.View
+          ref={modalBoxRef}
+          style={[styles.employeeModalContainer, { transform: pan.getTranslateTransform() }]}
+          pointerEvents="auto"
+        >
+          <View style={styles.modalHeader} {...panResponder.panHandlers}>
             <Text style={styles.modalTitle}>
               {certOnlyMode ? 'Sijil' : (employeeForm.id ? 'Butiran Anggota' : 'Tambah Anggota')}
             </Text>
@@ -214,7 +284,7 @@ export default function EmployeeDetailModal({
               </TouchableOpacity>
             )}
           </ScrollView>
-        </View>
+        </Animated.View>
       </View>
 
       <CertEditModal

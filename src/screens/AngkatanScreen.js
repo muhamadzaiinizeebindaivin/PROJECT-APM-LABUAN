@@ -103,6 +103,27 @@ export default function AngkatanScreen({ userRole }) {
   const [employeeForm, setEmployeeForm] = useState(emptyEmployeeForm());
   const [certOnlyMode, setCertOnlyMode] = useState(false);
 
+  // Le ScrollView principal (table/cards en arrière-plan) revient en haut tout
+  // seul quand le Modal se ferme (comportement du <Modal> de react-native-web,
+  // pas le nôtre) — on retient la position de scroll et on la réapplique juste
+  // après la fermeture plutôt que d'essayer d'empêcher le saut lui-même.
+  const mainScrollRef = useRef(null);
+  const scrollYRef = useRef(0);
+  const closeEmployeeDetailModal = () => {
+    setShowEmployeeDetailModal(false);
+    // Le <Modal> de react-native-web remet le scroll en haut de façon asynchrone
+    // (timing pas garanti par rapport à notre propre callback) — on réapplique
+    // la position sur plusieurs frames pendant ~300ms pour gagner la course,
+    // peu importe l'ordre dans lequel les deux resets se déclenchent.
+    const targetY = scrollYRef.current;
+    const deadline = Date.now() + 300;
+    const reassert = () => {
+      mainScrollRef.current?.scrollTo({ y: targetY, animated: false });
+      if (Date.now() < deadline) requestAnimationFrame(reassert);
+    };
+    requestAnimationFrame(reassert);
+  };
+
   const openEmployeeDetail = (emp) => {
     setEmployeeForm({ ...emptyEmployeeForm(), ...emp });
     setCertOnlyMode(false);
@@ -123,11 +144,11 @@ export default function AngkatanScreen({ userRole }) {
   };
   const handleSaveEmployee = async () => {
     const ok = await saveEmployee(employeeForm);
-    if (ok) setShowEmployeeDetailModal(false);
+    if (ok) closeEmployeeDetailModal();
   };
   const handleDeleteEmployee = async (id) => {
     const ok = await deleteEmployee(id);
-    if (ok) setShowEmployeeDetailModal(false);
+    if (ok) closeEmployeeDetailModal();
   };
   const handleSaveCertificate = async (certForm) => {
     return await saveCertificate(employeeForm.id, certForm);
@@ -308,7 +329,13 @@ export default function AngkatanScreen({ userRole }) {
         </View>
       )}
 
-      <ScrollView contentContainerStyle={styles.contentGrid} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        ref={mainScrollRef}
+        contentContainerStyle={styles.contentGrid}
+        showsVerticalScrollIndicator={false}
+        onScroll={(e) => { scrollYRef.current = e.nativeEvent.contentOffset.y; }}
+        scrollEventThrottle={16}
+      >
         {isMobile ? (
           <View style={{ gap: 16 }}>
             <SummaryHeroCard total={summary.total_anggota} />
@@ -413,7 +440,7 @@ export default function AngkatanScreen({ userRole }) {
 
       <EmployeeDetailModal
         visible={showEmployeeDetailModal}
-        onClose={() => setShowEmployeeDetailModal(false)}
+        onClose={closeEmployeeDetailModal}
         employeeForm={employeeForm}
         setEmployeeForm={setEmployeeForm}
         isEditing={isEditing}
