@@ -4,13 +4,14 @@ import { X, Check, AlertCircle } from 'lucide-react-native';
 import { PALETTE } from '../../constants/palette';
 import { angkatanStyles as styles } from './angkatanStyles';
 
-const CATEGORIES = ['TUSPA', 'KASPA', 'PISPA', 'SISPA', 'CDA'];
+const CATEGORIES = ['TUSPA', 'KASPA', 'PISPA', 'SISPA', 'CDA', 'PKPB'];
 const CATEGORY_COLORS = {
   TUSPA: '#3b82f6',
   KASPA: '#22c55e',
   PISPA: '#8b5cf6',
   SISPA: '#ef4444',
   CDA: '#14b8a6',
+  PKPB: '#f59e0b',
 };
 
 export default function CommunityEditModal({ visible, isNew, communityForm, setCommunityForm, onSave, onClose, error, isSaving }) {

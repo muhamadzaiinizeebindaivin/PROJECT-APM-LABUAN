@@ -5,13 +5,14 @@ import { PALETTE } from '../../constants/palette';
 import { angkatanStyles as styles } from './angkatanStyles';
 import { pentadbiranStyles } from '../pentadbiran/pentadbiranStyles';
 
-const CATEGORIES = ['TUSPA', 'KASPA', 'PISPA', 'SISPA', 'CDA'];
+const CATEGORIES = ['TUSPA', 'KASPA', 'PISPA', 'SISPA', 'CDA', 'PKPB'];
 const CATEGORY_COLORS = {
   TUSPA: '#3b82f6',
   KASPA: '#22c55e',
   PISPA: '#8b5cf6',
   SISPA: '#ef4444',
   CDA: '#14b8a6',
+  PKPB: '#f59e0b',
 };
 
 const PAGE_SIZE = 5;
