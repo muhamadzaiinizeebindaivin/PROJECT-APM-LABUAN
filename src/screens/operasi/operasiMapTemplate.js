@@ -96,11 +96,17 @@ export function buildOperasiMapHtml({ theme, userRole }) {
             };
           }
 
-          // Vehicles move continuously (live GPS): NOT clustered, since
-          // Leaflet.markercluster doesn't reindex a marker's position in its
-          // spatial tree on setLatLng, which would make moving vehicles look
-          // stuck inside stale clusters. They're added straight to the map.
-          var vehicleLayer = L.layerGroup().addTo(map);
+          // Vehicles are clustered too (nearby/overlapping ones collapse into a
+          // numbered badge; tapping it spiderfies them apart). To keep the
+          // cluster's spatial index correct as vehicles move, UPDATE_LOCATION
+          // below removes and recreates the marker instead of calling
+          // setLatLng() on it directly (same technique as agencyCluster in
+          // sekretariatMapTemplate.js).
+          var vehicleLayer = L.markerClusterGroup({
+            maxClusterRadius: 40,
+            spiderfyOnMaxZoom: true,
+            iconCreateFunction: makeClusterIcon('cluster-vehicle')
+          }).addTo(map);
 
           var calamityCluster = L.markerClusterGroup({
             maxClusterRadius: 30,
@@ -249,10 +255,9 @@ export function buildOperasiMapHtml({ theme, userRole }) {
               };
               if (data.status === 'Patrol') {
                 if (markers[data.id]) {
-                  markers[data.id].setLatLng([data.lat, data.lng]);
-                  markers[data.id].setIcon(createIcon(data.color, meta.iconKey));
-                  markers[data.id].setPopupContent(createPopupContent(data.name, meta.reg, meta.type, data.status, data.id));
-                } else if (data.lat && data.lng) {
+                  vehicleLayer.removeLayer(markers[data.id]);
+                }
+                if (data.lat && data.lng) {
                   markers[data.id] = L.marker([data.lat, data.lng], { icon: createIcon(data.color, meta.iconKey) })
                     .bindPopup(createPopupContent(data.name, meta.reg, meta.type, data.status, data.id), {
                       autoPanPaddingTopLeft: L.point(20, 20),

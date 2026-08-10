@@ -448,33 +448,6 @@ export default function DriverScreen({ onLogout }) {
           )}
         </View>
 
-        <View style={{
-          width: '100%', maxWidth: 800, aspectRatio: 1, alignSelf: 'center', borderRadius: 16, overflow: 'hidden', marginTop: 20, position: 'relative',
-          borderWidth: 2, borderColor: 'rgba(249, 115, 22, 0.45)',
-          shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.12, shadowRadius: 14, elevation: 3,
-        }}>
-          {Platform.OS === 'web' ? (
-            createElement('iframe', {
-              ref: mapIframeRef,
-              src: mapSrc,
-              style: { width: '100%', height: '100%', border: 'none' },
-              title: 'Peta Kedudukan',
-              onLoad: handleMapLoad,
-            })
-          ) : (
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: PALETTE.cardLight }}>
-              <Text style={{ color: PALETTE.textMutedDark, fontWeight: '600', textAlign: 'center', padding: 16 }}>
-                Peta memerlukan 'react-native-webview' pada peranti mudah alih.
-              </Text>
-            </View>
-          )}
-          {mapLoading && Platform.OS === 'web' && (
-            <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center', backgroundColor: PALETTE.softOrangeBg }}>
-              <ActivityIndicator size="large" color={PALETTE.orange} />
-            </View>
-          )}
-        </View>
-
         <View style={styles.actionRow}>
           <TouchableOpacity
             style={[
@@ -505,6 +478,33 @@ export default function DriverScreen({ onLogout }) {
                 {location ? 'TANDA TITIK' : 'MENUNGGU GPS...'}
               </Text>
             </TouchableOpacity>
+          )}
+        </View>
+
+        <View style={{
+          width: '100%', maxWidth: 800, aspectRatio: 1, alignSelf: 'center', borderRadius: 16, overflow: 'hidden', marginTop: 20, position: 'relative',
+          borderWidth: 2, borderColor: 'rgba(249, 115, 22, 0.45)',
+          shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.12, shadowRadius: 14, elevation: 3,
+        }}>
+          {Platform.OS === 'web' ? (
+            createElement('iframe', {
+              ref: mapIframeRef,
+              src: mapSrc,
+              style: { width: '100%', height: '100%', border: 'none' },
+              title: 'Peta Kedudukan',
+              onLoad: handleMapLoad,
+            })
+          ) : (
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: PALETTE.cardLight }}>
+              <Text style={{ color: PALETTE.textMutedDark, fontWeight: '600', textAlign: 'center', padding: 16 }}>
+                Peta memerlukan 'react-native-webview' pada peranti mudah alih.
+              </Text>
+            </View>
+          )}
+          {mapLoading && Platform.OS === 'web' && (
+            <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center', backgroundColor: PALETTE.softOrangeBg }}>
+              <ActivityIndicator size="large" color={PALETTE.orange} />
+            </View>
           )}
         </View>
 
