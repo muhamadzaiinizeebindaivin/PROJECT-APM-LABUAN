@@ -10,9 +10,10 @@ export default function EmployeesListCard({
   paginatedEmployees, filteredCount,
   employeeSearch, setEmployeeSearch,
   employeePage, setEmployeePage, totalEmployeePages,
-  isEditing, onOpenDetail, onOpenCertificates, onAddNew, onImportExcel, onDeleteEmployee,
+  isEditing, userRole, onOpenDetail, onOpenCertificates, onAddNew, onImportExcel, onDeleteEmployee,
   canViewLatestImport, latestImportFilename, latestImportAt, onDownloadLatestImport,
 }) {
+  const canViewProfile = userRole === 'angkatan' || userRole === 'admin';
   const [confirmDeleteEmp, setConfirmDeleteEmp] = useState(null);
   const displayDeleteEmpRef = useRef(null);
   if (confirmDeleteEmp) displayDeleteEmpRef.current = confirmDeleteEmp;
@@ -90,7 +91,7 @@ export default function EmployeesListCard({
             <Pressable
               key={String(emp.id)}
               style={[styles.employeeRow, isMobile && { alignItems: 'flex-start', flexWrap: 'wrap' }]}
-              onPress={() => onOpenDetail(emp)}
+              onPress={() => { if (canViewProfile) onOpenDetail(emp); }}
             >
               {emp.photo_url ? (
                 <Image source={{ uri: emp.photo_url }} style={styles.employeeAvatar} />
@@ -113,7 +114,7 @@ export default function EmployeesListCard({
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 }}>
                     <TouchableOpacity
                       style={styles.lihatSijilBtn}
-                      onPress={(e) => { e.stopPropagation?.(); onOpenCertificates(emp); }}
+                      onPress={(e) => { e.stopPropagation?.(); if (canViewProfile) onOpenCertificates(emp); }}
                     >
                       <Award size={14} color={PALETTE.orange} />
                       <Text style={styles.lihatSijilBtnText}>Lihat Sijil</Text>
@@ -141,7 +142,7 @@ export default function EmployeesListCard({
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                   <TouchableOpacity
                     style={styles.lihatSijilBtn}
-                    onPress={(e) => { e.stopPropagation?.(); onOpenCertificates(emp); }}
+                    onPress={(e) => { e.stopPropagation?.(); if (canViewProfile) onOpenCertificates(emp); }}
                   >
                     <Award size={14} color={PALETTE.orange} />
                     <Text style={styles.lihatSijilBtnText}>Lihat Sijil</Text>

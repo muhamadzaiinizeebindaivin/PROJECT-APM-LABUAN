@@ -182,7 +182,7 @@ export const angkatanStyles = StyleSheet.create({
     borderWidth: 1, borderColor: PALETTE.cardLightBorder, borderRadius: 10, padding: 12,
     backgroundColor: '#f8fafc',
   },
-  fieldListItem: { color: PALETTE.textDark, fontSize: 14, fontWeight: '600', marginBottom: 4 },
+  fieldListItem: { color: PALETTE.textDark, fontSize: 14, fontWeight: '600', lineHeight: 21, marginBottom: 10 },
   pickerRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   pickerChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: PALETTE.cardLightBorder, backgroundColor: '#fafafa' },
   pickerChipActive: { backgroundColor: PALETTE.orange, borderColor: PALETTE.orange },

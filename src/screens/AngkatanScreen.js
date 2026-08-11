@@ -622,6 +622,7 @@ export default function AngkatanScreen({ userRole }) {
               setEmployeePage={setEmployeePage}
               totalEmployeePages={totalEmployeePages}
               isEditing={isEditing}
+              userRole={userRole}
               onOpenDetail={openEmployeeDetail}
               onOpenCertificates={openCertificatesOnly}
               onAddNew={openAddEmployee}

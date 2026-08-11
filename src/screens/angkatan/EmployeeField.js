@@ -27,7 +27,7 @@ export default function EmployeeField({ field: f, form, setForm, isEditing, acti
     if (f.type === 'multiline_list') {
       const trimmed = String(value || '').trim();
       if (trimmed === '') return <FieldWrapper label={f.label}><View style={styles.fieldReadOnlyBox}><Text style={styles.fieldValue}>-</Text></View></FieldWrapper>;
-      const lines = String(value).split(/\r?\n|(?=\d+\))/g).map((l) => l.replace(/^\d+\)\s*/, '').trim()).filter(Boolean);
+      const lines = String(value).split(/\r?\n|(?<=^|\s)(?=\d{1,2}\)\s)/g).map((l) => l.replace(/^\d{1,2}\)\s*/, '').trim()).filter(Boolean);
       return (
         <FieldWrapper label={f.label}>
           <View style={styles.fieldReadOnlyBox}>
