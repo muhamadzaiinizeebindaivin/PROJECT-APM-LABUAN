@@ -6,7 +6,7 @@ import { supabaseSandbox } from '../supabaseSandboxClient';
 import AdminEditButton from '../components/AdminEditButton';
 import { useExcelImport } from '../hooks/useExcelImport';
 import ExcelImportModal from '../components/ExcelImportModal';
-import { useAngkatanEmployees, mapMyaspaLabel, normalizePangkat, isEligibleForPromotion, isEligibleForPegawaiWaranII, PANGKAT_HIERARCHY } from '../hooks/useAngkatanEmployees';
+import { useAngkatanEmployees, mapMyaspaLabel, normalizePangkat, isEligibleForPromotion, isEligibleForPegawaiWaranII, isEligibleForPegawaiWaranI, isEligibleForTBP, isEligibleFastTrackStafMuda, isEligibleFastTrackLeftenanMuda, PANGKAT_HIERARCHY } from '../hooks/useAngkatanEmployees';
 import { useAngkatanCommunity, SCHOOL_CATEGORIES, CDA_CATEGORIES } from '../hooks/useAngkatanCommunity';
 import { useEmployeeCertificates } from '../hooks/useEmployeeCertificates';
 import { useEmployeePromotionHistory } from '../hooks/useEmployeePromotionHistory';
@@ -206,6 +206,54 @@ export default function AngkatanScreen({ userRole }) {
     if (Platform.OS === 'web') window.open(data.signedUrl, '_blank');
     else Linking.openURL(data.signedUrl);
   };
+
+  const handleUploadRanksPdf = async (file) => {
+    try {
+      const fileResponse = await fetch(file.uri);
+      const blob = await fileResponse.blob();
+      const { error: uploadError } = await supabaseSandbox.storage
+        .from('ranks-documents')
+        .upload('laluan_kerjaya_penjelasan.pdf', blob, { upsert: true, contentType: 'application/pdf' });
+      if (uploadError) {
+        console.error('Ranks PDF upload error:', uploadError);
+        return false;
+      }
+      await saveSummaryExtra({
+        ranks_pdf_filename: file.name,
+        ranks_pdf_uploaded_at: new Date().toISOString(),
+      });
+      return true;
+    } catch (err) {
+      console.error('Ranks PDF upload error:', err);
+      return false;
+    }
+  };
+
+  const handleDownloadRanksPdf = () => {
+    // Bucket public — pas de signed URL nécessaire.
+    const { data } = supabaseSandbox.storage
+      .from('ranks-documents')
+      .getPublicUrl('laluan_kerjaya_penjelasan.pdf');
+    if (Platform.OS === 'web') window.open(data.publicUrl, '_blank');
+    else Linking.openURL(data.publicUrl);
+  };
+
+  const handleDeleteRanksPdf = async () => {
+    try {
+      const { error: deleteError } = await supabaseSandbox.storage
+        .from('ranks-documents')
+        .remove(['laluan_kerjaya_penjelasan.pdf']);
+      if (deleteError) {
+        console.error('Ranks PDF delete error:', deleteError);
+        return false;
+      }
+      await saveSummaryExtra({ ranks_pdf_filename: null, ranks_pdf_uploaded_at: null });
+      return true;
+    } catch (err) {
+      console.error('Ranks PDF delete error:', err);
+      return false;
+    }
+  };
   const handleSaveCertificate = async (certForm) => {
     return await saveCertificate(employeeForm.id, certForm);
   };
@@ -330,21 +378,34 @@ export default function AngkatanScreen({ userRole }) {
     });
     setFilterModal({ visible: true, title: rankLabel, list, page: 1 });
   };
-  const openPromotionEligibleEmployees = (rankLabel) => {
-    // Même règle que la colonne LAYAK UBKP : ce sont les employés du rang
-    // JUSTE EN DESSOUS de rankLabel qui sont éligibles à monter DANS rankLabel.
-    // Pegawai Waran II a sa propre règle dédiée (basée sur les Sarjan).
+  const openPromotionEligibleEmployees = (rankLabel, subRoute) => {
+    const prebetHolders = () => employees.filter((e) => normalizePangkat(e.pangkat) === normalizePangkat('Prebet'));
+    const normRank = normalizePangkat(rankLabel);
     let list;
-    if (normalizePangkat(rankLabel) === normalizePangkat('Pegawai Waran II')) {
+    let title = `Layak Kenaikan Pangkat — ${rankLabel}`;
+
+    if (normRank === normalizePangkat('Pegawai Waran II')) {
       list = employees.filter((e) => normalizePangkat(e.pangkat) === normalizePangkat('Sarjan') && isEligibleForPegawaiWaranII(e));
+    } else if (normRank === normalizePangkat('Pegawai Waran I')) {
+      list = employees.filter((e) => normalizePangkat(e.pangkat) === normalizePangkat('Pegawai Waran II') && isEligibleForPegawaiWaranI(e));
+    } else if (normRank === normalizePangkat('Lans Koperal') && subRoute === 'tbp') {
+      list = prebetHolders().filter((e) => isEligibleForTBP(e));
+      title += ' (TBP)';
+    } else if (normRank === normalizePangkat('Staf Muda') && subRoute === 'fastTrack') {
+      list = prebetHolders().filter((e) => isEligibleFastTrackStafMuda(e));
+      title += ' (Fast-Track)';
+    } else if (normRank === normalizePangkat('Leftenan Muda') && subRoute === 'fastTrack') {
+      list = prebetHolders().filter((e) => isEligibleFastTrackLeftenanMuda(e));
+      title += ' (Fast-Track)';
     } else {
-      const rankIdx = PANGKAT_HIERARCHY.findIndex((p) => normalizePangkat(p) === normalizePangkat(rankLabel));
+      const rankIdx = PANGKAT_HIERARCHY.findIndex((p) => normalizePangkat(p) === normRank);
       const lowerRank = rankIdx > -1 && rankIdx + 1 < PANGKAT_HIERARCHY.length ? PANGKAT_HIERARCHY[rankIdx + 1] : undefined;
       list = lowerRank
         ? employees.filter((e) => normalizePangkat(e.pangkat) === normalizePangkat(lowerRank) && isEligibleForPromotion(e, lowerRank))
         : [];
+      if (subRoute === 'normal') title += ' (Normal)';
     }
-    setFilterModal({ visible: true, title: `Layak Kenaikan Pangkat — ${rankLabel}`, list, page: 1 });
+    setFilterModal({ visible: true, title, list, page: 1 });
   };
   const FILTER_PER_PAGE = 10;
   const filterTotalPages = Math.max(1, Math.ceil(filterModal.list.length / FILTER_PER_PAGE));
@@ -482,7 +543,26 @@ export default function AngkatanScreen({ userRole }) {
           />
         </View>
 
-        <RanksTable ranks={ranks} isEditing={isEditing} onAdd={openAddRank} onEdit={openEditRank} onDelete={handleDeleteRank} onOpenRank={openRankEmployees} onOpenPromotion={openPromotionEligibleEmployees} />
+        <RanksTable
+          ranks={ranks}
+          isEditing={isEditing}
+          userRole={userRole}
+          onAdd={openAddRank}
+          onEdit={openEditRank}
+          onDelete={handleDeleteRank}
+          onOpenRank={openRankEmployees}
+          onOpenPromotion={openPromotionEligibleEmployees}
+          ranksPdfFilename={summary.ranks_pdf_filename}
+          ranksPdfUploadedAt={summary.ranks_pdf_uploaded_at}
+          ranksPdfUrl={
+            summary.ranks_pdf_filename
+              ? `${supabaseSandbox.storage.from('ranks-documents').getPublicUrl('laluan_kerjaya_penjelasan.pdf').data.publicUrl}?t=${summary.ranks_pdf_uploaded_at || ''}`
+              : null
+          }
+          onUploadRanksPdf={handleUploadRanksPdf}
+          onDownloadRanksPdf={handleDownloadRanksPdf}
+          onDeleteRanksPdf={handleDeleteRanksPdf}
+        />
 
         <PameranTable
           pameranList={angkatanPameran.pameranList}
