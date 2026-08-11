@@ -406,14 +406,14 @@ export default function RanksTable({
       </Modal>
 
       <Modal visible={fsVisible} transparent animationType="fade" onRequestClose={() => setFsVisible(false)}>
-        <View style={{ flex: 1, backgroundColor: 'rgba(11,12,14,0.95)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(11,12,14,0.95)', justifyContent: 'center', alignItems: 'center', padding: 10 }}>
           <TouchableOpacity
             onPress={() => setFsVisible(false)}
             style={{ position: 'absolute', top: 20, right: 20, zIndex: 10, width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' }}
           >
             <X size={22} color="#fff" />
           </TouchableOpacity>
-          <View style={{ width: '100%', maxWidth: 900, height: '85%', backgroundColor: '#fff', borderRadius: 12, overflow: 'hidden', position: 'relative' }}>
+          <View style={{ width: '100%', maxWidth: 900, height: '95%', backgroundColor: '#fff', borderRadius: 12, overflow: 'hidden', position: 'relative' }}>
             {fsRendering && (
               <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f1f5f9', zIndex: 2 }}>
                 <ActivityIndicator color={PALETTE.orange} />
