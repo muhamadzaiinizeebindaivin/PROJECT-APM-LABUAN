@@ -204,6 +204,25 @@ export default function AgencyTrackingScreen({ onLogout }) {
     return map;
   }, [agencies]);
 
+  // Couleur stable par agence — dérivée d'un hash du nom (pas de l'ordre dans
+  // la liste), pour que la même agence garde toujours la même couleur d'une
+  // session à l'autre même si de nouvelles agences sont ajoutées entre-temps.
+  const AGENCY_COLOR_PALETTE = ['#f97316', '#2563eb', '#16a34a', '#dc2626', '#7c3aed', '#0891b2', '#ca8a04', '#db2777', '#059669', '#4338ca'];
+  const hashAgencyName = (name) => {
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
+    return hash;
+  };
+  const agencyColorMap = useMemo(() => {
+    const map = {};
+    agencies.forEach((a) => {
+      if (a.agency && !map[a.agency]) {
+        map[a.agency] = AGENCY_COLOR_PALETTE[hashAgencyName(a.agency) % AGENCY_COLOR_PALETTE.length];
+      }
+    });
+    return map;
+  }, [agencies]);
+
   const trackerMapHtml = useMemo(() => buildSekretariatMapHtml({ theme: { background: PALETTE.softOrangeBg } }), []);
   const trackerMapSrc = useMemo(() => `data:text/html;charset=utf-8,${encodeURIComponent(trackerMapHtml)}`, [trackerMapHtml]);
 
@@ -228,13 +247,13 @@ export default function AgencyTrackingScreen({ onLogout }) {
           agency: a.jpbd_directory?.agency || '',
           lat: a.latitude,
           lng: a.longitude,
-          color: PALETTE.orange,
+          color: agencyColorMap[a.jpbd_directory?.agency || ''] || PALETTE.orange,
           logo: agencyLogoMap[a.jpbd_directory?.agency || ''] || null,
           updated: a.last_updated ? new Date(a.last_updated).toLocaleTimeString() : '',
         }));
       trackerMapIframeRef.current.contentWindow.postMessage(JSON.stringify({ type: 'UPDATE_AGENCIES', payload }), '*');
     }
-  }, [onlineAgencies, trackerId, agencyLogoMap, trackerMapReady]);
+  }, [onlineAgencies, trackerId, agencyLogoMap, agencyColorMap, trackerMapReady]);
 
   useEffect(() => {
     if (trackerMapReady && trackerMapIframeRef?.current?.contentWindow) {

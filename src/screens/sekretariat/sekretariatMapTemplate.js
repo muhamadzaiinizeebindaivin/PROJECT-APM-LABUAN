@@ -40,6 +40,7 @@ export function buildSekretariatMapHtml({ theme, userRole }) {
           .cluster-agency { background-color: #2563eb; }
           .cluster-wrap { display: flex; flex-direction: column; align-items: center; }
           .cluster-label { font-family: sans-serif; font-size: 10px; font-weight: 800; color: #1f2937; background: #fff; padding: 1px 6px; border-radius: 6px; margin-bottom: 2px; box-shadow: 0 1px 3px rgba(0,0,0,0.25); white-space: nowrap; }
+          .agency-name-tooltip { font-family: sans-serif; font-size: 11px; font-weight: 700; color: #1f2937; background: #fff; border: none; border-radius: 6px; padding: 3px 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.25); }
 
           @keyframes pulse-ring {
             0% { transform: scale(1); opacity: 0.8; }
@@ -103,23 +104,19 @@ export function buildSekretariatMapHtml({ theme, userRole }) {
           // correctement sa position dans l'arbre spatial du cluster.
           var agencyCluster = L.markerClusterGroup({
             maxClusterRadius: 50,
-            spiderfyOnMaxZoom: false,
+            spiderfyOnMaxZoom: true,
             disableClusteringAtZoom: 18,
             iconCreateFunction: makeClusterIcon('cluster-agency', 'Agensi')
           }).addTo(map);
 
-          // Bencana : clusterisés (peuvent s'accumuler avec le temps)
-          var bencanaCluster = L.markerClusterGroup({
-            maxClusterRadius: 60,
-            spiderfyOnMaxZoom: true,
-            iconCreateFunction: makeClusterIcon('cluster-bencana', 'Bencana')
-          }).addTo(map);
+          // Bencana : plus de regroupement — chaque point s'affiche individuellement
+          var bencanaCluster = L.layerGroup().addTo(map);
 
           var createAgencyIcon = (color, logo) => {
             if (logo) {
               return L.divIcon({
                 className: 'custom-pin',
-                html: '<div style="width:36px;height:36px;border-radius:8px;background:#fff;border:2px solid ' + color + ';box-shadow:0 2px 5px rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;overflow:hidden;">' +
+                html: '<div style="opacity:1;width:36px;height:36px;border-radius:8px;background:#fff;border:2px solid ' + color + ';box-shadow:0 2px 5px rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;overflow:hidden;">' +
                         '<img src="' + logo + '" style="width:30px;height:30px;object-fit:contain;" />' +
                       '</div>',
                 iconSize: [36, 36], iconAnchor: [18, 18], popupAnchor: [0, -20]
@@ -127,7 +124,7 @@ export function buildSekretariatMapHtml({ theme, userRole }) {
             }
             return L.divIcon({
               className: 'custom-pin',
-              html: '<svg width="26" height="34" viewBox="0 0 26 34" style="filter: drop-shadow(0 2px 3px rgba(0,0,0,0.35));">' +
+              html: '<svg width="26" height="34" viewBox="0 0 26 34" style="opacity:1;filter: drop-shadow(0 2px 3px rgba(0,0,0,0.35));">' +
                       '<path d="M13 0C5.8 0 0 5.8 0 13c0 9.5 13 21 13 21s13-11.5 13-21C26 5.8 20.2 0 13 0z" fill="' + color + '" fill-opacity="0.72" stroke="white" stroke-width="2"/>' +
                       '<circle cx="13" cy="13" r="5" fill="white" fill-opacity="0.9"/>' +
                     '</svg>',
@@ -138,7 +135,7 @@ export function buildSekretariatMapHtml({ theme, userRole }) {
           var createBencanaIcon = function() {
             return L.divIcon({
               className: 'bencana-pin',
-              html: '<div class="pulse-wrap" style="width:44px;height:44px;">' +
+              html: '<div class="pulse-wrap" style="width:44px;height:44px;opacity:1;">' +
                       '<div class="pulse-ring" style="background:#ea580c;opacity:0.4;"></div>' +
                       '<svg width="28" height="36" viewBox="0 0 28 36" style="filter:drop-shadow(0 2px 3px rgba(0,0,0,0.35));position:relative;">' +
                         '<path d="M14 0C6.3 0 0 6.3 0 14c0 10.5 14 22 14 22s14-11.5 14-22C28 6.3 21.7 0 14 0z" fill="#ea580c" stroke="white" stroke-width="2"/>' +
@@ -222,7 +219,8 @@ export function buildSekretariatMapHtml({ theme, userRole }) {
                   agencyCluster.removeLayer(agencyMarkers[a.id]);
                 }
                 agencyMarkers[a.id] = L.marker([a.lat, a.lng], { icon: createAgencyIcon(a.color, a.logo) })
-                  .bindPopup(buildAgencyPopup(a));
+                  .bindPopup(buildAgencyPopup(a))
+                  .bindTooltip(a.agency, { direction: 'top', offset: [0, -20], className: 'agency-name-tooltip' });
                 agencyCluster.addLayer(agencyMarkers[a.id]);
               });
 
