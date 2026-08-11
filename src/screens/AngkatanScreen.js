@@ -499,6 +499,7 @@ export default function AngkatanScreen({ userRole }) {
               onOpenCertificates={openCertificatesOnly}
               onAddNew={openAddEmployee}
               onImportExcel={() => setShowExcelImportModal(true)}
+              onDeleteEmployee={handleDeleteEmployee}
               canViewLatestImport={canEdit}
               latestImportFilename={summary.latest_import_filename}
               latestImportAt={summary.latest_import_at}
@@ -528,6 +529,7 @@ export default function AngkatanScreen({ userRole }) {
         employeeForm={employeeForm}
         setEmployeeForm={setEmployeeForm}
         isEditing={isEditing}
+        userRole={userRole}
         certOnlyMode={certOnlyMode}
         certificates={certificates}
         promotionHistoryList={promotionHistoryList}
