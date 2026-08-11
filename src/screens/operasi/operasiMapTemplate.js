@@ -46,6 +46,7 @@ export function buildOperasiMapHtml({ theme, userRole }) {
           /* Custom cluster badges */
           .cluster-badge { display: flex; align-items: center; justify-content: center; border-radius: 50%; color: #fff; font-weight: 800; font-family: sans-serif; box-shadow: 0 2px 6px rgba(0,0,0,0.35); border: 2px solid white; }
           .cluster-vehicle { background-color: #2563eb; }
+          .vehicle-name-tooltip { font-family: sans-serif; font-size: 11px; font-weight: 700; color: #1f2937; background: #fff; border: none; border-radius: 6px; padding: 3px 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.25); }
           .cluster-calamity { background-color: #ea580c; }
 
           @keyframes pulse-ring {
@@ -108,12 +109,8 @@ export function buildOperasiMapHtml({ theme, userRole }) {
             iconCreateFunction: makeClusterIcon('cluster-vehicle')
           }).addTo(map);
 
-          var calamityCluster = L.markerClusterGroup({
-            maxClusterRadius: 30,
-            spiderfyOnMaxZoom: true,
-            disableClusteringAtZoom: 16,
-            iconCreateFunction: makeClusterIcon('cluster-calamity')
-          }).addTo(map);
+          // Kecemasan : plus de regroupement — chaque point s'affiche individuellement
+          var calamityCluster = L.layerGroup().addTo(map);
 
           // ---- Vehicle type -> inner glyph, mirrors utils/vehicleIcons.js "operasi" preset ----
           var VEHICLE_GLYPHS = ${JSON.stringify(VEHICLE_GLYPHS)};
@@ -242,7 +239,8 @@ export function buildOperasiMapHtml({ theme, userRole }) {
                     .bindPopup(createPopupContent(v.name, v.reg, v.type, v.status, v.id), {
                       autoPanPaddingTopLeft: L.point(20, 20),
                       autoPanPaddingBottomRight: L.point(20, 170)
-                    });
+                    })
+                    .bindTooltip(v.name, { direction: 'top', offset: [0, -20], className: 'vehicle-name-tooltip' });
                   vehicleLayer.addLayer(markers[v.id]);
                 }
               });
@@ -262,7 +260,8 @@ export function buildOperasiMapHtml({ theme, userRole }) {
                     .bindPopup(createPopupContent(data.name, meta.reg, meta.type, data.status, data.id), {
                       autoPanPaddingTopLeft: L.point(20, 20),
                       autoPanPaddingBottomRight: L.point(20, 170)
-                    });
+                    })
+                    .bindTooltip(data.name, { direction: 'top', offset: [0, -20], className: 'vehicle-name-tooltip' });
                   vehicleLayer.addLayer(markers[data.id]);
                 }
               } else {
