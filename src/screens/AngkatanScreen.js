@@ -1,13 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, ScrollView, ActivityIndicator, Text, useWindowDimensions, Alert, Platform, Linking } from 'react-native';
-import { CheckCircle2, XCircle } from 'lucide-react-native';
+import { View, ScrollView, ActivityIndicator, Text, useWindowDimensions, Alert, Platform, Linking, TouchableOpacity } from 'react-native';
+import { CheckCircle2, XCircle, Users } from 'lucide-react-native';
 import { PALETTE } from '../constants/palette';
 import { supabaseSandbox } from '../supabaseSandboxClient';
 import AdminEditButton from '../components/AdminEditButton';
 import { useExcelImport } from '../hooks/useExcelImport';
 import ExcelImportModal from '../components/ExcelImportModal';
 import { useAngkatanEmployees, mapMyaspaLabel, normalizePangkat, isEligibleForPromotion, isEligibleForPegawaiWaranII, PANGKAT_HIERARCHY } from '../hooks/useAngkatanEmployees';
-import { useAngkatanCommunity } from '../hooks/useAngkatanCommunity';
+import { useAngkatanCommunity, SCHOOL_CATEGORIES, CDA_CATEGORIES } from '../hooks/useAngkatanCommunity';
 import { useEmployeeCertificates } from '../hooks/useEmployeeCertificates';
 import { useEmployeePromotionHistory } from '../hooks/useEmployeePromotionHistory';
 // useEmployeePhoto retiré — fonctionnalité photo employé abandonnée
@@ -206,8 +206,25 @@ export default function AngkatanScreen({ userRole }) {
   const openAddCommunity = (defaultCategory = '') => { setCommunityForm({ id: null, category: defaultCategory, tempat: '', detail: '' }); setCommunityFormError(null); setShowCommunityModal(true); };
   const openEditCommunity = (prog) => { setCommunityForm(prog); setCommunityFormError(null); setShowCommunityModal(true); };
   const handleSaveCommunity = async () => {
-    if (!communityForm.category.trim() || !communityForm.tempat.trim() || !communityForm.detail.trim()) {
-      setCommunityFormError('Kategori, tempat dan keterangan tidak boleh kosong.');
+    const isSchool = SCHOOL_CATEGORIES.includes(communityForm.category);
+    const isCda = CDA_CATEGORIES.includes(communityForm.category);
+    if (!communityForm.category.trim()) {
+      setCommunityFormError('Kategori tidak boleh kosong.');
+      return;
+    }
+    if (isSchool) {
+      if (!communityForm.nama_sekolah?.trim() || !communityForm.no_pendaftaran?.trim() || !communityForm.tarikh_penubuhan?.trim()) {
+        setCommunityFormError('Nama sekolah, nombor pendaftaran dan tarikh penubuhan tidak boleh kosong.');
+        return;
+      }
+    } else if (isCda) {
+      if (!communityForm.kod_cda?.trim() || !communityForm.no_pendaftaran?.trim() || !communityForm.nama_pasukan?.trim()
+        || !communityForm.tempoh_sah_penubuhan?.trim() || !communityForm.tarikh_berdaftar?.trim()) {
+        setCommunityFormError('Kod CDA, nombor pendaftaran, nama pasukan, tempoh sah penubuhan dan tarikh berdaftar tidak boleh kosong.');
+        return;
+      }
+    } else if (!communityForm.tempat.trim() || !communityForm.detail.trim()) {
+      setCommunityFormError('Tempat dan keterangan tidak boleh kosong.');
       return;
     }
     setCommunityFormError(null);
@@ -250,6 +267,7 @@ export default function AngkatanScreen({ userRole }) {
 
   // ── Import Excel ──
   const [showExcelImportModal, setShowExcelImportModal] = useState(false);
+  const [communitySubTab, setCommunitySubTab] = useState('pasukan');
 
   // ── Modal liste filtrée (catégorie ou statut) ──
   const [filterModal, setFilterModal] = useState({ visible: false, title: '', list: [], page: 1 });
@@ -408,16 +426,18 @@ export default function AngkatanScreen({ userRole }) {
           />
         </View>
 
-        <BudgetSection
-          budgetData={angkatanBudget.budgetData}
-          loading={angkatanBudget.loading}
-          isEditMode={isEditing}
-          saveBudgetItem={angkatanBudget.saveBudgetItem}
-          deleteBudgetItem={angkatanBudget.deleteBudgetItem}
-          deleteCategory={angkatanBudget.deleteCategory}
-          renameCategory={angkatanBudget.renameCategory}
-          onNotify={showNotification}
-        />
+        <View style={{ marginBottom: -16 }}>
+          <BudgetSection
+            budgetData={angkatanBudget.budgetData}
+            loading={angkatanBudget.loading}
+            isEditMode={isEditing}
+            saveBudgetItem={angkatanBudget.saveBudgetItem}
+            deleteBudgetItem={angkatanBudget.deleteBudgetItem}
+            deleteCategory={angkatanBudget.deleteCategory}
+            renameCategory={angkatanBudget.renameCategory}
+            onNotify={showNotification}
+          />
+        </View>
 
         <RanksTable ranks={ranks} isEditing={isEditing} onAdd={openAddRank} onEdit={openEditRank} onDelete={handleDeleteRank} onOpenRank={openRankEmployees} onOpenPromotion={openPromotionEligibleEmployees} />
 
@@ -437,26 +457,61 @@ export default function AngkatanScreen({ userRole }) {
           onDelete={handleDeleteCommunity}
         />
 
-        <PyramidChart pyramidStats={pyramidStats} isEditing={isEditing} onAdd={openAddPyramid} onEdit={openEditPyramid} onDelete={deletePyramidItem} onNotify={showNotification} />
+        <View style={{ flexDirection: 'row', margin: 0, padding: 6, borderRadius: 16, backgroundColor: PALETTE.cardLight, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 5, elevation: 3, gap: 8 }}>
+          {[
+            { key: 'pasukan', label: 'Pasukan', Icon: Users },
+            { key: 'pkpb', label: 'PKPB', Icon: Users },
+          ].map(({ key, label, Icon }) => {
+            const isActive = communitySubTab === key;
+            return (
+              <TouchableOpacity
+                key={key}
+                onPress={() => setCommunitySubTab(key)}
+                activeOpacity={0.8}
+                style={[
+                  { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 12, borderRadius: 12, gap: 8, borderWidth: 1, borderColor: PALETTE.cardLightBorder },
+                  isActive && { backgroundColor: PALETTE.orange, borderColor: PALETTE.orange },
+                ]}
+              >
+                <Icon size={16} color={isActive ? '#fff' : PALETTE.textMutedDark} />
+                <Text style={{ fontSize: 13, fontWeight: '700', color: isActive ? '#fff' : PALETTE.textMutedDark }}>
+                  {label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
 
-        <EmployeesListCard
-          paginatedEmployees={paginatedEmployees}
-          filteredCount={filteredEmployees.length}
-          employeeSearch={employeeSearch}
-          setEmployeeSearch={setEmployeeSearch}
-          employeePage={employeePage}
-          setEmployeePage={setEmployeePage}
-          totalEmployeePages={totalEmployeePages}
-          isEditing={isEditing}
-          onOpenDetail={openEmployeeDetail}
-          onOpenCertificates={openCertificatesOnly}
-          onAddNew={openAddEmployee}
-          onImportExcel={() => setShowExcelImportModal(true)}
-          canViewLatestImport={canEdit}
-          latestImportFilename={summary.latest_import_filename}
-          latestImportAt={summary.latest_import_at}
-          onDownloadLatestImport={handleDownloadLatestImport}
-        />
+        {communitySubTab === 'pasukan' ? (
+          <>
+            <PyramidChart pyramidStats={pyramidStats} isEditing={isEditing} onAdd={openAddPyramid} onEdit={openEditPyramid} onDelete={deletePyramidItem} onNotify={showNotification} />
+
+            <EmployeesListCard
+              paginatedEmployees={paginatedEmployees}
+              filteredCount={filteredEmployees.length}
+              employeeSearch={employeeSearch}
+              setEmployeeSearch={setEmployeeSearch}
+              employeePage={employeePage}
+              setEmployeePage={setEmployeePage}
+              totalEmployeePages={totalEmployeePages}
+              isEditing={isEditing}
+              onOpenDetail={openEmployeeDetail}
+              onOpenCertificates={openCertificatesOnly}
+              onAddNew={openAddEmployee}
+              onImportExcel={() => setShowExcelImportModal(true)}
+              canViewLatestImport={canEdit}
+              latestImportFilename={summary.latest_import_filename}
+              latestImportAt={summary.latest_import_at}
+              onDownloadLatestImport={handleDownloadLatestImport}
+            />
+          </>
+        ) : (
+          <View style={styles.card}>
+            <Text style={{ color: PALETTE.textMutedDark, fontSize: 13, fontWeight: '600', textAlign: 'center', paddingVertical: 30 }}>
+              Belum tersedia
+            </Text>
+          </View>
+        )}
         <AngkatanUnitSection
           unitList={unit.staffList}
           loadingUnit={unit.loading}

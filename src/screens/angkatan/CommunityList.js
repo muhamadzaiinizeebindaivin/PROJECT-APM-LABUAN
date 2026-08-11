@@ -4,15 +4,16 @@ import { Plus, Pencil, Trash2, HeartHandshake, ChevronLeft, ChevronRight, AlertT
 import { PALETTE } from '../../constants/palette';
 import { angkatanStyles as styles } from './angkatanStyles';
 import { pentadbiranStyles } from '../pentadbiran/pentadbiranStyles';
+import { SCHOOL_CATEGORIES, CDA_CATEGORIES } from '../../hooks/useAngkatanCommunity';
 
-const CATEGORIES = ['TUSPA', 'KASPA', 'PISPA', 'SISPA', 'CDA', 'PKPB'];
+const CATEGORIES = ['TUSPA', 'KASPA', 'PISPA', 'SISPA', 'CDA'];
+const CDA_CODE_OPTIONS = Array.from({ length: 12 }, (_, i) => `CDA${String(i + 1).padStart(2, '0')}`);
 const CATEGORY_COLORS = {
   TUSPA: '#3b82f6',
   KASPA: '#22c55e',
   PISPA: '#8b5cf6',
   SISPA: '#ef4444',
   CDA: '#14b8a6',
-  PKPB: '#f59e0b',
 };
 
 const PAGE_SIZE = 5;
@@ -34,6 +35,13 @@ export default function CommunityList({ communityProgs, isEditing, onAdd, onEdit
   const activeColor = CATEGORY_COLORS[activeCategory] || PALETTE.orange;
   const totalPages = Math.max(1, Math.ceil(filteredProgs.length / PAGE_SIZE));
   const pagedProgs = filteredProgs.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const isSchoolCategory = SCHOOL_CATEGORIES.includes(activeCategory);
+  const schoolTotals = isSchoolCategory
+    ? filteredProgs.reduce((acc, p) => ({
+        lelaki: acc.lelaki + (parseInt(p.jumlah_lelaki, 10) || 0),
+        perempuan: acc.perempuan + (parseInt(p.jumlah_perempuan, 10) || 0),
+      }), { lelaki: 0, perempuan: 0 })
+    : null;
 
   return (
     <View style={styles.card}>
@@ -83,6 +91,20 @@ export default function CommunityList({ communityProgs, isEditing, onAdd, onEdit
         })}
       </ScrollView>
 
+      {isSchoolCategory && (
+        <View style={commStyles.schoolTotalsBar}>
+          <Text style={commStyles.schoolTotalsText}>
+            Jumlah Lelaki: <Text style={{ fontWeight: '900' }}>{schoolTotals.lelaki}</Text>
+          </Text>
+          <Text style={commStyles.schoolTotalsText}>
+            Jumlah Perempuan: <Text style={{ fontWeight: '900' }}>{schoolTotals.perempuan}</Text>
+          </Text>
+          <Text style={commStyles.schoolTotalsText}>
+            Jumlah Keseluruhan: <Text style={{ fontWeight: '900' }}>{schoolTotals.lelaki + schoolTotals.perempuan}</Text>
+          </Text>
+        </View>
+      )}
+
       {filteredProgs.length === 0 ? (
         <View style={commStyles.emptyBox}>
           <HeartHandshake size={24} color={PALETTE.cardLightBorder} />
@@ -100,8 +122,22 @@ export default function CommunityList({ communityProgs, isEditing, onAdd, onEdit
               >
                 <View style={[commStyles.progAccent, { backgroundColor: activeColor }]} />
                 <View style={{ flex: 1, marginLeft: 14 }}>
-                  <Text style={commStyles.progLabel}>{prog.tempat}</Text>
-                  <Text style={commStyles.progDetail}>{prog.detail}</Text>
+                  <Text style={commStyles.progLabel}>
+                    {SCHOOL_CATEGORIES.includes(prog.category) ? (prog.nama_sekolah || prog.tempat)
+                      : CDA_CATEGORIES.includes(prog.category) ? (prog.nama_pasukan || prog.tempat)
+                      : prog.tempat}
+                  </Text>
+                  {SCHOOL_CATEGORIES.includes(prog.category) ? (
+                    <Text style={commStyles.progDetail}>
+                      No. Pendaftaran: {prog.no_pendaftaran || '-'} · Ditubuhkan: {prog.tarikh_penubuhan || '-'} · L: {prog.jumlah_lelaki ?? 0} P: {prog.jumlah_perempuan ?? 0} (Jumlah: {(parseInt(prog.jumlah_lelaki, 10) || 0) + (parseInt(prog.jumlah_perempuan, 10) || 0)})
+                    </Text>
+                  ) : CDA_CATEGORIES.includes(prog.category) ? (
+                    <Text style={commStyles.progDetail}>
+                      Kod: {prog.kod_cda || '-'} · No. Pendaftaran: {prog.no_pendaftaran || '-'} · Berdaftar: {prog.tarikh_berdaftar || '-'}
+                    </Text>
+                  ) : (
+                    <Text style={commStyles.progDetail}>{prog.detail}</Text>
+                  )}
                 </View>
                 {isEditing && (
                   <View style={{ flexDirection: 'row', gap: 14 }}>
@@ -154,8 +190,49 @@ export default function CommunityList({ communityProgs, isEditing, onAdd, onEdit
               </TouchableOpacity>
             </View>
             <View style={styles.modalBody}>
-              <Text style={styles.inputLabel}>Keterangan</Text>
-              <Text style={commStyles.viewDetail}>{viewingProg?.detail}</Text>
+              {SCHOOL_CATEGORIES.includes(viewingProg?.category) ? (
+                <>
+                  <Text style={styles.inputLabel}>Nombor Pendaftaran</Text>
+                  <Text style={commStyles.viewDetail}>{viewingProg?.no_pendaftaran || '-'}</Text>
+                  <Text style={[styles.inputLabel, { marginTop: 12 }]}>Tarikh Penubuhan</Text>
+                  <Text style={commStyles.viewDetail}>{viewingProg?.tarikh_penubuhan || '-'}</Text>
+                  <Text style={[styles.inputLabel, { marginTop: 12 }]}>Jumlah Lelaki / Perempuan</Text>
+                  <Text style={commStyles.viewDetail}>
+                    {viewingProg?.jumlah_lelaki ?? 0} / {viewingProg?.jumlah_perempuan ?? 0}
+                    {' '}(Jumlah: {(parseInt(viewingProg?.jumlah_lelaki, 10) || 0) + (parseInt(viewingProg?.jumlah_perempuan, 10) || 0)})
+                  </Text>
+                  {!!viewingProg?.detail && (
+                    <>
+                      <Text style={[styles.inputLabel, { marginTop: 12 }]}>Keterangan</Text>
+                      <Text style={commStyles.viewDetail}>{viewingProg?.detail}</Text>
+                    </>
+                  )}
+                </>
+              ) : CDA_CATEGORIES.includes(viewingProg?.category) ? (
+                <>
+                  <Text style={styles.inputLabel}>Kod CDA</Text>
+                  <Text style={commStyles.viewDetail}>{viewingProg?.kod_cda || '-'}</Text>
+                  <Text style={[styles.inputLabel, { marginTop: 12 }]}>Nombor Pendaftaran</Text>
+                  <Text style={commStyles.viewDetail}>{viewingProg?.no_pendaftaran || '-'}</Text>
+                  <Text style={[styles.inputLabel, { marginTop: 12 }]}>Nama Organisasi</Text>
+                  <Text style={commStyles.viewDetail}>{viewingProg?.nama_organisasi || '-'}</Text>
+                  <Text style={[styles.inputLabel, { marginTop: 12 }]}>Tempoh Sah Penubuhan</Text>
+                  <Text style={commStyles.viewDetail}>{viewingProg?.tempoh_sah_penubuhan || '-'}</Text>
+                  <Text style={[styles.inputLabel, { marginTop: 12 }]}>Tarikh Berdaftar</Text>
+                  <Text style={commStyles.viewDetail}>{viewingProg?.tarikh_berdaftar || '-'}</Text>
+                  {!!viewingProg?.detail && (
+                    <>
+                      <Text style={[styles.inputLabel, { marginTop: 12 }]}>Keterangan</Text>
+                      <Text style={commStyles.viewDetail}>{viewingProg?.detail}</Text>
+                    </>
+                  )}
+                </>
+              ) : (
+                <>
+                  <Text style={styles.inputLabel}>Keterangan</Text>
+                  <Text style={commStyles.viewDetail}>{viewingProg?.detail}</Text>
+                </>
+              )}
             </View>
           </View>
         </View>
@@ -248,4 +325,10 @@ const commStyles = {
   viewCategoryBadge: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 999 },
   viewCategoryBadgeText: { fontSize: 11, fontWeight: '800', color: '#fff', letterSpacing: 0.5 },
   viewDetail: { fontSize: 13, color: PALETTE.textDark, lineHeight: 20, fontWeight: '600', opacity: 0.85 },
+
+  schoolTotalsBar: {
+    flexDirection: 'row', flexWrap: 'wrap', gap: 16,
+    backgroundColor: PALETTE.surface, borderRadius: 10, padding: 12, marginBottom: 14,
+  },
+  schoolTotalsText: { fontSize: 12, fontWeight: '700', color: PALETTE.textMutedDark },
 };

@@ -1,6 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabaseSandbox } from '../supabaseSandboxClient';
 
+export const SCHOOL_CATEGORIES = ['TUSPA', 'KASPA', 'PISPA', 'SISPA'];
+export const CDA_CATEGORIES = ['CDA'];
+
 export function useAngkatanCommunity() {
   const [communityProgs, setCommunityProgs] = useState([]);
 
@@ -17,7 +20,21 @@ export function useAngkatanCommunity() {
   useEffect(() => { fetchCommunity(); }, [fetchCommunity]);
 
   const saveCommunityItem = async (form) => {
-    const payload = { category: form.category, tempat: form.tempat, detail: form.detail };
+    const payload = {
+      category: form.category,
+      tempat: form.tempat,
+      detail: form.detail,
+      nama_sekolah: form.nama_sekolah || null,
+      no_pendaftaran: form.no_pendaftaran || null,
+      tarikh_penubuhan: form.tarikh_penubuhan || null,
+      jumlah_lelaki: form.jumlah_lelaki !== '' && form.jumlah_lelaki != null ? parseInt(form.jumlah_lelaki, 10) : null,
+      jumlah_perempuan: form.jumlah_perempuan !== '' && form.jumlah_perempuan != null ? parseInt(form.jumlah_perempuan, 10) : null,
+      kod_cda: form.kod_cda || null,
+      nama_pasukan: form.nama_pasukan || null,
+      nama_organisasi: form.nama_organisasi || null,
+      tempoh_sah_penubuhan: form.tempoh_sah_penubuhan || null,
+      tarikh_berdaftar: form.tarikh_berdaftar || null,
+    };
     try {
       const { error } = form.id
         ? await supabaseSandbox.from('angkatan_community').update(payload).eq('id', form.id)
