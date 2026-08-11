@@ -95,7 +95,16 @@ export default function AngkatanScreen({ userRole }) {
   // ── Recherche / pagination liste principale ──
   const [employeeSearch, setEmployeeSearch] = useState('');
   const [employeePage, setEmployeePage] = useState(1);
-  const filteredEmployees = employees.filter((emp) => emp.nama.toLowerCase().includes(employeeSearch.toLowerCase()));
+  const filteredEmployees = employees
+    .filter((emp) => emp.nama.toLowerCase().includes(employeeSearch.toLowerCase()))
+    .slice()
+    .sort((a, b) => {
+      const idxA = PANGKAT_HIERARCHY.findIndex((p) => normalizePangkat(p) === normalizePangkat(a.pangkat));
+      const idxB = PANGKAT_HIERARCHY.findIndex((p) => normalizePangkat(p) === normalizePangkat(b.pangkat));
+      const rankA = idxA === -1 ? PANGKAT_HIERARCHY.length : idxA;
+      const rankB = idxB === -1 ? PANGKAT_HIERARCHY.length : idxB;
+      return rankA - rankB;
+    });
   const totalEmployeePages = Math.max(1, Math.ceil(filteredEmployees.length / EMPLOYEES_PER_PAGE));
   const paginatedEmployees = filteredEmployees.slice((employeePage - 1) * EMPLOYEES_PER_PAGE, employeePage * EMPLOYEES_PER_PAGE);
 
