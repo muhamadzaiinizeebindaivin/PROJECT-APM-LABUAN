@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Modal, ActivityIndicator, useWindowDimensions } from 'react-native';
-import { Plus, Pencil, Trash2, HeartHandshake, ChevronLeft, ChevronRight, AlertTriangle, X, MapPin } from 'lucide-react-native';
+import { View, Text, TouchableOpacity, ScrollView, Modal, ActivityIndicator, useWindowDimensions, Alert } from 'react-native';
+import * as DocumentPicker from 'expo-document-picker';
+import { Plus, Pencil, Trash2, HeartHandshake, ChevronLeft, ChevronRight, AlertTriangle, X, FileText, Upload } from 'lucide-react-native';
 import { PALETTE } from '../../constants/palette';
 import { angkatanStyles as styles } from './angkatanStyles';
 import { pentadbiranStyles } from '../pentadbiran/pentadbiranStyles';
 import { SCHOOL_CATEGORIES, CDA_CATEGORIES } from '../../hooks/useAngkatanCommunity';
 
 const CATEGORIES = ['TUSPA', 'KASPA', 'PISPA', 'SISPA', 'CDA'];
-const CDA_CODE_OPTIONS = Array.from({ length: 12 }, (_, i) => `CDA${String(i + 1).padStart(2, '0')}`);
 const CATEGORY_COLORS = {
   TUSPA: '#3b82f6',
   KASPA: '#22c55e',
@@ -18,7 +18,21 @@ const CATEGORY_COLORS = {
 
 const PAGE_SIZE = 5;
 
-export default function CommunityList({ communityProgs, isEditing, onAdd, onEdit, onDelete }) {
+export default function CommunityList({
+  communityProgs, isEditing, onAdd, onEdit, onDelete,
+  cdaPdfFilename, cdaPdfUploadedAt, onUploadCdaPdf, onDownloadCdaPdf,
+}) {
+  const [uploadingPdf, setUploadingPdf] = useState(false);
+
+  const handlePickPdf = async () => {
+    const result = await DocumentPicker.getDocumentAsync({ type: 'application/pdf', copyToCacheDirectory: true });
+    if (result.canceled) return;
+    const file = result.assets[0];
+    setUploadingPdf(true);
+    const ok = await onUploadCdaPdf(file);
+    setUploadingPdf(false);
+    if (ok === false) Alert.alert('Ralat', 'Gagal memuat naik PDF.');
+  };
   const { width: screenWidth } = useWindowDimensions();
   const isMobile = screenWidth < 768;
   const [activeCategory, setActiveCategory] = useState(CATEGORIES[0]);
@@ -90,6 +104,42 @@ export default function CommunityList({ communityProgs, isEditing, onAdd, onEdit
           );
         })}
       </ScrollView>
+
+      {CDA_CATEGORIES.includes(activeCategory) && (
+        <View style={{
+          flexDirection: 'row', alignItems: 'center', gap: 10,
+          backgroundColor: PALETTE.surface, borderRadius: 10, padding: 12, marginBottom: 14,
+        }}>
+          <FileText size={16} color={PALETTE.orange} />
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 13, fontWeight: '700', color: PALETTE.textDark }}>
+              {cdaPdfFilename || 'Tiada PDF dimuat naik'}
+            </Text>
+            {!!cdaPdfUploadedAt && (
+              <Text style={{ fontSize: 11, color: PALETTE.textMutedDark, marginTop: 2 }}>
+                Dimuat naik pada {new Date(cdaPdfUploadedAt).toLocaleString('ms-MY')}
+              </Text>
+            )}
+          </View>
+          {!!cdaPdfFilename && (
+            <TouchableOpacity onPress={onDownloadCdaPdf}>
+              <Text style={{ fontSize: 12, fontWeight: '700', color: PALETTE.blue }}>Lihat PDF</Text>
+            </TouchableOpacity>
+          )}
+          {isEditing && (
+            <TouchableOpacity
+              onPress={handlePickPdf}
+              disabled={uploadingPdf}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 6, opacity: uploadingPdf ? 0.6 : 1 }}
+            >
+              {uploadingPdf ? <ActivityIndicator size="small" color={PALETTE.orange} /> : <Upload size={14} color={PALETTE.orange} />}
+              <Text style={{ fontSize: 12, fontWeight: '700', color: PALETTE.orange }}>
+                {uploadingPdf ? 'Memuat naik...' : (cdaPdfFilename ? 'Ganti PDF' : 'Muat Naik PDF')}
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
 
       {isSchoolCategory && (
         <View style={commStyles.schoolTotalsBar}>

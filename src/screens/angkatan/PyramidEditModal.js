@@ -1,10 +1,21 @@
 import React from 'react';
-import { View, Text, TextInput, TouchableOpacity, Modal, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Modal, ActivityIndicator, Platform } from 'react-native';
 import { X, Check } from 'lucide-react-native';
 import { PALETTE } from '../../constants/palette';
 import { angkatanStyles as styles } from './angkatanStyles';
+import { PYRAMID_COLORS } from '../../hooks/useAngkatanEmployees';
 
 export default function PyramidEditModal({ visible, isNew, pyramidForm, setPyramidForm, onSave, onClose, error, isSaving }) {
+  const handleRankChange = (t) => {
+    // Kata kunci carian suit automatiquement le nom sauf si l'utilisateur l'a
+    // déjà modifié manuellement pour qu'il diffère du nom affiché.
+    const shouldAutofill = pyramidForm.match_keyword === undefined || pyramidForm.match_keyword === pyramidForm.rank;
+    setPyramidForm({
+      ...pyramidForm,
+      rank: t,
+      match_keyword: shouldAutofill ? t : pyramidForm.match_keyword,
+    });
+  };
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.modalOverlay}>
@@ -18,33 +29,48 @@ export default function PyramidEditModal({ visible, isNew, pyramidForm, setPyram
             <TextInput
               style={styles.modalInput}
               value={pyramidForm.rank}
-              onChangeText={(t) => setPyramidForm({ ...pyramidForm, rank: t })}
+              onChangeText={handleRankChange}
               placeholderTextColor={PALETTE.textMutedDark}
             />
-            <Text style={styles.inputLabel}>Jumlah</Text>
+            <Text style={styles.inputLabel}>Kata Kunci Carian (Excel)</Text>
             <TextInput
               style={styles.modalInput}
-              value={String(pyramidForm.total)}
-              onChangeText={(t) => setPyramidForm({ ...pyramidForm, total: t })}
-              keyboardType="numeric"
+              value={pyramidForm.match_keyword ?? pyramidForm.rank}
+              onChangeText={(t) => setPyramidForm({ ...pyramidForm, match_keyword: t })}
+              placeholder="Cth: Waran"
               placeholderTextColor={PALETTE.textMutedDark}
             />
-            <Text style={styles.inputLabel}>Warna (Hex)</Text>
-            <TextInput
-              style={styles.modalInput}
-              value={pyramidForm.color}
-              onChangeText={(t) => setPyramidForm({ ...pyramidForm, color: t })}
-              placeholder="#123456"
-              placeholderTextColor={PALETTE.textMutedDark}
-            />
-            <Text style={styles.inputLabel}>Turutan Paparan</Text>
-            <TextInput
-              style={styles.modalInput}
-              value={String(pyramidForm.display_order)}
-              onChangeText={(t) => setPyramidForm({ ...pyramidForm, display_order: t })}
-              keyboardType="numeric"
-              placeholderTextColor={PALETTE.textMutedDark}
-            />
+            <Text style={styles.inputLabel}>Warna</Text>
+            {Platform.OS === 'web' ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                {React.createElement('input', {
+                  type: 'color',
+                  value: pyramidForm.color || '#123456',
+                  onChange: (e) => setPyramidForm({ ...pyramidForm, color: e.target.value }),
+                  style: { width: 52, height: 40, padding: 0, border: `1px solid ${PALETTE.cardLightBorder}`, borderRadius: 10, cursor: 'pointer', background: 'none' },
+                })}
+                <TextInput
+                  style={[styles.modalInput, { flex: 1 }]}
+                  value={pyramidForm.color}
+                  onChangeText={(t) => setPyramidForm({ ...pyramidForm, color: t })}
+                  placeholder="#123456"
+                  placeholderTextColor={PALETTE.textMutedDark}
+                />
+              </View>
+            ) : (
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+                {PYRAMID_COLORS.map((c) => (
+                  <TouchableOpacity
+                    key={c}
+                    onPress={() => setPyramidForm({ ...pyramidForm, color: c })}
+                    style={{
+                      width: 32, height: 32, borderRadius: 16, backgroundColor: c,
+                      borderWidth: pyramidForm.color === c ? 3 : 0, borderColor: PALETTE.textDark,
+                    }}
+                  />
+                ))}
+              </View>
+            )}
             {!!error && <Text style={{ fontSize: 12, color: '#dc2626', textAlign: 'center', marginTop: 12 }}>{error}</Text>}
             <TouchableOpacity style={[styles.saveButton, isSaving && { opacity: 0.7 }]} onPress={onSave} disabled={isSaving}>
               {isSaving ? (

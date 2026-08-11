@@ -5,7 +5,7 @@ export const PANGKAT_HIERARCHY = [
   'Mejar', 'Kapten', 'Leftenan', 'Leftenan Muda', 'Staf Tinggi',
   'Staf Kanan', 'Staf Muda', 'Sarjan', 'Koperal', 'Lans Koperal', 'Prebet',
 ];
-const PYRAMID_COLORS = ['#0B1F33', '#123456', '#1D4E89', '#2E62A0', '#4278B6', '#5C90C7', '#7FA8D6', '#F4762B', '#E8672A', '#D8591F', '#C24E1D'];
+export const PYRAMID_COLORS = ['#0B1F33', '#123456', '#1D4E89', '#2E62A0', '#4278B6', '#5C90C7', '#7FA8D6', '#F4762B', '#E8672A', '#D8591F', '#C24E1D'];
 const CATEGORY_COLORS = ['#1D4E89', '#F4762B', '#123456', '#D62828', '#5C6773', '#E8843F'];
 
 export const mapMyaspaLabel = (raw) => {
@@ -147,10 +147,13 @@ export function useAngkatanEmployees() {
     })));
 
     // Pyramide
-    setPyramidStats(pyramid.map((p) => ({
-      ...p,
-      total: data.filter((e) => normalizePangkat(e.pangkat) === normalizePangkat(p.rank)).length,
-    })));
+    setPyramidStats(pyramid.map((p) => {
+      const keyword = normalizePangkat(p.match_keyword || p.rank);
+      return {
+        ...p,
+        total: keyword ? data.filter((e) => normalizePangkat(e.pangkat).includes(keyword)).length : 0,
+      };
+    }));
 
     // Rangs
     setRanks(rankRows.map((r) => {
@@ -287,14 +290,19 @@ export function useAngkatanEmployees() {
     try {
       const payload = {
         rank: pyramidForm.rank,
-        total: parseInt(pyramidForm.total, 10),
         color: pyramidForm.color,
-        display_order: parseInt(pyramidForm.display_order, 10),
+        match_keyword: pyramidForm.match_keyword || pyramidForm.rank,
       };
-      const { error } = pyramidForm.id
-        ? await supabaseSandbox.from('angkatan_pyramid').update(payload).eq('id', pyramidForm.id)
-        : await supabaseSandbox.from('angkatan_pyramid').insert([payload]);
-      if (error) throw error;
+      if (pyramidForm.id) {
+        const { error } = await supabaseSandbox.from('angkatan_pyramid').update(payload).eq('id', pyramidForm.id);
+        if (error) throw error;
+      } else {
+        // Nouveau : ajouté à la fin de l'ordre actuel — le réordonnancement se
+        // fait ensuite par glisser (les flèches haut/bas), plus par saisie manuelle.
+        const nextOrder = pyramidStats.reduce((max, p) => Math.max(max, p.display_order || 0), 0) + 1;
+        const { error } = await supabaseSandbox.from('angkatan_pyramid').insert([{ ...payload, display_order: nextOrder }]);
+        if (error) throw error;
+      }
       await fetchEmployees();
       return true;
     } catch (error) {
@@ -310,6 +318,21 @@ export function useAngkatanEmployees() {
       return true;
     } catch (error) {
       console.error('Error deleting angkatan_pyramid:', error);
+      return false;
+    }
+  };
+
+  const reorderPyramidItems = async (reorderedList) => {
+    try {
+      await Promise.all(
+        reorderedList.map((item, index) =>
+          supabaseSandbox.from('angkatan_pyramid').update({ display_order: index + 1 }).eq('id', item.id)
+        )
+      );
+      await fetchEmployees();
+      return true;
+    } catch (error) {
+      console.error('Error reordering angkatan_pyramid:', error);
       return false;
     }
   };
@@ -349,7 +372,7 @@ export function useAngkatanEmployees() {
     loading, employees, summary, categories, pyramidStats, ranks, dataUpdatedAt,
     fetchEmployees, saveEmployee, deleteEmployee,
     saveCategory, deleteCategoryItem,
-    savePyramidItem, deletePyramidItem,
+    savePyramidItem, deletePyramidItem, reorderPyramidItems,
     saveRankItem, deleteRankItem,
     saveSummaryExtra,
   };

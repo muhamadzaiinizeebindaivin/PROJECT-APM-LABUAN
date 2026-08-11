@@ -51,7 +51,7 @@ export default function AngkatanScreen({ userRole }) {
   const {
     loading, employees, summary, categories, pyramidStats, ranks, dataUpdatedAt,
     fetchEmployees, saveEmployee, deleteEmployee,
-    saveCategory, deleteCategoryItem, savePyramidItem, deletePyramidItem, saveRankItem, deleteRankItem,
+    saveCategory, deleteCategoryItem, savePyramidItem, deletePyramidItem, reorderPyramidItems, saveRankItem, deleteRankItem,
     saveSummaryExtra,
   } = useAngkatanEmployees();
   const { communityProgs, saveCommunityItem, deleteCommunityItem, communityUpdatedAt } = useAngkatanCommunity();
@@ -172,6 +172,40 @@ export default function AngkatanScreen({ userRole }) {
     if (Platform.OS === 'web') window.open(data.signedUrl, '_blank');
     else Linking.openURL(data.signedUrl);
   };
+
+  const handleUploadCdaPdf = async (file) => {
+    try {
+      const fileResponse = await fetch(file.uri);
+      const blob = await fileResponse.blob();
+      const { error: uploadError } = await supabaseSandbox.storage
+        .from('cda-documents')
+        .upload('cda_details.pdf', blob, { upsert: true, contentType: 'application/pdf' });
+      if (uploadError) {
+        console.error('CDA PDF upload error:', uploadError);
+        return false;
+      }
+      await saveSummaryExtra({
+        cda_pdf_filename: file.name,
+        cda_pdf_uploaded_at: new Date().toISOString(),
+      });
+      return true;
+    } catch (err) {
+      console.error('CDA PDF upload error:', err);
+      return false;
+    }
+  };
+
+  const handleDownloadCdaPdf = async () => {
+    const { data, error } = await supabaseSandbox.storage
+      .from('cda-documents')
+      .createSignedUrl('cda_details.pdf', 60);
+    if (error || !data?.signedUrl) {
+      Alert.alert('Ralat', 'Gagal menjana pautan muat turun.');
+      return;
+    }
+    if (Platform.OS === 'web') window.open(data.signedUrl, '_blank');
+    else Linking.openURL(data.signedUrl);
+  };
   const handleSaveCertificate = async (certForm) => {
     return await saveCertificate(employeeForm.id, certForm);
   };
@@ -254,8 +288,8 @@ export default function AngkatanScreen({ userRole }) {
 
   // ── Modal Pyramide ──
   const [showPyramidModal, setShowPyramidModal] = useState(false);
-  const [pyramidForm, setPyramidForm] = useState({ id: null, rank: '', total: '', color: '#123456', display_order: '' });
-  const openAddPyramid = () => { setPyramidForm({ id: null, rank: '', total: '', color: '#123456', display_order: '' }); setPyramidFormError(null); setShowPyramidModal(true); };
+  const [pyramidForm, setPyramidForm] = useState({ id: null, rank: '', color: '#123456' });
+  const openAddPyramid = () => { setPyramidForm({ id: null, rank: '', color: '#123456' }); setPyramidFormError(null); setShowPyramidModal(true); };
   const openEditPyramid = (item) => { setPyramidForm({ ...item, total: String(item.total), display_order: String(item.display_order) }); setPyramidFormError(null); setShowPyramidModal(true); };
   const handleSavePyramid = async () => {
     if (!pyramidForm.rank.trim() || !String(pyramidForm.total).trim()) {
@@ -464,6 +498,10 @@ export default function AngkatanScreen({ userRole }) {
           onAdd={openAddCommunity}
           onEdit={openEditCommunity}
           onDelete={handleDeleteCommunity}
+          cdaPdfFilename={summary.cda_pdf_filename}
+          cdaPdfUploadedAt={summary.cda_pdf_uploaded_at}
+          onUploadCdaPdf={handleUploadCdaPdf}
+          onDownloadCdaPdf={handleDownloadCdaPdf}
         />
 
         <View style={{ flexDirection: 'row', margin: 0, padding: 6, borderRadius: 16, backgroundColor: PALETTE.cardLight, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 5, elevation: 3, gap: 8 }}>
@@ -493,7 +531,7 @@ export default function AngkatanScreen({ userRole }) {
 
         {communitySubTab === 'pasukan' ? (
           <>
-            <PyramidChart pyramidStats={pyramidStats} isEditing={isEditing} onAdd={openAddPyramid} onEdit={openEditPyramid} onDelete={deletePyramidItem} onNotify={showNotification} />
+            <PyramidChart pyramidStats={pyramidStats} isEditing={isEditing} onAdd={openAddPyramid} onEdit={openEditPyramid} onDelete={deletePyramidItem} onReorder={reorderPyramidItems} onNotify={showNotification} />
 
             <EmployeesListCard
               paginatedEmployees={paginatedEmployees}

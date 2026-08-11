@@ -1,11 +1,11 @@
 import React, { useState, useRef } from 'react';
 import { View, Text, TouchableOpacity, Modal, ActivityIndicator } from 'react-native';
-import { Plus, Pencil, TrendingUp, Trash2, AlertTriangle } from 'lucide-react-native';
+import { Plus, Pencil, TrendingUp, Trash2, AlertTriangle, ChevronUp, ChevronDown } from 'lucide-react-native';
 import { PALETTE } from '../../constants/palette';
 import { angkatanStyles as styles } from './angkatanStyles';
 import { pentadbiranStyles } from '../pentadbiran/pentadbiranStyles';
 
-export default function PyramidChart({ pyramidStats, isEditing, onAdd, onEdit, onDelete, onNotify }) {
+export default function PyramidChart({ pyramidStats, isEditing, onAdd, onEdit, onDelete, onReorder, onNotify }) {
   const maxTotal = Math.max(1, ...pyramidStats.map((p) => p.total || 0));
   const maxLog = Math.log(maxTotal + 1);
 
@@ -21,6 +21,15 @@ export default function PyramidChart({ pyramidStats, isEditing, onAdd, onEdit, o
     setIsDeleting(false);
     setConfirmDeleteItem(null);
     onNotify?.(ok === false ? 'error' : 'success', ok === false ? 'Gagal memadam struktur pangkat.' : 'Struktur pangkat berjaya dipadam.');
+  };
+
+  const movePyramidItem = async (index, direction) => {
+    const targetIndex = index + direction;
+    if (targetIndex < 0 || targetIndex >= pyramidStats.length) return;
+    const reordered = [...pyramidStats];
+    [reordered[index], reordered[targetIndex]] = [reordered[targetIndex], reordered[index]];
+    const ok = await onReorder?.(reordered);
+    if (ok === false) onNotify?.('error', 'Gagal menyusun semula struktur pangkat.');
   };
 
   return (
@@ -39,11 +48,29 @@ export default function PyramidChart({ pyramidStats, isEditing, onAdd, onEdit, o
         )}
       </View>
 
-      {pyramidStats.map((item) => {
+      {pyramidStats.map((item, index) => {
         const val = item.total || 0;
         const barWidthPercent = maxLog > 0 ? (Math.log(val + 1) / maxLog) * 100 : 0;
         return (
           <View key={item.id} style={styles.pyramidRow}>
+            {isEditing && (
+              <View style={{ marginRight: 8 }}>
+                <TouchableOpacity
+                  onPress={() => movePyramidItem(index, -1)}
+                  disabled={index === 0}
+                  style={{ opacity: index === 0 ? 0.3 : 1 }}
+                >
+                  <ChevronUp size={13} color={PALETTE.orange} />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => movePyramidItem(index, 1)}
+                  disabled={index === pyramidStats.length - 1}
+                  style={{ opacity: index === pyramidStats.length - 1 ? 0.3 : 1 }}
+                >
+                  <ChevronDown size={13} color={PALETTE.orange} />
+                </TouchableOpacity>
+              </View>
+            )}
             <TouchableOpacity
               disabled={!isEditing}
               onPress={() => onEdit(item)}
