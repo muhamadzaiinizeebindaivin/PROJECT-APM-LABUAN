@@ -1,8 +1,10 @@
 // src/screens/LatihanScreen.js
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, useWindowDimensions, Modal } from 'react-native';
-import { Plus, Edit, Trash2, BarChart3, PieChart, Target, CheckCircle2, XCircle, ClipboardList } from 'lucide-react-native';
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, useWindowDimensions, Modal, TextInput } from 'react-native';
+import { Plus, Edit, Trash2, BarChart3, PieChart, Target, CheckCircle2, XCircle, ClipboardList, Search, X } from 'lucide-react-native';
 import { useLatihanBudget } from '../hooks/useLatihanBudget';
+import { useLatihanKpiSettings } from '../hooks/useLatihanKpiSettings';
+import LatihanElaunSajianKpi from './latihan/LatihanElaunSajianKpi';
 import BudgetSection from './kewangan/BudgetSection';
 import { useLatihan } from '../hooks/useLatihan';
 import AdminEditButton from '../components/AdminEditButton';
@@ -36,12 +38,26 @@ export default function LatihanScreen({ theme, userRole }) {
   const [hoveredMonthIndex, setHoveredMonthIndex] = useState(null);
   const [activeStatTab, setActiveStatTab] = useState('senarai'); // 'senarai' | 'peserta' | 'prestasi'
   const [statPage, setStatPage] = useState(1);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('Semua');
   const STAT_PAGE_SIZE = 10;
-  const paginatedLatihanList = latihanList.slice((statPage - 1) * STAT_PAGE_SIZE, statPage * STAT_PAGE_SIZE);
-  const totalStatPages = Math.max(1, Math.ceil(latihanList.length / STAT_PAGE_SIZE));
+  const filteredLatihanList = latihanList.filter((item) => {
+    const matchesSearch = !searchQuery.trim() || item.title.toLowerCase().includes(searchQuery.trim().toLowerCase());
+    const matchesStatus = statusFilter === 'Semua' || item.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+  const paginatedLatihanList = filteredLatihanList.slice((statPage - 1) * STAT_PAGE_SIZE, statPage * STAT_PAGE_SIZE);
+  const totalStatPages = Math.max(1, Math.ceil(filteredLatihanList.length / STAT_PAGE_SIZE));
+
+  // Revenir à la page 1 dès que la recherche/filtre change, sinon on peut se
+  // retrouver bloqué sur une page qui n'existe plus dans les résultats filtrés.
+  useEffect(() => {
+    setStatPage(1);
+  }, [searchQuery, statusFilter]);
 
   const { kpiList, saveKpiItem, deleteKpiItem, reorderKpi, kpiUpdatedAt } = useKpi('latihan');
   const latihanBudget = useLatihanBudget();
+  const latihanKpiSettings = useLatihanKpiSettings();
 
   const [notification, setNotification] = useState(null);
   const notificationTimeoutRef = useRef(null);
@@ -273,7 +289,7 @@ export default function LatihanScreen({ theme, userRole }) {
         </View>
 
         {/* ---- Status Program + Kumpulan Sasaran ---- */}
-        <View style={[styles.splitRow, isMobile && { flexDirection: 'column', gap: 16 }]}>
+        <View style={[styles.splitRow, { marginBottom: 16 }, isMobile && { flexDirection: 'column', gap: 16 }]}>
           <View style={[styles.sectionCard, !isMobile && { flex: 0.45 }, { marginBottom: 0 }]}>
             <View style={shared.sectionHeaderRow}>
               <View style={styles.sectionTitleGroup}>
@@ -305,8 +321,28 @@ export default function LatihanScreen({ theme, userRole }) {
           </View>
         </View>
 
+        <BudgetSection
+          budgetData={latihanBudget.budgetData}
+          loading={latihanBudget.loading}
+          isEditMode={isEditMode}
+          saveBudgetItem={latihanBudget.saveBudgetItem}
+          deleteBudgetItem={latihanBudget.deleteBudgetItem}
+          deleteCategory={latihanBudget.deleteCategory}
+          renameCategory={latihanBudget.renameCategory}
+          onNotify={showNotification}
+          renderKpiOverride={() => (
+            <LatihanElaunSajianKpi
+              latihanList={latihanList}
+              settings={latihanKpiSettings.settings}
+              isEditMode={isEditMode}
+              onSaveSettings={latihanKpiSettings.saveSettings}
+              onNotify={showNotification}
+            />
+          )}
+        />
+
         {/* ---- Onglets stats + liste ---- */}
-        <View style={[styles.sectionCard, { marginTop: 16 }]}>
+        <View style={styles.sectionCard}>
           <View style={[shared.sectionHeaderRow, { justifyContent: 'space-between' }]}>
             <View style={styles.sectionTitleGroup}>
               <View style={styles.sectionIconBadge}><ClipboardList size={16} color={PALETTE.orange} /></View>
@@ -322,13 +358,50 @@ export default function LatihanScreen({ theme, userRole }) {
 
           {activeStatTab === 'senarai' && (
             <>
-              {latihanList.length === 0 ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderColor: PALETTE.cardLightBorder, borderRadius: 10, paddingHorizontal: 12, marginBottom: 12, backgroundColor: '#fafafa' }}>
+                <Search size={16} color={PALETTE.textMutedDark} />
+                <TextInput
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                  placeholder="Cari latihan..."
+                  placeholderTextColor={PALETTE.textMutedDark}
+                  style={{ flex: 1, paddingVertical: 10, fontSize: 13, color: PALETTE.textDark, outlineStyle: 'none' }}
+                />
+                {!!searchQuery && (
+                  <TouchableOpacity onPress={() => setSearchQuery('')}>
+                    <X size={16} color={PALETTE.textMutedDark} />
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 14 }}>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  {['Semua', 'Berjaya', 'Akan Diadakan', 'Tidak Berjaya'].map((status) => {
+                    const isActive = statusFilter === status;
+                    return (
+                      <TouchableOpacity
+                        key={status}
+                        onPress={() => setStatusFilter(status)}
+                        style={{
+                          paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999,
+                          borderWidth: 1.5, borderColor: isActive ? PALETTE.orange : PALETTE.cardLightBorder,
+                          backgroundColor: isActive ? PALETTE.softOrangeBg : '#fff',
+                        }}
+                      >
+                        <Text style={{ fontSize: 12, fontWeight: '700', color: isActive ? PALETTE.orange : PALETTE.textMutedDark }}>{status}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </ScrollView>
+
+              {filteredLatihanList.length === 0 ? (
                 <Text style={shared.emptyText}>Tiada data latihan.</Text>
               ) : (
                 paginatedLatihanList.map((item) => {
                   const meta = statusMeta(item.status);
                   return (
-                    <TouchableOpacity key={item.id} activeOpacity={0.7} onPress={() => handleOpenView(item)} style={styles.listItem}>
+                    <TouchableOpacity key={item.id} activeOpacity={0.7} onPress={() => (isEditMode ? handleOpenEdit(item) : handleOpenView(item))} style={styles.listItem}>
                       <View style={styles.dateChip}>
                         <Text style={styles.dateText}>{formatDisplayDate(item.start_date, item.end_date)}</Text>
                       </View>
@@ -369,7 +442,7 @@ export default function LatihanScreen({ theme, userRole }) {
             </>
           )}
 
-          {latihanList.length > STAT_PAGE_SIZE && (
+          {filteredLatihanList.length > STAT_PAGE_SIZE && (
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 16, marginTop: 14 }}>
               <TouchableOpacity
                 disabled={statPage === 1}
@@ -392,20 +465,7 @@ export default function LatihanScreen({ theme, userRole }) {
           )}
         </View>
 
-        <BudgetSection
-          budgetData={latihanBudget.budgetData}
-          loading={latihanBudget.loading}
-          isEditMode={isEditMode}
-          saveBudgetItem={latihanBudget.saveBudgetItem}
-          deleteBudgetItem={latihanBudget.deleteBudgetItem}
-          deleteCategory={latihanBudget.deleteCategory}
-          renameCategory={latihanBudget.renameCategory}
-          onNotify={showNotification}
-          extraDeduction={latihanList.reduce((sum, item) => sum + (parseFloat(item.elaun_latihan) || 0) + (parseFloat(item.kos_sajian) || 0), 0)}
-        />
-
         {/* ---- Unit Bertanggungjawab ---- */}
-        <View style={{ height: 16 }} />
         <LatihanUnitSection
           unitList={unit.staffList}
           loadingUnit={unit.loading}

@@ -16,7 +16,7 @@ const SCROLLBAR_TRACK_WIDTH = 160;
 const MIN_THUMB_WIDTH = 28;
 const ITEMS_PER_PAGE = 5;
 
-export default function BudgetSection({ budgetData, loading, isEditMode, saveBudgetItem, deleteBudgetItem, deleteCategory, renameCategory, onNotify, extraDeduction = 0 }) {
+export default function BudgetSection({ budgetData, loading, isEditMode, saveBudgetItem, deleteBudgetItem, deleteCategory, renameCategory, onNotify, renderKpiOverride, children }) {
   const { width: screenWidth } = useWindowDimensions();
   const isMobile = screenWidth < 768;
   const [modalVisible, setModalVisible] = useState(false);
@@ -158,11 +158,8 @@ export default function BudgetSection({ budgetData, loading, isEditMode, saveBud
     }
   };
 
-  // extraDeduction : uniquement affiché ici (jamais écrit dans latihan_budget)
-  // — utilisé seulement par la page Latihan pour refléter Elaun + Kos Sajian
-  // dans les 3 chiffres globaux. Vaut 0 partout ailleurs (aucun effet).
-  const totalAgihan = budgetData.reduce((sum, item) => sum + parseCurrency(item.agihan), 0) - extraDeduction;
-  const totalBelanja = budgetData.reduce((sum, item) => sum + parseCurrency(item.belanja), 0) + extraDeduction;
+  const totalAgihan = budgetData.reduce((sum, item) => sum + parseCurrency(item.agihan), 0);
+  const totalBelanja = budgetData.reduce((sum, item) => sum + parseCurrency(item.belanja), 0);
   const baki = totalAgihan - totalBelanja;
 
   const grouped = budgetData.reduce((acc, item) => {
@@ -349,7 +346,7 @@ export default function BudgetSection({ budgetData, loading, isEditMode, saveBud
     <>
       {!loading && (
         <View style={[styles.card, { position: 'relative' }]}>
-          {isEditMode && (
+          {false && isEditMode && (
             <TouchableOpacity style={styles.categoryAddBtnFloating} onPress={openAdd}>
               <Text style={styles.addBtnText}>+ Tambah</Text>
             </TouchableOpacity>
@@ -357,31 +354,31 @@ export default function BudgetSection({ budgetData, loading, isEditMode, saveBud
 
           <SectionHeader title="KATEGORI PERBELANJAAN" Icon={FolderOpen} />
 
-          <View style={[styles.kpiRow, isMobile && { flexDirection: 'column' }]}>
-            <View style={[styles.kpiCard, { backgroundColor: 'rgba(59, 130, 246, 0.08)', borderColor: 'rgba(59, 130, 246, 0.25)' }]}>
-              <Text style={[styles.kpiTitle, { color: PALETTE.blue }]}>Jumlah Agihan</Text>
-              <Text style={[styles.kpiValue, { color: PALETTE.blue }, isMobile && { fontSize: 15 }]}>RM {formatCurrency(totalAgihan)}</Text>
-              <Wallet size={26} color={PALETTE.blue} style={{ position: 'absolute', top: 10, right: 10, opacity: 0.35 }} />
+          {renderKpiOverride ? renderKpiOverride() : (
+            <View style={[styles.kpiRow, isMobile && { flexDirection: 'column' }]}>
+              <View style={[styles.kpiCard, { backgroundColor: 'rgba(59, 130, 246, 0.08)', borderColor: 'rgba(59, 130, 246, 0.25)' }]}>
+                <Text style={[styles.kpiTitle, { color: PALETTE.blue }]}>Jumlah Agihan</Text>
+                <Text style={[styles.kpiValue, { color: PALETTE.blue }, isMobile && { fontSize: 15 }]}>RM {formatCurrency(totalAgihan)}</Text>
+                <Wallet size={26} color={PALETTE.blue} style={{ position: 'absolute', top: 10, right: 10, opacity: 0.35 }} />
+              </View>
+              <View style={[styles.kpiCard, { backgroundColor: PALETTE.softOrangeBg, borderColor: 'rgba(249, 115, 22, 0.25)' }]}>
+                <Text style={[styles.kpiTitle, { color: PALETTE.orange }]}>Jumlah Belanja</Text>
+                <Text style={[styles.kpiValue, { color: PALETTE.orange }, isMobile && { fontSize: 15 }]}>RM {formatCurrency(totalBelanja)}</Text>
+                <TrendingUp size={26} color={PALETTE.orange} style={{ position: 'absolute', top: 10, right: 10, opacity: 0.35 }} />
+              </View>
+              <View style={[styles.kpiCard, { backgroundColor: 'rgba(22, 163, 74, 0.08)', borderColor: 'rgba(22, 163, 74, 0.25)' }]}>
+                <Text style={[styles.kpiTitle, { color: '#16a34a' }]}>Baki Semasa</Text>
+                <Text style={[styles.kpiValue, { color: '#16a34a' }, isMobile && { fontSize: 15 }]}>RM {formatCurrency(baki)}</Text>
+                <Check size={26} color="#16a34a" style={{ position: 'absolute', top: 10, right: 10, opacity: 0.35 }} />
+              </View>
             </View>
-            <View style={[styles.kpiCard, { backgroundColor: PALETTE.softOrangeBg, borderColor: 'rgba(249, 115, 22, 0.25)' }]}>
-              <Text style={[styles.kpiTitle, { color: PALETTE.orange }]}>Jumlah Belanja</Text>
-              <Text style={[styles.kpiValue, { color: PALETTE.orange }, isMobile && { fontSize: 15 }]}>RM {formatCurrency(totalBelanja)}</Text>
-              <TrendingUp size={26} color={PALETTE.orange} style={{ position: 'absolute', top: 10, right: 10, opacity: 0.35 }} />
-            </View>
-            <View style={[styles.kpiCard, { backgroundColor: 'rgba(22, 163, 74, 0.08)', borderColor: 'rgba(22, 163, 74, 0.25)' }]}>
-              <Text style={[styles.kpiTitle, { color: '#16a34a' }]}>Baki Semasa</Text>
-              <Text style={[styles.kpiValue, { color: '#16a34a' }, isMobile && { fontSize: 15 }]}>RM {formatCurrency(baki)}</Text>
-              <Check size={26} color="#16a34a" style={{ position: 'absolute', top: 10, right: 10, opacity: 0.35 }} />
-            </View>
-          </View>
+          )}
+
+          {children}
 
           {loading && <ActivityIndicator size="large" color={PALETTE.orange} style={{ marginVertical: 20 }} />}
 
-          {!loading && (existingCategories.length === 0 ? (
-            <Text style={{ fontSize: 13, color: PALETTE.textMutedDark, textAlign: 'center', paddingVertical: 20 }}>
-              Tiada kategori lagi.
-            </Text>
-          ) : (
+          {!loading && (existingCategories.length === 0 ? null : (
           <>
           <View
             style={styles.categoryCarouselViewport}
