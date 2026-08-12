@@ -20,8 +20,9 @@ function KpiRow({ label, agihan, belanja, baki, isMobile, isEditMode, onEditAgih
 
   const confirmEdit = async () => {
     const num = parseFloat(draft);
+    const clamped = Number.isFinite(num) ? Math.max(0, num) : 0;
     setIsSaving(true);
-    await onEditAgihan(Number.isFinite(num) ? num : 0);
+    await onEditAgihan(clamped);
     setIsSaving(false);
   };
 
@@ -44,7 +45,7 @@ function KpiRow({ label, agihan, belanja, baki, isMobile, isEditMode, onEditAgih
                 <TextInput
                   ref={inputRef}
                   value={draft}
-                  onChangeText={setDraft}
+                  onChangeText={(t) => setDraft(t.replace(/[^0-9.]/g, ''))}
                   keyboardType="decimal-pad"
                   selectTextOnFocus
                   onSubmitEditing={confirmEdit}
