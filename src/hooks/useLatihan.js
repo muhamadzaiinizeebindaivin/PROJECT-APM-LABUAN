@@ -11,12 +11,17 @@ import { supabaseSandbox } from '../supabaseSandboxClient';
 export function useLatihan() {
   const [latihanList, setLatihanList] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
 
   const fetchLatihan = async () => {
-    setIsLoading(true);
+    // Après le premier chargement, on ne remet plus isLoading à true — sinon
+    // chaque rafraîchissement après un ajout/suppression fait clignoter toute
+    // la page en écran de chargement au lieu d'une simple mise à jour discrète.
+    if (!hasLoadedOnce) setIsLoading(true);
     const { data, error } = await supabaseSandbox.from('latihan').select('*').order('start_date', { ascending: true });
     if (!error) setLatihanList(data || []);
     setIsLoading(false);
+    setHasLoadedOnce(true);
   };
 
   useEffect(() => { fetchLatihan(); }, []);
@@ -34,6 +39,8 @@ export function useLatihan() {
       pax: parseInt(formData.pax) || 0,
       status: formData.status,
       note: formData.sasaran.join(', '),
+      elaun_latihan: formData.elaun_latihan ? parseFloat(formData.elaun_latihan) : 0,
+      kos_sajian: formData.kos_sajian ? parseFloat(formData.kos_sajian) : 0,
     };
     const { error } = editingId
       ? await supabaseSandbox.from('latihan').update(payload).eq('id', editingId)
@@ -46,19 +53,10 @@ export function useLatihan() {
     return true;
   };
 
-  const deleteLatihan = (id) => {
-    const executeDelete = async () => {
-      await supabaseSandbox.from('latihan').delete().eq('id', id);
-      fetchLatihan();
-    };
-    if (Platform.OS === 'web') {
-      if (window.confirm('Adakah anda pasti mahu memadam latihan ini?')) executeDelete();
-    } else {
-      Alert.alert('Padam Latihan?', 'Adakah anda pasti mahu memadam latihan ini?', [
-        { text: 'Batal', style: 'cancel' },
-        { text: 'Padam', style: 'destructive', onPress: executeDelete },
-      ]);
-    }
+  const deleteLatihan = async (id) => {
+    const { error } = await supabaseSandbox.from('latihan').delete().eq('id', id);
+    await fetchLatihan();
+    return !error;
   };
 
   const stats = useMemo(() => {

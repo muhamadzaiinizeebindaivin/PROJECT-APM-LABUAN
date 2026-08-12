@@ -16,7 +16,7 @@ const SCROLLBAR_TRACK_WIDTH = 160;
 const MIN_THUMB_WIDTH = 28;
 const ITEMS_PER_PAGE = 5;
 
-export default function BudgetSection({ budgetData, loading, isEditMode, saveBudgetItem, deleteBudgetItem, deleteCategory, renameCategory, onNotify }) {
+export default function BudgetSection({ budgetData, loading, isEditMode, saveBudgetItem, deleteBudgetItem, deleteCategory, renameCategory, onNotify, extraDeduction = 0 }) {
   const { width: screenWidth } = useWindowDimensions();
   const isMobile = screenWidth < 768;
   const [modalVisible, setModalVisible] = useState(false);
@@ -158,8 +158,11 @@ export default function BudgetSection({ budgetData, loading, isEditMode, saveBud
     }
   };
 
-  const totalAgihan = budgetData.reduce((sum, item) => sum + parseCurrency(item.agihan), 0);
-  const totalBelanja = budgetData.reduce((sum, item) => sum + parseCurrency(item.belanja), 0);
+  // extraDeduction : uniquement affiché ici (jamais écrit dans latihan_budget)
+  // — utilisé seulement par la page Latihan pour refléter Elaun + Kos Sajian
+  // dans les 3 chiffres globaux. Vaut 0 partout ailleurs (aucun effet).
+  const totalAgihan = budgetData.reduce((sum, item) => sum + parseCurrency(item.agihan), 0) - extraDeduction;
+  const totalBelanja = budgetData.reduce((sum, item) => sum + parseCurrency(item.belanja), 0) + extraDeduction;
   const baki = totalAgihan - totalBelanja;
 
   const grouped = budgetData.reduce((acc, item) => {

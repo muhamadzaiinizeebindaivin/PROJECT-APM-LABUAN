@@ -1,6 +1,6 @@
 // src/screens/LatihanScreen.js
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, useWindowDimensions } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, useWindowDimensions, Modal } from 'react-native';
 import { Plus, Edit, Trash2, BarChart3, PieChart, Target, CheckCircle2, XCircle, ClipboardList } from 'lucide-react-native';
 import { useLatihanBudget } from '../hooks/useLatihanBudget';
 import BudgetSection from './kewangan/BudgetSection';
@@ -13,6 +13,8 @@ import { appStyles as shared } from '../styles/appStyles';
 import { latihanStyles as styles } from './latihan/latihanStyles';
 import { AnimatedVerticalBar, AnimatedHorizontalBar, StatusDonut } from './latihan/LatihanCharts';
 import LatihanFormModal from './latihan/LatihanFormModal';
+import { pentadbiranStyles } from './pentadbiran/pentadbiranStyles';
+import { AlertTriangle } from 'lucide-react-native';
 // LatihanBreakdownModals retiré — remplacé par des onglets + liste inline
 import { useUnitStaff } from '../hooks/useUnitStaff';
 import LatihanUnitSection from './latihan/LatihanUnitSection';
@@ -67,17 +69,32 @@ export default function LatihanScreen({ theme, userRole }) {
   const dikemaskini = formatTimestamp(latestRaw);
 
   const [isFormModalVisible, setFormModalVisible] = useState(false);
+  const [isReadOnlyView, setIsReadOnlyView] = useState(false);
+  const [confirmDeleteItem, setConfirmDeleteItem] = useState(null);
+  const displayDeleteItemRef = useRef(null);
+  if (confirmDeleteItem) displayDeleteItemRef.current = confirmDeleteItem;
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleConfirmDelete = async () => {
+    setIsDeleting(true);
+    const ok = await deleteLatihan(confirmDeleteItem.id);
+    setIsDeleting(false);
+    setConfirmDeleteItem(null);
+    showNotification(ok ? 'success' : 'error', ok ? 'Latihan berjaya dipadam.' : 'Gagal memadam latihan.');
+  };
 
   const [editingId, setEditingId] = useState(null);
   const [formData, setFormData] = useState({
     title: '', start_date: null, end_date: null, pax: '', status: 'Akan Diadakan', sasaran: [],
+    elaun_latihan: '', kos_sajian: '',
   });
   const [formError, setFormError] = useState(null);
 
   const handleOpenAdd = () => {
     setEditingId(null);
-    setFormData({ title: '', start_date: null, end_date: null, pax: '', status: 'Akan Diadakan', sasaran: [] });
+    setFormData({ title: '', start_date: null, end_date: null, pax: '', status: 'Akan Diadakan', sasaran: [], elaun_latihan: '', kos_sajian: '' });
     setFormError(null);
+    setIsReadOnlyView(false);
     setFormModalVisible(true);
   };
 
@@ -91,8 +108,31 @@ export default function LatihanScreen({ theme, userRole }) {
       pax: item.pax ? item.pax.toString() : '',
       status: item.status || 'Akan Diadakan',
       sasaran: parsedSasaran,
+      elaun_latihan: item.elaun_latihan != null ? item.elaun_latihan.toString() : '',
+      kos_sajian: item.kos_sajian != null ? item.kos_sajian.toString() : '',
     });
     setFormError(null);
+    setIsReadOnlyView(false);
+    setFormModalVisible(true);
+  };
+
+  // Ouvre le même modal en lecture seule — n'importe qui peut voir les
+  // détails d'une ligne, seul isEditMode débloque la vraie modification.
+  const handleOpenView = (item) => {
+    setEditingId(item.id);
+    const parsedSasaran = item.note ? item.note.split(',').map(s => s.trim()).filter(s => s) : [];
+    setFormData({
+      title: item.title,
+      start_date: item.start_date ? new Date(item.start_date) : null,
+      end_date: item.end_date ? new Date(item.end_date) : null,
+      pax: item.pax ? item.pax.toString() : '',
+      status: item.status || 'Akan Diadakan',
+      sasaran: parsedSasaran,
+      elaun_latihan: item.elaun_latihan != null ? item.elaun_latihan.toString() : '',
+      kos_sajian: item.kos_sajian != null ? item.kos_sajian.toString() : '',
+    });
+    setFormError(null);
+    setIsReadOnlyView(true);
     setFormModalVisible(true);
   };
 
@@ -103,7 +143,12 @@ export default function LatihanScreen({ theme, userRole }) {
     }
     setFormError(null);
     const ok = await saveLatihan(formData, editingId);
-    if (ok) setFormModalVisible(false);
+    if (ok) {
+      setFormModalVisible(false);
+      showNotification('success', editingId ? 'Latihan berjaya dikemaskini.' : 'Latihan berjaya ditambah.');
+    } else {
+      showNotification('error', 'Gagal menyimpan latihan.');
+    }
   };
 
   if (isLoading) {
@@ -283,13 +328,16 @@ export default function LatihanScreen({ theme, userRole }) {
                 paginatedLatihanList.map((item) => {
                   const meta = statusMeta(item.status);
                   return (
-                    <View key={item.id} style={styles.listItem}>
+                    <TouchableOpacity key={item.id} activeOpacity={0.7} onPress={() => handleOpenView(item)} style={styles.listItem}>
                       <View style={styles.dateChip}>
                         <Text style={styles.dateText}>{formatDisplayDate(item.start_date, item.end_date)}</Text>
                       </View>
                       <View style={{ flex: 1, paddingLeft: 8 }}>
                         <Text style={styles.itemTitle}>{item.title}</Text>
                         <Text style={styles.itemSub}>{item.note || 'Tiada Kumpulan'} • {item.pax} Pax</Text>
+                        <Text style={styles.itemSub}>
+                          Elaun: RM {item.elaun_latihan != null ? Number(item.elaun_latihan).toFixed(2) : '-'} • Kos Sajian: RM {item.kos_sajian != null ? Number(item.kos_sajian).toFixed(2) : '-'}
+                        </Text>
                       </View>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                         <View style={[styles.statusBadge, { backgroundColor: meta.soft }]}>
@@ -299,19 +347,22 @@ export default function LatihanScreen({ theme, userRole }) {
                         {isEditMode && (
                           <View style={{ flexDirection: 'row', gap: 8 }}>
                             <HoverTip label="Kemaskini latihan ini">
-                              <TouchableOpacity onPress={() => handleOpenEdit(item)} style={[styles.itemActionBtn, { backgroundColor: 'rgba(249, 115, 22, 0.12)' }]}>
+                              <TouchableOpacity onPress={(e) => { e.stopPropagation?.(); handleOpenEdit(item); }} style={[styles.itemActionBtn, { backgroundColor: 'rgba(249, 115, 22, 0.12)' }]}>
                                 <Edit size={14} color={PALETTE.orange} />
                               </TouchableOpacity>
                             </HoverTip>
                             <HoverTip label="Padam latihan ini">
-                              <TouchableOpacity onPress={() => deleteLatihan(item.id)} style={[styles.itemActionBtn, { backgroundColor: 'rgba(220, 38, 38, 0.10)' }]}>
+                              <TouchableOpacity
+                                onPress={(e) => { e.stopPropagation?.(); setConfirmDeleteItem(item); }}
+                                style={[styles.itemActionBtn, { backgroundColor: 'rgba(220, 38, 38, 0.10)' }]}
+                              >
                                 <Trash2 size={14} color={PALETTE.danger} />
                               </TouchableOpacity>
                             </HoverTip>
                           </View>
                         )}
                       </View>
-                    </View>
+                    </TouchableOpacity>
                   );
                 })
               )}
@@ -350,6 +401,7 @@ export default function LatihanScreen({ theme, userRole }) {
           deleteCategory={latihanBudget.deleteCategory}
           renameCategory={latihanBudget.renameCategory}
           onNotify={showNotification}
+          extraDeduction={latihanList.reduce((sum, item) => sum + (parseFloat(item.elaun_latihan) || 0) + (parseFloat(item.kos_sajian) || 0), 0)}
         />
 
         {/* ---- Unit Bertanggungjawab ---- */}
@@ -364,9 +416,39 @@ export default function LatihanScreen({ theme, userRole }) {
         />
       </ScrollView>
 
+      <Modal visible={!!confirmDeleteItem} transparent animationType="fade" onRequestClose={() => !isDeleting && setConfirmDeleteItem(null)}>
+        <View style={pentadbiranStyles.confirmOverlay}>
+          <View style={pentadbiranStyles.confirmBox}>
+            <View style={pentadbiranStyles.confirmBanner}>
+              <View style={pentadbiranStyles.confirmIconCircle}>
+                <AlertTriangle size={26} color="#ef4444" />
+              </View>
+              <Text style={pentadbiranStyles.confirmTitle}>Padam Latihan</Text>
+              <Text style={pentadbiranStyles.confirmSubtitle}>
+                Padam latihan "{displayDeleteItemRef.current?.title}"? Tindakan ini tidak boleh dibatalkan.
+              </Text>
+            </View>
+            <View style={pentadbiranStyles.confirmActions}>
+              <TouchableOpacity style={pentadbiranStyles.confirmCancelBtn} onPress={() => setConfirmDeleteItem(null)} disabled={isDeleting}>
+                <Text style={pentadbiranStyles.confirmCancelText}>Batal</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[pentadbiranStyles.confirmConfirmBtn, isDeleting && { opacity: 0.6 }]}
+                disabled={isDeleting}
+                onPress={handleConfirmDelete}
+              >
+                {isDeleting ? <ActivityIndicator size="small" color="#fff" /> : <Trash2 size={16} color="#fff" />}
+                <Text style={pentadbiranStyles.confirmConfirmText}>{isDeleting ? 'Memadam...' : 'Padam'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       <LatihanFormModal
         visible={isFormModalVisible}
         onClose={() => setFormModalVisible(false)}
+        readOnly={isReadOnlyView}
         editingId={editingId}
         formData={formData}
         setFormData={setFormData}
