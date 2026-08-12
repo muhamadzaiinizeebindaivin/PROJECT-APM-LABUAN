@@ -29,6 +29,15 @@ export default function EmployeeDetailModal({
   const displayDeleteCertRef = useRef(null);
   if (confirmDeleteCertId !== null) displayDeleteCertRef.current = certificates.find((c) => c.id === confirmDeleteCertId);
   const [isDeletingCert, setIsDeletingCert] = useState(false);
+  const [confirmDeleteEmployee, setConfirmDeleteEmployee] = useState(false);
+  const [isDeletingEmployee, setIsDeletingEmployee] = useState(false);
+
+  const handleConfirmDeleteEmployee = async () => {
+    setIsDeletingEmployee(true);
+    await onDeleteEmployee(employeeForm.id);
+    setIsDeletingEmployee(false);
+    setConfirmDeleteEmployee(false);
+  };
 
   // "Kemaskini" — modification directe depuis le popup, réservée à admin/sekretariat,
   // indépendante du mode édition global de la page (isEditing).
@@ -71,9 +80,10 @@ export default function EmployeeDetailModal({
   const modalBoxRef = useRef(null);
   useEffect(() => {
     // Même raison que l'effet pointer-events plus bas : suspendu tant qu'un
-    // modal enfant (édition/suppression de sijil) est ouvert, sinon ses clics
-    // sont traités comme "hors de la boîte" et bloqués.
-    if (Platform.OS !== 'web' || !visible || certModalVisible || confirmDeleteCertId !== null) return undefined;
+    // modal enfant (édition/suppression de sijil, ou confirmation de
+    // suppression d'anggota) est ouvert, sinon ses clics sont traités comme
+    // "hors de la boîte" et bloqués.
+    if (Platform.OS !== 'web' || !visible || certModalVisible || confirmDeleteCertId !== null || confirmDeleteEmployee) return undefined;
     const handleCapture = (e) => {
       if (modalBoxRef.current && !modalBoxRef.current.contains(e.target)) {
         e.stopPropagation();
@@ -86,7 +96,7 @@ export default function EmployeeDetailModal({
       document.removeEventListener('click', handleCapture, true);
       document.removeEventListener('mousedown', handleCapture, true);
     };
-  }, [visible, certModalVisible, confirmDeleteCertId]);
+  }, [visible, certModalVisible, confirmDeleteCertId, confirmDeleteEmployee]);
 
   // react-native-web's <Modal> wraps our content in its own backdrop <div>s
   // (outside our own styles.modalOverlay node), which still swallow scroll/click
@@ -96,10 +106,11 @@ export default function EmployeeDetailModal({
   // its own pointerEvents="auto" (CSS lets a descendant override an ancestor).
   const overlayRef = useRef(null);
   useEffect(() => {
-    // On suspend ce hack dès qu'un modal enfant (édition/suppression de sijil)
-    // est ouvert par-dessus — sinon ses propres noeuds héritent du
-    // pointer-events:none qu'on force sur les ancêtres, et se figent aussi.
-    if (Platform.OS !== 'web' || !visible || certModalVisible || confirmDeleteCertId !== null) return undefined;
+    // On suspend ce hack dès qu'un modal enfant (édition/suppression de sijil,
+    // ou confirmation de suppression d'anggota) est ouvert par-dessus — sinon
+    // ses propres noeuds héritent du pointer-events:none qu'on force sur les
+    // ancêtres, et se figent aussi.
+    if (Platform.OS !== 'web' || !visible || certModalVisible || confirmDeleteCertId !== null || confirmDeleteEmployee) return undefined;
     const touched = [];
     let node = overlayRef.current;
     while (node && node !== document.body) {
@@ -110,7 +121,7 @@ export default function EmployeeDetailModal({
     return () => {
       touched.forEach(([el, prevValue]) => { el.style.pointerEvents = prevValue; });
     };
-  }, [visible, certModalVisible, confirmDeleteCertId]);
+  }, [visible, certModalVisible, confirmDeleteCertId, confirmDeleteEmployee]);
 
   const isActive = String(employeeForm.status_keaktifan).toUpperCase() === 'AKTIF';
 
@@ -171,7 +182,7 @@ export default function EmployeeDetailModal({
                 </TouchableOpacity>
               )}
               {employeeForm.id && isEditing && !certOnlyMode && (
-                <TouchableOpacity onPress={() => onDeleteEmployee(employeeForm.id)}>
+                <TouchableOpacity onPress={() => setConfirmDeleteEmployee(true)}>
                   <Trash2 size={20} color="#dc2626" />
                 </TouchableOpacity>
               )}
@@ -321,6 +332,45 @@ export default function EmployeeDetailModal({
         onSave={handleSaveCert}
         onClose={() => setCertModalVisible(false)}
       />
+
+      <Modal visible={confirmDeleteEmployee} transparent animationType="fade" onRequestClose={() => !isDeletingEmployee && setConfirmDeleteEmployee(false)}>
+        <View style={styles.confirmOverlay}>
+          <View style={styles.confirmBox}>
+            <View style={styles.confirmBanner}>
+              <View style={styles.confirmIconCircle}>
+                <AlertTriangle size={26} color="#ef4444" />
+              </View>
+              <Text style={styles.confirmTitle}>Padam Anggota</Text>
+              <Text style={styles.confirmSubtitle}>
+                Padam anggota "{employeeForm.nama}"? Tindakan ini tidak boleh dibatalkan.
+              </Text>
+            </View>
+            <View style={styles.confirmActions}>
+              <TouchableOpacity
+                style={[styles.confirmCancelBtn, isDeletingEmployee && { opacity: 0.5 }]}
+                onPress={() => setConfirmDeleteEmployee(false)}
+                disabled={isDeletingEmployee}
+              >
+                <Text style={styles.confirmCancelText}>Batal</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.confirmConfirmBtn, isDeletingEmployee && { opacity: 0.7 }]}
+                onPress={handleConfirmDeleteEmployee}
+                disabled={isDeletingEmployee}
+              >
+                {isDeletingEmployee ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <>
+                    <Trash2 size={16} color="#fff" />
+                    <Text style={styles.confirmConfirmText}>Padam</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       <Modal visible={confirmDeleteCertId !== null} transparent animationType="fade" onRequestClose={() => setConfirmDeleteCertId(null)}>
         <View style={styles.confirmOverlay}>

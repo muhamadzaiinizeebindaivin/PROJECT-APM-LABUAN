@@ -51,6 +51,12 @@ const COLUMN_MATCHERS = [
   { field: 'tarikh_pelantikan_pasukan_pertama', patterns: ['PELANTIKAN PEGAWAI PASUKAN PERTAMA'] },
   { field: 'tarikh_tamat_watikah_4', patterns: ['TARIKH TAMAT WATIKAH 4'] },
   { field: 'tempoh_aktif_watikah_4_hari', patterns: ['TEMPOH AKTIF WATIKAH 4'] },
+  { field: 'sejarah_penyambungan_1', patterns: ['SEJARAH PENYAMBUNGAN 1'] },
+  { field: 'tarikh_tamat_surat_penyambungan_1', patterns: ['TARIKH TAMAT SURAT PENYAMBUNGAN 1'] },
+  { field: 'tempoh_aktif_watikah_5_hari', patterns: ['TEMPOH AKTIF WATIKAH', '5'] },
+  { field: 'sejarah_penyambungan_2', patterns: ['SEJARAH PENYAMBUNGAN 2'] },
+  { field: 'tarikh_tamat_surat_penyambungan_2', patterns: ['TARIKH TAMAT SURAT PENYAMBUNGAN 2'] },
+  { field: 'tempoh_aktif_watikah_6_hari', patterns: ['TEMPOH AKTIF WATIKAH 6'] },
   { field: 'penyambungan_terkini', patterns: ['PENYAMBUNGAN TERKINI'] },
   { field: 'tarikh_tamat_surat_penyambungan_terkini', patterns: ['TARIKH TAMAT SURAT PENYAMBUNGAN 3'] },
   { field: 'tempoh_aktif_watikah_terkini_hari', patterns: ['TEMPOH AKTIF WATIKAH 7'] },
@@ -69,9 +75,12 @@ const PASUKAN_MATCHERS = [1, 2, 3].map((n) => ({
   tarikh_kenaikan_pangkat: [`SEJARAH KENAIKAN PEGAWAI PASUKAN ${n}`],
 }));
 
+
+
 const INTEGER_FIELDS = [
   'umur', 'tempoh_baki_aktif_kad_hari', 'tempoh_baki_aktif_insuran_hari',
   'tempoh_baki_caruman_perkeso_hari', 'tempoh_aktif_watikah_4_hari', 'tempoh_aktif_watikah_terkini_hari',
+  'tempoh_aktif_watikah_5_hari', 'tempoh_aktif_watikah_6_hari',
 ];
 
 const DATE_FIELDS = [
@@ -79,6 +88,8 @@ const DATE_FIELDS = [
   'tarikh_tamat_insuran', 'tarikh_tamat_perkeso', 'tarikh_kenaikan_pangkat_lkpl',
   'tarikh_kenaikan_pangkat_kpl', 'tarikh_kenaikan_pangkat_sjn', 'tarikh_kenaikan_pangkat_pwi',
   'tarikh_kenaikan_pangkat_pwii', 'tarikh_pelantikan_pasukan_pertama', 'tarikh_tamat_watikah_4',
+  'sejarah_penyambungan_1', 'tarikh_tamat_surat_penyambungan_1',
+  'sejarah_penyambungan_2', 'tarikh_tamat_surat_penyambungan_2',
   'penyambungan_terkini', 'tarikh_tamat_surat_penyambungan_terkini',
 ];
 
@@ -131,7 +142,6 @@ export function useExcelImport() {
   const [parsing, setParsing] = useState(false);
   const [parsedRows, setParsedRows] = useState([]);
   const [unmatchedHeaders, setUnmatchedHeaders] = useState([]);
-  const [debugInfo, setDebugInfo] = useState(null);
   const [pickedFile, setPickedFile] = useState(null);
 
   const pickAndParseFile = async () => {
@@ -166,29 +176,19 @@ export function useExcelImport() {
       }
 
       const headerRow = rows[headerRowIndex];
-      const dataRows = rows.slice(headerRowIndex + 1).filter((r) => r.some((cell) => String(cell).trim() !== ''));
+      // La ligne juste après l'en-tête est un exemple/modèle, pas une vraie
+      // donnée — on la saute avant de filtrer les lignes vides.
+      const dataRows = rows.slice(headerRowIndex + 2).filter((r) => r.some((cell) => String(cell).trim() !== ''));
 
       const columnMap = headerRow.map((h) => matchColumn(h));
-      const unmatched = headerRow.filter((h, i) => !columnMap[i] && String(h).trim() !== '');
-      setUnmatchedHeaders(unmatched);
-
-      // DEBUG TEMPORAIRE — à retirer une fois le problème résolu
-      console.log('=== DEBUG EXCEL IMPORT ===');
-      console.log('headerRowIndex détecté:', headerRowIndex);
-      console.log('Nombre de colonnes dans headerRow:', headerRow.length);
-      console.log('headerRow complet:', JSON.stringify(headerRow));
-      console.log('Nombre de colonnes dans dataRows[0]:', dataRows[0]?.length);
-      console.log('dataRows[0] complet:', JSON.stringify(dataRows[0]));
-      console.log('Colonne F (index 5) du headerRow:', headerRow[5]);
-      console.log('Colonne F (index 5) du dataRows[0]:', dataRows[0]?.[5]);
-      setDebugInfo({
-        headerRowIndex,
-        headerRowLength: headerRow.length,
-        dataRow0Length: dataRows[0]?.length,
-        headerRow: headerRow,
-        dataRow0: dataRows[0],
+      // BIL et GAMBAR PROFIL sont volontairement ignorés (numéro de ligne / image,
+      // pas des données à importer) — on ne veut pas les signaler comme "non reconnus".
+      const IGNORED_SILENTLY = ['BIL', 'GAMBAR PROFIL'];
+      const unmatched = headerRow.filter((h, i) => {
+        if (columnMap[i] || String(h).trim() === '') return false;
+        return !IGNORED_SILENTLY.includes(normalize(h));
       });
-      console.log('=========================');
+      setUnmatchedHeaders(unmatched);
 
       const parsed = dataRows.map((row) => {
         const employee = {};
@@ -247,5 +247,5 @@ export function useExcelImport() {
     setPickedFile(null);
   };
 
-  return { parsing, parsedRows, unmatchedHeaders, pickAndParseFile, reset, debugInfo, pickedFile };
+  return { parsing, parsedRows, unmatchedHeaders, pickAndParseFile, reset, pickedFile };
 }
