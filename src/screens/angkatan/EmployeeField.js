@@ -3,7 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, Platform } from 'react-native'
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { PALETTE } from '../../constants/palette';
 import { angkatanStyles as styles } from './angkatanStyles';
-import { formatICNumber, computeDaysRemaining } from './employeeFieldGroups';
+import { formatICNumber, computeDaysRemaining, formatDateMY } from './employeeFieldGroups';
 
 export default function EmployeeField({ field: f, form, setForm, isEditing, activeDatePickerField, setActiveDatePickerField }) {
   const value = form[f.key];
@@ -39,7 +39,9 @@ export default function EmployeeField({ field: f, form, setForm, isEditing, acti
     return (
       <FieldWrapper label={f.label}>
         <View style={styles.fieldReadOnlyBox}>
-          <Text style={styles.fieldValue}>{f.type === 'boolean' ? (value ? 'Ya' : 'Tidak') : (value || '-')}</Text>
+          <Text style={styles.fieldValue}>
+            {f.type === 'boolean' ? (value ? 'Ya' : 'Tidak') : (formatDateMY(value) || '-')}
+          </Text>
         </View>
       </FieldWrapper>
     );

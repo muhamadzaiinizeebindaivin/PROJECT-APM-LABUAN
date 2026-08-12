@@ -3,26 +3,25 @@ import { View, Text, TouchableOpacity, ScrollView, Modal, ActivityIndicator, use
 import { X, Trash2, User, AlertTriangle } from 'lucide-react-native';
 import { PALETTE } from '../../constants/palette';
 import { angkatanStyles as styles } from './angkatanStyles';
-import { EMPLOYEE_TABS, FIELD_GROUPS } from './employeeFieldGroups';
+import { FIELD_SECTIONS } from './employeeFieldGroups';
 import EmployeeField from './EmployeeField';
 import CertificatesTab from './CertificatesTab';
 import CertEditModal from './CertEditModal';
-import PromotionHistoryList from './PromotionHistoryList';
+
 
 export default function EmployeeDetailModal({
   visible, onClose,
   employeeForm, setEmployeeForm,
   isEditing, userRole, certOnlyMode,
-  certificates, promotionHistoryList,
+  certificates,
   onSaveCertificate, onDeleteCertificate, onOpenCertLink,
   onSaveEmployee, onDeleteEmployee,
   onNotify,
 }) {
   const { width: screenWidth } = useWindowDimensions();
   const isMobile = screenWidth < 768;
-  const [showFullDetail, setShowFullDetail] = useState(false);
-  const [activeTab, setActiveTab] = useState('Identiti');
   const [activeDatePickerField, setActiveDatePickerField] = useState(null);
+  const [activeSection, setActiveSection] = useState(FIELD_SECTIONS[0]?.title);
   const [certModalVisible, setCertModalVisible] = useState(false);
   const [certForm, setCertForm] = useState({ id: null, nom_certificat: '', google_drive_link: '', kategori: 'Kursus' });
   const [confirmDeleteCertId, setConfirmDeleteCertId] = useState(null);
@@ -226,58 +225,35 @@ export default function EmployeeDetailModal({
               </>
             ) : (
               <>
-                {!effectiveEditing && !showFullDetail && (
-                  <>
-                    <View style={styles.quickInfoGrid}>
-                      {[
-                        { label: 'No. IC', value: employeeForm.ic_no },
-                        { label: 'No. Anggota', value: employeeForm.no_anggota },
-                        { label: 'No. Telefon', value: employeeForm.contact },
-                        { label: 'Jantina', value: employeeForm.jantina },
-                      ].map((item) => (
-                        <View key={item.label} style={styles.quickInfoBox}>
-                          <Text style={styles.quickInfoLabel}>{item.label}</Text>
-                          <Text style={styles.quickInfoValue}>{item.value || '-'}</Text>
-                        </View>
-                      ))}
-                    </View>
-                    <TouchableOpacity style={styles.seeMoreBtn} onPress={() => setShowFullDetail(true)}>
-                      <Text style={styles.seeMoreBtnText}>Lihat Semua Maklumat →</Text>
-                    </TouchableOpacity>
-                  </>
-                )}
-
-                {(effectiveEditing || showFullDetail) && (
-                  <>
                     <ScrollView
                       horizontal={isMobile}
                       showsHorizontalScrollIndicator={false}
                       style={styles.tabBarScroll}
                     >
                       <View style={[styles.tabBar, !isMobile && { flex: 1 }]}>
-                        {EMPLOYEE_TABS.map((tab) => (
+                        {[...FIELD_SECTIONS.map((s) => s.title), 'Sijil'].map((title) => (
                           <TouchableOpacity
-                            key={tab}
-                            onPress={() => setActiveTab(tab)}
+                            key={title}
+                            onPress={() => setActiveSection(title)}
                             style={[
                               styles.tabBtn,
                               { alignItems: 'center' },
                               isMobile ? styles.tabBtnMobile : { flex: 1 },
-                              activeTab === tab && styles.tabBtnActive,
+                              activeSection === title && styles.tabBtnActive,
                             ]}
                           >
                             <Text
-                              style={[styles.tabBtnText, activeTab === tab && styles.tabBtnTextActive]}
+                              style={[styles.tabBtnText, activeSection === title && styles.tabBtnTextActive]}
                               numberOfLines={1}
                             >
-                              {tab}
+                              {title}
                             </Text>
                           </TouchableOpacity>
                         ))}
                       </View>
                     </ScrollView>
 
-                    {activeTab === 'Sijil' ? (
+                    {activeSection === 'Sijil' ? (
                       <CertificatesTab
                         certificates={certificates}
                         isEditing={effectiveEditing}
@@ -287,31 +263,18 @@ export default function EmployeeDetailModal({
                         onDelete={requestDeleteCert}
                       />
                     ) : (
-                      <>
-                        {FIELD_GROUPS[activeTab]?.map((f) => (
-                          <EmployeeField
-                            key={f.key}
-                            field={f}
-                            form={employeeForm}
-                            setForm={setEmployeeForm}
-                            isEditing={effectiveEditing}
-                            activeDatePickerField={activeDatePickerField}
-                            setActiveDatePickerField={setActiveDatePickerField}
-                          />
-                        ))}
-                        {activeTab === 'Pangkat' && (
-                          <PromotionHistoryList promotionHistoryList={promotionHistoryList} />
-                        )}
-                      </>
+                      FIELD_SECTIONS.find((s) => s.title === activeSection)?.fields.map((f) => (
+                        <EmployeeField
+                          key={f.key}
+                          field={f}
+                          form={employeeForm}
+                          setForm={setEmployeeForm}
+                          isEditing={effectiveEditing}
+                          activeDatePickerField={activeDatePickerField}
+                          setActiveDatePickerField={setActiveDatePickerField}
+                        />
+                      ))
                     )}
-
-                    {!effectiveEditing && activeTab !== 'Sijil' && (
-                      <TouchableOpacity onPress={() => setShowFullDetail(false)} style={{ marginTop: 15 }}>
-                        <Text style={{ color: PALETTE.textMutedDark, fontWeight: '600' }}>← Kembali ke ringkasan</Text>
-                      </TouchableOpacity>
-                    )}
-                  </>
-                )}
               </>
             )}
 

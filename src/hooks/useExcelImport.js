@@ -66,7 +66,8 @@ const COLUMN_MATCHERS = [
   { field: 'catatan', patterns: ['CATATAN'] },
 ];
 
-// Colonnes de l'historique Pasukan 1/2/3 — extraites séparément vers angkatan_promotion_history
+// Colonnes de l'historique Pasukan 1/2/3 — désormais des colonnes directes sur
+// angkatan_employees (suffixées _1/_2/_3), plus une table séparée.
 const PASUKAN_MATCHERS = [1, 2, 3].map((n) => ({
   pasukan_number: n,
   tarikh_tamat_watikah: [`TARIKH TAMAT WATIKAH ${n}`],
@@ -77,12 +78,22 @@ const PASUKAN_MATCHERS = [1, 2, 3].map((n) => ({
 
 
 
-const INTEGER_FIELDS = [
+// UMUR et les 3 "Tempoh Baki" sont calculés par formule dans l'Excel — même
+// risque que les champs Watikah : une erreur de formule ("TIDAK BERKAITAN"
+// ou autre texte) doit être préservée plutôt que silencieusement perdue.
+const INTEGER_FIELDS = [];
+
+const TEXT_FALLBACK_INTEGER_FIELDS = [
   'umur', 'tempoh_baki_aktif_kad_hari', 'tempoh_baki_aktif_insuran_hari',
-  'tempoh_baki_caruman_perkeso_hari', 'tempoh_aktif_watikah_4_hari', 'tempoh_aktif_watikah_terkini_hari',
-  'tempoh_aktif_watikah_5_hari', 'tempoh_aktif_watikah_6_hari',
+  'tempoh_baki_caruman_perkeso_hari',
+  'tempoh_aktif_watikah_4_hari', 'tempoh_aktif_watikah_5_hari',
+  'tempoh_aktif_watikah_6_hari', 'tempoh_aktif_watikah_terkini_hari',
 ];
 
+// Ces colonnes contiennent parfois du texte non-date ("TIDAK BERKAITAN",
+// "TIDAK DIKETAHUI") dans l'Excel — on ne les parse plus comme des dates pour
+// ne pas perdre cette information (excelDateToISO renvoyait null dessus).
+// Elles sont désormais stockées telles quelles, comme du texte brut.
 const DATE_FIELDS = [
   'tarikh_terima_pangkat_terkini', 'tarikh_menyertai_apm', 'tarikh_aktif_kad', 'tarikh_tamat_kad',
   'tarikh_tamat_insuran', 'tarikh_tamat_perkeso', 'tarikh_kenaikan_pangkat_lkpl',
@@ -165,6 +176,36 @@ export function useExcelImport() {
       const sheet = workbook.Sheets[workbook.SheetNames[0]];
       const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
 
+      // Cellules fusionnées : seule la cellule en haut à gauche d'une fusion
+      // contient une vraie valeur dans le fichier — toutes les autres cellules
+      // de la fusion sont réellement vides (defval: '' les remplit), même si
+      // Excel les affiche visuellement comme si elles avaient la valeur.
+      // On va chercher la valeur de l'ancre pour toute cellule vide qui fait
+      // partie d'une fusion sans en être l'ancre.
+      const merges = sheet['!merges'] || [];
+      // rows[] de sheet_to_json est indexé relativement à sheet['!ref'], pas
+      // forcément depuis la ligne/colonne 0 absolue — alors que '!merges' utilise
+      // toujours des coordonnées absolues. Sans cet offset, la recherche de
+      // fusion échoue silencieusement dès que le range utilisé ne démarre pas
+      // exactement à A1.
+      const sheetRange = XLSX.utils.decode_range(sheet['!ref'] || 'A1');
+      const getMergedValue = (rowIdx, colIdx) => {
+        rowIdx += sheetRange.s.r;
+        colIdx += sheetRange.s.c;
+        for (const range of merges) {
+          if (
+            rowIdx >= range.s.r && rowIdx <= range.e.r &&
+            colIdx >= range.s.c && colIdx <= range.e.c
+          ) {
+            if (rowIdx === range.s.r && colIdx === range.s.c) return undefined; // c'est déjà l'ancre
+            const anchorAddr = XLSX.utils.encode_cell({ r: range.s.r, c: range.s.c });
+            const anchorCell = sheet[anchorAddr];
+            return anchorCell ? anchorCell.v : undefined;
+          }
+        }
+        return undefined;
+      };
+
       let headerRowIndex = 0;
       let bestMatchCount = -1;
       for (let i = 0; i < Math.min(15, rows.length); i++) {
@@ -175,12 +216,40 @@ export function useExcelImport() {
         }
       }
 
-      const headerRow = rows[headerRowIndex];
+      const rawHeaderRow = rows[headerRowIndex];
+      // Même problème que pour les cellules de données : si l'en-tête d'une
+      // colonne (ex. "CATATAN") est stocké dans une fusion verticale et que la
+      // ligne d'en-tête détectée automatiquement tombe sur la deuxième moitié
+      // de cette fusion (non-ancre), le texte lu est vide — la colonne entière
+      // n'est alors jamais reconnue. On résout donc l'en-tête via les fusions
+      // exactement comme pour les données.
+      const headerRow = rawHeaderRow.map((h, i) => {
+        if (String(h).trim() !== '') return h;
+        const merged = getMergedValue(headerRowIndex, i);
+        return merged !== undefined ? merged : h;
+      });
       // La ligne juste après l'en-tête est un exemple/modèle, pas une vraie
       // donnée — on la saute avant de filtrer les lignes vides.
-      const dataRows = rows.slice(headerRowIndex + 2).filter((r) => r.some((cell) => String(cell).trim() !== ''));
+      // Sécurité : on force chaque ligne à la même longueur que headerRow —
+      // sheet_to_json peut renvoyer une ligne plus courte si la plage interne
+      // de cette ligne s'arrête avant la dernière colonne reconnue.
+      // On garde aussi l'indice de ligne RÉEL de la feuille (rowIndex) pour
+      // pouvoir résoudre les cellules fusionnées plus bas.
+      const firstDataRowIndex = headerRowIndex + 2;
+      const dataRowsWithIndex = rows
+        .slice(firstDataRowIndex)
+        .map((r, i) => {
+          const padded = r.length >= headerRow.length ? r : (() => {
+            const p = r.slice();
+            while (p.length < headerRow.length) p.push('');
+            return p;
+          })();
+          return { rowIndex: firstDataRowIndex + i, cells: padded };
+        })
+        .filter(({ cells }) => cells.some((cell) => String(cell).trim() !== ''));
 
       const columnMap = headerRow.map((h) => matchColumn(h));
+
       // BIL et GAMBAR PROFIL sont volontairement ignorés (numéro de ligne / image,
       // pas des données à importer) — on ne veut pas les signaler comme "non reconnus".
       const IGNORED_SILENTLY = ['BIL', 'GAMBAR PROFIL'];
@@ -190,21 +259,34 @@ export function useExcelImport() {
       });
       setUnmatchedHeaders(unmatched);
 
-      const parsed = dataRows.map((row) => {
+      const parsed = dataRowsWithIndex.map(({ rowIndex, cells }) => {
         const employee = {};
-        const pasukanRows = {};
 
-        row.forEach((cell, i) => {
+        cells.forEach((cell, i) => {
           const match = columnMap[i];
           if (!match) return;
-          const rawValue = String(cell).trim();
+          // Si la cellule est vide, vérifie si elle fait partie d'une fusion —
+          // si oui, récupère la vraie valeur depuis la cellule ancre.
+          const effectiveCell = (cell === '' || cell === null || cell === undefined)
+            ? (getMergedValue(rowIndex, i) ?? cell)
+            : cell;
+          const rawValue = String(effectiveCell).trim();
 
           if (match.type === 'field') {
             if (DATE_FIELDS.includes(match.field)) {
-              employee[match.field] = excelDateToISO(cell);
-            } else if (INTEGER_FIELDS.includes(match.field)) {
+              // On ne convertit que les vraies dates Excel (stockées en interne
+              // comme un nombre de série) ; tout le reste (texte déjà présent
+              // dans la cellule, y compris "TIDAK BERKAITAN"/"TIDAK DIKETAHUI")
+              // est copié tel quel, sans aucune tentative d'interprétation.
+              if (typeof effectiveCell === 'number') {
+                const parsedDate = excelDateToISO(effectiveCell);
+                employee[match.field] = parsedDate !== null ? parsedDate : rawValue;
+              } else {
+                employee[match.field] = rawValue || null;
+              }
+            } else if (TEXT_FALLBACK_INTEGER_FIELDS.includes(match.field)) {
               const num = parseInt(rawValue, 10);
-              employee[match.field] = Number.isFinite(num) ? num : null;
+              employee[match.field] = Number.isFinite(num) ? num : (rawValue || null);
             } else if (match.field === 'status_keaktifan') {
               employee[match.field] = rawValue;
               if (/SENARAI HITAM/i.test(rawValue)) employee.senarai_hitam = true;
@@ -213,23 +295,27 @@ export function useExcelImport() {
             }
           } else if (match.type === 'pasukan') {
             const n = match.pasukan_number;
-            if (!pasukanRows[n]) pasukanRows[n] = { pasukan_number: n };
+            const suffixedField = `${match.field === 'tarikh_tamat_watikah' ? 'tarikh_tamat_watikah'
+              : match.field === 'tarikh_kenaikan_pangkat' ? 'tarikh_kenaikan_pangkat'
+              : match.field === 'no_siri_watikah' ? 'no_siri_watikah'
+              : 'tempoh_aktif_watikah_hari'}_${n}`;
             if (match.field === 'tarikh_tamat_watikah' || match.field === 'tarikh_kenaikan_pangkat') {
-              pasukanRows[n][match.field] = excelDateToISO(cell);
+              if (typeof effectiveCell === 'number') {
+                const parsedDate = excelDateToISO(effectiveCell);
+                employee[suffixedField] = parsedDate !== null ? parsedDate : rawValue;
+              } else {
+                employee[suffixedField] = rawValue || null;
+              }
             } else if (match.field === 'tempoh_aktif_watikah_hari') {
               const num = parseInt(rawValue, 10);
-              pasukanRows[n][match.field] = Number.isFinite(num) ? num : null;
+              employee[suffixedField] = Number.isFinite(num) ? num : (rawValue || null);
             } else {
-              pasukanRows[n][match.field] = rawValue;
+              employee[suffixedField] = rawValue;
             }
           }
         });
 
-        const promotionHistory = Object.values(pasukanRows).filter((p) =>
-          Object.keys(p).some((k) => k !== 'pasukan_number' && p[k])
-        );
-
-        return { employee, promotionHistory };
+        return { employee };
       });
 
       setParsedRows(parsed);

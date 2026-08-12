@@ -142,7 +142,7 @@ export const angkatanStyles = StyleSheet.create({
   paginationCount: { color: PALETTE.textMutedDark, fontSize: 12 },
   employeeModalContainer: {
     backgroundColor: PALETTE.cardLight, borderRadius: 18, overflow: 'hidden', elevation: 5,
-    width: '100%', maxWidth: 640, maxHeight: '90%', borderWidth: 1, borderColor: PALETTE.cardLightBorder,
+    width: '100%', maxWidth: 960, maxHeight: '90%', borderWidth: 1, borderColor: PALETTE.cardLightBorder,
   },
   profileHeader: {
     alignItems: 'center', paddingVertical: 20, paddingHorizontal: 20,

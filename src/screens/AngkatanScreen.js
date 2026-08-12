@@ -9,7 +9,7 @@ import ExcelImportModal from '../components/ExcelImportModal';
 import { useAngkatanEmployees, mapMyaspaLabel, normalizePangkat, isEligibleForPromotion, isEligibleForPegawaiWaranII, isEligibleForPegawaiWaranI, isEligibleForTBP, isEligibleFastTrackStafMuda, isEligibleFastTrackLeftenanMuda, PANGKAT_HIERARCHY } from '../hooks/useAngkatanEmployees';
 import { useAngkatanCommunity, SCHOOL_CATEGORIES, CDA_CATEGORIES } from '../hooks/useAngkatanCommunity';
 import { useEmployeeCertificates } from '../hooks/useEmployeeCertificates';
-import { useEmployeePromotionHistory } from '../hooks/useEmployeePromotionHistory';
+
 // useEmployeePhoto retiré — fonctionnalité photo employé abandonnée
 import { angkatanStyles as styles } from './angkatan/angkatanStyles';
 import { stickyHeaderStyles } from '../styles/stickyHeaderStyles';
@@ -56,7 +56,7 @@ export default function AngkatanScreen({ userRole }) {
   } = useAngkatanEmployees();
   const { communityProgs, saveCommunityItem, deleteCommunityItem, communityUpdatedAt } = useAngkatanCommunity();
   const { certificates, fetchCertificates, saveCertificate, deleteCertificate, openCertificateLink } = useEmployeeCertificates();
-  const { promotionHistoryList, fetchPromotionHistory } = useEmployeePromotionHistory();
+  
   // photo employé retirée
   const excelImportHook = useExcelImport();
   const unit = useUnitStaff('angkatan');
@@ -138,7 +138,7 @@ export default function AngkatanScreen({ userRole }) {
     setEmployeeForm({ ...emptyEmployeeForm(), ...emp });
     setCertOnlyMode(false);
     fetchCertificates(emp.id);
-    fetchPromotionHistory(emp.id);
+    
     setShowEmployeeDetailModal(true);
   };
   const openCertificatesOnly = (emp) => {
@@ -660,7 +660,6 @@ export default function AngkatanScreen({ userRole }) {
         userRole={userRole}
         certOnlyMode={certOnlyMode}
         certificates={certificates}
-        promotionHistoryList={promotionHistoryList}
         onSaveCertificate={handleSaveCertificate}
         onDeleteCertificate={handleDeleteCertificate}
         onOpenCertLink={openCertificateLink}

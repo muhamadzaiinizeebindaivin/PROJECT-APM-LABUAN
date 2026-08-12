@@ -8,48 +8,52 @@ export default function ExcelImportModal({ visible, onClose, importHook, onImpor
   const { parsing, parsedRows, unmatchedHeaders, pickAndParseFile, reset, pickedFile } = importHook;
   const [importing, setImporting] = React.useState(false);
   const [progress, setProgress] = React.useState({ done: 0, total: 0 });
+  const [importPhase, setImportPhase] = React.useState('rows'); // 'rows' | 'file' | 'refresh'
 
   const handleConfirmImport = async () => {
     if (parsedRows.length === 0) return;
     try {
       setImporting(true);
+      setImportPhase('rows');
       setProgress({ done: 0, total: parsedRows.length });
 
-      for (let i = 0; i < parsedRows.length; i++) {
-        const { employee, promotionHistory } = parsedRows[i];
-        if (!employee.ic_no) {
-          setProgress((p) => ({ ...p, done: p.done + 1 }));
-          continue;
-        }
+      // Un seul upsert groupé au lieu d'un aller-retour réseau par employé —
+      // Supabase accepte un tableau de lignes en un seul appel, bien plus
+      // rapide que 500+ requêtes séquentielles.
+      // Postgres refuse d'appliquer ON CONFLICT DO UPDATE deux fois à la même
+      // ligne DANS le même batch — donc si deux lignes Excel partagent le même
+      // ic_no (doublon), tout le batch échoue avec l'erreur 21000. On déduplique
+      // par ic_no en gardant la DERNIÈRE occurrence, exactement comme le faisait
+      // l'ancienne boucle séquentielle (chaque upsert écrasait le précédent).
+      const byIc = new Map();
+      parsedRows
+        .map((r) => r.employee)
+        .filter((e) => !!e.ic_no)
+        .forEach((e) => byIc.set(e.ic_no, e));
+      const employeesToImport = Array.from(byIc.values());
 
-        const { data: upserted, error: empError } = await supabaseSandbox
+      const CHUNK_SIZE = 200;
+      for (let i = 0; i < employeesToImport.length; i += CHUNK_SIZE) {
+        const chunk = employeesToImport.slice(i, i + CHUNK_SIZE);
+        const { error: empError } = await supabaseSandbox
           .from('angkatan_employees')
-          .upsert(employee, { onConflict: 'ic_no' })
-          .select('id')
-          .single();
+          .upsert(chunk, { onConflict: 'ic_no' });
 
         if (empError) throw empError;
 
-        if (promotionHistory.length > 0 && upserted?.id) {
-          await supabaseSandbox
-            .from('angkatan_promotion_history')
-            .delete()
-            .eq('employee_id', upserted.id);
-
-          const rowsToInsert = promotionHistory.map((p) => ({ ...p, employee_id: upserted.id }));
-          const { error: histError } = await supabaseSandbox
-            .from('angkatan_promotion_history')
-            .insert(rowsToInsert);
-          if (histError) throw histError;
-        }
-
-        setProgress((p) => ({ ...p, done: p.done + 1 }));
+        setProgress((p) => ({ ...p, done: Math.min(p.done + chunk.length, parsedRows.length) }));
       }
 
       // Fichier stocké séparément (bucket privé, seul le plus récent est gardé —
       // écrasé à chaque import) — un échec ici n'annule pas l'import des rekod.
+      // onSaveImportMeta (saveSummaryExtra) rafraîchit déjà toute la liste des
+      // employés en interne — on ne rappelle onImportComplete (= le même
+      // fetchEmployees) que si ce chemin n'a pas été emprunté, pour éviter un
+      // double rechargement complet de la table juste avant la fermeture.
+      let alreadyRefreshed = false;
       if (pickedFile) {
         try {
+          setImportPhase('file');
           const fileResponse = await fetch(pickedFile.uri);
           const blob = await fileResponse.blob();
           const { error: uploadError } = await supabaseSandbox.storage
@@ -61,10 +65,12 @@ export default function ExcelImportModal({ visible, onClose, importHook, onImpor
           if (uploadError) {
             console.error('Excel storage upload error:', uploadError);
           } else {
+            setImportPhase('refresh');
             await onSaveImportMeta?.({
               latest_import_filename: pickedFile.name,
               latest_import_at: new Date().toISOString(),
             });
+            alreadyRefreshed = true;
           }
         } catch (uploadErr) {
           console.error('Excel storage upload error:', uploadErr);
@@ -73,7 +79,7 @@ export default function ExcelImportModal({ visible, onClose, importHook, onImpor
 
       Alert.alert('Berjaya', `${parsedRows.length} rekod berjaya diimport.`);
       reset();
-      onImportComplete();
+      if (!alreadyRefreshed) onImportComplete();
       onClose();
     } catch (error) {
       Alert.alert('Ralat Import', `${error.message} (baris ${progress.done + 1})`);
@@ -120,27 +126,35 @@ export default function ExcelImportModal({ visible, onClose, importHook, onImpor
               )}
 
               <Text style={{ color: PALETTE.textMutedDark, fontSize: 12, marginBottom: 10 }}>
-                Pratonton (5 baris pertama):
+                Pratonton (10 baris pertama, semua medan):
               </Text>
-              <ScrollView style={{ maxHeight: 280 }}>
-                {parsedRows.slice(0, 5).map((row, i) => (
-                  <View key={i} style={styles.previewRow}>
-                    <Text style={{ color: PALETTE.textDark, fontWeight: '700' }}>{row.employee.nama || '(nama tiada)'}</Text>
-                    <Text style={{ color: PALETTE.textMutedDark, fontSize: 12 }}>
-                      IC: {row.employee.ic_no || '-'} | Pangkat: {row.employee.pangkat || '-'}
+              <ScrollView style={{ maxHeight: 400 }}>
+                {parsedRows.slice(0, 10).map((row, i) => (
+                  <View key={i} style={[styles.previewRow, { paddingBottom: 14 }]}>
+                    <Text style={{ color: PALETTE.textDark, fontWeight: '800', fontSize: 13, marginBottom: 6 }}>
+                      {row.employee.nama || '(nama tiada)'}
                     </Text>
-                    {row.promotionHistory.length > 0 && (
-                      <Text style={{ color: PALETTE.orange, fontSize: 11, marginTop: 4 }}>
-                        {row.promotionHistory.length} rekod sejarah pasukan
-                      </Text>
-                    )}
+                    {Object.entries(row.employee)
+                      .map(([key, value]) => {
+                        const isEmpty = value === null || value === '' || value === false || value === undefined;
+                        return (
+                          <View key={key} style={{ flexDirection: 'row', paddingVertical: 2 }}>
+                            <Text style={{ color: PALETTE.textMutedDark, fontSize: 11, flex: 1 }}>{key}</Text>
+                            <Text style={{ color: isEmpty ? '#dc2626' : PALETTE.textDark, fontSize: 11, fontWeight: '600', flex: 1, fontStyle: isEmpty ? 'italic' : 'normal' }}>
+                              {isEmpty ? '(kosong)' : String(value)}
+                            </Text>
+                          </View>
+                        );
+                      })}
                   </View>
                 ))}
               </ScrollView>
 
               {importing && (
                 <Text style={{ color: PALETTE.textMutedDark, fontSize: 12, marginTop: 10, textAlign: 'center' }}>
-                  Mengimport {progress.done}/{progress.total}...
+                  {importPhase === 'rows' && `Mengimport ${progress.done}/${progress.total}...`}
+                  {importPhase === 'file' && 'Memuat naik fail Excel...'}
+                  {importPhase === 'refresh' && 'Mengemaskini paparan...'}
                 </Text>
               )}
 

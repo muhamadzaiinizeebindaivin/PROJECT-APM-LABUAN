@@ -243,10 +243,6 @@ export default function SemakStatusModal({ visible, onClose }) {
                     <Text style={{ fontSize: 12, fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.5 }}>Pelantikan</Text>
                   </View>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Text style={{ fontSize: 13, color: '#64748b', fontWeight: '600' }}>Tarikh Lantikan</Text>
-                    <Text style={{ fontSize: 13, color: '#0f172a', fontWeight: '700' }}>{formatDateMY(statusResult.pelantikan?.tarikh_lantikan) || '-'}</Text>
-                  </View>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Text style={{ fontSize: 13, color: '#64748b', fontWeight: '600' }}>Tarikh Menyertai APM</Text>
                     <Text style={{ fontSize: 13, color: '#0f172a', fontWeight: '700' }}>{formatDateMY(statusResult.pelantikan?.tarikh_menyertai_apm) || '-'}</Text>
                   </View>
