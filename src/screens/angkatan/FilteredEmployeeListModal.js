@@ -27,15 +27,19 @@ export default function FilteredEmployeeListModal({
     const doc = new jsPDF({ unit: 'mm', format: 'a4' });
     const pageWidth = doc.internal.pageSize.getWidth();
 
+    doc.setFontSize(9);
+    doc.setTextColor(150);
+    doc.text('ANGKATAN PERTAHANAN AWAM MALAYSIA — WILAYAH PERSEKUTUAN LABUAN', 14, 10);
+
     doc.setFontSize(14);
     doc.setTextColor(20);
-    doc.text(title || 'Senarai Anggota', 14, 14);
+    doc.text(title || 'Senarai Anggota', 14, 18);
 
     doc.setFontSize(8);
     doc.setTextColor(120);
-    doc.text(`Jumlah: ${list.length} anggota — Dijana pada ${new Date().toLocaleString('ms-MY')}`, 14, 19);
+    doc.text(`Jumlah: ${list.length} anggota — Dijana pada ${new Date().toLocaleString('ms-MY')}`, 14, 23);
 
-    let startY = 26;
+    let startY = 30;
 
     list.forEach((e, index) => {
       // Titre "N. Nama" au-dessus de chaque tableau — sert de séparateur entre anggota
