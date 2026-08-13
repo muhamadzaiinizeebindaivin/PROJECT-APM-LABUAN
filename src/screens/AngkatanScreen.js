@@ -112,6 +112,9 @@ export default function AngkatanScreen({ userRole }) {
   const [showEmployeeDetailModal, setShowEmployeeDetailModal] = useState(false);
   const [employeeForm, setEmployeeForm] = useState(emptyEmployeeForm());
   const [certOnlyMode, setCertOnlyMode] = useState(false);
+  // Quand le popup détail est ouvert DEPUIS la liste filtrée (FilteredEmployeeListModal),
+  // on rouvre cette liste à la fermeture du détail au lieu de tout fermer.
+  const [openedFromFilterList, setOpenedFromFilterList] = useState(false);
 
   // Le ScrollView principal (table/cards en arrière-plan) revient en haut tout
   // seul quand le Modal se ferme (comportement du <Modal> de react-native-web,
@@ -121,6 +124,10 @@ export default function AngkatanScreen({ userRole }) {
   const scrollYRef = useRef(0);
   const closeEmployeeDetailModal = () => {
     setShowEmployeeDetailModal(false);
+    if (openedFromFilterList) {
+      setFilterModal((prev) => ({ ...prev, visible: true }));
+      setOpenedFromFilterList(false);
+    }
     // Le <Modal> de react-native-web remet le scroll en haut de façon asynchrone
     // (timing pas garanti par rapport à notre propre callback) — on réapplique
     // la position sur plusieurs frames pendant ~300ms pour gagner la course,
@@ -752,6 +759,7 @@ export default function AngkatanScreen({ userRole }) {
         onClose={() => setFilterModal((prev) => ({ ...prev, visible: false }))}
         onSelectEmployee={(emp) => {
           setFilterModal((prev) => ({ ...prev, visible: false }));
+          setOpenedFromFilterList(true);
           openEmployeeDetail(emp);
         }}
       />

@@ -268,9 +268,22 @@ export function useAngkatanEmployees() {
     // Pyramide
     setPyramidStats(pyramid.map((p) => {
       const keyword = normalizePangkat(p.match_keyword || p.rank);
+      const matched = keyword ? data.filter((e) => normalizePangkat(e.pangkat).includes(keyword)) : [];
+      const statusBreakdown = matched.reduce((acc, e) => {
+        const s = norm(e.status_keaktifan);
+        if (s === 'AKTIF') acc.aktif += 1;
+        else if (s === 'SIMPANAN') acc.simpanan += 1;
+        else if (s === 'SENARAI HITAM') acc.senaraiHitam += 1;
+        else if (s === 'BERSARA') acc.bersara += 1;
+        else if (s === 'MENINGGAL') acc.meninggal += 1;
+        else acc.lainLain += 1; // tout statut non reconnu — évite un écart silencieux avec le total
+        return acc;
+      }, { aktif: 0, simpanan: 0, senaraiHitam: 0, bersara: 0, meninggal: 0, lainLain: 0 });
+
       return {
         ...p,
-        total: keyword ? data.filter((e) => normalizePangkat(e.pangkat).includes(keyword)).length : 0,
+        total: matched.length,
+        statusBreakdown,
       };
     }));
 

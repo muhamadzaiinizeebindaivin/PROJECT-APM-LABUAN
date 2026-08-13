@@ -29,10 +29,6 @@ export default function PameranTable({ pameranList, isEditing, savePameranItem, 
     setModalVisible(true);
   };
   const handleSave = async () => {
-    if (!pameranForm.agensi.trim() || !pameranForm.tajuk.trim() || !String(pameranForm.bilangan_pengunjung).trim()) {
-      setFormError('Agensi, tajuk dan bilangan pengunjung tidak boleh kosong.');
-      return;
-    }
     setFormError(null);
     setIsSaving(true);
     const ok = await savePameranItem(pameranForm);
