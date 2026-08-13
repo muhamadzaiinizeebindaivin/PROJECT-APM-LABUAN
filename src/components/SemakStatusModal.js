@@ -83,6 +83,11 @@ export default function SemakStatusModal({ visible, onClose }) {
     setStatusResult(null);
   };
 
+  const handleCloseResult = () => {
+    setStatusError('');
+    setStatusResult(null);
+  };
+
   const getStatusBadgeStyle = (value) => {
     if (!value) return { bg: '#f1f5f9', color: '#64748b' };
     const v = value.toLowerCase();
@@ -96,14 +101,14 @@ export default function SemakStatusModal({ visible, onClose }) {
       visible={visible}
       transparent
       animationType="fade"
-      onRequestClose={closeStatusModal}
+      onRequestClose={statusResult ? handleCloseResult : closeStatusModal}
       onShow={() => setTimeout(() => icBoxRefs.current[0]?.focus(), 50)}
     >
       <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
         <View style={{ width: '100%', maxWidth: 640, maxHeight: '85%', borderRadius: 24, overflow: 'hidden', backgroundColor: '#fff' }}>
           <View style={{ backgroundColor: '#0c0c0e', padding: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
             <Text style={{ fontSize: 17, fontWeight: '900', color: '#fff' }}>Semak Status</Text>
-            <TouchableOpacity onPress={closeStatusModal}>
+            <TouchableOpacity onPress={statusResult ? handleCloseResult : closeStatusModal}>
               <X size={20} color="#fff" />
             </TouchableOpacity>
           </View>
