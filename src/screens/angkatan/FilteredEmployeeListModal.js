@@ -1,8 +1,12 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, Pressable, ScrollView, Modal, Image } from 'react-native';
-import { X, User, ChevronLeft, ChevronRight, Users } from 'lucide-react-native';
+import { View, Text, TouchableOpacity, Pressable, ScrollView, Modal, Image, Platform } from 'react-native';
+import { X, User, ChevronLeft, ChevronRight, Users, Download } from 'lucide-react-native';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { PALETTE } from '../../constants/palette';
 import { angkatanStyles as styles } from './angkatanStyles';
+import HoverTip from '../../components/HoverTip';
+import { FIELD_SECTIONS } from './employeeFieldGroups';
 
 const STATUS_STYLES = {
   AKTIF: { bg: 'rgba(22,163,74,0.12)', color: '#16a34a' },
@@ -14,8 +18,58 @@ const STATUS_STYLES = {
 const getStatusStyle = (status) => STATUS_STYLES[String(status || '').trim().toUpperCase()] || { bg: PALETTE.surface, color: PALETTE.textMutedDark };
 
 export default function FilteredEmployeeListModal({
-  visible, title, totalCount, employees, page, setPage, totalPages, onClose, onSelectEmployee,
+  visible, title, totalCount, employees, allEmployees, page, setPage, totalPages, onClose, onSelectEmployee,
 }) {
+  const handleDownloadPdf = () => {
+    const list = allEmployees || employees;
+    const maklumatPeribadiFields = FIELD_SECTIONS.find((s) => s.title === 'Maklumat Peribadi')?.fields || [];
+
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+    const pageWidth = doc.internal.pageSize.getWidth();
+
+    doc.setFontSize(14);
+    doc.setTextColor(20);
+    doc.text(title || 'Senarai Anggota', 14, 14);
+
+    doc.setFontSize(8);
+    doc.setTextColor(120);
+    doc.text(`Jumlah: ${list.length} anggota — Dijana pada ${new Date().toLocaleString('ms-MY')}`, 14, 19);
+
+    let startY = 26;
+
+    list.forEach((e, index) => {
+      // Titre "N. Nama" au-dessus de chaque tableau — sert de séparateur entre anggota
+      doc.setFontSize(11);
+      doc.setTextColor(249, 115, 22);
+      doc.setFont(undefined, 'bold');
+      doc.text(`${index + 1}. ${e.nama || '-'}`, 14, startY);
+      doc.setFont(undefined, 'normal');
+
+      autoTable(doc, {
+        startY: startY + 3,
+        head: [['Maklumat', 'Butiran']],
+        body: maklumatPeribadiFields.map((f) => [
+          f.label,
+          e[f.key] != null && e[f.key] !== '' ? String(e[f.key]) : '-',
+        ]),
+        showHead: 'firstPage',
+        styles: { fontSize: 8, cellPadding: 2.5, overflow: 'linebreak', valign: 'top' },
+        headStyles: { fillColor: [249, 115, 22], textColor: [255, 255, 255], fontStyle: 'bold' },
+        alternateRowStyles: { fillColor: [250, 250, 250] },
+        columnStyles: {
+          0: { cellWidth: 55, fontStyle: 'bold', textColor: [90, 90, 90] },
+          1: { cellWidth: pageWidth - 55 - 28 },
+        },
+        margin: { left: 14, right: 14 },
+      });
+
+      startY = doc.lastAutoTable.finalY + 12;
+    });
+
+    const safeFileName = (title || 'senarai_anggota').replace(/[^a-z0-9]+/gi, '_').toLowerCase();
+    doc.save(`${safeFileName}.pdf`);
+  };
+
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.modalOverlay}>
@@ -27,12 +81,24 @@ export default function FilteredEmployeeListModal({
                 {totalCount ?? employees.length} anggota
               </Text>
             </View>
-            <TouchableOpacity
-              onPress={onClose}
-              style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: PALETTE.surface, alignItems: 'center', justifyContent: 'center' }}
-            >
-              <X size={18} color={PALETTE.textMutedDark} />
-            </TouchableOpacity>
+            {Platform.OS === 'web' && (totalCount ?? employees.length) > 0 && (
+              <HoverTip label="Muat turun senarai sebagai PDF">
+                <TouchableOpacity
+                  onPress={handleDownloadPdf}
+                  style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: PALETTE.softOrangeBg, alignItems: 'center', justifyContent: 'center', marginRight: 8 }}
+                >
+                  <Download size={16} color={PALETTE.orange} />
+                </TouchableOpacity>
+              </HoverTip>
+            )}
+            <HoverTip label="Tutup">
+              <TouchableOpacity
+                onPress={onClose}
+                style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: PALETTE.surface, alignItems: 'center', justifyContent: 'center' }}
+              >
+                <X size={18} color={PALETTE.textMutedDark} />
+              </TouchableOpacity>
+            </HoverTip>
           </View>
 
           {employees.length === 0 ? (

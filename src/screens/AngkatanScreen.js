@@ -753,6 +753,7 @@ export default function AngkatanScreen({ userRole }) {
         title={filterModal.title}
         totalCount={filterModal.list.length}
         employees={filterPageItems}
+        allEmployees={filterModal.list}
         page={filterModal.page}
         setPage={(updater) => setFilterModal((prev) => ({ ...prev, page: typeof updater === 'function' ? updater(prev.page) : updater }))}
         totalPages={filterTotalPages}
