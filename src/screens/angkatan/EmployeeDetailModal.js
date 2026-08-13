@@ -238,14 +238,11 @@ export default function EmployeeDetailModal({
                             style={[
                               styles.tabBtn,
                               { alignItems: 'center' },
-                              isMobile ? styles.tabBtnMobile : { flex: 1 },
+                              isMobile ? { paddingHorizontal: 14, paddingVertical: 8 } : { flex: 1 },
                               activeSection === title && styles.tabBtnActive,
                             ]}
                           >
-                            <Text
-                              style={[styles.tabBtnText, activeSection === title && styles.tabBtnTextActive]}
-                              numberOfLines={1}
-                            >
+                            <Text style={[styles.tabBtnText, activeSection === title && styles.tabBtnTextActive]}>
                               {title}
                             </Text>
                           </TouchableOpacity>
