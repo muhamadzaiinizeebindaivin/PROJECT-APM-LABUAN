@@ -385,7 +385,7 @@ export default function RanksTable({ranks, isEditing, userRole, onAdd, onEdit, o
                 title="Leftenan Muda"
                 lanes={[
                   { label: 'Normal (dari Staf Tinggi)', years: '3 Tahun', course: 'KBP', academicNote: 'Tiada Syarat Akademik', accent: PALETTE.blue },
-                  { label: 'Fast-Track (dari Prebet)', years: '3 Tahun', course: 'KBP', academicNote: 'Ijazah Sarjana Muda+', accent: PALETTE.orange },
+                  { label: 'Fast-Track', years: '3 Tahun', course: 'KBP', academicNote: 'Ijazah Sarjana Muda+', accent: PALETTE.orange },
                 ]}
               />
 
@@ -398,7 +398,7 @@ export default function RanksTable({ranks, isEditing, userRole, onAdd, onEdit, o
                 title="Staf Muda"
                 lanes={[
                   { label: 'Normal (dari Sarjan)', years: '3 Tahun', course: 'KBP', academicNote: 'Tiada Syarat Akademik', accent: PALETTE.blue },
-                  { label: 'Fast-Track (dari Prebet)', years: '3 Tahun', course: 'KBP', academicNote: 'Diploma+', accent: PALETTE.orange },
+                  { label: 'Fast-Track', years: '3 Tahun', course: 'KBP', academicNote: 'Diploma+', accent: PALETTE.orange },
                 ]}
               />
 
