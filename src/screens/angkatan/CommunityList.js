@@ -240,69 +240,156 @@ export default function CommunityList({
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
             <View style={styles.modalHeader}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                <View style={[commStyles.viewCategoryBadge, { backgroundColor: CATEGORY_COLORS[viewingProg?.category] || PALETTE.orange }]}>
-                  <Text style={commStyles.viewCategoryBadgeText}>{viewingProg?.category}</Text>
-                </View>
-                <Text style={styles.modalTitle}>{viewingProg?.tempat}</Text>
-              </View>
+              <Text style={styles.modalTitle}>Butiran Program Komuniti</Text>
               <TouchableOpacity onPress={() => setViewVisible(false)}>
                 <X size={22} color={PALETTE.textMutedDark} />
               </TouchableOpacity>
             </View>
-            <View style={styles.modalBody}>
+            <ScrollView style={{ maxHeight: 460 }} contentContainerStyle={styles.modalBody}>
+              <Text style={styles.inputLabel}>Kategori</Text>
+              <View style={{ marginBottom: 16, alignItems: 'flex-start' }}>
+                <View
+                  style={{
+                    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999, borderWidth: 1,
+                    backgroundColor: CATEGORY_COLORS[viewingProg?.category] || PALETTE.orange,
+                    borderColor: CATEGORY_COLORS[viewingProg?.category] || PALETTE.orange,
+                  }}
+                >
+                  <Text style={{ fontSize: 12, fontWeight: '800', color: '#fff' }}>
+                    {viewingProg?.category}
+                  </Text>
+                </View>
+              </View>
+
               {SCHOOL_CATEGORIES.includes(viewingProg?.category) ? (
                 <>
+                  <Text style={styles.inputLabel}>Nama Sekolah</Text>
+                  <View style={[styles.modalInput, { marginBottom: 16, justifyContent: 'center' }]}>
+                    <Text style={{ fontSize: 14, color: PALETTE.textDark }}>{viewingProg?.nama_sekolah || viewingProg?.tempat || '-'}</Text>
+                  </View>
+
                   <Text style={styles.inputLabel}>Nombor Pendaftaran</Text>
-                  <Text style={commStyles.viewDetail}>{viewingProg?.no_pendaftaran || '-'}</Text>
-                  <Text style={[styles.inputLabel, { marginTop: 12 }]}>Tarikh Penubuhan</Text>
-                  <Text style={commStyles.viewDetail}>{viewingProg?.tarikh_penubuhan || '-'}</Text>
-                  <Text style={[styles.inputLabel, { marginTop: 12 }]}>Jumlah Lelaki / Perempuan</Text>
-                  <Text style={commStyles.viewDetail}>
-                    {viewingProg?.jumlah_lelaki ?? 0} / {viewingProg?.jumlah_perempuan ?? 0}
-                    {' '}(Jumlah: {(parseInt(viewingProg?.jumlah_lelaki, 10) || 0) + (parseInt(viewingProg?.jumlah_perempuan, 10) || 0)})
-                  </Text>
-                  <Text style={[styles.inputLabel, { marginTop: 12 }]}>Pecahan Bangsa — Lelaki</Text>
-                  <Text style={commStyles.viewDetail}>
-                    Melayu: {viewingProg?.lelaki_melayu ?? 0} · Cina: {viewingProg?.lelaki_cina ?? 0} · India: {viewingProg?.lelaki_india ?? 0} · Lain-lain: {viewingProg?.lelaki_lain ?? 0}
-                  </Text>
-                  <Text style={[styles.inputLabel, { marginTop: 8 }]}>Pecahan Bangsa — Perempuan</Text>
-                  <Text style={commStyles.viewDetail}>
-                    Melayu: {viewingProg?.perempuan_melayu ?? 0} · Cina: {viewingProg?.perempuan_cina ?? 0} · India: {viewingProg?.perempuan_india ?? 0} · Lain-lain: {viewingProg?.perempuan_lain ?? 0}
-                  </Text>
+                  <View style={[styles.modalInput, { marginBottom: 16, justifyContent: 'center' }]}>
+                    <Text style={{ fontSize: 14, color: PALETTE.textDark }}>{viewingProg?.no_pendaftaran || '-'}</Text>
+                  </View>
+
+                  <Text style={styles.inputLabel}>Tarikh Penubuhan</Text>
+                  <View style={[styles.modalInput, { marginBottom: 16, justifyContent: 'center' }]}>
+                    <Text style={{ fontSize: 14, color: PALETTE.textDark }}>{viewingProg?.tarikh_penubuhan || '-'}</Text>
+                  </View>
+
+                  <Text style={styles.inputLabel}>Jumlah Lelaki / Perempuan</Text>
+                  <View style={[styles.modalInput, { marginBottom: 16, justifyContent: 'center' }]}>
+                    <Text style={{ fontSize: 14, color: PALETTE.textDark }}>
+                      {viewingProg?.jumlah_lelaki ?? 0} / {viewingProg?.jumlah_perempuan ?? 0}
+                      {' '}(Jumlah: {(parseInt(viewingProg?.jumlah_lelaki, 10) || 0) + (parseInt(viewingProg?.jumlah_perempuan, 10) || 0)})
+                    </Text>
+                  </View>
+
+                  {[
+                    { gender: 'lelaki', label: 'Lelaki', tint: '#eff6ff', border: '#bfdbfe', accent: '#2563eb' },
+                    { gender: 'perempuan', label: 'Perempuan', tint: '#fdf2f8', border: '#fbcfe8', accent: '#db2777' },
+                  ].map(({ gender, label, tint, border, accent }) => {
+                    const total = ['melayu', 'cina', 'india', 'lain'].reduce(
+                      (sum, k) => sum + (parseInt(viewingProg?.[`${gender}_${k}`], 10) || 0), 0
+                    );
+                    return (
+                      <View
+                        key={gender}
+                        style={{
+                          backgroundColor: tint, borderWidth: 1.5, borderColor: border,
+                          borderRadius: 14, padding: 14, marginBottom: 16,
+                        }}
+                      >
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                            <Users size={15} color={accent} />
+                            <Text style={{ fontSize: 14, fontWeight: '800', color: accent }}>{label}</Text>
+                          </View>
+                          <View style={{ backgroundColor: '#fff', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1, borderColor: border }}>
+                            <Text style={{ fontSize: 12, fontWeight: '800', color: accent }}>Jumlah: {total}</Text>
+                          </View>
+                        </View>
+                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+                          {[['melayu', 'Melayu'], ['cina', 'Cina'], ['india', 'India'], ['lain', 'Lain-lain']].map(([key, raceLabel]) => (
+                            <View key={key} style={{ width: '47%' }}>
+                              <Text style={{ fontSize: 11, fontWeight: '600', color: PALETTE.textMutedDark, marginBottom: 4 }}>{raceLabel}</Text>
+                              <View style={[styles.modalInput, { justifyContent: 'center' }]}>
+                                <Text style={{ fontSize: 13, color: PALETTE.textDark }}>{viewingProg?.[`${gender}_${key}`] ?? 0}</Text>
+                              </View>
+                            </View>
+                          ))}
+                        </View>
+                      </View>
+                    );
+                  })}
+
                   {!!viewingProg?.detail && (
                     <>
-                      <Text style={[styles.inputLabel, { marginTop: 12 }]}>Keterangan</Text>
-                      <Text style={commStyles.viewDetail}>{viewingProg?.detail}</Text>
+                      <Text style={styles.inputLabel}>Keterangan</Text>
+                      <View style={[styles.modalInput, { minHeight: 80, marginBottom: 16 }]}>
+                        <Text style={{ fontSize: 14, color: PALETTE.textDark }}>{viewingProg?.detail}</Text>
+                      </View>
                     </>
                   )}
                 </>
               ) : CDA_CATEGORIES.includes(viewingProg?.category) ? (
                 <>
                   <Text style={styles.inputLabel}>Kod CDA</Text>
-                  <Text style={commStyles.viewDetail}>{viewingProg?.kod_cda || '-'}</Text>
-                  <Text style={[styles.inputLabel, { marginTop: 12 }]}>Nombor Pendaftaran</Text>
-                  <Text style={commStyles.viewDetail}>{viewingProg?.no_pendaftaran || '-'}</Text>
-                  <Text style={[styles.inputLabel, { marginTop: 12 }]}>Nama Organisasi</Text>
-                  <Text style={commStyles.viewDetail}>{viewingProg?.nama_organisasi || '-'}</Text>
-                  <Text style={[styles.inputLabel, { marginTop: 12 }]}>Tempoh Sah Penubuhan</Text>
-                  <Text style={commStyles.viewDetail}>{viewingProg?.tempoh_sah_penubuhan || '-'}</Text>
-                  <Text style={[styles.inputLabel, { marginTop: 12 }]}>Tarikh Berdaftar</Text>
-                  <Text style={commStyles.viewDetail}>{viewingProg?.tarikh_berdaftar || '-'}</Text>
+                  <View style={{ marginBottom: 16, alignItems: 'flex-start' }}>
+                    <View style={[styles.pickerChip, styles.pickerChipActive]}>
+                      <Text style={[styles.pickerChipText, styles.pickerChipTextActive]}>{viewingProg?.kod_cda || '-'}</Text>
+                    </View>
+                  </View>
+
+                  <Text style={styles.inputLabel}>Nombor Pendaftaran</Text>
+                  <View style={[styles.modalInput, { marginBottom: 16, justifyContent: 'center' }]}>
+                    <Text style={{ fontSize: 14, color: PALETTE.textDark }}>{viewingProg?.no_pendaftaran || '-'}</Text>
+                  </View>
+
+                  <Text style={styles.inputLabel}>Nama Pasukan</Text>
+                  <View style={[styles.modalInput, { marginBottom: 16, justifyContent: 'center' }]}>
+                    <Text style={{ fontSize: 14, color: PALETTE.textDark }}>{viewingProg?.nama_pasukan || viewingProg?.tempat || '-'}</Text>
+                  </View>
+
+                  <Text style={styles.inputLabel}>Nama Organisasi</Text>
+                  <View style={[styles.modalInput, { marginBottom: 16, justifyContent: 'center' }]}>
+                    <Text style={{ fontSize: 14, color: PALETTE.textDark }}>{viewingProg?.nama_organisasi || '-'}</Text>
+                  </View>
+
+                  <Text style={styles.inputLabel}>Tempoh Sah Penubuhan</Text>
+                  <View style={[styles.modalInput, { marginBottom: 16, justifyContent: 'center' }]}>
+                    <Text style={{ fontSize: 14, color: PALETTE.textDark }}>{viewingProg?.tempoh_sah_penubuhan || '-'}</Text>
+                  </View>
+
+                  <Text style={styles.inputLabel}>Tarikh Berdaftar</Text>
+                  <View style={[styles.modalInput, { marginBottom: 16, justifyContent: 'center' }]}>
+                    <Text style={{ fontSize: 14, color: PALETTE.textDark }}>{viewingProg?.tarikh_berdaftar || '-'}</Text>
+                  </View>
+
                   {!!viewingProg?.detail && (
                     <>
-                      <Text style={[styles.inputLabel, { marginTop: 12 }]}>Keterangan</Text>
-                      <Text style={commStyles.viewDetail}>{viewingProg?.detail}</Text>
+                      <Text style={styles.inputLabel}>Keterangan</Text>
+                      <View style={[styles.modalInput, { minHeight: 80, marginBottom: 16 }]}>
+                        <Text style={{ fontSize: 14, color: PALETTE.textDark }}>{viewingProg?.detail}</Text>
+                      </View>
                     </>
                   )}
                 </>
               ) : (
                 <>
+                  <Text style={styles.inputLabel}>Tempat</Text>
+                  <View style={[styles.modalInput, { marginBottom: 16, justifyContent: 'center' }]}>
+                    <Text style={{ fontSize: 14, color: PALETTE.textDark }}>{viewingProg?.tempat || '-'}</Text>
+                  </View>
+
                   <Text style={styles.inputLabel}>Keterangan</Text>
-                  <Text style={commStyles.viewDetail}>{viewingProg?.detail}</Text>
+                  <View style={[styles.modalInput, { minHeight: 80, marginBottom: 16 }]}>
+                    <Text style={{ fontSize: 14, color: PALETTE.textDark }}>{viewingProg?.detail}</Text>
+                  </View>
                 </>
               )}
-            </View>
+            </ScrollView>
           </View>
         </View>
       </Modal>
