@@ -17,29 +17,97 @@ const STATUS_STYLES = {
 };
 const getStatusStyle = (status) => STATUS_STYLES[String(status || '').trim().toUpperCase()] || { bg: PALETTE.surface, color: PALETTE.textMutedDark };
 
+const LOGO_URL = 'https://kceeewyadcskivtmilyf.supabase.co/storage/v1/object/public/logo/apm_labuan.png';
+
+// Convertit l'image du logo (URL publique) en base64 — nécessaire pour
+// jsPDF.addImage, qui n'accepte pas une URL distante directement.
+const loadImageAsBase64 = (url) =>
+  fetch(url)
+    .then((res) => res.blob())
+    .then((blob) => new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    }));
+
+// Récupère les dimensions naturelles de l'image (base64) pour l'insérer dans
+// le PDF sans la déformer — jsPDF.addImage étire l'image si on force une
+// largeur/hauteur ne respectant pas son ratio d'origine.
+const getImageDimensions = (base64) =>
+  new Promise((resolve, reject) => {
+    const img = new window.Image();
+    img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
+    img.onerror = reject;
+    img.src = base64;
+  });
+
 export default function FilteredEmployeeListModal({
   visible, title, totalCount, employees, allEmployees, page, setPage, totalPages, onClose, onSelectEmployee,
 }) {
-  const handleDownloadPdf = () => {
+  const handleDownloadPdf = async () => {
     const list = allEmployees || employees;
     const maklumatPeribadiFields = FIELD_SECTIONS.find((s) => s.title === 'Maklumat Peribadi')?.fields || [];
 
     const doc = new jsPDF({ unit: 'mm', format: 'a4' });
     const pageWidth = doc.internal.pageSize.getWidth();
 
+    // Le logo échoue silencieusement (réseau, format non reconnu, etc.) — le
+    // PDF continue de se générer sans lui plutôt que de bloquer l'utilisateur.
+    let logoBase64 = null;
+    let logoDrawWidth = 18;
+    let logoDrawHeight = 18;
+    try {
+      logoBase64 = await loadImageAsBase64(LOGO_URL);
+      const { width: natW, height: natH } = await getImageDimensions(logoBase64);
+      // Réduit à l'échelle en respectant le ratio d'origine, dans une boîte max 48x48mm.
+      const maxBox = 48;
+      const scale = Math.min(maxBox / natW, maxBox / natH);
+      logoDrawWidth = natW * scale;
+      logoDrawHeight = natH * scale;
+    } catch (err) {
+      console.warn('Gagal memuatkan logo untuk PDF:', err);
+      logoBase64 = null;
+    }
+
+    const pageCenterX = pageWidth / 2;
+    let y = 14;
+
+    // 1. Logo — centré horizontalement
+    if (logoBase64) {
+      doc.addImage(logoBase64, 'PNG', pageCenterX - logoDrawWidth / 2, y, logoDrawWidth, logoDrawHeight);
+      y += logoDrawHeight + 6;
+    }
+
+    // 2. Nama APM — petit, gras, majuscules, gris moyen (registre "en-tête officiel")
+    doc.setFont(undefined, 'bold');
     doc.setFontSize(9);
-    doc.setTextColor(150);
-    doc.text('ANGKATAN PERTAHANAN AWAM MALAYSIA — WILAYAH PERSEKUTUAN LABUAN', 14, 10);
+    doc.setTextColor(110, 110, 110);
+    doc.text('ANGKATAN PERTAHANAN AWAM MALAYSIA — WILAYAH PERSEKUTUAN LABUAN', pageCenterX, y, { align: 'center' });
+    y += 8;
 
-    doc.setFontSize(14);
-    doc.setTextColor(20);
-    doc.text(title || 'Senarai Anggota', 14, 18);
+    // 3. Tajuk — le plus grand, gras, couleur de marque
+    doc.setFont(undefined, 'bold');
+    doc.setFontSize(12);
+    doc.setTextColor(234, 88, 12); // PALETTE.orange
+    doc.text(title || 'Senarai Anggota', pageCenterX, y, { align: 'center' });
+    y += 6;
 
-    doc.setFontSize(8);
-    doc.setTextColor(120);
-    doc.text(`Jumlah: ${list.length} anggota — Dijana pada ${new Date().toLocaleString('ms-MY')}`, 14, 23);
+    // 4. Jumlah / tarikh dijana — italique, discret
+    doc.setFont(undefined, 'italic');
+    doc.setFontSize(9);
+    doc.setTextColor(130, 130, 130);
+    doc.text(`Jumlah: ${list.length} anggota — Dijana pada ${new Date().toLocaleString('ms-MY')}`, pageCenterX, y, { align: 'center' });
+    doc.setFont(undefined, 'normal');
+    y += 6;
 
-    let startY = 30;
+    // Ligne de séparation sous l'en-tête — même largeur que le tableau des
+    // anggota (margin: 14mm de chaque côté, identique à autoTable plus bas)
+    doc.setDrawColor(234, 88, 12);
+    doc.setLineWidth(0.6);
+    doc.line(14, y, pageWidth - 14, y);
+
+    let startY = y + 8;
 
     list.forEach((e, index) => {
       // Titre "N. Nama" au-dessus de chaque tableau — sert de séparateur entre anggota
@@ -69,6 +137,18 @@ export default function FilteredEmployeeListModal({
 
       startY = doc.lastAutoTable.finalY + 12;
     });
+
+    // Numérotation des pages — ajoutée une fois tout le contenu généré, car le
+    // nombre total de pages n'est connu qu'après (dépend du nombre d'anggota).
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const totalPages = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
+      doc.setFont(undefined, 'normal');
+      doc.setFontSize(8);
+      doc.setTextColor(150);
+      doc.text(`Halaman ${i} / ${totalPages}`, pageWidth / 2, pageHeight - 8, { align: 'center' });
+    }
 
     const safeFileName = (title || 'senarai_anggota').replace(/[^a-z0-9]+/gi, '_').toLowerCase();
     doc.save(`${safeFileName}.pdf`);
