@@ -3,13 +3,16 @@ import { View, Text, TouchableOpacity, ScrollView, Modal, ActivityIndicator, Ale
 import * as DocumentPicker from 'expo-document-picker';
 import { ListFilter, Plus, Pencil, Trash2, HelpCircle, X, FileText, Upload, Maximize2 } from 'lucide-react-native';
 import { PALETTE } from '../../constants/palette';
+import { RANK_PROMOTION_RULES } from '../../hooks/useAngkatanEmployees';
 import { angkatanStyles as styles } from './angkatanStyles';
 import { RANKS_PDF_VIEWER_SRC } from './ranksPdfViewerTemplate';
 
-const HEADERS = ['PERINGKAT', 'LAYAK UBKP', 'KBP', 'KBP WARAN', 'PTB', 'AKTIF', 'SIMPANAN', 'JUMLAH', 'LIHAT SENARAI PENUH'];
+const HEADERS = ['PERINGKAT', 'LAYAK UBKP', 'KBP', 'KBP WARAN', 'PTB', 'AKTIF', 'SIMPANAN', 'LIHAT SENARAI PENUH'];
 const NON_PROMOTABLE_RANKS = ['Prebet'];
-const SPLIT_KENAIKAN_RANKS = { 'Lans Koperal': ['normal', 'tbp'], 'Staf Muda': ['normal', 'fastTrack'], 'Leftenan Muda': ['normal', 'fastTrack'] };
-const SPLIT_LABELS = { normal: 'Normal', tbp: 'TBP', fastTrack: 'Fast-Track' };
+const EXTRA_ROUTE_LABELS = { tbp: 'TBP', fastTrack: 'Fast-Track' };
+// Pegawai Waran I/II ne sont pas dans RANK_PROMOTION_RULES (règles dédiées,
+// hors chaîne de rangs standard) — leur nom de cours est fourni ici séparément.
+const COURSE_LABEL_OVERRIDES = { 'Pegawai Waran I': 'KBP Waran', 'Pegawai Waran II': 'KBP Waran' };
 
 export default function RanksTable({
   ranks, isEditing, userRole, onAdd, onEdit, onDelete, onOpenRank, onOpenPromotion,
@@ -150,27 +153,47 @@ export default function RanksTable({
               <Text style={[styles.tableCell, styles.tableCellRank]}>{item.rank}</Text>
               {NON_PROMOTABLE_RANKS.includes(item.rank) ? (
                 <Text style={styles.tableCell}>-</Text>
-              ) : SPLIT_KENAIKAN_RANKS[item.rank] ? (
+              ) : (
                 <View style={[styles.tableCell, { gap: 2 }]}>
-                  {SPLIT_KENAIKAN_RANKS[item.rank].map((key) => (
-                    <TouchableOpacity key={key} onPress={() => onOpenPromotion(item.rank, key)}>
+                  <TouchableOpacity onPress={() => onOpenPromotion(item.rank, 'eligible')}>
+                    <Text style={{ color: '#16a34a', fontWeight: '800', textDecorationLine: 'underline', textAlign: 'center', fontSize: 11 }}>
+                      Boleh Naik: {item.kenaikan?.eligible ?? 0}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => onOpenPromotion(item.rank, 'needsCourse')}>
+                    <Text style={{ color: '#dc2626', fontWeight: '800', textDecorationLine: 'underline', textAlign: 'center', fontSize: 11 }}>
+                      Perlu Kursus ({RANK_PROMOTION_RULES[item.rank]?.course || COURSE_LABEL_OVERRIDES[item.rank] || '-'}): {item.kenaikan?.needsCourse ?? 0}
+                    </Text>
+                  </TouchableOpacity>
+                  {item.kenaikan?.tbp !== undefined && (
+                    <TouchableOpacity onPress={() => onOpenPromotion(item.rank, 'tbp')}>
                       <Text style={{ color: PALETTE.orange, fontWeight: '800', textDecorationLine: 'underline', textAlign: 'center', fontSize: 11 }}>
-                        {SPLIT_LABELS[key]}: {item.kenaikan?.[key] ?? 0}
+                        {EXTRA_ROUTE_LABELS.tbp}: {item.kenaikan.tbp}
                       </Text>
                     </TouchableOpacity>
-                  ))}
+                  )}
+                  {item.kenaikan?.fastTrack !== undefined && (
+                    <>
+                      <TouchableOpacity onPress={() => onOpenPromotion(item.rank, 'fastTrackEligible')}>
+                        <Text style={{ color: '#16a34a', fontWeight: '800', textDecorationLine: 'underline', textAlign: 'center', fontSize: 11 }}>
+                          {EXTRA_ROUTE_LABELS.fastTrack} — Boleh Naik: {item.kenaikan.fastTrack.eligible}
+                        </Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={() => onOpenPromotion(item.rank, 'fastTrackNeedsCourse')}>
+                        <Text style={{ color: '#dc2626', fontWeight: '800', textDecorationLine: 'underline', textAlign: 'center', fontSize: 11 }}>
+                          {EXTRA_ROUTE_LABELS.fastTrack} — Perlu Kursus (KBP): {item.kenaikan.fastTrack.needsCourse}
+                        </Text>
+                      </TouchableOpacity>
+                    </>
+                  )}
                 </View>
-              ) : (
-                <TouchableOpacity style={styles.tableCell} onPress={() => onOpenPromotion(item.rank)}>
-                  <Text style={{ color: PALETTE.orange, fontWeight: '800', textDecorationLine: 'underline', textAlign: 'center' }}>{item.kenaikan}</Text>
-                </TouchableOpacity>
               )}
               <Text style={styles.tableCell}>{item.kbp}</Text>
               <Text style={styles.tableCell}>{item.kbp_waran}</Text>
               <Text style={styles.tableCell}>{item.ptb}</Text>
               <Text style={[styles.tableCell, { color: PALETTE.blue, fontWeight: '800' }]}>{item.aktif}</Text>
               <Text style={[styles.tableCell, { color: PALETTE.orange, fontWeight: '800' }]}>{item.simpanan}</Text>
-              <Text style={[styles.tableCell, { fontWeight: '800', color: PALETTE.textDark }]}>{item.jumlah}</Text>
+              
               <TouchableOpacity style={styles.tableCell} onPress={() => onOpenRank(item.rank)}>
                 <Text style={{ color: PALETTE.orange, fontWeight: '800', textDecorationLine: 'underline', textAlign: 'center' }}>Lihat</Text>
               </TouchableOpacity>
@@ -297,13 +320,15 @@ export default function RanksTable({
               ) : (
                 <>
               <Text style={{ fontSize: 16, color: PALETTE.textMutedDark, lineHeight: 24 }}>
-                Bilangan ini menunjukkan bilangan anggota di rang <Text style={{ fontWeight: '800', color: PALETTE.textDark }}>satu peringkat di bawah</Text> pangkat berkenaan yang telah memenuhi syarat untuk dinaikkan pangkat ke peringkat tersebut.
+                Bilangan ini menunjukkan bilangan anggota di rang <Text style={{ fontWeight: '800', color: PALETTE.textDark }}>satu peringkat di bawah</Text> pangkat berkenaan yang telah memenuhi syarat tempoh perkhidmatan untuk dinaikkan pangkat ke peringkat tersebut. Bagi setiap rang, bilangan dipecahkan kepada:{'\n'}
+                • <Text style={{ fontWeight: '700', color: '#16a34a' }}>Boleh Naik</Text> — telah memenuhi tempoh perkhidmatan DAN telah menghadiri kursus yang diperlukan.{'\n'}
+                • <Text style={{ fontWeight: '700', color: '#dc2626' }}>Perlu Kursus</Text> — telah memenuhi tempoh perkhidmatan tetapi belum menghadiri kursus yang diperlukan.
               </Text>
 
               <View>
                 <Text style={{ fontSize: 17, fontWeight: '800', color: PALETTE.textDark, marginBottom: 6 }}>Leftenan, Kapten, Mejar</Text>
                 <Text style={{ fontSize: 16, color: PALETTE.textMutedDark, lineHeight: 24 }}>
-                  Anggota berstatus Aktif di pangkat di bawahnya yang telah memenuhi syarat berikut: berkhidmat sekurang-kurangnya 3 tahun sejak menerima pangkat terkini, mempunyai kelayakan akademik STPM ke atas, serta telah menghadiri Kursus Bakal Pegawai (KBP).
+                  Anggota berstatus Aktif di pangkat di bawahnya dengan sekurang-kurangnya 3 tahun sejak menerima pangkat terkini. Kursus diperlukan: Kursus Bakal Pegawai (KBP). Tiada syarat akademik.
                 </Text>
               </View>
 
@@ -311,7 +336,7 @@ export default function RanksTable({
                 <Text style={{ fontSize: 17, fontWeight: '800', color: PALETTE.textDark, marginBottom: 6 }}>Leftenan Muda</Text>
                 <Text style={{ fontSize: 16, color: PALETTE.textMutedDark, lineHeight: 24 }}>
                   Dua laluan (kedua-duanya perlu berstatus Aktif):{'\n'}
-                  • <Text style={{ fontWeight: '700' }}>Normal</Text> — anggota Staf Tinggi dengan sekurang-kurangnya 3 tahun sejak pangkat terkini, akademik STPM ke atas, dan Kursus Bakal Pegawai (KBP).{'\n'}
+                  • <Text style={{ fontWeight: '700' }}>Normal</Text> — anggota Staf Tinggi dengan sekurang-kurangnya 3 tahun sejak pangkat terkini. Kursus diperlukan: Kursus Bakal Pegawai (KBP). Tiada syarat akademik.{'\n'}
                   • <Text style={{ fontWeight: '700' }}>Fast-Track</Text> — anggota Prebet dengan sekurang-kurangnya 3 tahun sejak pangkat terkini, kelayakan Ijazah Sarjana Muda ke atas, dan Kursus Bakal Pegawai (KBP).
                 </Text>
               </View>
@@ -319,7 +344,7 @@ export default function RanksTable({
               <View>
                 <Text style={{ fontSize: 17, fontWeight: '800', color: PALETTE.textDark, marginBottom: 6 }}>Staf Tinggi, Staf Kanan</Text>
                 <Text style={{ fontSize: 16, color: PALETTE.textMutedDark, lineHeight: 24 }}>
-                  Anggota berstatus Aktif di pangkat di bawahnya yang telah memenuhi syarat berikut: berkhidmat sekurang-kurangnya 1 tahun sejak menerima pangkat terkini, mempunyai kelayakan akademik STPM ke atas, serta telah menghadiri Kursus Bakal Pegawai (KBP).
+                  Anggota berstatus Aktif di pangkat di bawahnya dengan sekurang-kurangnya 1 tahun sejak menerima pangkat terkini. Kursus diperlukan: Kursus Bakal Pegawai (KBP). Tiada syarat akademik.
                 </Text>
               </View>
 
@@ -327,7 +352,7 @@ export default function RanksTable({
                 <Text style={{ fontSize: 17, fontWeight: '800', color: PALETTE.textDark, marginBottom: 6 }}>Staf Muda</Text>
                 <Text style={{ fontSize: 16, color: PALETTE.textMutedDark, lineHeight: 24 }}>
                   Dua laluan (kedua-duanya perlu berstatus Aktif):{'\n'}
-                  • <Text style={{ fontWeight: '700' }}>Normal</Text> — anggota Sarjan dengan sekurang-kurangnya 3 tahun sejak pangkat terkini, akademik STPM ke atas, dan Kursus Bakal Pegawai (KBP).{'\n'}
+                  • <Text style={{ fontWeight: '700' }}>Normal</Text> — anggota Sarjan dengan sekurang-kurangnya 3 tahun sejak pangkat terkini. Kursus diperlukan: Kursus Bakal Pegawai (KBP). Tiada syarat akademik.{'\n'}
                   • <Text style={{ fontWeight: '700' }}>Fast-Track</Text> — anggota Prebet dengan sekurang-kurangnya 3 tahun sejak pangkat terkini, kelayakan Diploma, dan Kursus Bakal Pegawai (KBP).
                 </Text>
               </View>
@@ -335,21 +360,21 @@ export default function RanksTable({
               <View>
                 <Text style={{ fontSize: 17, fontWeight: '800', color: PALETTE.textDark, marginBottom: 6 }}>Pegawai Waran I</Text>
                 <Text style={{ fontSize: 16, color: PALETTE.textMutedDark, lineHeight: 24 }}>
-                  Anggota Pegawai Waran II berstatus Aktif yang telah memenuhi syarat berikut: berkhidmat sekurang-kurangnya 3 tahun sejak menerima pangkat terkini, serta telah menghadiri Kursus Pegawai Tak Bertauliah (PTB). Tiada syarat akademik. Pegawai Waran I merupakan pangkat plafon; tiada kenaikan pangkat lanjut daripada pangkat ini.
+                  Anggota Pegawai Waran II berstatus Aktif dengan sekurang-kurangnya 3 tahun sejak menerima pangkat terkini. Kursus diperlukan: Kursus Bakal Pegawai Waran (KBP Waran). Tiada syarat akademik. Pegawai Waran I merupakan pangkat plafon; tiada kenaikan pangkat lanjut daripada pangkat ini.
                 </Text>
               </View>
 
               <View>
                 <Text style={{ fontSize: 17, fontWeight: '800', color: PALETTE.textDark, marginBottom: 6 }}>Pegawai Waran II</Text>
                 <Text style={{ fontSize: 16, color: PALETTE.textMutedDark, lineHeight: 24 }}>
-                  Anggota Sarjan berstatus Aktif yang telah memenuhi syarat berikut: berkhidmat sekurang-kurangnya 3 tahun sejak menerima pangkat terkini, serta telah menghadiri Kursus Bakal Pegawai Waran (KBP Waran) (bukan Kursus Bakal Pegawai (KBP) biasa). Tiada syarat akademik.
+                  Anggota Sarjan berstatus Aktif dengan sekurang-kurangnya 3 tahun sejak menerima pangkat terkini. Kursus diperlukan: Kursus Bakal Pegawai Waran (KBP Waran) (bukan Kursus Bakal Pegawai (KBP) biasa). Tiada syarat akademik.
                 </Text>
               </View>
 
               <View>
                 <Text style={{ fontSize: 17, fontWeight: '800', color: PALETTE.textDark, marginBottom: 6 }}>Sarjan, Koperal</Text>
                 <Text style={{ fontSize: 16, color: PALETTE.textMutedDark, lineHeight: 24 }}>
-                  Anggota berstatus Aktif di pangkat di bawahnya yang telah memenuhi syarat berikut: berkhidmat sekurang-kurangnya 3 tahun sejak menerima pangkat terkini, mempunyai kelayakan akademik SPM ke bawah, serta telah menghadiri Kursus Pegawai Tak Bertauliah (PTB).
+                  Anggota berstatus Aktif di pangkat di bawahnya dengan sekurang-kurangnya 3 tahun sejak menerima pangkat terkini. Kursus diperlukan: Kursus Pegawai Tak Bertauliah (PTB). Tiada syarat akademik.
                 </Text>
               </View>
 
@@ -357,7 +382,7 @@ export default function RanksTable({
                 <Text style={{ fontSize: 17, fontWeight: '800', color: PALETTE.textDark, marginBottom: 6 }}>Lans Koperal</Text>
                 <Text style={{ fontSize: 16, color: PALETTE.textMutedDark, lineHeight: 24 }}>
                   Dua laluan berasingan daripada Prebet (kedua-duanya perlu berstatus Aktif):{'\n'}
-                  • <Text style={{ fontWeight: '700' }}>Normal</Text> — sekurang-kurangnya 3 tahun sejak pangkat terkini, akademik SPM ke bawah, dan Kursus Pegawai Tak Bertauliah (PTB).{'\n'}
+                  • <Text style={{ fontWeight: '700' }}>Normal</Text> — sekurang-kurangnya 3 tahun sejak pangkat terkini. Kursus diperlukan: Kursus Pegawai Tak Bertauliah (PTB). Tiada syarat akademik.{'\n'}
                   • <Text style={{ fontWeight: '700' }}>TBP (Time Based Promotion)</Text> — sekurang-kurangnya 10 tahun sejak pangkat terkini, tiada syarat akademik atau kursus.
                 </Text>
               </View>

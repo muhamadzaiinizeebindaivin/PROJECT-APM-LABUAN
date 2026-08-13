@@ -6,7 +6,7 @@ import { supabaseSandbox } from '../supabaseSandboxClient';
 import AdminEditButton from '../components/AdminEditButton';
 import { useExcelImport } from '../hooks/useExcelImport';
 import ExcelImportModal from '../components/ExcelImportModal';
-import { useAngkatanEmployees, mapMyaspaLabel, normalizePangkat, isEligibleForPromotion, isEligibleForPegawaiWaranII, isEligibleForPegawaiWaranI, isEligibleForTBP, isEligibleFastTrackStafMuda, isEligibleFastTrackLeftenanMuda, PANGKAT_HIERARCHY } from '../hooks/useAngkatanEmployees';
+import { useAngkatanEmployees, mapMyaspaLabel, normalizePangkat, isEligibleForPromotion, isEligibleByYearsOnly, isEligibleForPegawaiWaranII, isEligibleForPegawaiWaranIIByYears, isEligibleForPegawaiWaranI, isEligibleForPegawaiWaranIByYears, isEligibleForTBP, isEligibleFastTrackStafMuda, isEligibleFastTrackStafMudaByYearsAcademic, isEligibleFastTrackLeftenanMuda, isEligibleFastTrackLeftenanMudaByYearsAcademic, getEmployeesBelowRank, PANGKAT_HIERARCHY } from '../hooks/useAngkatanEmployees';
 import { useAngkatanCommunity, SCHOOL_CATEGORIES, CDA_CATEGORIES } from '../hooks/useAngkatanCommunity';
 import { useEmployeeCertificates } from '../hooks/useEmployeeCertificates';
 
@@ -385,25 +385,69 @@ export default function AngkatanScreen({ userRole }) {
     let title = `Layak Kenaikan Pangkat — ${rankLabel}`;
 
     if (normRank === normalizePangkat('Pegawai Waran II')) {
-      list = employees.filter((e) => normalizePangkat(e.pangkat) === normalizePangkat('Sarjan') && isEligibleForPegawaiWaranII(e));
+      const pool = employees.filter((e) => normalizePangkat(e.pangkat) === normalizePangkat('Sarjan'));
+      const yearsOnly = pool.filter((e) => isEligibleForPegawaiWaranIIByYears(e));
+      if (subRoute === 'needsCourse') {
+        list = yearsOnly.filter((e) => !isEligibleForPegawaiWaranII(e));
+        title += ' (Perlu Kursus)';
+      } else {
+        list = yearsOnly.filter((e) => isEligibleForPegawaiWaranII(e));
+        title += ' (Boleh Dinaikkan)';
+      }
     } else if (normRank === normalizePangkat('Pegawai Waran I')) {
-      list = employees.filter((e) => normalizePangkat(e.pangkat) === normalizePangkat('Pegawai Waran II') && isEligibleForPegawaiWaranI(e));
+      const pool = employees.filter((e) => normalizePangkat(e.pangkat) === normalizePangkat('Pegawai Waran II'));
+      const yearsOnly = pool.filter((e) => isEligibleForPegawaiWaranIByYears(e));
+      if (subRoute === 'needsCourse') {
+        list = yearsOnly.filter((e) => !isEligibleForPegawaiWaranI(e));
+        title += ' (Perlu Kursus)';
+      } else {
+        list = yearsOnly.filter((e) => isEligibleForPegawaiWaranI(e));
+        title += ' (Boleh Dinaikkan)';
+      }
     } else if (normRank === normalizePangkat('Lans Koperal') && subRoute === 'tbp') {
       list = prebetHolders().filter((e) => isEligibleForTBP(e));
       title += ' (TBP)';
-    } else if (normRank === normalizePangkat('Staf Muda') && subRoute === 'fastTrack') {
-      list = prebetHolders().filter((e) => isEligibleFastTrackStafMuda(e));
-      title += ' (Fast-Track)';
-    } else if (normRank === normalizePangkat('Leftenan Muda') && subRoute === 'fastTrack') {
-      list = prebetHolders().filter((e) => isEligibleFastTrackLeftenanMuda(e));
-      title += ' (Fast-Track)';
+    } else if (normRank === normalizePangkat('Staf Muda') && (subRoute === 'fastTrackEligible' || subRoute === 'fastTrackNeedsCourse')) {
+      const pool = getEmployeesBelowRank(employees, 'Staf Muda').filter((e) => isEligibleFastTrackStafMudaByYearsAcademic(e));
+      if (subRoute === 'fastTrackNeedsCourse') {
+        list = pool.filter((e) => !isEligibleFastTrackStafMuda(e));
+        title += ' (Fast-Track — Perlu Kursus)';
+      } else {
+        list = pool.filter((e) => isEligibleFastTrackStafMuda(e));
+        title += ' (Fast-Track — Boleh Dinaikkan)';
+      }
+    } else if (normRank === normalizePangkat('Leftenan Muda') && (subRoute === 'fastTrackEligible' || subRoute === 'fastTrackNeedsCourse')) {
+      const pool = getEmployeesBelowRank(employees, 'Leftenan Muda').filter((e) => isEligibleFastTrackLeftenanMudaByYearsAcademic(e));
+      if (subRoute === 'fastTrackNeedsCourse') {
+        list = pool.filter((e) => !isEligibleFastTrackLeftenanMuda(e));
+        title += ' (Fast-Track — Perlu Kursus)';
+      } else {
+        list = pool.filter((e) => isEligibleFastTrackLeftenanMuda(e));
+        title += ' (Fast-Track — Boleh Dinaikkan)';
+      }
     } else {
-      const rankIdx = PANGKAT_HIERARCHY.findIndex((p) => normalizePangkat(p) === normRank);
-      const lowerRank = rankIdx > -1 && rankIdx + 1 < PANGKAT_HIERARCHY.length ? PANGKAT_HIERARCHY[rankIdx + 1] : undefined;
-      list = lowerRank
-        ? employees.filter((e) => normalizePangkat(e.pangkat) === normalizePangkat(lowerRank) && isEligibleForPromotion(e, lowerRank))
-        : [];
-      if (subRoute === 'normal') title += ' (Normal)';
+      // Voie Normal (eligible / needsCourse) — s'applique à tous les rangs
+      // restants, y compris Lans Koperal/Staf Muda/Leftenan Muda côté "normal".
+      let pool;
+      if (normRank === normalizePangkat('Lans Koperal')) {
+        pool = prebetHolders();
+      } else if (normRank === normalizePangkat('Staf Muda')) {
+        pool = employees.filter((e) => normalizePangkat(e.pangkat) === normalizePangkat('Sarjan'));
+      } else if (normRank === normalizePangkat('Leftenan Muda')) {
+        pool = employees.filter((e) => normalizePangkat(e.pangkat) === normalizePangkat('Staf Tinggi'));
+      } else {
+        const rankIdx = PANGKAT_HIERARCHY.findIndex((p) => normalizePangkat(p) === normRank);
+        const lowerRank = rankIdx > -1 && rankIdx + 1 < PANGKAT_HIERARCHY.length ? PANGKAT_HIERARCHY[rankIdx + 1] : undefined;
+        pool = lowerRank ? employees.filter((e) => normalizePangkat(e.pangkat) === normalizePangkat(lowerRank)) : [];
+      }
+      const yearsOnly = pool.filter((e) => isEligibleByYearsOnly(e, rankLabel));
+      if (subRoute === 'needsCourse') {
+        list = yearsOnly.filter((e) => !isEligibleForPromotion(e, rankLabel));
+        title += ' (Perlu Kursus)';
+      } else {
+        list = yearsOnly.filter((e) => isEligibleForPromotion(e, rankLabel));
+        title += ' (Boleh Dinaikkan)';
+      }
     }
     setFilterModal({ visible: true, title, list, page: 1 });
   };

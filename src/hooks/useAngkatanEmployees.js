@@ -61,6 +61,7 @@ export const RANK_PROMOTION_RULES = {
   'Leftenan Muda': { years: 3, academic: 'STPM_ABOVE', course: 'KBP' },
   'Leftenan': { years: 3, academic: 'STPM_ABOVE', course: 'KBP' },
   'Kapten': { years: 3, academic: 'STPM_ABOVE', course: 'KBP' },
+  'Mejar': { years: 3, academic: 'STPM_ABOVE', course: 'KBP' },
   // Mejar : rang plafond, pas de promotion
   // Pegawai Waran II : exclu pour l'instant
 };
@@ -73,7 +74,12 @@ export const isEligibleForTBP = (emp) => {
   return yrs !== null && yrs >= 10;
 };
 
-const hasDiploma = (raw) => String(raw || '').toUpperCase().includes('DIPLOMA');
+// Diploma et STPM sont considérés comme le même niveau académique pour le
+// Fast-Track vers Staf Muda.
+const hasDiploma = (raw) => {
+  const a = String(raw || '').toUpperCase();
+  return a.includes('DIPLOMA') || a.includes('STPM');
+};
 const hasIjazahOrAbove = (raw) => {
   const a = String(raw || '').toUpperCase();
   return a.includes('IJAZAH') || a.includes('BACHELOR') || a.includes('MASTER');
@@ -89,6 +95,14 @@ export const isEligibleFastTrackStafMuda = (emp) => {
   return true;
 };
 
+// Même critère sans vérifier le cours — pour Boleh Naik/Perlu Kursus côté Fast-Track.
+export const isEligibleFastTrackStafMudaByYearsAcademic = (emp) => {
+  if (norm(emp.status_keaktifan) !== 'AKTIF') return false;
+  const yrs = yearsSince(emp.tarikh_terima_pangkat_terkini);
+  if (yrs === null || yrs < 3) return false;
+  return hasDiploma(emp.akademik_tertinggi);
+};
+
 // Laluan fast-track Prebet -> Leftenan Muda : 3 ans + Ijazah Sarjana Muda + KBP.
 export const isEligibleFastTrackLeftenanMuda = (emp) => {
   if (norm(emp.status_keaktifan) !== 'AKTIF') return false;
@@ -99,16 +113,58 @@ export const isEligibleFastTrackLeftenanMuda = (emp) => {
   return true;
 };
 
+// Même critère sans vérifier le cours — pour Boleh Naik/Perlu Kursus côté Fast-Track.
+export const isEligibleFastTrackLeftenanMudaByYearsAcademic = (emp) => {
+  if (norm(emp.status_keaktifan) !== 'AKTIF') return false;
+  const yrs = yearsSince(emp.tarikh_terima_pangkat_terkini);
+  if (yrs === null || yrs < 3) return false;
+  return hasIjazahOrAbove(emp.akademik_tertinggi);
+};
+
+// Voie "Normal" : plus aucune condition académique (retirée de toutes les
+// voies normales d'un coup, puisqu'elles passent toutes par cette même
+// fonction) — seuls l'ancienneté et le cours restent requis. Les voies
+// Fast-Track (isEligibleFastTrackStafMuda/isEligibleFastTrackLeftenanMuda) et
+// TBP (isEligibleForTBP) sont des fonctions séparées, non affectées ici.
 export const isEligibleForPromotion = (emp, rankLabel) => {
   const rule = RANK_PROMOTION_RULES[rankLabel];
   if (!rule) return false;
   if (norm(emp.status_keaktifan) !== 'AKTIF') return false;
   const yrs = yearsSince(emp.tarikh_terima_pangkat_terkini);
   if (yrs === null || yrs < rule.years) return false;
-  if (classifyAcademic(emp.akademik_tertinggi) !== rule.academic) return false;
   if (rule.course === 'PTB' && !hasPtb(emp.senarai_kursus)) return false;
   if (rule.course === 'KBP' && !hasKbp(emp.senarai_kursus)) return false;
   return true;
+};
+
+// Même critère que isEligibleForPromotion mais SANS vérifier le cours — sert à
+// distinguer "Boleh Dinaikkan" (années + cours) de "Perlu Kursus" (années
+// suffisantes, cours manquant seulement) pour chaque rang de la voie Normal.
+export const isEligibleByYearsOnly = (emp, rankLabel) => {
+  const rule = RANK_PROMOTION_RULES[rankLabel];
+  if (!rule) return false;
+  if (norm(emp.status_keaktifan) !== 'AKTIF') return false;
+  const yrs = yearsSince(emp.tarikh_terima_pangkat_terkini);
+  if (yrs === null || yrs < rule.years) return false;
+  return true;
+};
+
+const countNormalLane = (pool, rankLabel) => {
+  const yearsOnly = pool.filter((e) => isEligibleByYearsOnly(e, rankLabel));
+  const eligible = yearsOnly.filter((e) => isEligibleForPromotion(e, rankLabel)).length;
+  return { eligible, needsCourse: yearsOnly.length - eligible };
+};
+
+// Fast-track : n'importe quel rang EN DESSOUS de rankLabel dans la hiérarchie
+// (pas uniquement Prebet) — PANGKAT_HIERARCHY va du plus haut (index 0) au
+// plus bas, donc "en dessous" = index strictement supérieur.
+export const getEmployeesBelowRank = (data, rankLabel) => {
+  const targetIdx = PANGKAT_HIERARCHY.findIndex((p) => normalizePangkat(p) === normalizePangkat(rankLabel));
+  if (targetIdx === -1) return [];
+  return data.filter((e) => {
+    const empIdx = PANGKAT_HIERARCHY.findIndex((p) => normalizePangkat(p) === normalizePangkat(e.pangkat));
+    return empIdx > targetIdx;
+  });
 };
 
 // Pegawai Waran II : 3 ans depuis le dernier pangkat + cours KBP WARAN — plus
@@ -123,6 +179,13 @@ export const isEligibleForPegawaiWaranII = (emp) => {
   return true;
 };
 
+// Même critère sans vérifier le cours — pour distinguer Boleh Naik/Perlu Kursus.
+export const isEligibleForPegawaiWaranIIByYears = (emp) => {
+  if (norm(emp.status_keaktifan) !== 'AKTIF') return false;
+  const yrs = yearsSince(emp.tarikh_terima_pangkat_terkini);
+  return yrs !== null && yrs >= 3;
+};
+
 // Pegawai Waran I : promotion depuis Pegawai Waran II — 3 ans + cours PTB,
 // aucune condition académique. Pegawai Waran I est désormais le rang plafond
 // (ne mène à rien de plus haut).
@@ -130,8 +193,21 @@ export const isEligibleForPegawaiWaranI = (emp) => {
   if (norm(emp.status_keaktifan) !== 'AKTIF') return false;
   const yrs = yearsSince(emp.tarikh_terima_pangkat_terkini);
   if (yrs === null || yrs < 3) return false;
-  if (!hasPtb(emp.senarai_kursus)) return false;
+  if (!hasKbpWaran(emp.senarai_kursus)) return false;
   return true;
+};
+
+// Même critère sans vérifier le cours — pour distinguer Boleh Naik/Perlu Kursus.
+export const isEligibleForPegawaiWaranIByYears = (emp) => {
+  if (norm(emp.status_keaktifan) !== 'AKTIF') return false;
+  const yrs = yearsSince(emp.tarikh_terima_pangkat_terkini);
+  return yrs !== null && yrs >= 3;
+};
+
+const countByYearsAndCourse = (pool, yearsOnlyFn, fullFn) => {
+  const yearsOnly = pool.filter(yearsOnlyFn);
+  const eligible = yearsOnly.filter(fullFn).length;
+  return { eligible, needsCourse: yearsOnly.length - eligible };
 };
 
 export function useAngkatanEmployees() {
@@ -216,34 +292,46 @@ export function useAngkatanEmployees() {
       const prebetHolders = () => data.filter((e) => normalizePangkat(e.pangkat) === normalizePangkat('Prebet'));
 
       if (normRank === normalizePangkat('Pegawai Waran II')) {
-        kenaikan = data.filter((e) => normalizePangkat(e.pangkat) === normalizePangkat('Sarjan') && isEligibleForPegawaiWaranII(e)).length;
+        kenaikan = countByYearsAndCourse(
+          data.filter((e) => normalizePangkat(e.pangkat) === normalizePangkat('Sarjan')),
+          isEligibleForPegawaiWaranIIByYears,
+          isEligibleForPegawaiWaranII
+        );
       } else if (normRank === normalizePangkat('Pegawai Waran I')) {
-        kenaikan = data.filter((e) => normalizePangkat(e.pangkat) === normalizePangkat('Pegawai Waran II') && isEligibleForPegawaiWaranI(e)).length;
+        kenaikan = countByYearsAndCourse(
+          data.filter((e) => normalizePangkat(e.pangkat) === normalizePangkat('Pegawai Waran II')),
+          isEligibleForPegawaiWaranIByYears,
+          isEligibleForPegawaiWaranI
+        );
       } else if (normRank === normalizePangkat('Lans Koperal')) {
         kenaikan = {
-          normal: prebetHolders().filter((e) => isEligibleForPromotion(e, 'Lans Koperal')).length,
+          ...countNormalLane(prebetHolders(), 'Lans Koperal'),
           tbp: prebetHolders().filter((e) => isEligibleForTBP(e)).length,
         };
       } else if (normRank === normalizePangkat('Staf Muda')) {
-        const rankIdx = PANGKAT_HIERARCHY.findIndex((p) => normalizePangkat(p) === normRank);
-        const lowerRank = PANGKAT_HIERARCHY[rankIdx + 1];
         kenaikan = {
-          normal: data.filter((e) => normalizePangkat(e.pangkat) === normalizePangkat(lowerRank) && isEligibleForPromotion(e, lowerRank)).length,
-          fastTrack: prebetHolders().filter((e) => isEligibleFastTrackStafMuda(e)).length,
+          ...countNormalLane(data.filter((e) => normalizePangkat(e.pangkat) === normalizePangkat('Sarjan')), 'Staf Muda'),
+          fastTrack: countByYearsAndCourse(
+            getEmployeesBelowRank(data, 'Staf Muda'),
+            isEligibleFastTrackStafMudaByYearsAcademic,
+            isEligibleFastTrackStafMuda
+          ),
         };
       } else if (normRank === normalizePangkat('Leftenan Muda')) {
-        const rankIdx = PANGKAT_HIERARCHY.findIndex((p) => normalizePangkat(p) === normRank);
-        const lowerRank = PANGKAT_HIERARCHY[rankIdx + 1];
         kenaikan = {
-          normal: data.filter((e) => normalizePangkat(e.pangkat) === normalizePangkat(lowerRank) && isEligibleForPromotion(e, lowerRank)).length,
-          fastTrack: prebetHolders().filter((e) => isEligibleFastTrackLeftenanMuda(e)).length,
+          ...countNormalLane(data.filter((e) => normalizePangkat(e.pangkat) === normalizePangkat('Staf Tinggi')), 'Leftenan Muda'),
+          fastTrack: countByYearsAndCourse(
+            getEmployeesBelowRank(data, 'Leftenan Muda'),
+            isEligibleFastTrackLeftenanMudaByYearsAcademic,
+            isEligibleFastTrackLeftenanMuda
+          ),
         };
       } else {
         const rankIdx = PANGKAT_HIERARCHY.findIndex((p) => normRank === normalizePangkat(p));
         const lowerRank = rankIdx > -1 && rankIdx + 1 < PANGKAT_HIERARCHY.length ? PANGKAT_HIERARCHY[rankIdx + 1] : undefined;
         kenaikan = lowerRank
-          ? data.filter((e) => normalizePangkat(e.pangkat) === normalizePangkat(lowerRank) && isEligibleForPromotion(e, lowerRank)).length
-          : 0;
+          ? countNormalLane(data.filter((e) => normalizePangkat(e.pangkat) === normalizePangkat(lowerRank)), r.rank)
+          : { eligible: 0, needsCourse: 0 };
       }
 
       return {
