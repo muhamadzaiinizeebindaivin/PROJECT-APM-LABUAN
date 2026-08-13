@@ -1,12 +1,26 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Modal, ScrollView, Platform } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { X, Check, AlertCircle } from 'lucide-react-native';
+import { X, Check, AlertCircle, Users } from 'lucide-react-native';
 import { PALETTE } from '../../constants/palette';
 import { angkatanStyles as styles } from './angkatanStyles';
 import { SCHOOL_CATEGORIES, CDA_CATEGORIES } from '../../hooks/useAngkatanCommunity';
 
 const CATEGORIES = ['TUSPA', 'KASPA', 'PISPA', 'SISPA', 'CDA'];
+const CDA_CODE_LABELS = {
+  CDA01: 'CDA-ARD',
+  CDA02: 'CDA-LOGS',
+  CDA03: 'CDA-TRAINING',
+  CDA04: 'CDA-SHELT',
+  CDA05: 'CDA-GMECS',
+  CDA06: 'CDA-MED',
+  CDA07: 'CDA-PSS',
+  CDA08: 'CDA-ERT (CDERT)',
+  CDA09: 'CDA-COMM',
+  CDA10: 'CDA-HUMSERV',
+  CDA11: 'CDA-RESQ',
+  CDA12: 'CDA-NATSC',
+};
 const CDA_CODE_OPTIONS = Array.from({ length: 12 }, (_, i) => `CDA${String(i + 1).padStart(2, '0')}`);
 const CATEGORY_COLORS = {
   TUSPA: '#3b82f6',
@@ -108,30 +122,53 @@ export default function CommunityEditModal({ visible, isNew, communityForm, setC
                   </>
                 )}
 
-                <View style={{ flexDirection: 'row', gap: 12, marginBottom: 16 }}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.inputLabel}>Jumlah Lelaki</Text>
-                    <TextInput
-                      style={styles.modalInput}
-                      value={String(communityForm.jumlah_lelaki ?? '')}
-                      onChangeText={(t) => setCommunityForm({ ...communityForm, jumlah_lelaki: t.replace(/[^0-9]/g, '') })}
-                      keyboardType="numeric"
-                      placeholder="0"
-                      placeholderTextColor={PALETTE.textMutedDark}
-                    />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.inputLabel}>Jumlah Perempuan</Text>
-                    <TextInput
-                      style={styles.modalInput}
-                      value={String(communityForm.jumlah_perempuan ?? '')}
-                      onChangeText={(t) => setCommunityForm({ ...communityForm, jumlah_perempuan: t.replace(/[^0-9]/g, '') })}
-                      keyboardType="numeric"
-                      placeholder="0"
-                      placeholderTextColor={PALETTE.textMutedDark}
-                    />
-                  </View>
-                </View>
+                {[
+                  { gender: 'lelaki', label: 'Lelaki', tint: '#eff6ff', border: '#bfdbfe', accent: '#2563eb' },
+                  { gender: 'perempuan', label: 'Perempuan', tint: '#fdf2f8', border: '#fbcfe8', accent: '#db2777' },
+                ].map(({ gender, label, tint, border, accent }) => {
+                  const total = ['melayu', 'cina', 'india', 'lain'].reduce(
+                    (sum, k) => sum + (parseInt(communityForm[`${gender}_${k}`], 10) || 0), 0
+                  );
+                  return (
+                    <View
+                      key={gender}
+                      style={{
+                        backgroundColor: tint, borderWidth: 1.5, borderColor: border,
+                        borderRadius: 14, padding: 14, marginBottom: 16,
+                      }}
+                    >
+                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                          <Users size={15} color={accent} />
+                          <Text style={{ fontSize: 14, fontWeight: '800', color: accent }}>{label}</Text>
+                        </View>
+                        <View style={{ backgroundColor: '#fff', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1, borderColor: border }}>
+                          <Text style={{ fontSize: 12, fontWeight: '800', color: accent }}>Jumlah: {total}</Text>
+                        </View>
+                      </View>
+
+                      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+                        {[['melayu', 'Melayu'], ['cina', 'Cina'], ['india', 'India'], ['lain', 'Lain-lain']].map(([key, raceLabel]) => (
+                          <View key={key} style={{ width: '47%' }}>
+                            <Text style={{ fontSize: 11, fontWeight: '600', color: PALETTE.textMutedDark, marginBottom: 4 }}>{raceLabel}</Text>
+                            <TextInput
+                              style={{
+                                borderWidth: 1, borderColor: border, borderRadius: 10,
+                                paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, fontWeight: '600',
+                                backgroundColor: '#fff', color: PALETTE.textDark,
+                              }}
+                              value={String(communityForm[`${gender}_${key}`] ?? '')}
+                              onChangeText={(t) => setCommunityForm({ ...communityForm, [`${gender}_${key}`]: t.replace(/[^0-9]/g, '') })}
+                              keyboardType="numeric"
+                              placeholder="0"
+                              placeholderTextColor={PALETTE.textMutedDark}
+                            />
+                          </View>
+                        ))}
+                      </View>
+                    </View>
+                  );
+                })}
 
                 <Text style={styles.inputLabel}>Keterangan (Tidak Wajib)</Text>
                 <TextInput
@@ -157,7 +194,7 @@ export default function CommunityEditModal({ visible, isNew, communityForm, setC
                     },
                   },
                     React.createElement('option', { value: '' }, 'Pilih kod CDA'),
-                    ...CDA_CODE_OPTIONS.map((code) => React.createElement('option', { key: code, value: code }, code))
+                    ...CDA_CODE_OPTIONS.map((code) => React.createElement('option', { key: code, value: code }, CDA_CODE_LABELS[code] ? `${code} - ${CDA_CODE_LABELS[code]}` : code))
                   )
                 ) : (
                   <View style={[styles.pickerRow, { marginBottom: 16 }]}>
@@ -167,7 +204,9 @@ export default function CommunityEditModal({ visible, isNew, communityForm, setC
                         onPress={() => setCommunityForm({ ...communityForm, kod_cda: code })}
                         style={[styles.pickerChip, communityForm.kod_cda === code && styles.pickerChipActive]}
                       >
-                        <Text style={[styles.pickerChipText, communityForm.kod_cda === code && styles.pickerChipTextActive]}>{code}</Text>
+                        <Text style={[styles.pickerChipText, communityForm.kod_cda === code && styles.pickerChipTextActive]}>
+                          {CDA_CODE_LABELS[code] ? `${code} - ${CDA_CODE_LABELS[code]}` : code}
+                        </Text>
                       </TouchableOpacity>
                     ))}
                   </View>

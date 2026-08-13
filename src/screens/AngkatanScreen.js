@@ -297,25 +297,8 @@ export default function AngkatanScreen({ userRole }) {
   const openAddCommunity = (defaultCategory = '') => { setCommunityForm({ id: null, category: defaultCategory, tempat: '', detail: '' }); setCommunityFormError(null); setShowCommunityModal(true); };
   const openEditCommunity = (prog) => { setCommunityForm(prog); setCommunityFormError(null); setShowCommunityModal(true); };
   const handleSaveCommunity = async () => {
-    const isSchool = SCHOOL_CATEGORIES.includes(communityForm.category);
-    const isCda = CDA_CATEGORIES.includes(communityForm.category);
     if (!communityForm.category.trim()) {
       setCommunityFormError('Kategori tidak boleh kosong.');
-      return;
-    }
-    if (isSchool) {
-      if (!communityForm.nama_sekolah?.trim() || !communityForm.no_pendaftaran?.trim() || !communityForm.tarikh_penubuhan?.trim()) {
-        setCommunityFormError('Nama sekolah, nombor pendaftaran dan tarikh penubuhan tidak boleh kosong.');
-        return;
-      }
-    } else if (isCda) {
-      if (!communityForm.kod_cda?.trim() || !communityForm.no_pendaftaran?.trim() || !communityForm.nama_pasukan?.trim()
-        || !communityForm.tempoh_sah_penubuhan?.trim() || !communityForm.tarikh_berdaftar?.trim()) {
-        setCommunityFormError('Kod CDA, nombor pendaftaran, nama pasukan, tempoh sah penubuhan dan tarikh berdaftar tidak boleh kosong.');
-        return;
-      }
-    } else if (!communityForm.tempat.trim() || !communityForm.detail.trim()) {
-      setCommunityFormError('Tempat dan keterangan tidak boleh kosong.');
       return;
     }
     setCommunityFormError(null);
@@ -378,6 +361,13 @@ export default function AngkatanScreen({ userRole }) {
     });
     setFilterModal({ visible: true, title: rankLabel, list, page: 1 });
   };
+  const openMyaspaMembers = (category) => {
+    const list = employees.filter((e) => norm(e.status_myaspa).includes(category.toUpperCase()));
+    setFilterModal({ visible: true, title: `Senarai Ahli — ${category}`, list, page: 1 });
+  };
+
+  const getMyaspaCount = (category) =>
+    employees.filter((e) => norm(e.status_myaspa).includes(category.toUpperCase())).length;
   const openColumnEmployees = (rankLabel, column) => {
     const inRank = employees.filter((e) =>
       normalizePangkat(e.pangkat) === normalizePangkat(rankLabel) &&
@@ -413,7 +403,7 @@ export default function AngkatanScreen({ userRole }) {
     }
     setFilterModal({ visible: true, title: `${rankLabel} — ${suffix}`, list, page: 1 });
   };
-  
+
   const openPromotionEligibleEmployees = (rankLabel, subRoute) => {
     const prebetHolders = () => employees.filter((e) => normalizePangkat(e.pangkat) === normalizePangkat('Prebet'));
     const normRank = normalizePangkat(rankLabel);
@@ -663,6 +653,8 @@ export default function AngkatanScreen({ userRole }) {
           cdaPdfUploadedAt={summary.cda_pdf_uploaded_at}
           onUploadCdaPdf={handleUploadCdaPdf}
           onDownloadCdaPdf={handleDownloadCdaPdf}
+          onViewMembers={openMyaspaMembers}
+          getMyaspaCount={getMyaspaCount}
         />
 
         <View style={{ flexDirection: 'row', margin: 0, padding: 6, borderRadius: 16, backgroundColor: PALETTE.cardLight, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 5, elevation: 3, gap: 8 }}>

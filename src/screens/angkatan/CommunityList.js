@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Modal, ActivityIndicator, useWindowDimensions, Alert } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
-import { Plus, Pencil, Trash2, HeartHandshake, ChevronLeft, ChevronRight, AlertTriangle, X, FileText, Upload } from 'lucide-react-native';
+import { Plus, Pencil, Trash2, HeartHandshake, ChevronLeft, ChevronRight, AlertTriangle, X, FileText, Upload, Users } from 'lucide-react-native';
 import { PALETTE } from '../../constants/palette';
 import { angkatanStyles as styles } from './angkatanStyles';
 import { pentadbiranStyles } from '../pentadbiran/pentadbiranStyles';
@@ -18,9 +18,11 @@ const CATEGORY_COLORS = {
 
 const PAGE_SIZE = 5;
 
+const MYASPA_LOOKUP_CATEGORIES = ['TUSPA', 'KASPA', 'PISPA', 'SISPA'];
+
 export default function CommunityList({
   communityProgs, isEditing, onAdd, onEdit, onDelete,
-  cdaPdfFilename, cdaPdfUploadedAt, onUploadCdaPdf, onDownloadCdaPdf,
+  cdaPdfFilename, cdaPdfUploadedAt, onUploadCdaPdf, onDownloadCdaPdf, onViewMembers, getMyaspaCount,
 }) {
   const [uploadingPdf, setUploadingPdf] = useState(false);
 
@@ -56,6 +58,7 @@ export default function CommunityList({
         perempuan: acc.perempuan + (parseInt(p.jumlah_perempuan, 10) || 0),
       }), { lelaki: 0, perempuan: 0 })
     : null;
+  
 
   return (
     <View style={styles.card}>
@@ -149,9 +152,17 @@ export default function CommunityList({
           <Text style={commStyles.schoolTotalsText}>
             Jumlah Perempuan: <Text style={{ fontWeight: '900' }}>{schoolTotals.perempuan}</Text>
           </Text>
-          <Text style={commStyles.schoolTotalsText}>
-            Jumlah Keseluruhan: <Text style={{ fontWeight: '900' }}>{schoolTotals.lelaki + schoolTotals.perempuan}</Text>
-          </Text>
+          {MYASPA_LOOKUP_CATEGORIES.includes(activeCategory) && (
+            <TouchableOpacity
+              onPress={() => onViewMembers(activeCategory)}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
+            >
+              <Users size={14} color={PALETTE.orange} />
+              <Text style={{ fontSize: 12, fontWeight: '700', color: PALETTE.orange }}>
+                Lihat Senarai Ahli {activeCategory} ({getMyaspaCount(activeCategory)})
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
       )}
 
@@ -250,6 +261,14 @@ export default function CommunityList({
                   <Text style={commStyles.viewDetail}>
                     {viewingProg?.jumlah_lelaki ?? 0} / {viewingProg?.jumlah_perempuan ?? 0}
                     {' '}(Jumlah: {(parseInt(viewingProg?.jumlah_lelaki, 10) || 0) + (parseInt(viewingProg?.jumlah_perempuan, 10) || 0)})
+                  </Text>
+                  <Text style={[styles.inputLabel, { marginTop: 12 }]}>Pecahan Bangsa — Lelaki</Text>
+                  <Text style={commStyles.viewDetail}>
+                    Melayu: {viewingProg?.lelaki_melayu ?? 0} · Cina: {viewingProg?.lelaki_cina ?? 0} · India: {viewingProg?.lelaki_india ?? 0} · Lain-lain: {viewingProg?.lelaki_lain ?? 0}
+                  </Text>
+                  <Text style={[styles.inputLabel, { marginTop: 8 }]}>Pecahan Bangsa — Perempuan</Text>
+                  <Text style={commStyles.viewDetail}>
+                    Melayu: {viewingProg?.perempuan_melayu ?? 0} · Cina: {viewingProg?.perempuan_cina ?? 0} · India: {viewingProg?.perempuan_india ?? 0} · Lain-lain: {viewingProg?.perempuan_lain ?? 0}
                   </Text>
                   {!!viewingProg?.detail && (
                     <>

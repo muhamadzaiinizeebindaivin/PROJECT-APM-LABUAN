@@ -20,6 +20,13 @@ export function useAngkatanCommunity() {
   useEffect(() => { fetchCommunity(); }, [fetchCommunity]);
 
   const saveCommunityItem = async (form) => {
+    const raceKeys = ['melayu', 'cina', 'india', 'lain'];
+    const num = (v) => (v !== '' && v != null ? parseInt(v, 10) || 0 : 0);
+    const lelakiByRace = Object.fromEntries(raceKeys.map((k) => [`lelaki_${k}`, num(form[`lelaki_${k}`])]));
+    const perempuanByRace = Object.fromEntries(raceKeys.map((k) => [`perempuan_${k}`, num(form[`perempuan_${k}`])]));
+    const jumlahLelaki = Object.values(lelakiByRace).reduce((a, b) => a + b, 0);
+    const jumlahPerempuan = Object.values(perempuanByRace).reduce((a, b) => a + b, 0);
+
     const payload = {
       category: form.category,
       tempat: form.tempat,
@@ -27,8 +34,10 @@ export function useAngkatanCommunity() {
       nama_sekolah: form.nama_sekolah || null,
       no_pendaftaran: form.no_pendaftaran || null,
       tarikh_penubuhan: form.tarikh_penubuhan || null,
-      jumlah_lelaki: form.jumlah_lelaki !== '' && form.jumlah_lelaki != null ? parseInt(form.jumlah_lelaki, 10) : null,
-      jumlah_perempuan: form.jumlah_perempuan !== '' && form.jumlah_perempuan != null ? parseInt(form.jumlah_perempuan, 10) : null,
+      ...lelakiByRace,
+      ...perempuanByRace,
+      jumlah_lelaki: jumlahLelaki,
+      jumlah_perempuan: jumlahPerempuan,
       kod_cda: form.kod_cda || null,
       nama_pasukan: form.nama_pasukan || null,
       nama_organisasi: form.nama_organisasi || null,
