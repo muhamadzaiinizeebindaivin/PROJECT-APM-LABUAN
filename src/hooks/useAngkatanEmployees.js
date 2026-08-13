@@ -19,9 +19,25 @@ export const mapMyaspaLabel = (raw) => {
 export const normalizePangkat = (raw) => String(raw || '').replace(/\(PA\)/i, '').trim().toUpperCase();
 export const norm = (v) => String(v || '').trim().toUpperCase();
 
+// Sépare senarai_kursus en entrées individuelles (une par puce "•" ou saut de
+// ligne) — nécessaire car une seule chaîne concaténée peut contenir à la fois
+// un cours PTB et un cours KBP distincts ; vérifier BERTAULIAH/WARAN sur tout
+// le texte d'un coup disqualifierait à tort quelqu'un qui a bien un vrai KBP
+// séparé, juste parce qu'une AUTRE ligne contient "BERTAULIAH"/"WARAN".
+const splitCourseEntries = (kursus) => {
+  return String(kursus || '')
+    .split(/\r?\n|(?=•)/g)
+    .map((s) => s.replace(/^•\s*/, '').trim())
+    .filter(Boolean);
+};
+
 export const hasKbp = (kursus) => {
-  const k = String(kursus || '').toUpperCase();
-  return /(BAKAL PEGAWAI|PAKAL PEGAWAI)/.test(k) && !k.includes('BERTAULIAH') && !k.includes('WARAN');
+  return splitCourseEntries(kursus).some((entry) => {
+    const k = entry.toUpperCase();
+    return (/(BAKAL PEGAWAI|PAKAL PEGAWAI)/.test(k) || k.includes('BAKAL'))
+      && !k.includes('BERTAULIAH')
+      && !k.includes('WARAN');
+  });
 };
 export const hasPtb = (kursus) => {
   const k = String(kursus || '').toUpperCase();
