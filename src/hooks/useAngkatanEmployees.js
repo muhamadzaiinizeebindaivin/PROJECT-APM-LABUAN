@@ -17,17 +17,17 @@ export const mapMyaspaLabel = (raw) => {
 };
 
 export const normalizePangkat = (raw) => String(raw || '').replace(/\(PA\)/i, '').trim().toUpperCase();
-const norm = (v) => String(v || '').trim().toUpperCase();
+export const norm = (v) => String(v || '').trim().toUpperCase();
 
-const hasKbp = (kursus) => {
+export const hasKbp = (kursus) => {
   const k = String(kursus || '').toUpperCase();
   return /(BAKAL PEGAWAI|PAKAL PEGAWAI)/.test(k) && !k.includes('BERTAULIAH') && !k.includes('WARAN');
 };
-const hasPtb = (kursus) => {
+export const hasPtb = (kursus) => {
   const k = String(kursus || '').toUpperCase();
   return k.includes('BERTAULIAH') || /\bPTB\b/.test(k);
 };
-const hasKbpWaran = (kursus) => {
+export const hasKbpWaran = (kursus) => {
   const k = String(kursus || '').toUpperCase();
   return k.includes('PEGAWAI WARAN');
 };

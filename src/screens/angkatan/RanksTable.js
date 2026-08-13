@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, createElement } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Modal, ActivityIndicator, Alert, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Modal, ActivityIndicator, Alert, Platform, useWindowDimensions } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
-import { ListFilter, Plus, Pencil, Trash2, HelpCircle, X, FileText, Upload, Maximize2 } from 'lucide-react-native';
+import { ListFilter, Plus, Pencil, Trash2, HelpCircle, X, FileText, Upload, Maximize2, Clock, BookOpen, GraduationCap } from 'lucide-react-native';
 import { PALETTE } from '../../constants/palette';
 import { RANK_PROMOTION_RULES } from '../../hooks/useAngkatanEmployees';
 import { angkatanStyles as styles } from './angkatanStyles';
@@ -13,12 +13,49 @@ const EXTRA_ROUTE_LABELS = { tbp: 'TBP', fastTrack: 'Fast-Track' };
 // Pegawai Waran I/II ne sont pas dans RANK_PROMOTION_RULES (règles dédiées,
 // hors chaîne de rangs standard) — leur nom de cours est fourni ici séparément.
 const COURSE_LABEL_OVERRIDES = { 'Pegawai Waran I': 'KBP Waran', 'Pegawai Waran II': 'KBP Waran' };
+const RuleChip = ({ icon: Icon, label, tone = 'default' }) => {
+  const tones = {
+    default: { bg: PALETTE.surface, color: PALETTE.textMutedDark },
+    orange: { bg: 'rgba(249,115,22,0.12)', color: PALETTE.orange },
+    green: { bg: 'rgba(22,163,74,0.12)', color: '#16a34a' },
+    muted: { bg: 'rgba(148,163,184,0.15)', color: PALETTE.textMutedDark },
+  };
+  const t = tones[tone] || tones.default;
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: t.bg, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 }}>
+      {Icon && <Icon size={12} color={t.color} />}
+      <Text style={{ fontSize: 12, fontWeight: '700', color: t.color }}>{label}</Text>
+    </View>
+  );
+};
 
-export default function RanksTable({
-  ranks, isEditing, userRole, onAdd, onEdit, onDelete, onOpenRank, onOpenPromotion,
-  ranksPdfFilename, ranksPdfUploadedAt, ranksPdfUrl, onUploadRanksPdf, onDownloadRanksPdf, onDeleteRanksPdf,
-}) {
+const RuleLane = ({ label, years, course, academicNote, accent }) => (
+  <View style={{ flex: 1, minWidth: 220, padding: 14, backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: PALETTE.cardLightBorder }}>
+    <View style={{ alignSelf: 'flex-start', backgroundColor: `${accent}1A`, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4, marginBottom: 10 }}>
+      <Text style={{ fontSize: 11, fontWeight: '800', color: accent, textTransform: 'uppercase', letterSpacing: 0.4 }}>{label}</Text>
+    </View>
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+      <RuleChip icon={Clock} label={years} tone="default" />
+      {course && <RuleChip icon={BookOpen} label={course} tone="default" />}
+      {academicNote && <RuleChip icon={GraduationCap} label={academicNote} tone="muted" />}
+    </View>
+  </View>
+);
+
+const RankRuleCard = ({ title, lanes }) => (
+  <View style={{ marginBottom: 4 }}>
+    <Text style={{ fontSize: 16, fontWeight: '800', color: PALETTE.textDark, marginBottom: 12 }}>{title}</Text>
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+      {lanes.map((lane) => <RuleLane key={lane.label} {...lane} />)}
+    </View>
+  </View>
+);
+
+export default function RanksTable({ranks, isEditing, userRole, onAdd, onEdit, onDelete, onOpenRank, onOpenPromotion, onOpenColumnList, ranksPdfFilename, ranksPdfUploadedAt, ranksPdfUrl, onUploadRanksPdf, onDownloadRanksPdf, onDeleteRanksPdf,}) {
   const canManagePdf = userRole === 'angkatan' || userRole === 'admin';
+  const { width: screenWidth } = useWindowDimensions();
+  const isMobile = screenWidth < 768;
+  const layakUbkpWidth = isMobile ? 260 : 180;
   const [ubkpHelpVisible, setUbkpHelpVisible] = useState(false);
   const [uploadingRanksPdf, setUploadingRanksPdf] = useState(false);
   const [confirmDeletePdf, setConfirmDeletePdf] = useState(false);
@@ -134,7 +171,7 @@ export default function RanksTable({
           <View style={styles.tableHeaderRow}>
             {[...HEADERS, ...(isEditing ? ['TINDAKAN'] : [])].map((h, i) => (
               h === 'LAYAK UBKP' ? (
-                <View key={i} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, padding: 12 }}>
+                <View key={i} style={{ flex: 1, minWidth: layakUbkpWidth, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, padding: 12 }}>
                   <Text style={{ fontSize: 11, fontWeight: '800', color: PALETTE.textMutedDark, letterSpacing: 0.3 }} numberOfLines={1}>{h}</Text>
                   <TouchableOpacity onPress={() => setUbkpHelpVisible(true)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                     <HelpCircle size={13} color={PALETTE.textMutedDark} />
@@ -152,9 +189,9 @@ export default function RanksTable({
             >
               <Text style={[styles.tableCell, styles.tableCellRank]}>{item.rank}</Text>
               {NON_PROMOTABLE_RANKS.includes(item.rank) ? (
-                <Text style={styles.tableCell}>-</Text>
+                <Text style={[styles.tableCell, { minWidth: layakUbkpWidth }]}>-</Text>
               ) : (
-                <View style={[styles.tableCell, { gap: 2 }]}>
+                <View style={[styles.tableCell, { gap: 2, minWidth: layakUbkpWidth }]}>
                   <TouchableOpacity onPress={() => onOpenPromotion(item.rank, 'eligible')}>
                     <Text style={{ color: '#16a34a', fontWeight: '800', textDecorationLine: 'underline', textAlign: 'center', fontSize: 11 }}>
                       Boleh Naik: {item.kenaikan?.eligible ?? 0}
@@ -188,11 +225,21 @@ export default function RanksTable({
                   )}
                 </View>
               )}
-              <Text style={styles.tableCell}>{item.kbp}</Text>
-              <Text style={styles.tableCell}>{item.kbp_waran}</Text>
-              <Text style={styles.tableCell}>{item.ptb}</Text>
-              <Text style={[styles.tableCell, { color: PALETTE.blue, fontWeight: '800' }]}>{item.aktif}</Text>
-              <Text style={[styles.tableCell, { color: PALETTE.orange, fontWeight: '800' }]}>{item.simpanan}</Text>
+              <TouchableOpacity style={styles.tableCell} onPress={() => onOpenColumnList(item.rank, 'kbp')}>
+                <Text style={{ color: PALETTE.textDark, fontWeight: '800', textDecorationLine: 'underline', textAlign: 'center' }}>{item.kbp}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.tableCell} onPress={() => onOpenColumnList(item.rank, 'kbp_waran')}>
+                <Text style={{ color: PALETTE.textDark, fontWeight: '800', textDecorationLine: 'underline', textAlign: 'center' }}>{item.kbp_waran}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.tableCell} onPress={() => onOpenColumnList(item.rank, 'ptb')}>
+                <Text style={{ color: PALETTE.textDark, fontWeight: '800', textDecorationLine: 'underline', textAlign: 'center' }}>{item.ptb}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.tableCell} onPress={() => onOpenColumnList(item.rank, 'aktif')}>
+                <Text style={{ color: PALETTE.textDark, fontWeight: '800', textDecorationLine: 'underline', textAlign: 'center' }}>{item.aktif}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.tableCell} onPress={() => onOpenColumnList(item.rank, 'simpanan')}>
+                <Text style={{ color: PALETTE.textDark, fontWeight: '800', textDecorationLine: 'underline', textAlign: 'center' }}>{item.simpanan}</Text>
+              </TouchableOpacity>
               
               <TouchableOpacity style={styles.tableCell} onPress={() => onOpenRank(item.rank)}>
                 <Text style={{ color: PALETTE.orange, fontWeight: '800', textDecorationLine: 'underline', textAlign: 'center' }}>Lihat</Text>
@@ -319,78 +366,69 @@ export default function RanksTable({
                 </>
               ) : (
                 <>
-              <Text style={{ fontSize: 16, color: PALETTE.textMutedDark, lineHeight: 24 }}>
-                Bilangan ini menunjukkan bilangan anggota di rang <Text style={{ fontWeight: '800', color: PALETTE.textDark }}>satu peringkat di bawah</Text> pangkat berkenaan yang telah memenuhi syarat tempoh perkhidmatan untuk dinaikkan pangkat ke peringkat tersebut. Bagi setiap rang, bilangan dipecahkan kepada:{'\n'}
-                • <Text style={{ fontWeight: '700', color: '#16a34a' }}>Boleh Naik</Text> — telah memenuhi tempoh perkhidmatan DAN telah menghadiri kursus yang diperlukan.{'\n'}
-                • <Text style={{ fontWeight: '700', color: '#dc2626' }}>Perlu Kursus</Text> — telah memenuhi tempoh perkhidmatan tetapi belum menghadiri kursus yang diperlukan.
-              </Text>
-
-              <View>
-                <Text style={{ fontSize: 17, fontWeight: '800', color: PALETTE.textDark, marginBottom: 6 }}>Leftenan, Kapten, Mejar</Text>
-                <Text style={{ fontSize: 16, color: PALETTE.textMutedDark, lineHeight: 24 }}>
-                  Anggota berstatus Aktif di pangkat di bawahnya dengan sekurang-kurangnya 3 tahun sejak menerima pangkat terkini. Kursus diperlukan: Kursus Bakal Pegawai (KBP). Tiada syarat akademik.
+              <View style={{ padding: 14, backgroundColor: '#fff7ed', borderRadius: 12, borderWidth: 1, borderColor: 'rgba(249,115,22,0.25)' }}>
+                <Text style={{ fontSize: 14, color: PALETTE.textDark, lineHeight: 22 }}>
+                  Bilangan ini menunjukkan anggota di rang <Text style={{ fontWeight: '800' }}>satu peringkat di bawah</Text> pangkat berkenaan, yang telah memenuhi syarat tempoh perkhidmatan untuk dinaikkan pangkat. Bagi setiap rang:
                 </Text>
+                <View style={{ flexDirection: 'row', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+                  <RuleChip icon={GraduationCap} label="Boleh Naik — tempoh + kursus lengkap" tone="green" />
+                  <RuleChip icon={GraduationCap} label="Perlu Kursus — tempoh cukup, kursus belum" tone="orange" />
+                </View>
               </View>
 
-              <View>
-                <Text style={{ fontSize: 17, fontWeight: '800', color: PALETTE.textDark, marginBottom: 6 }}>Leftenan Muda</Text>
-                <Text style={{ fontSize: 16, color: PALETTE.textMutedDark, lineHeight: 24 }}>
-                  Dua laluan (kedua-duanya perlu berstatus Aktif):{'\n'}
-                  • <Text style={{ fontWeight: '700' }}>Normal</Text> — anggota Staf Tinggi dengan sekurang-kurangnya 3 tahun sejak pangkat terkini. Kursus diperlukan: Kursus Bakal Pegawai (KBP). Tiada syarat akademik.{'\n'}
-                  • <Text style={{ fontWeight: '700' }}>Fast-Track</Text> — anggota Prebet dengan sekurang-kurangnya 3 tahun sejak pangkat terkini, kelayakan Ijazah Sarjana Muda ke atas, dan Kursus Bakal Pegawai (KBP).
-                </Text>
-              </View>
+              <RankRuleCard
+                title="Leftenan, Kapten, Mejar"
+                lanes={[{ label: 'Normal', years: '3 Tahun', course: 'KBP', academicNote: 'Tiada Syarat Akademik', accent: PALETTE.blue }]}
+              />
 
-              <View>
-                <Text style={{ fontSize: 17, fontWeight: '800', color: PALETTE.textDark, marginBottom: 6 }}>Staf Tinggi, Staf Kanan</Text>
-                <Text style={{ fontSize: 16, color: PALETTE.textMutedDark, lineHeight: 24 }}>
-                  Anggota berstatus Aktif di pangkat di bawahnya dengan sekurang-kurangnya 1 tahun sejak menerima pangkat terkini. Kursus diperlukan: Kursus Bakal Pegawai (KBP). Tiada syarat akademik.
-                </Text>
-              </View>
+              <RankRuleCard
+                title="Leftenan Muda"
+                lanes={[
+                  { label: 'Normal (dari Staf Tinggi)', years: '3 Tahun', course: 'KBP', academicNote: 'Tiada Syarat Akademik', accent: PALETTE.blue },
+                  { label: 'Fast-Track (dari Prebet)', years: '3 Tahun', course: 'KBP', academicNote: 'Ijazah Sarjana Muda+', accent: PALETTE.orange },
+                ]}
+              />
 
-              <View>
-                <Text style={{ fontSize: 17, fontWeight: '800', color: PALETTE.textDark, marginBottom: 6 }}>Staf Muda</Text>
-                <Text style={{ fontSize: 16, color: PALETTE.textMutedDark, lineHeight: 24 }}>
-                  Dua laluan (kedua-duanya perlu berstatus Aktif):{'\n'}
-                  • <Text style={{ fontWeight: '700' }}>Normal</Text> — anggota Sarjan dengan sekurang-kurangnya 3 tahun sejak pangkat terkini. Kursus diperlukan: Kursus Bakal Pegawai (KBP). Tiada syarat akademik.{'\n'}
-                  • <Text style={{ fontWeight: '700' }}>Fast-Track</Text> — anggota Prebet dengan sekurang-kurangnya 3 tahun sejak pangkat terkini, kelayakan Diploma, dan Kursus Bakal Pegawai (KBP).
-                </Text>
-              </View>
+              <RankRuleCard
+                title="Staf Tinggi, Staf Kanan"
+                lanes={[{ label: 'Normal', years: '1 Tahun', course: 'KBP', academicNote: 'Tiada Syarat Akademik', accent: PALETTE.blue }]}
+              />
 
-              <View>
-                <Text style={{ fontSize: 17, fontWeight: '800', color: PALETTE.textDark, marginBottom: 6 }}>Pegawai Waran I</Text>
-                <Text style={{ fontSize: 16, color: PALETTE.textMutedDark, lineHeight: 24 }}>
-                  Anggota Pegawai Waran II berstatus Aktif dengan sekurang-kurangnya 3 tahun sejak menerima pangkat terkini. Kursus diperlukan: Kursus Bakal Pegawai Waran (KBP Waran). Tiada syarat akademik. Pegawai Waran I merupakan pangkat plafon; tiada kenaikan pangkat lanjut daripada pangkat ini.
-                </Text>
-              </View>
+              <RankRuleCard
+                title="Staf Muda"
+                lanes={[
+                  { label: 'Normal (dari Sarjan)', years: '3 Tahun', course: 'KBP', academicNote: 'Tiada Syarat Akademik', accent: PALETTE.blue },
+                  { label: 'Fast-Track (dari Prebet)', years: '3 Tahun', course: 'KBP', academicNote: 'Diploma+', accent: PALETTE.orange },
+                ]}
+              />
 
-              <View>
-                <Text style={{ fontSize: 17, fontWeight: '800', color: PALETTE.textDark, marginBottom: 6 }}>Pegawai Waran II</Text>
-                <Text style={{ fontSize: 16, color: PALETTE.textMutedDark, lineHeight: 24 }}>
-                  Anggota Sarjan berstatus Aktif dengan sekurang-kurangnya 3 tahun sejak menerima pangkat terkini. Kursus diperlukan: Kursus Bakal Pegawai Waran (KBP Waran) (bukan Kursus Bakal Pegawai (KBP) biasa). Tiada syarat akademik.
-                </Text>
-              </View>
+              <RankRuleCard
+                title="Pegawai Waran I"
+                lanes={[{ label: 'Normal (dari Pegawai Waran II) — Pangkat Plafon', years: '3 Tahun', course: 'KBP Waran', academicNote: 'Tiada Syarat Akademik', accent: PALETTE.blue }]}
+              />
 
-              <View>
-                <Text style={{ fontSize: 17, fontWeight: '800', color: PALETTE.textDark, marginBottom: 6 }}>Sarjan, Koperal</Text>
-                <Text style={{ fontSize: 16, color: PALETTE.textMutedDark, lineHeight: 24 }}>
-                  Anggota berstatus Aktif di pangkat di bawahnya dengan sekurang-kurangnya 3 tahun sejak menerima pangkat terkini. Kursus diperlukan: Kursus Pegawai Tak Bertauliah (PTB). Tiada syarat akademik.
-                </Text>
-              </View>
+              <RankRuleCard
+                title="Pegawai Waran II"
+                lanes={[{ label: 'Normal (dari Sarjan)', years: '3 Tahun', course: 'KBP Waran', academicNote: 'Tiada Syarat Akademik', accent: PALETTE.blue }]}
+              />
 
-              <View>
-                <Text style={{ fontSize: 17, fontWeight: '800', color: PALETTE.textDark, marginBottom: 6 }}>Lans Koperal</Text>
-                <Text style={{ fontSize: 16, color: PALETTE.textMutedDark, lineHeight: 24 }}>
-                  Dua laluan berasingan daripada Prebet (kedua-duanya perlu berstatus Aktif):{'\n'}
-                  • <Text style={{ fontWeight: '700' }}>Normal</Text> — sekurang-kurangnya 3 tahun sejak pangkat terkini. Kursus diperlukan: Kursus Pegawai Tak Bertauliah (PTB). Tiada syarat akademik.{'\n'}
-                  • <Text style={{ fontWeight: '700' }}>TBP (Time Based Promotion)</Text> — sekurang-kurangnya 10 tahun sejak pangkat terkini, tiada syarat akademik atau kursus.
-                </Text>
-              </View>
+              <RankRuleCard
+                title="Sarjan, Koperal"
+                lanes={[{ label: 'Normal', years: '3 Tahun', course: 'PTB', academicNote: 'Tiada Syarat Akademik', accent: PALETTE.blue }]}
+              />
 
-              <View>
-                <Text style={{ fontSize: 17, fontWeight: '800', color: PALETTE.textDark, marginBottom: 6 }}>Prebet</Text>
-                <Text style={{ fontSize: 16, color: PALETTE.textMutedDark, lineHeight: 24 }}>
-                  Sentiasa dipaparkan sebagai "-" kerana Prebet merupakan pangkat terendah dan tiada pangkat di bawahnya.
+              <RankRuleCard
+                title="Lans Koperal"
+                lanes={[
+                  { label: 'Normal (dari Prebet)', years: '3 Tahun', course: 'PTB', academicNote: 'Tiada Syarat Akademik', accent: PALETTE.blue },
+                  { label: 'TBP — Time Based Promotion', years: '10 Tahun', course: null, academicNote: 'Tiada Syarat Kursus/Akademik', accent: PALETTE.orange },
+                ]}
+              />
+
+              <View style={{ padding: 14, backgroundColor: PALETTE.surface, borderRadius: 12 }}>
+                <Text style={{ fontSize: 15, fontWeight: '800', color: PALETTE.textDark, marginBottom: 4 }}>Prebet</Text>
+                <Text style={{ fontSize: 13, color: PALETTE.textMutedDark }}>
+                  Sentiasa dipaparkan sebagai "-" — pangkat terendah, tiada pangkat di bawahnya.
                 </Text>
               </View>
                 </>

@@ -6,7 +6,7 @@ import { supabaseSandbox } from '../supabaseSandboxClient';
 import AdminEditButton from '../components/AdminEditButton';
 import { useExcelImport } from '../hooks/useExcelImport';
 import ExcelImportModal from '../components/ExcelImportModal';
-import { useAngkatanEmployees, mapMyaspaLabel, normalizePangkat, isEligibleForPromotion, isEligibleByYearsOnly, isEligibleForPegawaiWaranII, isEligibleForPegawaiWaranIIByYears, isEligibleForPegawaiWaranI, isEligibleForPegawaiWaranIByYears, isEligibleForTBP, isEligibleFastTrackStafMuda, isEligibleFastTrackStafMudaByYearsAcademic, isEligibleFastTrackLeftenanMuda, isEligibleFastTrackLeftenanMudaByYearsAcademic, getEmployeesBelowRank, PANGKAT_HIERARCHY } from '../hooks/useAngkatanEmployees';
+import { useAngkatanEmployees, mapMyaspaLabel, normalizePangkat, isEligibleForPromotion, isEligibleByYearsOnly, isEligibleForPegawaiWaranII, isEligibleForPegawaiWaranIIByYears, isEligibleForPegawaiWaranI, isEligibleForPegawaiWaranIByYears, isEligibleForTBP, isEligibleFastTrackStafMuda, isEligibleFastTrackStafMudaByYearsAcademic, isEligibleFastTrackLeftenanMuda, isEligibleFastTrackLeftenanMudaByYearsAcademic, getEmployeesBelowRank, PANGKAT_HIERARCHY, hasKbp, hasKbpWaran, hasPtb, norm } from '../hooks/useAngkatanEmployees';
 import { useAngkatanCommunity, SCHOOL_CATEGORIES, CDA_CATEGORIES } from '../hooks/useAngkatanCommunity';
 import { useEmployeeCertificates } from '../hooks/useEmployeeCertificates';
 
@@ -378,6 +378,42 @@ export default function AngkatanScreen({ userRole }) {
     });
     setFilterModal({ visible: true, title: rankLabel, list, page: 1 });
   };
+  const openColumnEmployees = (rankLabel, column) => {
+    const inRank = employees.filter((e) =>
+      normalizePangkat(e.pangkat) === normalizePangkat(rankLabel) &&
+      ['AKTIF', 'SIMPANAN'].includes(norm(e.status_keaktifan))
+    );
+
+    let list;
+    let suffix;
+    switch (column) {
+      case 'kbp':
+        list = inRank.filter((e) => hasKbp(e.senarai_kursus));
+        suffix = 'KBP';
+        break;
+      case 'kbp_waran':
+        list = inRank.filter((e) => hasKbpWaran(e.senarai_kursus));
+        suffix = 'KBP Waran';
+        break;
+      case 'ptb':
+        list = inRank.filter((e) => hasPtb(e.senarai_kursus));
+        suffix = 'PTB';
+        break;
+      case 'aktif':
+        list = inRank.filter((e) => norm(e.status_keaktifan) === 'AKTIF');
+        suffix = 'Aktif';
+        break;
+      case 'simpanan':
+        list = inRank.filter((e) => norm(e.status_keaktifan) === 'SIMPANAN');
+        suffix = 'Simpanan';
+        break;
+      default:
+        list = [];
+        suffix = '';
+    }
+    setFilterModal({ visible: true, title: `${rankLabel} — ${suffix}`, list, page: 1 });
+  };
+  
   const openPromotionEligibleEmployees = (rankLabel, subRoute) => {
     const prebetHolders = () => employees.filter((e) => normalizePangkat(e.pangkat) === normalizePangkat('Prebet'));
     const normRank = normalizePangkat(rankLabel);
@@ -596,6 +632,7 @@ export default function AngkatanScreen({ userRole }) {
           onDelete={handleDeleteRank}
           onOpenRank={openRankEmployees}
           onOpenPromotion={openPromotionEligibleEmployees}
+          onOpenColumnList={openColumnEmployees}
           ranksPdfFilename={summary.ranks_pdf_filename}
           ranksPdfUploadedAt={summary.ranks_pdf_uploaded_at}
           ranksPdfUrl={
