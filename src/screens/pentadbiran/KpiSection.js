@@ -241,8 +241,8 @@ export default function KpiSection({ kpiItems, isEditing, updateKpiItem, addKpiI
   };
 
   const handleSave = async () => {
-    if (!draft.nama.trim() || !draft.tafsiran.trim() || !draft.sasaran.trim()) {
-      setFormError('Nama, tafsiran dan sasaran tidak boleh kosong.');
+    if (Number(draft.sasaran) > 100) {
+      setFormError('Sasaran tidak boleh melebihi 100%.');
       return;
     }
     setFormError(null);

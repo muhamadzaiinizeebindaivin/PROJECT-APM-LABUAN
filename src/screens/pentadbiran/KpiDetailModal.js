@@ -10,6 +10,13 @@ const STATUS_LABELS = {
   merah: { label: 'Merah', color: '#dc2626', desc: 'Di bawah sasaran / kritikal.' },
 };
 
+// Ajoute "%" seulement si la valeur est purement numérique — les anciennes valeurs
+// en texte libre (ex. "2 hari") gardent déjà leur propre unité, pas de doublon.
+const formatPencapaian = (value) => {
+  if (!value) return '—';
+  return /^\d+(\.\d+)?$/.test(String(value).trim()) ? `${value}%` : value;
+};
+
 export default function KpiDetailModal({ visible, item, onClose }) {
   if (!item) return null;
   const status = STATUS_LABELS[item.status] || STATUS_LABELS.kuning;
@@ -46,11 +53,11 @@ export default function KpiDetailModal({ visible, item, onClose }) {
             <View style={styles.kpiDetailRow}>
               <View style={[styles.kpiDetailBox, styles.kpiDetailCol]}>
                 <Text style={styles.inputLabel}>Sasaran</Text>
-                <Text style={styles.kpiDetailValue}>{item.sasaran || '—'}</Text>
+                <Text style={styles.kpiDetailValue}>{item.sasaran ? `${item.sasaran}%` : '—'}</Text>
               </View>
               <View style={[styles.kpiDetailBox, styles.kpiDetailCol]}>
                 <Text style={styles.inputLabel}>Pencapaian Semasa</Text>
-                <Text style={styles.kpiDetailValue}>{item.pencapaian_semasa || '—'}</Text>
+                <Text style={styles.kpiDetailValue}>{formatPencapaian(item.pencapaian_semasa)}</Text>
               </View>
             </View>
 

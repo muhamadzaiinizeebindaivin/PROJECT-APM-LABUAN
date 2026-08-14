@@ -68,17 +68,21 @@ export default function KpiEditModal({ visible, isNew, draft, setDraft, onSave, 
             <Text style={styles.kpiSectionLabel}>PRESTASI</Text>
             <View style={styles.kpiFieldRow}>
               <View style={styles.kpiFieldCol}>
-                <Text style={styles.inputLabel}>Sasaran</Text>
+                <Text style={styles.inputLabel}>Sasaran (%)</Text>
                 <TextInput
                   style={styles.modalInput}
                   value={draft.sasaran}
-                  onChangeText={(text) => setDraft((prev) => ({ ...prev, sasaran: text }))}
-                  placeholder="cth. 95%"
+                  onChangeText={(text) => setDraft((prev) => ({ ...prev, sasaran: text.replace(/[^0-9]/g, '') }))}
+                  keyboardType="numeric"
+                  placeholder="cth. 95"
                   placeholderTextColor={PALETTE.textMutedDark}
                 />
+                {Number(draft.sasaran) > 100 && (
+                  <Text style={{ fontSize: 12, color: '#dc2626', marginTop: 4 }}>Sasaran tidak boleh melebihi 100%.</Text>
+                )}
               </View>
               <View style={styles.kpiFieldCol}>
-                <Text style={styles.inputLabel}>Pencapaian Semasa</Text>
+                <Text style={styles.inputLabel}>Pencapaian Semasa (%)</Text>
                 <TextInput
                   style={styles.modalInput}
                   value={draft.pencapaian_semasa}
