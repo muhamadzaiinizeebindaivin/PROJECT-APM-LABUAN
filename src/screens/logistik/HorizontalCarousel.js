@@ -22,6 +22,8 @@ export default function HorizontalCarousel({ items, cardWidth, cardGap = 10, ren
 
   const contentWidth = Math.max(1, items.length * (cardWidth + cardGap) - cardGap);
   const active = items.length > 1 && !pauseAutoScroll && !hovered && !interacting && !isMobile;
+  const activeRef = useRef(active);
+  useEffect(() => { activeRef.current = active; }, [active]);
 
   const stopAutoScroll = useCallback(() => {
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
@@ -69,7 +71,7 @@ export default function HorizontalCarousel({ items, cardWidth, cardGap = 10, ren
   }, [interacting]);
 
   const pauseForInteraction = () => { userInteractingRef.current = true; stopAutoScroll(); };
-  const resumeAfterInteraction = () => { userInteractingRef.current = false; if (active) startAutoScroll(); };
+  const resumeAfterInteraction = () => { userInteractingRef.current = false; if (activeRef.current) startAutoScroll(); };
 
   const handleNativeScroll = (e) => {
     const x = e.nativeEvent.contentOffset.x;

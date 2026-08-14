@@ -23,9 +23,7 @@ export function useAvailableVehicles() {
       try {
         const { data, error } = await supabaseSandbox
           .from('logistik')
-          .select('id, model, reg, type, color, icon_key, tracking_status, job_started_at')
-          .eq('category', 'Darat')
-          .eq('status', 'Baik')
+          .select('id, category, model, reg, type, color, icon_key, tracking_status, job_started_at')
           .order('model', { ascending: true });
 
         if (error) throw error;
@@ -33,7 +31,7 @@ export function useAvailableVehicles() {
         if (data && data.length > 0) {
           if (isMounted) setVehicles(data);
         } else {
-          throw new Error("Tiada kenderaan darat yang berstatus 'Baik' dijumpai.");
+          throw new Error("Tiada kenderaan dijumpai.");
         }
       } catch (error) {
         console.error("Gagal mengambil data kenderaan:", error.message);

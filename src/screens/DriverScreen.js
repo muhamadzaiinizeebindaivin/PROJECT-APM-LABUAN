@@ -1,6 +1,6 @@
 // src/screens/DriverScreen.js
 import React, { useState, useEffect, useRef, useMemo, createElement } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, FlatList, TextInput, Platform, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, SectionList, TextInput, Platform, ScrollView } from 'react-native';
 import { Navigation, StopCircle, ArrowLeft, Search, MapPin, Eye, EyeOff, Lock } from 'lucide-react-native';
 
 import { getVehicleIcon } from '../utils/vehicleIcons';
@@ -95,6 +95,8 @@ export default function DriverScreen({ onLogout }) {
   const [selectedVehicle, setSelectedVehicle] = useState(null);
   const [isTracking, setIsTracking] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [activeCategory, setActiveCategory] = useState(null);
+  const numColumns = 2;
 
   const [accessVerified, setAccessVerified] = useState(false);
   const [checkingAccess, setCheckingAccess] = useState(true);
@@ -269,11 +271,54 @@ export default function DriverScreen({ onLogout }) {
     markPoint();
   };
 
-  // Filter vehicles based on search query
+  // Options de catégorie dérivées des véhicules eux-mêmes, avec 'Darat' toujours en premier
+  const categoryOptions = [...new Set(vehicles.map(v => v.category || 'Lain-lain'))].sort((a, b) => {
+    if (a === 'Darat') return -1;
+    if (b === 'Darat') return 1;
+    return a.localeCompare(b);
+  });
+
+  // Si la catégorie active n'existe plus (ex: données changées) ou n'est pas encore définie,
+  // on revient sur la première catégorie disponible
+  useEffect(() => {
+    if (!loadingVehicles && categoryOptions.length > 0 && !categoryOptions.includes(activeCategory)) {
+      setActiveCategory(categoryOptions[0]);
+    }
+  }, [categoryOptions.join(','), loadingVehicles]);
+
+  // Filter vehicles based on search query and active category
   const filteredVehicles = vehicles.filter(v =>
-    v.model.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (v.reg || '').toLowerCase().includes(searchQuery.toLowerCase())
+    (v.model.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (v.reg || '').toLowerCase().includes(searchQuery.toLowerCase())) &&
+    (v.category || 'Lain-lain') === activeCategory
   );
+
+  // Regroupe les véhicules par catégorie (fallback 'Lain-lain' si absente).
+  // Une section n'apparaît que si elle contient au moins un véhicule ; 'Lain-lain' est
+  // toujours placée en dernier quand elle existe.
+  const vehiclesByCategory = filteredVehicles.reduce((acc, v) => {
+    const category = v.category || 'Lain-lain';
+    if (!acc[category]) acc[category] = [];
+    acc[category].push(v);
+    return acc;
+  }, {});
+
+  const sortedCategories = Object.keys(vehiclesByCategory).sort((a, b) => {
+    if (a === 'Lain-lain') return 1;
+    if (b === 'Lain-lain') return -1;
+    return a.localeCompare(b);
+  });
+
+  const chunkIntoRows = (arr, size) => {
+    const rows = [];
+    for (let i = 0; i < arr.length; i += size) rows.push(arr.slice(i, i + size));
+    return rows;
+  };
+
+  const vehicleSections = sortedCategories.map((category) => ({
+    title: category,
+    data: chunkIntoRows(vehiclesByCategory[category], numColumns),
+  }));
 
   if (checkingAccess) {
     return (
@@ -354,46 +399,74 @@ export default function DriverScreen({ onLogout }) {
           />
         </View>
 
+        {categoryOptions.length > 1 && (
+        <View style={styles.categorySegmentedControl}>
+          {categoryOptions.map((cat) => (
+            <TouchableOpacity
+              key={cat}
+              style={[styles.categorySegment, activeCategory === cat && styles.categorySegmentActive]}
+              onPress={() => setActiveCategory(cat)}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.categorySegmentText, activeCategory === cat && styles.categorySegmentTextActive]}>
+                {cat}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+        )}
+
         {loadingVehicles ? (
           <ActivityIndicator size="large" color={PALETTE.orange} style={{ marginTop: 20 }} />
         ) : (
-          <FlatList
-            data={filteredVehicles}
-            keyExtractor={(item) => item.id}
+          <SectionList
+            sections={vehicleSections}
+            keyExtractor={(row, index) => row.map((v) => v.id).join('-') || `row-${index}`}
             style={{ width: '100%' }}
             showsVerticalScrollIndicator={false}
-            numColumns={2}
-            columnWrapperStyle={styles.row}
             contentContainerStyle={{ paddingBottom: 20 }}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={[styles.vehicleCard, item.isBusy && styles.vehicleCardBusy]}
-                onPress={() => { if (!item.isBusy) setSelectedVehicle(item); }}
-                activeOpacity={item.isBusy ? 1 : 0.7}
-                disabled={item.isBusy}
-              >
-                <View style={[styles.iconContainer, item.isBusy && { opacity: 0.4 }]}>
-                  {getVehicleIcon(item.icon_key, PALETTE.orange, 32)}
-                </View>
-
-                <Text style={[styles.vehiclePlateText, item.isBusy && { opacity: 0.4 }]} numberOfLines={1}>
-                  {item.reg || 'TIADA PLAT'}
-                </Text>
-
-                <Text style={[styles.vehicleNameText, item.isBusy && { opacity: 0.4 }]} numberOfLines={2}>
-                  {item.model}
-                </Text>
-
-                {item.isBusy ? (
-                  <View style={[styles.badge, { backgroundColor: PALETTE.dangerSoft }]}>
-                    <Text style={[styles.badgeText, { color: PALETTE.danger }]}>Sedang Digunakan</Text>
-                  </View>
-                ) : (
-                  <View style={[styles.badge, { backgroundColor: PALETTE.successSoft }]}>
-                    <Text style={[styles.badgeText, { color: PALETTE.success }]}>Tersedia</Text>
-                  </View>
-                )}
-              </TouchableOpacity>
+            stickySectionHeadersEnabled={false}
+            renderItem={({ item: row }) => (
+              <View style={styles.cardRow}>
+                {row.map((item) => {
+                  const stripeColor = item.color || PALETTE.orange;
+                  return (
+                    <View key={item.id} style={styles.vehicleCardCol}>
+                      <TouchableOpacity
+                        style={[styles.vehicleCard, item.isBusy && styles.vehicleCardBusy]}
+                        onPress={() => { if (!item.isBusy) setSelectedVehicle(item); }}
+                        activeOpacity={item.isBusy ? 1 : 0.7}
+                        disabled={item.isBusy}
+                      >
+                        <View style={styles.vehicleCardBody}>
+                          <View style={[styles.vehicleIconWrap, { backgroundColor: `${stripeColor}1F` }, item.isBusy && { opacity: 0.4 }]}>
+                            {getVehicleIcon(item.icon_key, stripeColor, 22)}
+                          </View>
+                          <Text style={[styles.vehiclePlateText, item.isBusy && { opacity: 0.4 }]} numberOfLines={1}>
+                            {item.reg || 'TIADA PLAT'}
+                          </Text>
+                          <Text style={[styles.vehicleModelText, item.isBusy && { opacity: 0.4 }]} numberOfLines={2}>
+                            {item.model}
+                          </Text>
+                          {item.isBusy ? (
+                            <View style={[styles.badge, { backgroundColor: PALETTE.dangerSoft }]}>
+                              <Text style={[styles.badgeText, { color: PALETTE.danger }]}>Sedang Digunakan</Text>
+                            </View>
+                          ) : (
+                            <View style={[styles.badge, { backgroundColor: PALETTE.successSoft }]}>
+                              <Text style={[styles.badgeText, { color: PALETTE.success }]}>Tersedia</Text>
+                            </View>
+                          )}
+                        </View>
+                      </TouchableOpacity>
+                    </View>
+                  );
+                })}
+                {row.length < numColumns &&
+                  Array.from({ length: numColumns - row.length }).map((_, i) => (
+                    <View key={`spacer-${i}`} style={{ flex: 1 }} />
+                  ))}
+              </View>
             )}
             ListEmptyComponent={
               <Text style={styles.emptyText}>Tiada kenderaan dijumpai.</Text>
@@ -544,6 +617,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 26, fontWeight: '900', color: PALETTE.textDark, marginBottom: 4 },
   subtitle: { fontSize: 13, color: PALETTE.textMutedDark, fontWeight: '600' },
   emptyText: { color: PALETTE.textMutedDark, textAlign: 'center', marginTop: 20 },
+  sectionHeaderText: { fontSize: 14, fontWeight: '800', color: PALETTE.textDark, marginBottom: 10, marginTop: 6 },
 
   searchContainer: {
     flexDirection: 'row', alignItems: 'center', width: '100%', paddingHorizontal: 15,
@@ -553,21 +627,48 @@ const styles = StyleSheet.create({
   searchIcon: { marginRight: 10 },
   searchInput: { flex: 1, height: '100%', fontSize: 15, color: PALETTE.textDark, outlineStyle: 'none', outlineWidth: 0 },
 
-  row: { justifyContent: 'space-between', marginBottom: 15 },
-  vehicleCard: {
-    width: '48%', padding: 16, borderRadius: 18, alignItems: 'center',
+  categorySegmentedControl: {
+    flexDirection: 'row', width: '100%', padding: 4, borderRadius: 14,
     backgroundColor: PALETTE.cardLight, borderWidth: 1, borderColor: PALETTE.cardLightBorder,
-    shadowColor: '#c9825a', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.06, shadowRadius: 14, elevation: 2,
+    marginBottom: 20,
   },
-  vehicleCardBusy: { opacity: 0.7, backgroundColor: PALETTE.surface },
-  iconContainer: {
-    width: 60, height: 60, borderRadius: 30, justifyContent: 'center', alignItems: 'center',
-    backgroundColor: 'rgba(249, 115, 22, 0.12)', marginBottom: 12,
+  categorySegment: {
+    flex: 1, paddingVertical: 10, borderRadius: 10, alignItems: 'center', justifyContent: 'center',
   },
-  vehiclePlateText: { fontSize: 15, fontWeight: '800', color: PALETTE.textDark, marginBottom: 4, textAlign: 'center' },
-  vehicleNameText: { fontSize: 12, color: PALETTE.textMutedDark, textAlign: 'center', marginBottom: 10, height: 34 },
-  badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
+  categorySegmentActive: {
+    backgroundColor: PALETTE.orange,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 6, elevation: 3,
+  },
+  categorySegmentText: { fontSize: 13, fontWeight: '700', color: PALETTE.textMutedDark },
+  categorySegmentTextActive: { color: '#fff' },
+
+  cardRow: { flexDirection: 'row', gap: 10 },
+  vehicleCardCol: { flex: 1, marginBottom: 10 },
+  vehicleCard: {
+    backgroundColor: PALETTE.cardLight, borderWidth: 1, borderColor: PALETTE.cardLightBorder,
+    borderRadius: 14, overflow: 'hidden',
+  },
+  vehicleCardBusy: { backgroundColor: PALETTE.surface },
+  vehicleCardBody: { padding: 12, alignItems: 'center' },
+  vehicleIconWrap: {
+    width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center',
+    marginBottom: 10,
+  },
+  vehiclePlateText: { fontSize: 14, fontWeight: '800', color: PALETTE.textDark, textAlign: 'center' },
+  vehicleModelText: { fontSize: 11, color: PALETTE.textMutedDark, fontWeight: '600', textAlign: 'center', marginTop: 2, height: 28 },
+  badge: { marginTop: 8, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999 },
   badgeText: { fontSize: 10, fontWeight: '800' },
+
+  sectionHeader: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    marginTop: 20, marginBottom: 16,
+  },
+  sectionHeaderTitle: { fontSize: 15, fontWeight: '900', color: PALETTE.textDark },
+  sectionHeaderCountPill: {
+    paddingHorizontal: 10, paddingVertical: 3, borderRadius: 999,
+    backgroundColor: 'rgba(249, 115, 22, 0.12)',
+  },
+  sectionHeaderCountText: { fontSize: 11, fontWeight: '800', color: PALETTE.orange },
 
   backButton: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', marginBottom: 10, gap: 6 },
   backText: { fontSize: 14, fontWeight: '700', color: PALETTE.textDark },
