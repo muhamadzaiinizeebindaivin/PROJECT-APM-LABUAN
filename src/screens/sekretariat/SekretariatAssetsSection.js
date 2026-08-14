@@ -45,7 +45,7 @@ const local = StyleSheet.create({
   cardValue: { fontSize: 20, fontWeight: '900', color: PALETTE.textDark },
   inlineEditRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, width: '100%' },
   cardValueInput: {
-    width: 60, fontSize: 15, fontWeight: '800', color: PALETTE.textDark, textAlign: 'center',
+    width: 90, fontSize: 15, fontWeight: '800', color: PALETTE.textDark, textAlign: 'center',
     backgroundColor: '#fafafa', borderWidth: 1, borderColor: PALETTE.cardLightBorder,
     borderRadius: 8, paddingVertical: 4,
   },
