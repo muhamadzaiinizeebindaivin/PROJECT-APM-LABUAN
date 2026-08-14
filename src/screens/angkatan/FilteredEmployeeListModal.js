@@ -31,15 +31,6 @@ export default function FilteredEmployeeListModal({
       'tarikh_tamat_kad', 'tarikh_tamat_insuran', 'tarikh_tamat_perkeso',
     ]);
 
-    // Colonnes "tempoh" calculées par formule Excel (recalcule à chaque ouverture)
-    // plutôt qu'une valeur figée au moment de l'export.
-    const TEMPOH_FORMULAS = {
-      tempoh_baki_aktif_kad_hari: { fromKey: 'tarikh_tamat_kad', build: (ref) => `${ref}-TODAY()` },
-      tempoh_baki_aktif_insuran_hari: { fromKey: 'tarikh_tamat_insuran', build: (ref) => `${ref}-TODAY()` },
-      tempoh_baki_caruman_perkeso_hari: { fromKey: 'tarikh_tamat_perkeso', build: (ref) => `${ref}-TODAY()` },
-      tempoh_berkhidmat: { fromKey: 'tarikh_menyertai_apm', build: (ref) => `(TODAY()-${ref})/365.25` },
-    };
-
     const parseIsoDate = (value) => {
       if (!value || typeof value !== 'string') return null;
       const match = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
@@ -56,6 +47,26 @@ export default function FilteredEmployeeListModal({
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Senarai Anggota');
     const lastCol = Math.max(1, maklumatPeribadiFields.length);
+
+    // Une seule cellule TODAY() cachée, référencée par toutes les formules "tempoh"
+    // ci-dessous — évite des centaines d'appels TODAY() volatils séparés qui
+    // ralentissent/gèlent le recalcul (observé notamment sur Excel Online).
+    const todayHelperCol = lastCol + 2;
+    const todayCell = worksheet.getCell(1, todayHelperCol);
+    todayCell.value = { formula: 'TODAY()', result: new Date() };
+    todayCell.numFmt = 'dd/mm/yyyy';
+    worksheet.getColumn(todayHelperCol).hidden = true;
+    const todayCellRef = `$${worksheet.getColumn(todayHelperCol).letter}$1`;
+
+    // Colonnes "tempoh" calculées par formule Excel (recalcule à chaque ouverture)
+    // plutôt qu'une valeur figée au moment de l'export — référencent la cellule
+    // TODAY() unique ci-dessus plutôt que d'appeler TODAY() individuellement.
+    const TEMPOH_FORMULAS = {
+      tempoh_baki_aktif_kad_hari: { fromKey: 'tarikh_tamat_kad', build: (ref) => `${ref}-${todayCellRef}` },
+      tempoh_baki_aktif_insuran_hari: { fromKey: 'tarikh_tamat_insuran', build: (ref) => `${ref}-${todayCellRef}` },
+      tempoh_baki_caruman_perkeso_hari: { fromKey: 'tarikh_tamat_perkeso', build: (ref) => `${ref}-${todayCellRef}` },
+      tempoh_berkhidmat: { fromKey: 'tarikh_menyertai_apm', build: (ref) => `(${todayCellRef}-${ref})/365.25` },
+    };
 
     // Titre — fusionné, à gauche, en gras (couleur explicite : "automatic" peut
     // s'afficher blanc sur blanc selon le thème/mode d'affichage d'Excel).
@@ -136,37 +147,6 @@ export default function FilteredEmployeeListModal({
         }
       });
     });
-
-    // Mise en forme conditionnelle des colonnes "tempoh baki" (jours restants) —
-    // liée à la formule, donc la couleur reste juste même après réouverture du
-    // fichier plus tard (contrairement à une couleur figée au moment de l'export).
-    const TEMPOH_BAKI_KEYS = ['tempoh_baki_aktif_kad_hari', 'tempoh_baki_aktif_insuran_hari', 'tempoh_baki_caruman_perkeso_hari'];
-    if (list.length > 0) {
-      const firstDataRow = HEADER_ROW + 1;
-      const lastDataRow = HEADER_ROW + list.length;
-      TEMPOH_BAKI_KEYS.forEach((key) => {
-        const colIdx = colIndexOf(key);
-        if (colIdx === -1) return;
-        const colLetter = worksheet.getColumn(colIdx + 1).letter;
-        worksheet.addConditionalFormatting({
-          ref: `${colLetter}${firstDataRow}:${colLetter}${lastDataRow}`,
-          rules: [
-            {
-              type: 'cellIs', operator: 'lessThan', formulae: [0], priority: colIdx * 10 + 1,
-              style: { font: { color: { argb: 'FFFFFFFF' } }, fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF8C8C8C' } } },
-            },
-            {
-              type: 'cellIs', operator: 'between', formulae: [0, 30], priority: colIdx * 10 + 2,
-              style: { fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE57373' } } },
-            },
-            {
-              type: 'cellIs', operator: 'between', formulae: [31, 90], priority: colIdx * 10 + 3,
-              style: { fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF5DA6B' } } },
-            },
-          ],
-        });
-      });
-    }
 
     // Largeur minimale forcée pour certaines colonnes où le calcul automatique
     // (libellé/valeurs) coupe encore le texte à l'affichage.

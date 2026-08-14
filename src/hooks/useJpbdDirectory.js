@@ -58,20 +58,37 @@ export function useJpbdDirectory() {
     setModalJpbdVisible(true);
   };
 
+  // Même population que openEditModal, mais sans ouvrir le modal — utilisé pour
+  // l'édition inline directement dans le panneau de détails (pas de popup).
+  const loadIntoForm = (item) => {
+    setFormModeJpbd('edit');
+    setEditIdJpbd(item.id);
+    setFormJpbd({
+      ...item,
+      officers_count: item.officers_count?.toString() || '',
+      members_count: item.members_count?.toString() || '',
+      logo_url: item.logo_url || ''
+    });
+  };
+
+  // Renvoie true/false selon le succès — permet à l'appelant (ex: édition inline)
+  // de savoir s'il doit quitter le mode édition ou rester pour corriger.
   const handleSaveJPBD = async () => {
-    if (!formJpbd.agency) return Alert.alert('Ralat', 'Sila masukkan nama Agensi.');
+    if (!formJpbd.agency) { Alert.alert('Ralat', 'Sila masukkan nama Agensi.'); return false; }
     setLoadingJPBD(true);
 
+    let success = false;
     if (formModeJpbd === 'add') {
       const { error } = await supabaseSandbox.from('jpbd_directory').insert([formJpbd]);
       if (error) Alert.alert('Ralat', error.message);
-      else { Alert.alert('Berjaya', 'Rekod ditambah.'); setModalJpbdVisible(false); fetchJPBD(); }
+      else { Alert.alert('Berjaya', 'Rekod ditambah.'); setModalJpbdVisible(false); fetchJPBD(); success = true; }
     } else {
       const { error } = await supabaseSandbox.from('jpbd_directory').update(formJpbd).eq('id', editIdJpbd);
       if (error) Alert.alert('Ralat', error.message);
-      else { Alert.alert('Berjaya', 'Rekod dikemaskini.'); setModalJpbdVisible(false); fetchJPBD(); }
+      else { Alert.alert('Berjaya', 'Rekod dikemaskini.'); setModalJpbdVisible(false); fetchJPBD(); success = true; }
     }
     setLoadingJPBD(false);
+    return success;
   };
 
   const confirmDeleteJPBD = (id) => {
@@ -100,7 +117,7 @@ export function useJpbdDirectory() {
     jpbdList, loadingJPBD,
     modalJpbdVisible, setModalJpbdVisible,
     formModeJpbd, formJpbd, setFormJpbd,
-    openAddModal, openEditModal,
+    openAddModal, openEditModal, loadIntoForm,
     handleSaveJPBD, confirmDeleteJPBD,
   };
 }

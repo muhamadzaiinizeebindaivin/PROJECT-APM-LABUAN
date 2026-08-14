@@ -34,7 +34,7 @@ export default function JpbdSection({ userRole, isEditMode }) {
     jpbdList, loadingJPBD,
     modalJpbdVisible, setModalJpbdVisible,
     formModeJpbd, formJpbd, setFormJpbd,
-    openAddModal, openEditModal,
+    openAddModal, openEditModal, loadIntoForm,
     handleSaveJPBD, confirmDeleteJPBD,
   } = useJpbdDirectory();
   const { pickAndUploadLogo, uploadingLogo } = useAgencyLogo();
@@ -294,91 +294,22 @@ export default function JpbdSection({ userRole, isEditMode }) {
 
       <Modal visible={modalJpbdVisible} animationType="slide" transparent={true}>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
+          <View style={[styles.modalContainer, { maxWidth: 720, width: '100%', maxHeight: '90%' }]}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>{formModeJpbd === 'add' ? 'Tambah Agensi' : 'Kemaskini Agensi'}</Text>
               <TouchableOpacity onPress={() => setModalJpbdVisible(false)}><X size={24} color={PALETTE.textMutedDark} /></TouchableOpacity>
             </View>
             <ScrollView contentContainerStyle={styles.modalForm}>
-              <Text style={styles.inputLabel}>Logo Agensi</Text>
-              <TouchableOpacity style={jpbdStyles.logoPicker} onPress={handlePickLogo} disabled={uploadingLogo}>
-                {uploadingLogo ? (
-                  <ActivityIndicator color={PALETTE.orange} />
-                ) : formJpbd.logo_url ? (
-                  <Image source={{ uri: formJpbd.logo_url }} style={jpbdStyles.logoPreview} resizeMode="contain" />
-                ) : (
-                  <>
-                    <ImagePlus size={22} color={PALETTE.textMutedDark} />
-                    <Text style={jpbdStyles.logoPickerText}>Pilih logo</Text>
-                  </>
-                )}
-              </TouchableOpacity>
-
-              <Text style={styles.inputLabel}>Nama Agensi *</Text>
-              <TextInput style={styles.input} placeholder="Contoh: PDRM" value={formJpbd.agency} onChangeText={(t) => setFormJpbd({ ...formJpbd, agency: t })} />
-              <Text style={styles.inputLabel}>Nama Pegawai</Text>
-              <TextInput style={styles.input} placeholder="Nama penuh pegawai" value={formJpbd.officer} onChangeText={(t) => setFormJpbd({ ...formJpbd, officer: t })} />
-              <View style={styles.row}>
-                <View style={styles.halfCol}>
-                  <Text style={styles.inputLabel}>Jawatan</Text>
-                  <TextInput style={styles.input} placeholder="Cth: Pengarah" value={formJpbd.position} onChangeText={(t) => setFormJpbd({ ...formJpbd, position: t })} />
-                </View>
-                <View style={styles.halfCol}>
-                  <Text style={styles.inputLabel}>Gred</Text>
-                  <TextInput style={styles.input} placeholder="Cth: KB 9" value={formJpbd.grade} onChangeText={(t) => setFormJpbd({ ...formJpbd, grade: t })} />
-                </View>
-              </View>
-              <Text style={styles.inputLabel}>E-mel</Text>
-              <TextInput style={styles.input} placeholder="emel@domain.com" keyboardType="email-address" value={formJpbd.email} onChangeText={(t) => setFormJpbd({ ...formJpbd, email: t })} />
-              <Text style={styles.inputLabel}>Alamat</Text>
-              <TextInput style={[styles.input, { height: 60, textAlignVertical: 'top' }]} placeholder="Alamat penuh" multiline value={formJpbd.address} onChangeText={(t) => setFormJpbd({ ...formJpbd, address: t })} />
-              <View style={styles.row}>
-                <View style={styles.halfCol}>
-                  <Text style={styles.inputLabel}>Tel Pejabat</Text>
-                  <TextInput style={styles.input} placeholder="087-XXXXXX" keyboardType="phone-pad" value={formJpbd.office_phone} onChangeText={(t) => setFormJpbd({ ...formJpbd, office_phone: t })} />
-                </View>
-                <View style={styles.halfCol}>
-                  <Text style={styles.inputLabel}>Tel Bimbit</Text>
-                  <TextInput style={styles.input} placeholder="01X-XXXXXXX" keyboardType="phone-pad" value={formJpbd.mobile_phone} onChangeText={(t) => setFormJpbd({ ...formJpbd, mobile_phone: t })} />
-                </View>
-              </View>
-              <Text style={styles.inputLabel}>No. Fax</Text>
-              <TextInput style={styles.input} placeholder="087-XXXXXX" keyboardType="phone-pad" value={formJpbd.fax} onChangeText={(t) => setFormJpbd({ ...formJpbd, fax: t })} />
-              <View style={styles.row}>
-                <View style={styles.halfCol}>
-                  <Text style={styles.inputLabel}>Bil. Pegawai</Text>
-                  <TextInput style={styles.input} placeholder="Cth: 5" keyboardType="number-pad" value={formJpbd.officers_count} onChangeText={(t) => setFormJpbd({ ...formJpbd, officers_count: t })} />
-                </View>
-                <View style={styles.halfCol}>
-                  <Text style={styles.inputLabel}>Bil. Anggota</Text>
-                  <TextInput style={styles.input} placeholder="Cth: 30" keyboardType="number-pad" value={formJpbd.members_count} onChangeText={(t) => setFormJpbd({ ...formJpbd, members_count: t })} />
-                </View>
-              </View>
-              <Text style={styles.inputLabel}>Logistik & Aset</Text>
-              {assetRows.map((row, i) => (
-                <View key={i} style={jpbdStyles.assetRow}>
-                  <TextInput
-                    style={[styles.input, jpbdStyles.assetNameInput]}
-                    placeholder="Cth: Bot Aluminium"
-                    value={row.name}
-                    onChangeText={(t) => updateAssetRow(i, 'name', t)}
-                  />
-                  <TextInput
-                    style={[styles.input, jpbdStyles.assetQtyInput]}
-                    placeholder="Bil."
-                    keyboardType="number-pad"
-                    value={row.qty}
-                    onChangeText={(t) => updateAssetRow(i, 'qty', t)}
-                  />
-                  <TouchableOpacity style={jpbdStyles.assetRemoveBtn} onPress={() => removeAssetRow(i)}>
-                    <Trash2 size={16} color={PALETTE.danger} />
-                  </TouchableOpacity>
-                </View>
-              ))}
-              <TouchableOpacity style={jpbdStyles.assetAddBtn} onPress={addAssetRow}>
-                <Plus size={14} color={PALETTE.orange} />
-                <Text style={jpbdStyles.assetAddText}>Tambah Aset</Text>
-              </TouchableOpacity>
+              <JpbdFormFields
+                formJpbd={formJpbd}
+                setFormJpbd={setFormJpbd}
+                assetRows={assetRows}
+                updateAssetRow={updateAssetRow}
+                addAssetRow={addAssetRow}
+                removeAssetRow={removeAssetRow}
+                handlePickLogo={handlePickLogo}
+                uploadingLogo={uploadingLogo}
+              />
               <TouchableOpacity style={styles.saveButton} onPress={handleSaveJPBD}>
                 {loadingJPBD ? <ActivityIndicator color={PALETTE.white} /> : <Text style={styles.saveButtonText}>Simpan Rekod</Text>}
               </TouchableOpacity>
@@ -388,6 +319,94 @@ export default function JpbdSection({ userRole, isEditMode }) {
         </View>
       </Modal>
     </View>
+  );
+}
+
+// Champs de formulaire partagés entre le modal "Tambah Agensi" et l'édition
+// inline dans le panneau de détails — évite de dupliquer les mêmes 60 lignes.
+function JpbdFormFields({ formJpbd, setFormJpbd, assetRows, updateAssetRow, addAssetRow, removeAssetRow, handlePickLogo, uploadingLogo }) {
+  return (
+    <>
+      <Text style={styles.inputLabel}>Logo Agensi</Text>
+      <TouchableOpacity style={jpbdStyles.logoPicker} onPress={handlePickLogo} disabled={uploadingLogo}>
+        {uploadingLogo ? (
+          <ActivityIndicator color={PALETTE.orange} />
+        ) : formJpbd.logo_url ? (
+          <Image source={{ uri: formJpbd.logo_url }} style={jpbdStyles.logoPreview} resizeMode="contain" />
+        ) : (
+          <>
+            <ImagePlus size={22} color={PALETTE.textMutedDark} />
+            <Text style={jpbdStyles.logoPickerText}>Pilih logo</Text>
+          </>
+        )}
+      </TouchableOpacity>
+
+      <Text style={styles.inputLabel}>Nama Agensi *</Text>
+      <TextInput style={styles.input} placeholder="Contoh: PDRM" value={formJpbd.agency} onChangeText={(t) => setFormJpbd({ ...formJpbd, agency: t })} />
+      <Text style={styles.inputLabel}>Nama Pegawai</Text>
+      <TextInput style={styles.input} placeholder="Nama penuh pegawai" value={formJpbd.officer} onChangeText={(t) => setFormJpbd({ ...formJpbd, officer: t })} />
+      <View style={styles.row}>
+        <View style={styles.halfCol}>
+          <Text style={styles.inputLabel}>Jawatan</Text>
+          <TextInput style={styles.input} placeholder="Cth: Pengarah" value={formJpbd.position} onChangeText={(t) => setFormJpbd({ ...formJpbd, position: t })} />
+        </View>
+        <View style={styles.halfCol}>
+          <Text style={styles.inputLabel}>Gred</Text>
+          <TextInput style={styles.input} placeholder="Cth: KB 9" value={formJpbd.grade} onChangeText={(t) => setFormJpbd({ ...formJpbd, grade: t })} />
+        </View>
+      </View>
+      <Text style={styles.inputLabel}>E-mel</Text>
+      <TextInput style={styles.input} placeholder="emel@domain.com" keyboardType="email-address" value={formJpbd.email} onChangeText={(t) => setFormJpbd({ ...formJpbd, email: t })} />
+      <Text style={styles.inputLabel}>Alamat</Text>
+      <TextInput style={[styles.input, { height: 60, textAlignVertical: 'top' }]} placeholder="Alamat penuh" multiline value={formJpbd.address} onChangeText={(t) => setFormJpbd({ ...formJpbd, address: t })} />
+      <View style={styles.row}>
+        <View style={styles.halfCol}>
+          <Text style={styles.inputLabel}>Tel Pejabat</Text>
+          <TextInput style={styles.input} placeholder="087-XXXXXX" keyboardType="phone-pad" value={formJpbd.office_phone} onChangeText={(t) => setFormJpbd({ ...formJpbd, office_phone: t })} />
+        </View>
+        <View style={styles.halfCol}>
+          <Text style={styles.inputLabel}>Tel Bimbit</Text>
+          <TextInput style={styles.input} placeholder="01X-XXXXXXX" keyboardType="phone-pad" value={formJpbd.mobile_phone} onChangeText={(t) => setFormJpbd({ ...formJpbd, mobile_phone: t })} />
+        </View>
+      </View>
+      <Text style={styles.inputLabel}>No. Fax</Text>
+      <TextInput style={styles.input} placeholder="087-XXXXXX" keyboardType="phone-pad" value={formJpbd.fax} onChangeText={(t) => setFormJpbd({ ...formJpbd, fax: t })} />
+      <View style={styles.row}>
+        <View style={styles.halfCol}>
+          <Text style={styles.inputLabel}>Bil. Pegawai</Text>
+          <TextInput style={styles.input} placeholder="Cth: 5" keyboardType="number-pad" value={formJpbd.officers_count} onChangeText={(t) => setFormJpbd({ ...formJpbd, officers_count: t })} />
+        </View>
+        <View style={styles.halfCol}>
+          <Text style={styles.inputLabel}>Bil. Anggota</Text>
+          <TextInput style={styles.input} placeholder="Cth: 30" keyboardType="number-pad" value={formJpbd.members_count} onChangeText={(t) => setFormJpbd({ ...formJpbd, members_count: t })} />
+        </View>
+      </View>
+      <Text style={styles.inputLabel}>Logistik & Aset</Text>
+      {assetRows.map((row, i) => (
+        <View key={i} style={jpbdStyles.assetRow}>
+          <TextInput
+            style={[styles.input, jpbdStyles.assetNameInput]}
+            placeholder="Cth: Bot Aluminium"
+            value={row.name}
+            onChangeText={(t) => updateAssetRow(i, 'name', t)}
+          />
+          <TextInput
+            style={[styles.input, jpbdStyles.assetQtyInput]}
+            placeholder="Bil."
+            keyboardType="number-pad"
+            value={row.qty}
+            onChangeText={(t) => updateAssetRow(i, 'qty', t)}
+          />
+          <TouchableOpacity style={jpbdStyles.assetRemoveBtn} onPress={() => removeAssetRow(i)}>
+            <Trash2 size={16} color={PALETTE.danger} />
+          </TouchableOpacity>
+        </View>
+      ))}
+      <TouchableOpacity style={jpbdStyles.assetAddBtn} onPress={addAssetRow}>
+        <Plus size={14} color={PALETTE.orange} />
+        <Text style={jpbdStyles.assetAddText}>Tambah Aset</Text>
+      </TouchableOpacity>
+    </>
   );
 }
 
