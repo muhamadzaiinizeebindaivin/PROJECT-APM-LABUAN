@@ -10,6 +10,7 @@ import { useSekretariatDocuments } from '../../hooks/useSekretariatDocuments';
 import SekretariatDocumentsSection from './SekretariatDocumentsSection';
 import { useSekretariatAssets } from '../../hooks/useSekretariatAssets';
 import { useSekretariatLogistik } from '../../hooks/useSekretariatLogistik';
+import { useSekretariatPetugas } from '../../hooks/useSekretariatPetugas';
 import SekretariatAssetsSection from './SekretariatAssetsSection';
 import { appStyles as styles } from '../../styles/appStyles';
 import { PALETTE } from '../../constants/palette';
@@ -41,6 +42,7 @@ export default function JpbdSection({ userRole, isEditMode }) {
   const { documents, loading: loadingDocuments, uploading: uploadingDocument, uploadDocument, deleteDocument } = useSekretariatDocuments();
   const { assetList, saveAssetItem, deleteAssetItem } = useSekretariatAssets();
   const { logistikList, saveLogistikItem, deleteLogistikItem } = useSekretariatLogistik();
+  const { petugasList, savePetugasItem, deletePetugasItem } = useSekretariatPetugas();
 
   // Sélectionne automatiquement la 1re agence au chargement
   useEffect(() => {
@@ -101,6 +103,19 @@ export default function JpbdSection({ userRole, isEditMode }) {
         uploading={uploadingDocument}
         uploadDocument={uploadDocument}
         deleteDocument={deleteDocument}
+        onNotify={(type, message) => console.log(type, message) /* remplace par le toast réel si JpbdSection en a un */}
+      />
+
+      <SekretariatAssetsSection
+        assetList={petugasList}
+        isEditing={isEditMode}
+        saveAssetItem={savePetugasItem}
+        deleteAssetItem={deletePetugasItem}
+        title="Jumlah Petugas"
+        itemNoun="Petugas"
+        itemNounLower="petugas"
+        namePlaceholder="Cth: Pasukan"
+        fixedItems
         onNotify={(type, message) => console.log(type, message) /* remplace par le toast réel si JpbdSection en a un */}
       />
 

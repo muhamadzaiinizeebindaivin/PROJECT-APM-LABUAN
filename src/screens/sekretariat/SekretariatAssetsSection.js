@@ -8,7 +8,7 @@ import {
   Boxes, Container, Warehouse, Archive, Package2, PackageOpen,
   Siren, PhoneCall, Wifi, Antenna, Compass, Map, Tent as TentAlt,
   Axe, Hammer, Drill, Scissors, Rope, Umbrella, Bike, Car, Bus,
-  Zap, PlugZap, Lightbulb, Wrench as WrenchAlt,
+  Zap, PlugZap, Lightbulb, Wrench as WrenchAlt, Users,
 } from 'lucide-react-native';
 import { PALETTE } from '../../constants/palette';
 import { appStyles as styles } from '../../styles/appStyles';
@@ -22,7 +22,7 @@ export const ASSET_ICON_MAP = {
   Boxes, Container, Warehouse, Archive, Package2, PackageOpen,
   Siren, PhoneCall, Wifi, Antenna, Compass, Map,
   Axe, Hammer, Drill, Scissors, Umbrella, Bike, Car, Bus,
-  Zap, PlugZap, Lightbulb,
+  Zap, PlugZap, Lightbulb, Users,
 };
 const ASSET_ICON_KEYS = Object.keys(ASSET_ICON_MAP);
 
@@ -39,9 +39,22 @@ const local = StyleSheet.create({
     backgroundColor: PALETTE.surface, borderWidth: 1, borderColor: PALETTE.cardLightBorder,
     position: 'relative',
   },
+  assetCardFill: { flex: 1, width: undefined },
   cardActions: { position: 'absolute', top: 8, right: 8, flexDirection: 'row', gap: 6, zIndex: 2 },
   iconBadge: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', marginBottom: 8, marginTop: 8 },
   cardValue: { fontSize: 20, fontWeight: '900', color: PALETTE.textDark },
+  inlineEditRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, width: '100%' },
+  cardValueInput: {
+    width: 60, fontSize: 15, fontWeight: '800', color: PALETTE.textDark, textAlign: 'center',
+    backgroundColor: '#fafafa', borderWidth: 1, borderColor: PALETTE.cardLightBorder,
+    borderRadius: 8, paddingVertical: 4,
+  },
+  inlineSaveBtn: {
+    paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: PALETTE.orange,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  inlineSaveBtnDisabled: { backgroundColor: PALETTE.cardLightBorder },
+  inlineSaveBtnText: { color: '#fff', fontWeight: '700', fontSize: 12 },
   cardLabel: { fontSize: 12, fontWeight: '600', color: PALETTE.textMutedDark, textAlign: 'center', marginTop: 2 },
 
   iconGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingVertical: 4 },
@@ -73,6 +86,7 @@ const local = StyleSheet.create({
 export default function SekretariatAssetsSection({
   assetList, isEditing, saveAssetItem, deleteAssetItem, onNotify,
   title = 'Jumlah Kenderaan', itemNoun = 'Kenderaan', itemNounLower = 'kenderaan', namePlaceholder = 'Cth: Toyota Hilux',
+  fixedItems = false, // true = entrées fixes (ex: Pasukan/Anggota) — pas d'ajout ni de suppression, seule la modification (Pencil) reste
 }) {
   const [modalVisible, setModalVisible] = useState(false);
   const [assetForm, setAssetForm] = useState({ id: null, nama: '', bilangan: '', icon_key: 'Package' });
@@ -201,6 +215,35 @@ export default function SekretariatAssetsSection({
     })
   ).current;
 
+  // Brouillon local pour l'édition inline (mode fixedItems) — sauvegarde explicite
+  // via le bouton "Simpan", pas au blur.
+  const [inlineDraft, setInlineDraft] = useState({});
+  const [savingIds, setSavingIds] = useState({});
+  useEffect(() => {
+    // N'initialise que les entrées absentes — un refetch après sauvegarde ne doit
+    // pas écraser une saisie en cours dans une AUTRE carte non encore sauvegardée.
+    if (!fixedItems) return;
+    setInlineDraft((prev) => {
+      const next = { ...prev };
+      let changed = false;
+      assetList.forEach((item) => {
+        if (!(item.id in next)) { next[item.id] = String(item.bilangan); changed = true; }
+      });
+      return changed ? next : prev;
+    });
+  }, [fixedItems, assetList]);
+
+  const handleInlineSave = async (item) => {
+    const raw = inlineDraft[item.id];
+    const num = parseInt(raw, 10) || 0;
+    if (num === item.bilangan) return;
+    setSavingIds((prev) => ({ ...prev, [item.id]: true }));
+    const ok = await saveAssetItem({ id: item.id, nama: item.nama, bilangan: num, icon_key: item.icon_key });
+    setSavingIds((prev) => ({ ...prev, [item.id]: false }));
+    if (ok === false) onNotify?.('error', `Gagal mengemaskini ${itemNounLower}.`);
+    else onNotify?.('success', `${itemNoun} berjaya dikemaskini.`);
+  };
+
   const openAdd = () => {
     setAssetForm({ id: null, nama: '', bilangan: '', icon_key: 'Package' });
     setFormError(null);
@@ -240,7 +283,7 @@ export default function SekretariatAssetsSection({
     <View style={[styles.card, { padding: 16 }]}>
       <View style={styles.sectionHeaderRow}>
         <Text style={styles.sectionHeaderTitle}>{title}</Text>
-        {isEditing && (
+        {isEditing && !fixedItems && (
           <TouchableOpacity style={styles.addButton} onPress={openAdd}>
             <Plus size={16} color="#fff" />
             <Text style={styles.addButtonText}>Tambah</Text>
@@ -250,6 +293,46 @@ export default function SekretariatAssetsSection({
 
       {assetList.length === 0 ? (
         <Text style={styles.emptyText}>Tiada {itemNounLower} lagi.</Text>
+      ) : fixedItems ? (
+        // Petit nombre d'entrées fixes (ex: Pasukan/Anggota) — pas besoin du
+        // carrousel défilant ; les cartes se répartissent toute la largeur du
+        // conteneur plutôt que d'utiliser la largeur fixe des cartes Kenderaan.
+        <View style={{ flexDirection: 'row', gap: CARD_GAP }}>
+          {assetList.map((item) => {
+            const IconComp = ASSET_ICON_MAP[item.icon_key] || Package;
+            const draftValue = inlineDraft[item.id] ?? String(item.bilangan);
+            const isDirty = parseInt(draftValue, 10) !== item.bilangan && draftValue !== '';
+            const isSaving = !!savingIds[item.id];
+            return (
+              <View key={item.id} style={[local.assetCard, local.assetCardFill]}>
+                <View style={[local.iconBadge, { backgroundColor: `${item.color}1A` }]}>
+                  <IconComp size={26} color={item.color} />
+                </View>
+                {isEditing ? (
+                  <View style={local.inlineEditRow}>
+                    <TextInput
+                      style={local.cardValueInput}
+                      value={draftValue}
+                      onChangeText={(t) => setInlineDraft({ ...inlineDraft, [item.id]: t.replace(/[^0-9]/g, '') })}
+                      keyboardType="numeric"
+                      textAlign="center"
+                    />
+                    <TouchableOpacity
+                      style={[local.inlineSaveBtn, (!isDirty || isSaving) && local.inlineSaveBtnDisabled]}
+                      onPress={() => handleInlineSave(item)}
+                      disabled={!isDirty || isSaving}
+                    >
+                      {isSaving ? <ActivityIndicator size="small" color="#fff" /> : <Text style={local.inlineSaveBtnText}>Simpan</Text>}
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <Text style={local.cardValue}>{item.bilangan}</Text>
+                )}
+                <Text style={local.cardLabel} numberOfLines={2}>{item.nama}</Text>
+              </View>
+            );
+          })}
+        </View>
       ) : (
         <>
           <View
