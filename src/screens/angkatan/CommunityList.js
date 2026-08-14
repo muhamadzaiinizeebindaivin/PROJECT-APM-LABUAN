@@ -6,6 +6,7 @@ import { PALETTE } from '../../constants/palette';
 import { angkatanStyles as styles } from './angkatanStyles';
 import { pentadbiranStyles } from '../pentadbiran/pentadbiranStyles';
 import { SCHOOL_CATEGORIES, CDA_CATEGORIES } from '../../hooks/useAngkatanCommunity';
+import { formatDateMY } from './employeeFieldGroups';
 
 const CATEGORIES = ['TUSPA', 'KASPA', 'PISPA', 'SISPA', 'CDA'];
 const CATEGORY_COLORS = {
@@ -190,11 +191,11 @@ export default function CommunityList({
                   </Text>
                   {SCHOOL_CATEGORIES.includes(prog.category) ? (
                     <Text style={commStyles.progDetail}>
-                      No. Pendaftaran: {prog.no_pendaftaran || '-'} · Ditubuhkan: {prog.tarikh_penubuhan || '-'} · L: {prog.jumlah_lelaki ?? 0} P: {prog.jumlah_perempuan ?? 0} (Jumlah: {(parseInt(prog.jumlah_lelaki, 10) || 0) + (parseInt(prog.jumlah_perempuan, 10) || 0)})
+                      No. Pendaftaran: {prog.no_pendaftaran || '-'} · Ditubuhkan: {formatDateMY(prog.tarikh_penubuhan) || '-'} · L: {prog.jumlah_lelaki ?? 0} P: {prog.jumlah_perempuan ?? 0} (Jumlah: {(parseInt(prog.jumlah_lelaki, 10) || 0) + (parseInt(prog.jumlah_perempuan, 10) || 0)})
                     </Text>
                   ) : CDA_CATEGORIES.includes(prog.category) ? (
                     <Text style={commStyles.progDetail}>
-                      Kod: {prog.kod_cda || '-'} · No. Pendaftaran: {prog.no_pendaftaran || '-'} · Berdaftar: {prog.tarikh_berdaftar || '-'}
+                      Kod: {prog.kod_cda || '-'} · No. Pendaftaran: {prog.no_pendaftaran || '-'} · Berdaftar: {formatDateMY(prog.tarikh_berdaftar) || '-'}
                     </Text>
                   ) : (
                     <Text style={commStyles.progDetail}>{prog.detail}</Text>
@@ -275,7 +276,7 @@ export default function CommunityList({
 
                   <Text style={styles.inputLabel}>Tarikh Penubuhan</Text>
                   <View style={[styles.modalInput, { marginBottom: 16, justifyContent: 'center' }]}>
-                    <Text style={{ fontSize: 14, color: PALETTE.textDark }}>{viewingProg?.tarikh_penubuhan || '-'}</Text>
+                    <Text style={{ fontSize: 14, color: PALETTE.textDark }}>{formatDateMY(viewingProg?.tarikh_penubuhan) || '-'}</Text>
                   </View>
 
                   <Text style={styles.inputLabel}>Jumlah Lelaki / Perempuan</Text>
@@ -364,7 +365,7 @@ export default function CommunityList({
 
                   <Text style={styles.inputLabel}>Tarikh Berdaftar</Text>
                   <View style={[styles.modalInput, { marginBottom: 16, justifyContent: 'center' }]}>
-                    <Text style={{ fontSize: 14, color: PALETTE.textDark }}>{viewingProg?.tarikh_berdaftar || '-'}</Text>
+                    <Text style={{ fontSize: 14, color: PALETTE.textDark }}>{formatDateMY(viewingProg?.tarikh_berdaftar) || '-'}</Text>
                   </View>
 
                   {!!viewingProg?.detail && (

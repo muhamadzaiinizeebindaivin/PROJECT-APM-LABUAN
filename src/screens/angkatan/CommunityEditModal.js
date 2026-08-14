@@ -5,6 +5,7 @@ import { X, Check, AlertCircle, Users } from 'lucide-react-native';
 import { PALETTE } from '../../constants/palette';
 import { angkatanStyles as styles } from './angkatanStyles';
 import { SCHOOL_CATEGORIES, CDA_CATEGORIES } from '../../hooks/useAngkatanCommunity';
+import { formatDateMY } from './employeeFieldGroups';
 
 const CATEGORIES = ['TUSPA', 'KASPA', 'PISPA', 'SISPA', 'CDA'];
 const CDA_CODE_LABELS = {
@@ -32,20 +33,19 @@ const CATEGORY_COLORS = {
 
 export default function CommunityEditModal({ visible, isNew, communityForm, setCommunityForm, onSave, onClose, error, isSaving }) {
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [showTempohPicker, setShowTempohPicker] = useState(false);
   const [showBerdaftarPicker, setShowBerdaftarPicker] = useState(false);
   const isSchool = SCHOOL_CATEGORIES.includes(communityForm.category);
   const isCda = CDA_CATEGORIES.includes(communityForm.category);
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.modalOverlay}>
-        <View style={styles.modalContainer}>
+        <View style={[styles.modalContainer, { maxWidth: 720, width: '100%', maxHeight: '90%' }]}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>{isNew ? 'Tambah Program Komuniti' : 'Kemaskini Program Komuniti'}</Text>
             <TouchableOpacity onPress={onClose}><X size={22} color={PALETTE.textMutedDark} /></TouchableOpacity>
           </View>
 
-          <ScrollView style={{ maxHeight: 460 }} contentContainerStyle={styles.modalBody}>
+          <ScrollView style={{ maxHeight: 700 }} contentContainerStyle={styles.modalBody}>
             <Text style={styles.inputLabel}>Kategori</Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
               {CATEGORIES.map((cat) => {
@@ -105,7 +105,7 @@ export default function CommunityEditModal({ visible, isNew, communityForm, setC
                   <>
                     <TouchableOpacity onPress={() => setShowDatePicker(true)} style={[styles.modalInput, { marginBottom: 16 }]}>
                       <Text style={{ color: communityForm.tarikh_penubuhan ? PALETTE.textDark : PALETTE.textMutedDark }}>
-                        {communityForm.tarikh_penubuhan || 'Pilih tarikh'}
+                        {formatDateMY(communityForm.tarikh_penubuhan) || 'Pilih tarikh'}
                       </Text>
                     </TouchableOpacity>
                     {showDatePicker && (
@@ -170,7 +170,7 @@ export default function CommunityEditModal({ visible, isNew, communityForm, setC
                   );
                 })}
 
-                <Text style={styles.inputLabel}>Keterangan (Tidak Wajib)</Text>
+                <Text style={styles.inputLabel}>Keterangan</Text>
                 <TextInput
                   style={[styles.modalInput, { minHeight: 80, textAlignVertical: 'top', marginBottom: 16 }]}
                   value={communityForm.detail}
@@ -228,7 +228,7 @@ export default function CommunityEditModal({ visible, isNew, communityForm, setC
                   placeholderTextColor={PALETTE.textMutedDark}
                 />
 
-                <Text style={styles.inputLabel}>Nama Organisasi (Tidak Wajib)</Text>
+                <Text style={styles.inputLabel}>Nama Organisasi</Text>
                 <TextInput
                   style={[styles.modalInput, { marginBottom: 16 }]}
                   value={communityForm.nama_organisasi || ''}
@@ -237,38 +237,12 @@ export default function CommunityEditModal({ visible, isNew, communityForm, setC
                 />
 
                 <Text style={styles.inputLabel}>Tempoh Sah Penubuhan</Text>
-                {Platform.OS === 'web' ? (
-                  React.createElement('input', {
-                    type: 'date',
-                    value: communityForm.tempoh_sah_penubuhan || '',
-                    onChange: (e) => setCommunityForm({ ...communityForm, tempoh_sah_penubuhan: e.target.value }),
-                    style: {
-                      borderWidth: 1, borderColor: PALETTE.cardLightBorder, borderRadius: 10, padding: 12,
-                      fontSize: 14, backgroundColor: '#fafafa', color: PALETTE.textDark,
-                      border: `1px solid ${PALETTE.cardLightBorder}`, width: '100%', boxSizing: 'border-box',
-                      marginBottom: 16,
-                    },
-                  })
-                ) : (
-                  <>
-                    <TouchableOpacity onPress={() => setShowTempohPicker(true)} style={[styles.modalInput, { marginBottom: 16 }]}>
-                      <Text style={{ color: communityForm.tempoh_sah_penubuhan ? PALETTE.textDark : PALETTE.textMutedDark }}>
-                        {communityForm.tempoh_sah_penubuhan || 'Pilih tarikh'}
-                      </Text>
-                    </TouchableOpacity>
-                    {showTempohPicker && (
-                      <DateTimePicker
-                        value={communityForm.tempoh_sah_penubuhan ? new Date(communityForm.tempoh_sah_penubuhan) : new Date()}
-                        mode="date"
-                        display="default"
-                        onChange={(event, selectedDate) => {
-                          setShowTempohPicker(false);
-                          if (selectedDate) setCommunityForm({ ...communityForm, tempoh_sah_penubuhan: selectedDate.toISOString().split('T')[0] });
-                        }}
-                      />
-                    )}
-                  </>
-                )}
+                <TextInput
+                  style={[styles.modalInput, { marginBottom: 16 }]}
+                  value={communityForm.tempoh_sah_penubuhan || ''}
+                  onChangeText={(t) => setCommunityForm({ ...communityForm, tempoh_sah_penubuhan: t })}
+                  placeholderTextColor={PALETTE.textMutedDark}
+                />
 
                 <Text style={styles.inputLabel}>Tarikh Berdaftar</Text>
                 {Platform.OS === 'web' ? (
@@ -287,7 +261,7 @@ export default function CommunityEditModal({ visible, isNew, communityForm, setC
                   <>
                     <TouchableOpacity onPress={() => setShowBerdaftarPicker(true)} style={[styles.modalInput, { marginBottom: 16 }]}>
                       <Text style={{ color: communityForm.tarikh_berdaftar ? PALETTE.textDark : PALETTE.textMutedDark }}>
-                        {communityForm.tarikh_berdaftar || 'Pilih tarikh'}
+                        {formatDateMY(communityForm.tarikh_berdaftar) || 'Pilih tarikh'}
                       </Text>
                     </TouchableOpacity>
                     {showBerdaftarPicker && (
@@ -304,7 +278,7 @@ export default function CommunityEditModal({ visible, isNew, communityForm, setC
                   </>
                 )}
 
-                <Text style={styles.inputLabel}>Keterangan (Tidak Wajib)</Text>
+                <Text style={styles.inputLabel}>Keterangan</Text>
                 <TextInput
                   style={[styles.modalInput, { minHeight: 80, textAlignVertical: 'top', marginBottom: 16 }]}
                   value={communityForm.detail}

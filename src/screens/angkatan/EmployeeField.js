@@ -4,6 +4,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { PALETTE } from '../../constants/palette';
 import { angkatanStyles as styles } from './angkatanStyles';
 import { formatICNumber, computeDaysRemaining, formatDateMY } from './employeeFieldGroups';
+import { cleanEscapedText } from '../../utils/textCleanup';
 
 export default function EmployeeField({ field: f, form, setForm, isEditing, activeDatePickerField, setActiveDatePickerField }) {
   const value = form[f.key];
@@ -25,9 +26,9 @@ export default function EmployeeField({ field: f, form, setForm, isEditing, acti
 
   if (!isEditing) {
     if (f.type === 'multiline_list') {
-      const trimmed = String(value || '').trim();
-      if (trimmed === '') return <FieldWrapper label={f.label}><View style={styles.fieldReadOnlyBox}><Text style={styles.fieldValue}>-</Text></View></FieldWrapper>;
-      const lines = String(value).split(/\r?\n|(?<=^|\s)(?=\d{1,2}\)\s)/g).map((l) => l.replace(/^\d{1,2}\)\s*/, '').trim()).filter(Boolean);
+      const cleaned = cleanEscapedText(value);
+      if (cleaned === '') return <FieldWrapper label={f.label}><View style={styles.fieldReadOnlyBox}><Text style={styles.fieldValue}>-</Text></View></FieldWrapper>;
+      const lines = cleaned.split(/\r?\n|(?<=^|\s)(?=\d{1,2}\)\s)/g).map((l) => l.replace(/^\d{1,2}\)\s*/, '').trim()).filter(Boolean);
       return (
         <FieldWrapper label={f.label}>
           <View style={styles.fieldReadOnlyBox}>
@@ -52,7 +53,7 @@ export default function EmployeeField({ field: f, form, setForm, isEditing, acti
       <FieldWrapper label={f.label}>
         <TextInput
           style={[styles.modalInput, { minHeight: 80, textAlignVertical: 'top' }]}
-          value={String(value || '')}
+          value={cleanEscapedText(value)}
           onChangeText={(t) => setForm({ ...form, [f.key]: t })}
           multiline
           placeholder="Satu item setiap baris"
