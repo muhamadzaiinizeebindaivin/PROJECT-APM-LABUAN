@@ -19,6 +19,13 @@ export const mapMyaspaLabel = (raw) => {
 export const normalizePangkat = (raw) => String(raw || '').replace(/\(PA\)/i, '').trim().toUpperCase();
 export const norm = (v) => String(v || '').trim().toUpperCase();
 
+// Exclut les anggota en "Pindah Keanggotaan (PFA)" du calcul LAYAK UBKP — détecté
+// via le champ catatan contenant les deux mots-clés (insensible à la casse).
+export const isPindahKeanggotaanPfa = (emp) => {
+  const catatan = norm(emp?.catatan);
+  return catatan.includes('PINDAH KEANGGOTAAN') && catatan.includes('PFA');
+};
+
 // Sépare senarai_kursus en entrées individuelles (une par puce "•" ou saut de
 // ligne) — nécessaire car une seule chaîne concaténée peut contenir à la fois
 // un cours PTB et un cours KBP distincts ; vérifier BERTAULIAH/WARAN sur tout
@@ -318,17 +325,19 @@ export function useAngkatanEmployees() {
       // parcours normal) -> règle dédiée basée sur les Sarjan (isEligibleForPegawaiWaranII).
       let kenaikan;
       const normRank = normalizePangkat(r.rank);
-      const prebetHolders = () => data.filter((e) => normalizePangkat(e.pangkat) === normalizePangkat('Prebet'));
+      // Exclus des calculs LAYAK UBKP uniquement (pas des colonnes KBP/PTB/Aktif/Simpanan ci-dessous)
+      const promotionPoolData = data.filter((e) => !isPindahKeanggotaanPfa(e));
+      const prebetHolders = () => promotionPoolData.filter((e) => normalizePangkat(e.pangkat) === normalizePangkat('Prebet'));
 
       if (normRank === normalizePangkat('Pegawai Waran II')) {
         kenaikan = countByYearsAndCourse(
-          data.filter((e) => normalizePangkat(e.pangkat) === normalizePangkat('Sarjan')),
+          promotionPoolData.filter((e) => normalizePangkat(e.pangkat) === normalizePangkat('Sarjan')),
           isEligibleForPegawaiWaranIIByYears,
           isEligibleForPegawaiWaranII
         );
       } else if (normRank === normalizePangkat('Pegawai Waran I')) {
         kenaikan = countByYearsAndCourse(
-          data.filter((e) => normalizePangkat(e.pangkat) === normalizePangkat('Pegawai Waran II')),
+          promotionPoolData.filter((e) => normalizePangkat(e.pangkat) === normalizePangkat('Pegawai Waran II')),
           isEligibleForPegawaiWaranIByYears,
           isEligibleForPegawaiWaranI
         );
@@ -339,18 +348,18 @@ export function useAngkatanEmployees() {
         };
       } else if (normRank === normalizePangkat('Staf Muda')) {
         kenaikan = {
-          ...countNormalLane(data.filter((e) => normalizePangkat(e.pangkat) === normalizePangkat('Sarjan')), 'Staf Muda'),
+          ...countNormalLane(promotionPoolData.filter((e) => normalizePangkat(e.pangkat) === normalizePangkat('Sarjan')), 'Staf Muda'),
           fastTrack: countByYearsAndCourse(
-            getEmployeesBelowRank(data, 'Staf Muda'),
+            getEmployeesBelowRank(promotionPoolData, 'Staf Muda'),
             isEligibleFastTrackStafMudaByYearsAcademic,
             isEligibleFastTrackStafMuda
           ),
         };
       } else if (normRank === normalizePangkat('Leftenan Muda')) {
         kenaikan = {
-          ...countNormalLane(data.filter((e) => normalizePangkat(e.pangkat) === normalizePangkat('Staf Tinggi')), 'Leftenan Muda'),
+          ...countNormalLane(promotionPoolData.filter((e) => normalizePangkat(e.pangkat) === normalizePangkat('Staf Tinggi')), 'Leftenan Muda'),
           fastTrack: countByYearsAndCourse(
-            getEmployeesBelowRank(data, 'Leftenan Muda'),
+            getEmployeesBelowRank(promotionPoolData, 'Leftenan Muda'),
             isEligibleFastTrackLeftenanMudaByYearsAcademic,
             isEligibleFastTrackLeftenanMuda
           ),
@@ -359,7 +368,7 @@ export function useAngkatanEmployees() {
         const rankIdx = PANGKAT_HIERARCHY.findIndex((p) => normRank === normalizePangkat(p));
         const lowerRank = rankIdx > -1 && rankIdx + 1 < PANGKAT_HIERARCHY.length ? PANGKAT_HIERARCHY[rankIdx + 1] : undefined;
         kenaikan = lowerRank
-          ? countNormalLane(data.filter((e) => normalizePangkat(e.pangkat) === normalizePangkat(lowerRank)), r.rank)
+          ? countNormalLane(promotionPoolData.filter((e) => normalizePangkat(e.pangkat) === normalizePangkat(lowerRank)), r.rank)
           : { eligible: 0, needsCourse: 0 };
       }
 

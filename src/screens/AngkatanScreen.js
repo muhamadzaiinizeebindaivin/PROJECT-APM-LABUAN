@@ -6,7 +6,7 @@ import { supabaseSandbox } from '../supabaseSandboxClient';
 import AdminEditButton from '../components/AdminEditButton';
 import { useExcelImport } from '../hooks/useExcelImport';
 import ExcelImportModal from '../components/ExcelImportModal';
-import { useAngkatanEmployees, mapMyaspaLabel, normalizePangkat, isEligibleForPromotion, isEligibleByYearsOnly, isEligibleForPegawaiWaranII, isEligibleForPegawaiWaranIIByYears, isEligibleForPegawaiWaranI, isEligibleForPegawaiWaranIByYears, isEligibleForTBP, isEligibleFastTrackStafMuda, isEligibleFastTrackStafMudaByYearsAcademic, isEligibleFastTrackLeftenanMuda, isEligibleFastTrackLeftenanMudaByYearsAcademic, getEmployeesBelowRank, PANGKAT_HIERARCHY, hasKbp, hasKbpWaran, hasPtb, norm } from '../hooks/useAngkatanEmployees';
+import { useAngkatanEmployees, mapMyaspaLabel, normalizePangkat, isEligibleForPromotion, isEligibleByYearsOnly, isEligibleForPegawaiWaranII, isEligibleForPegawaiWaranIIByYears, isEligibleForPegawaiWaranI, isEligibleForPegawaiWaranIByYears, isEligibleForTBP, isEligibleFastTrackStafMuda, isEligibleFastTrackStafMudaByYearsAcademic, isEligibleFastTrackLeftenanMuda, isEligibleFastTrackLeftenanMudaByYearsAcademic, getEmployeesBelowRank, PANGKAT_HIERARCHY, hasKbp, hasKbpWaran, hasPtb, norm, isPindahKeanggotaanPfa } from '../hooks/useAngkatanEmployees';
 import { useAngkatanCommunity, SCHOOL_CATEGORIES, CDA_CATEGORIES } from '../hooks/useAngkatanCommunity';
 import { useEmployeeCertificates } from '../hooks/useEmployeeCertificates';
 
@@ -412,13 +412,16 @@ export default function AngkatanScreen({ userRole }) {
   };
 
   const openPromotionEligibleEmployees = (rankLabel, subRoute) => {
-    const prebetHolders = () => employees.filter((e) => normalizePangkat(e.pangkat) === normalizePangkat('Prebet'));
+    // Même exclusion que le calcul LAYAK UBKP dans useAngkatanEmployees.js — pour
+    // que la liste affichée corresponde toujours au chiffre montré dans le tableau.
+    const promotionPoolEmployees = employees.filter((e) => !isPindahKeanggotaanPfa(e));
+    const prebetHolders = () => promotionPoolEmployees.filter((e) => normalizePangkat(e.pangkat) === normalizePangkat('Prebet'));
     const normRank = normalizePangkat(rankLabel);
     let list;
     let title = `Layak Kenaikan Pangkat — ${rankLabel}`;
 
     if (normRank === normalizePangkat('Pegawai Waran II')) {
-      const pool = employees.filter((e) => normalizePangkat(e.pangkat) === normalizePangkat('Sarjan'));
+      const pool = promotionPoolEmployees.filter((e) => normalizePangkat(e.pangkat) === normalizePangkat('Sarjan'));
       const yearsOnly = pool.filter((e) => isEligibleForPegawaiWaranIIByYears(e));
       if (subRoute === 'needsCourse') {
         list = yearsOnly.filter((e) => !isEligibleForPegawaiWaranII(e));
@@ -428,7 +431,7 @@ export default function AngkatanScreen({ userRole }) {
         title += ' (Boleh Dinaikkan)';
       }
     } else if (normRank === normalizePangkat('Pegawai Waran I')) {
-      const pool = employees.filter((e) => normalizePangkat(e.pangkat) === normalizePangkat('Pegawai Waran II'));
+      const pool = promotionPoolEmployees.filter((e) => normalizePangkat(e.pangkat) === normalizePangkat('Pegawai Waran II'));
       const yearsOnly = pool.filter((e) => isEligibleForPegawaiWaranIByYears(e));
       if (subRoute === 'needsCourse') {
         list = yearsOnly.filter((e) => !isEligibleForPegawaiWaranI(e));
@@ -441,7 +444,7 @@ export default function AngkatanScreen({ userRole }) {
       list = prebetHolders().filter((e) => isEligibleForTBP(e));
       title += ' (TBP)';
     } else if (normRank === normalizePangkat('Staf Muda') && (subRoute === 'fastTrackEligible' || subRoute === 'fastTrackNeedsCourse')) {
-      const pool = getEmployeesBelowRank(employees, 'Staf Muda').filter((e) => isEligibleFastTrackStafMudaByYearsAcademic(e));
+      const pool = getEmployeesBelowRank(promotionPoolEmployees, 'Staf Muda').filter((e) => isEligibleFastTrackStafMudaByYearsAcademic(e));
       if (subRoute === 'fastTrackNeedsCourse') {
         list = pool.filter((e) => !isEligibleFastTrackStafMuda(e));
         title += ' (Fast-Track — Perlu Kursus)';
@@ -450,7 +453,7 @@ export default function AngkatanScreen({ userRole }) {
         title += ' (Fast-Track — Boleh Dinaikkan)';
       }
     } else if (normRank === normalizePangkat('Leftenan Muda') && (subRoute === 'fastTrackEligible' || subRoute === 'fastTrackNeedsCourse')) {
-      const pool = getEmployeesBelowRank(employees, 'Leftenan Muda').filter((e) => isEligibleFastTrackLeftenanMudaByYearsAcademic(e));
+      const pool = getEmployeesBelowRank(promotionPoolEmployees, 'Leftenan Muda').filter((e) => isEligibleFastTrackLeftenanMudaByYearsAcademic(e));
       if (subRoute === 'fastTrackNeedsCourse') {
         list = pool.filter((e) => !isEligibleFastTrackLeftenanMuda(e));
         title += ' (Fast-Track — Perlu Kursus)';
@@ -465,13 +468,13 @@ export default function AngkatanScreen({ userRole }) {
       if (normRank === normalizePangkat('Lans Koperal')) {
         pool = prebetHolders();
       } else if (normRank === normalizePangkat('Staf Muda')) {
-        pool = employees.filter((e) => normalizePangkat(e.pangkat) === normalizePangkat('Sarjan'));
+        pool = promotionPoolEmployees.filter((e) => normalizePangkat(e.pangkat) === normalizePangkat('Sarjan'));
       } else if (normRank === normalizePangkat('Leftenan Muda')) {
-        pool = employees.filter((e) => normalizePangkat(e.pangkat) === normalizePangkat('Staf Tinggi'));
+        pool = promotionPoolEmployees.filter((e) => normalizePangkat(e.pangkat) === normalizePangkat('Staf Tinggi'));
       } else {
         const rankIdx = PANGKAT_HIERARCHY.findIndex((p) => normalizePangkat(p) === normRank);
         const lowerRank = rankIdx > -1 && rankIdx + 1 < PANGKAT_HIERARCHY.length ? PANGKAT_HIERARCHY[rankIdx + 1] : undefined;
-        pool = lowerRank ? employees.filter((e) => normalizePangkat(e.pangkat) === normalizePangkat(lowerRank)) : [];
+        pool = lowerRank ? promotionPoolEmployees.filter((e) => normalizePangkat(e.pangkat) === normalizePangkat(lowerRank)) : [];
       }
       const yearsOnly = pool.filter((e) => isEligibleByYearsOnly(e, rankLabel));
       if (subRoute === 'needsCourse') {

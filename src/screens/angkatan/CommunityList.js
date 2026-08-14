@@ -239,14 +239,14 @@ export default function CommunityList({
 
       <Modal visible={viewVisible} transparent animationType="fade" onRequestClose={() => setViewVisible(false)}>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
+          <View style={[styles.modalContainer, { maxWidth: 720, width: '100%', maxHeight: '90%' }]}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Butiran Program Komuniti</Text>
               <TouchableOpacity onPress={() => setViewVisible(false)}>
                 <X size={22} color={PALETTE.textMutedDark} />
               </TouchableOpacity>
             </View>
-            <ScrollView style={{ maxHeight: 460 }} contentContainerStyle={styles.modalBody}>
+            <ScrollView style={{ maxHeight: 700 }} contentContainerStyle={styles.modalBody}>
               <Text style={styles.inputLabel}>Kategori</Text>
               <View style={{ marginBottom: 16, alignItems: 'flex-start' }}>
                 <View
