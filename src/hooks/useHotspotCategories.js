@@ -20,10 +20,6 @@ export function useHotspotCategories() {
   useEffect(() => { fetchCategories(); }, []);
 
   const addCategory = async ({ label, sub, color, prefix, icon }) => {
-    if (!label.trim()) {
-      Alert.alert('Ralat', 'Sila masukkan nama kategori.');
-      return false;
-    }
     const key = label.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_');
     const { error } = await supabaseSandbox.from('hotspot_categories').insert([{
       key,
@@ -34,6 +30,24 @@ export function useHotspotCategories() {
       icon: icon || 'MapPin',
       display_order: categories.length + 1,
     }]);
+    if (error) {
+      Platform.OS === 'web' ? alert('Ralat: ' + error.message) : Alert.alert('Ralat', error.message);
+      return false;
+    }
+    await fetchCategories();
+    return true;
+  };
+
+  const updateCategory = async (id, { label, sub, color, prefix, icon }) => {
+    // La "key" (utilisée pour lier les hotspots existants à cette catégorie)
+    // reste inchangée — seul le libellé affiché change, pas l'identifiant.
+    const { error } = await supabaseSandbox.from('hotspot_categories').update({
+      label: label.trim().toUpperCase(),
+      sub: sub.trim(),
+      color,
+      prefix: prefix.trim() || 'ID',
+      icon: icon || 'MapPin',
+    }).eq('id', id);
     if (error) {
       Platform.OS === 'web' ? alert('Ralat: ' + error.message) : Alert.alert('Ralat', error.message);
       return false;
@@ -62,5 +76,5 @@ export function useHotspotCategories() {
     return true;
   };
 
-  return { categories, loadingCategories, addCategory, deleteCategory, fetchCategories };
+  return { categories, loadingCategories, addCategory, updateCategory, deleteCategory, fetchCategories };
 }

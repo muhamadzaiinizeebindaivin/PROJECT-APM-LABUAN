@@ -1,5 +1,5 @@
 // src/screens/sekretariat/HotspotSection.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, TextInput, Modal, ActivityIndicator, Image, StyleSheet, Platform, useWindowDimensions } from 'react-native';
 import {
   Droplets, Waves, Mountain, MapPin, Plus, Edit, Trash2, X,
@@ -100,11 +100,12 @@ export default function HotspotSection({ userRole, isEditMode }) {
     openAddModal, openEditModal,
     handleSaveHotspot, confirmDeleteHotspot,
   } = useHotspots();
-  const { categories, loadingCategories, addCategory, deleteCategory } = useHotspotCategories();
+  const { categories, loadingCategories, addCategory, updateCategory, deleteCategory } = useHotspotCategories();
 
   // ---- Modale de gestion de catégorie ----
   const [modalCatVisible, setModalCatVisible] = useState(false);
   const [formCat, setFormCat] = useState({ label: '', sub: '', color: COLOR_CHOICES[0], prefix: 'ID', icon: 'MapPin' });
+  const [editingCatId, setEditingCatId] = useState(null); // null = ajout, sinon = modification de cette catégorie
 
   // Sélectionne la 1re catégorie au chargement
   useEffect(() => {
@@ -118,29 +119,37 @@ export default function HotspotSection({ userRole, isEditMode }) {
   const CurrentIcon = resolveIcon(currentCat);
   const currentMap = currentCat ? CATEGORY_MAPS[currentCat.key] : null;
 
-  const handleSaveCategory = async () => {
-    const ok = await addCategory(formCat);
-    if (ok) {
-      setModalCatVisible(false);
-      setFormCat({ label: '', sub: '', color: COLOR_CHOICES[0], prefix: 'ID', icon: 'MapPin' });
-    }
+  const closeCatModal = () => {
+    setModalCatVisible(false);
+    setEditingCatId(null);
+    setFormCat({ label: '', sub: '', color: COLOR_CHOICES[0], prefix: 'ID', icon: 'MapPin' });
   };
 
-  const handleDeleteCategory = async (cat) => {
-    const doDelete = async () => {
-      const ok = await deleteCategory(cat);
-      if (ok && selectedCat === cat.key) setSelectedCat(null);
-    };
-    if (Platform.OS === 'web') {
-      if (window.confirm(`Padam kategori "${cat.label}"?`)) doDelete();
-    } else {
-      import('react-native').then(({ Alert }) =>
-        Alert.alert('Pengesahan Padam', `Padam kategori "${cat.label}"?`, [
-          { text: 'Batal', style: 'cancel' },
-          { text: 'Padam', style: 'destructive', onPress: doDelete },
-        ])
-      );
-    }
+  const openEditCategoryModal = (cat) => {
+    setEditingCatId(cat.id);
+    setFormCat({ label: cat.label, sub: cat.sub || '', color: cat.color, prefix: cat.prefix || 'ID', icon: cat.icon || 'MapPin' });
+    setModalCatVisible(true);
+  };
+
+  const handleSaveCategory = async () => {
+    const ok = editingCatId ? await updateCategory(editingCatId, formCat) : await addCategory(formCat);
+    if (ok) closeCatModal();
+  };
+
+  const [catToDelete, setCatToDelete] = useState(null);
+  const [isDeletingCat, setIsDeletingCat] = useState(false);
+  const displayDeleteCatRef = useRef(null);
+  if (catToDelete !== null) displayDeleteCatRef.current = catToDelete;
+
+  const handleDeleteCategory = (cat) => setCatToDelete(cat);
+
+  const confirmDeleteCategory = async () => {
+    if (!catToDelete) return;
+    setIsDeletingCat(true);
+    const ok = await deleteCategory(catToDelete);
+    setIsDeletingCat(false);
+    if (ok && selectedCat === catToDelete.key) setSelectedCat(null);
+    setCatToDelete(null);
   };
 
   const renderHotspotItem = (item, badgeColor, prefixText) => (
@@ -215,13 +224,29 @@ export default function HotspotSection({ userRole, isEditMode }) {
                   <Text style={[hotspotStyles.pillCount, { color: isSelected ? PALETTE.white : PALETTE.textMutedDark }]}>
                     {count} lokasi
                   </Text>
+                  {userRole === 'admin' && isEditMode ? (
+                    <View style={{ position: 'absolute', top: 8, right: 8, flexDirection: 'row', gap: 6 }}>
+                      <TouchableOpacity
+                        onPress={(e) => { e.stopPropagation?.(); openEditCategoryModal(cat); }}
+                        style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: 'rgba(220,38,38,0.12)', alignItems: 'center', justifyContent: 'center' }}
+                      >
+                        <Edit size={12} color={isSelected ? PALETTE.white : cat.color} />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={(e) => { e.stopPropagation?.(); handleDeleteCategory(cat); }}
+                        style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: 'rgba(220,38,38,0.12)', alignItems: 'center', justifyContent: 'center' }}
+                      >
+                        <Trash2 size={12} color="#dc2626" />
+                      </TouchableOpacity>
+                    </View>
+                  ) : null}
                 </TouchableOpacity>
               );
             })}
 
             {/* Pill "ajouter une catégorie" (admin + édition) */}
             {userRole === 'admin' && isEditMode ? (
-              <TouchableOpacity style={hotspotStyles.pillAdd} onPress={() => setModalCatVisible(true)} activeOpacity={0.8}>
+              <TouchableOpacity style={hotspotStyles.pillAdd} onPress={() => { setEditingCatId(null); setModalCatVisible(true); }} activeOpacity={0.8}>
                 <Plus size={22} color={PALETTE.orange} />
                 <Text style={hotspotStyles.pillAddText}>Kategori Baru</Text>
               </TouchableOpacity>
@@ -304,13 +329,53 @@ export default function HotspotSection({ userRole, isEditMode }) {
         </View>
       </Modal>
 
+{/* ---- Confirmation suppression catégorie ---- */}
+      <Modal visible={catToDelete !== null} transparent animationType="fade" onRequestClose={() => !isDeletingCat && setCatToDelete(null)}>
+        <View style={hotspotStyles.confirmOverlay}>
+          <View style={hotspotStyles.confirmBox}>
+            <View style={hotspotStyles.confirmBanner}>
+              <View style={hotspotStyles.confirmIconCircle}>
+                <AlertTriangle size={26} color="#ef4444" />
+              </View>
+              <Text style={hotspotStyles.confirmTitle}>Padam Kategori</Text>
+              <Text style={hotspotStyles.confirmSubtitle}>
+                Padam kategori "{displayDeleteCatRef.current?.label}"? Tindakan ini tidak boleh dibatalkan.
+              </Text>
+            </View>
+            <View style={hotspotStyles.confirmActions}>
+              <TouchableOpacity
+                style={[hotspotStyles.confirmCancelBtn, isDeletingCat && { opacity: 0.5 }]}
+                onPress={() => setCatToDelete(null)}
+                disabled={isDeletingCat}
+              >
+                <Text style={hotspotStyles.confirmCancelText}>Batal</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[hotspotStyles.confirmConfirmBtn, isDeletingCat && { opacity: 0.7 }]}
+                onPress={confirmDeleteCategory}
+                disabled={isDeletingCat}
+              >
+                {isDeletingCat ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <>
+                    <Trash2 size={16} color="#fff" />
+                    <Text style={hotspotStyles.confirmConfirmText}>Padam</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       {/* ---- Modale nouvelle catégorie ---- */}
       <Modal visible={modalCatVisible} animationType="fade" transparent={true}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Tambah Kategori</Text>
-              <TouchableOpacity onPress={() => setModalCatVisible(false)}><X size={24} color={PALETTE.textMutedDark} /></TouchableOpacity>
+              <Text style={styles.modalTitle}>{editingCatId ? 'Kemaskini Kategori' : 'Tambah Kategori'}</Text>
+              <TouchableOpacity onPress={closeCatModal}><X size={24} color={PALETTE.textMutedDark} /></TouchableOpacity>
             </View>
             <ScrollView contentContainerStyle={styles.modalForm}>
               <Text style={styles.inputLabel}>Nama Kategori *</Text>
@@ -349,7 +414,7 @@ export default function HotspotSection({ userRole, isEditMode }) {
                 ))}
               </View>
               <TouchableOpacity style={styles.saveButton} onPress={handleSaveCategory}>
-                <Text style={styles.saveButtonText}>Simpan Kategori</Text>
+                <Text style={styles.saveButtonText}>{editingCatId ? 'Kemaskini Kategori' : 'Simpan Kategori'}</Text>
               </TouchableOpacity>
               <View style={{ height: 20 }} />
             </ScrollView>
@@ -423,4 +488,27 @@ const hotspotStyles = StyleSheet.create({
   colorRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
   colorSwatch: { width: 34, height: 34, borderRadius: 17 },
   colorSwatchSelected: { borderWidth: 3, borderColor: PALETTE.textDark },
+  confirmOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 24 },
+  confirmBox: {
+    width: '100%', maxWidth: 400, borderRadius: 24, overflow: 'hidden',
+    shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 20, elevation: 20,
+  },
+  confirmBanner: { backgroundColor: '#0c0c0e', padding: 24, alignItems: 'center' },
+  confirmIconCircle: {
+    width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    alignItems: 'center', justifyContent: 'center', marginBottom: 14,
+  },
+  confirmTitle: { fontSize: 18, fontWeight: '900', color: '#fff' },
+  confirmSubtitle: { fontSize: 13, color: '#94a3b8', marginTop: 6, textAlign: 'center' },
+  confirmActions: { flexDirection: 'row', gap: 10, padding: 20, backgroundColor: '#fff' },
+  confirmCancelBtn: {
+    flex: 1, height: 48, borderRadius: 12, borderWidth: 1.5, borderColor: '#e2e8f0',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  confirmCancelText: { color: '#64748b', fontWeight: '800', fontSize: 14 },
+  confirmConfirmBtn: {
+    flex: 1, height: 48, borderRadius: 12, backgroundColor: '#ef4444',
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+  },
+  confirmConfirmText: { color: '#fff', fontWeight: '800', fontSize: 14 },
 });
