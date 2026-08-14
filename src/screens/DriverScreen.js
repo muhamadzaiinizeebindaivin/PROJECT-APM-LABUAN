@@ -15,6 +15,13 @@ import { buildOperasiMapHtml } from './operasi/operasiMapTemplate';
 
 const DRIVER_ACCESS_KEY = 'apm_driver_access_verified';
 
+const STATUS_META = {
+  Baik: { label: 'Baik', bg: PALETTE.successSoft, color: PALETTE.success },
+  Selenggara: { label: 'Selenggara', bg: '#fffbeb', color: '#d97706' },
+  Rosak: { label: 'Rosak', bg: PALETTE.dangerSoft, color: PALETTE.danger },
+};
+const getStatusMeta = (status) => STATUS_META[status] || { label: status || 'Tidak diketahui', bg: PALETTE.surface, color: PALETTE.textMutedDark };
+
 // Rubans dégradés bleu/orange qui ondulent lentement, effet "peinture dans l'eau"
 // (repris tel quel de SetPasswordScreen.js)
 if (Platform.OS === 'web' && typeof document !== 'undefined' && !document.getElementById('flowing-ribbons-css')) {
@@ -430,33 +437,43 @@ export default function DriverScreen({ onLogout }) {
               <View style={styles.cardRow}>
                 {row.map((item) => {
                   const stripeColor = item.color || PALETTE.orange;
+                  const isRosak = item.status === 'Rosak';
+                  const isDisabled = item.isBusy || isRosak;
+                  const statusMeta = getStatusMeta(item.status);
                   return (
                     <View key={item.id} style={styles.vehicleCardCol}>
                       <TouchableOpacity
-                        style={[styles.vehicleCard, item.isBusy && styles.vehicleCardBusy]}
-                        onPress={() => { if (!item.isBusy) setSelectedVehicle(item); }}
-                        activeOpacity={item.isBusy ? 1 : 0.7}
-                        disabled={item.isBusy}
+                        style={[styles.vehicleCard, isDisabled && styles.vehicleCardBusy]}
+                        onPress={() => { if (!isDisabled) setSelectedVehicle(item); }}
+                        activeOpacity={isDisabled ? 1 : 0.7}
+                        disabled={isDisabled}
                       >
                         <View style={styles.vehicleCardBody}>
-                          <View style={[styles.vehicleIconWrap, { backgroundColor: `${stripeColor}1F` }, item.isBusy && { opacity: 0.4 }]}>
+                          <View style={[styles.vehicleIconWrap, { backgroundColor: `${stripeColor}1F` }, isDisabled && { opacity: 0.4 }]}>
                             {getVehicleIcon(item.icon_key, stripeColor, 22)}
                           </View>
-                          <Text style={[styles.vehiclePlateText, item.isBusy && { opacity: 0.4 }]} numberOfLines={1}>
+                          <Text style={[styles.vehiclePlateText, isDisabled && { opacity: 0.4 }]} numberOfLines={1}>
                             {item.reg || 'TIADA PLAT'}
                           </Text>
-                          <Text style={[styles.vehicleModelText, item.isBusy && { opacity: 0.4 }]} numberOfLines={2}>
+                          <Text style={[styles.vehicleModelText, isDisabled && { opacity: 0.4 }]} numberOfLines={2}>
                             {item.model}
                           </Text>
-                          {item.isBusy ? (
-                            <View style={[styles.badge, { backgroundColor: PALETTE.dangerSoft }]}>
-                              <Text style={[styles.badgeText, { color: PALETTE.danger }]}>Sedang Digunakan</Text>
+                          <View style={styles.badgeGroup}>
+                            <View style={[styles.badge, { backgroundColor: statusMeta.bg }]}>
+                              <Text style={[styles.badgeText, { color: statusMeta.color }]}>{statusMeta.label}</Text>
                             </View>
-                          ) : (
-                            <View style={[styles.badge, { backgroundColor: PALETTE.successSoft }]}>
-                              <Text style={[styles.badgeText, { color: PALETTE.success }]}>Tersedia</Text>
-                            </View>
-                          )}
+                            {!isRosak && (
+                              item.isBusy ? (
+                                <View style={[styles.badge, { backgroundColor: PALETTE.dangerSoft }]}>
+                                  <Text style={[styles.badgeText, { color: PALETTE.danger }]}>Sedang Digunakan</Text>
+                                </View>
+                              ) : (
+                                <View style={[styles.badge, { backgroundColor: PALETTE.successSoft }]}>
+                                  <Text style={[styles.badgeText, { color: PALETTE.success }]}>Tersedia</Text>
+                                </View>
+                              )
+                            )}
+                          </View>
                         </View>
                       </TouchableOpacity>
                     </View>
@@ -656,7 +673,8 @@ const styles = StyleSheet.create({
   },
   vehiclePlateText: { fontSize: 14, fontWeight: '800', color: PALETTE.textDark, textAlign: 'center' },
   vehicleModelText: { fontSize: 11, color: PALETTE.textMutedDark, fontWeight: '600', textAlign: 'center', marginTop: 2, height: 28 },
-  badge: { marginTop: 8, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999 },
+  badgeGroup: { marginTop: 8, flexDirection: 'row', flexWrap: 'wrap', gap: 6, justifyContent: 'center' },
+  badge: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999 },
   badgeText: { fontSize: 10, fontWeight: '800' },
 
   sectionHeader: {

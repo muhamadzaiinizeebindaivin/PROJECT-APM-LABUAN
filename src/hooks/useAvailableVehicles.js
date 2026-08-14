@@ -23,7 +23,7 @@ export function useAvailableVehicles() {
       try {
         const { data, error } = await supabaseSandbox
           .from('logistik')
-          .select('id, category, model, reg, type, color, icon_key, tracking_status, job_started_at')
+          .select('id, category, model, reg, type, color, icon_key, tracking_status, job_started_at, status')
           .order('model', { ascending: true });
 
         if (error) throw error;
