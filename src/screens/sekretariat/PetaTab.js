@@ -401,6 +401,7 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
         <Text style={styles.emptyText}>Tiada rekod sejarah untuk tempoh ini.</Text>
       ) : (
         <>
+          {!isMobile ? (
           <View style={styles.calamityTableWrapper}>
             <View style={styles.calamityTableHeaderRow}>
               <View style={[styles.historyAgencyColFlex, styles.calamityHeaderCellBox]}>
@@ -451,6 +452,38 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
               ))}
             </ScrollView>
           </View>
+          ) : (
+          <View>
+            {pagedHistory.map((h) => (
+              <View key={h.id} style={styles.historyCardMobile}>
+                <View style={styles.historyCardMobileTopRow}>
+                  <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <AgencyMark logo={getAgencyLogo(h.jpbd_directory?.agency)} color={getAgencyColorFromMap(h.jpbd_directory?.agency)} size={20} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.tableCellAgency} numberOfLines={1}>{h.jpbd_directory?.agency || '-'}</Text>
+                      <Text style={styles.tableCellMember} numberOfLines={1}>{h.member_name}</Text>
+                    </View>
+                  </View>
+                  {isEditMode && (userRole === 'sekretariat' || userRole === 'admin') && (
+                    <TouchableOpacity
+                      onPress={() => handleDeleteTrackingHistory(h.id, h.jpbd_directory?.agency || h.member_name)}
+                      style={{ width: 26, height: 26, borderRadius: 7, backgroundColor: 'rgba(220, 38, 38, 0.10)', alignItems: 'center', justifyContent: 'center' }}
+                    >
+                      <Trash2 size={13} color={PALETTE.danger || '#dc2626'} />
+                    </TouchableOpacity>
+                  )}
+                </View>
+                <View style={styles.historyCardMobileStatsRow}>
+                  <Text style={styles.historyCardMobileStat}>{formatDuration(h.duration_seconds)}</Text>
+                  <Text style={styles.historyCardMobileStatDivider}>·</Text>
+                  <Text style={styles.historyCardMobileStat}>{h.distance_km?.toFixed(2) || '0.00'} km</Text>
+                  <Text style={styles.historyCardMobileStatDivider}>·</Text>
+                  <Text style={styles.historyCardMobileStat}>{new Date(h.ended_at).toLocaleDateString('ms-MY')} {new Date(h.ended_at).toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit' })}</Text>
+                </View>
+              </View>
+            ))}
+          </View>
+          )}
 
           <View style={styles.paginationRow}>
             <Text style={styles.pageIndicator}>{historyPage + 1} / {historyTotalPages}</Text>
@@ -521,6 +554,7 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
         <Text style={styles.emptyText}>Tiada rekod bencana untuk tempoh ini.</Text>
       ) : (
         <>
+          {!isMobile ? (
           <View style={styles.calamityTableWrapper}>
             <View style={styles.calamityTableHeaderRow}>
               <View style={[styles.historyAgencyColFlex, styles.calamityHeaderCellBox]}>
@@ -564,6 +598,32 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
               ))}
             </ScrollView>
           </View>
+          ) : (
+          <View>
+            {pagedBencanaSummary.map((b) => (
+              <View key={b.id} style={styles.historyCardMobile}>
+                <View style={styles.historyCardMobileTopRow}>
+                  <Text style={[styles.tableCellAgency, { flex: 1 }]} numberOfLines={1}>{b.category}</Text>
+                  {isEditMode && (userRole === 'sekretariat' || userRole === 'admin') && (
+                    <TouchableOpacity
+                      onPress={() => handleDeleteBencanaSummary(b.id, b.category)}
+                      style={{ width: 26, height: 26, borderRadius: 7, backgroundColor: 'rgba(220, 38, 38, 0.10)', alignItems: 'center', justifyContent: 'center' }}
+                    >
+                      <Trash2 size={13} color={PALETTE.danger || '#dc2626'} />
+                    </TouchableOpacity>
+                  )}
+                </View>
+                <View style={styles.historyCardMobileStatsRow}>
+                  <Text style={styles.historyCardMobileStat}>Mula: {new Date(b.created_at).toLocaleDateString('ms-MY')}</Text>
+                  <Text style={styles.historyCardMobileStatDivider}>·</Text>
+                  <Text style={[styles.historyCardMobileStat, !b.resolved_at && { fontStyle: 'italic', color: PALETTE.orangeDark }]}>
+                    {b.resolved_at ? `Tamat: ${new Date(b.resolved_at).toLocaleDateString('ms-MY')}` : 'Belum Selesai'}
+                  </Text>
+                </View>
+              </View>
+            ))}
+          </View>
+          )}
 
           <View style={styles.paginationRow}>
             <Text style={styles.pageIndicator}>{summaryPage + 1} / {summaryTotalPages}</Text>
@@ -589,9 +649,18 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
     </>
   );
 
+  const showMobilePanelFullscreen = isMobile && sidePanel !== 'none';
+  const PetaContainerWrapper = isMobile && !showMobilePanelFullscreen ? ScrollView : View;
+  const petaContainerWrapperProps = showMobilePanelFullscreen
+    ? { style: styles.petaFixedContainer }
+    : isMobile
+      ? { style: { flex: 1 }, contentContainerStyle: [styles.petaFixedContainer, styles.petaFixedContainerMobile] }
+      : { style: styles.petaFixedContainer };
+
   return (
-    <View style={styles.petaFixedContainer}>
-      <View style={styles.petaMapHalf}>
+    <PetaContainerWrapper {...petaContainerWrapperProps}>
+      {!showMobilePanelFullscreen && (
+      <View style={[styles.petaMapHalf, isMobile && styles.petaMapHalfMobile]}>
         <View style={styles.petaMapContainer}>
           {Platform.OS === 'web' ? (
             createElement('iframe', {
@@ -747,9 +816,10 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
           <Text style={styles.placingBencanaHint}>Klik pada peta untuk letak titik</Text>
         )}
       </View>
+      )}
 
       {sidePanel === 'history' && (
-        <View style={styles.petaHistoryHalf}>
+        <View style={[styles.petaHistoryHalf, isMobile && styles.petaHistoryHalfMobile]}>
           <View style={[styles.petaHistoryHeader, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}>
             <Text style={styles.petaHistoryTitle}>Sejarah Patrol Agensi</Text>
             <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
@@ -783,7 +853,7 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
       )}
 
       {sidePanel === 'summary' && (
-        <View style={styles.petaHistoryHalf}>
+        <View style={[styles.petaHistoryHalf, isMobile && styles.petaHistoryHalfMobile]}>
           <View style={[styles.petaHistoryHeader, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}>
             <Text style={styles.petaHistoryTitle}>Ringkasan Bencana</Text>
             <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
@@ -908,6 +978,6 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
           </View>
         </View>
       </Modal>
-    </View>
+    </PetaContainerWrapper>
   );
 }

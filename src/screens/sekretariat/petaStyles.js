@@ -4,7 +4,9 @@ import { PALETTE } from '../../constants/palette';
 
 export const petaStyles = StyleSheet.create({
   petaFixedContainer: { flex: 1, flexDirection: 'row', marginHorizontal: 16, marginTop: 16, borderRadius: 20, overflow: 'hidden' },
+  petaFixedContainerMobile: { flexDirection: 'column', overflow: 'visible' },
   petaMapHalf: { flex: 1, position: 'relative' },
+  petaMapHalfMobile: { flex: undefined, minHeight: 420 },
   petaMapContainer: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0 },
   loader: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center', zIndex: 2 },
   petaHeaderCard: {
@@ -84,6 +86,7 @@ export const petaStyles = StyleSheet.create({
   panelCloseBtn: { width: 28, height: 28, borderRadius: 8, backgroundColor: PALETTE.surface, justifyContent: 'center', alignItems: 'center' },
 
   petaHistoryHalf: { flex: 1, backgroundColor: PALETTE.cardLight, borderLeftWidth: 1, borderLeftColor: PALETTE.cardLightBorder },
+  petaHistoryHalfMobile: { flex: 1, borderLeftWidth: 0 },
   petaHistoryHeader: { padding: 16, borderBottomWidth: 1, borderBottomColor: PALETTE.cardLightBorder },
   petaHistoryTitle: { fontSize: 14, fontWeight: '800', color: PALETTE.textDark },
   historyFilterRow: { flexDirection: 'row', gap: 10, padding: 16, zIndex: 50 },
@@ -110,6 +113,12 @@ export const petaStyles = StyleSheet.create({
   tableCellMember: { fontSize: 11, color: PALETTE.textMutedDark, marginTop: 1 },
   tableCellDate: { fontSize: 11, fontWeight: '700', color: PALETTE.textDark },
   tableCellTime: { fontSize: 10, color: PALETTE.textMutedDark, marginTop: 1 },
+
+  historyCardMobile: { backgroundColor: PALETTE.cardLight, borderWidth: 1, borderColor: PALETTE.cardLightBorder, borderRadius: 12, padding: 12, marginBottom: 10, marginHorizontal: 16 },
+  historyCardMobileTopRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 },
+  historyCardMobileStatsRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginTop: 8 },
+  historyCardMobileStat: { fontSize: 12, fontWeight: '600', color: PALETTE.textMutedDark },
+  historyCardMobileStatDivider: { fontSize: 12, color: PALETTE.cardLightBorder },
 
   emptyText: { textAlign: 'center', color: PALETTE.textMutedDark, marginTop: 20, fontStyle: 'italic' },
 });
