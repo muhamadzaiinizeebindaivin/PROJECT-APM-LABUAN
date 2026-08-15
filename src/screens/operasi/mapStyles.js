@@ -10,6 +10,7 @@ export const mapStyles = StyleSheet.create({
   toggleText: { fontSize: 13, fontWeight: '700' },
   toggleTextActive: { color: '#fff' },
   viewContainer: { flex: 1, flexDirection: 'row', position: 'relative', marginHorizontal: 16, marginTop: 16, borderRadius: 20, overflow: 'hidden' },
+  viewContainerMobile: { flexDirection: 'column', overflow: 'visible' },
   mapContainer: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0 },
 
   historyToggleBtn: {
@@ -43,6 +44,7 @@ export const mapStyles = StyleSheet.create({
   calamityHint: { fontSize: 10, color: '#64748b', textAlign: 'center', marginTop: 4 },
 
   historyHalf: { flex: 1, backgroundColor: '#fff', borderLeftWidth: 1, borderLeftColor: '#e2e8f0' },
+  historyHalfMobile: { flex: 1, borderLeftWidth: 0 },
   historyHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
   pdfExportBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: PALETTE.orange, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, minWidth: 60, justifyContent: 'center' },
   pdfExportBtnDisabled: { backgroundColor: '#cbd5e1' },
@@ -84,6 +86,12 @@ export const mapStyles = StyleSheet.create({
   tableCellMember: { fontSize: 11, color: '#64748b', marginTop: 1, textAlign: 'left' },
   tableCellDate: { fontSize: 11, fontWeight: '700', color: '#334155', textAlign: 'left' },
   tableCellTime: { fontSize: 10, color: '#94a3b8', marginTop: 1, textAlign: 'left' },
+
+  historyCardMobile: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 12, padding: 12, marginBottom: 10, marginHorizontal: 16 },
+  historyCardMobileTopRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 },
+  historyCardMobileStatsRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginTop: 8 },
+  historyCardMobileStat: { fontSize: 12, fontWeight: '600', color: '#475569' },
+  historyCardMobileStatDivider: { fontSize: 12, color: '#cbd5e1' },
 
   paginationRow: { alignItems: 'center', paddingVertical: 12, borderTopWidth: 1, borderTopColor: '#f1f5f9', gap: 8 },
   pageArrowRow: { flexDirection: 'row', gap: 10 },

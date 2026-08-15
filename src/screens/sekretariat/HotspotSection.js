@@ -260,13 +260,6 @@ export default function HotspotSection({ userRole, isEditMode }) {
                 <CurrentIcon size={16} color={currentColor} />
                 <Text style={[hotspotStyles.catBannerText, { color: currentColor }]}>{currentCat.sub || currentCat.label}</Text>
                 <Text style={[hotspotStyles.catBannerCount, { color: currentColor }]}>{currentData.length} lokasi</Text>
-                {userRole === 'admin' && isEditMode ? (
-                  <HoverTip label="Padam kategori ini">
-                    <TouchableOpacity onPress={() => handleDeleteCategory(currentCat)} style={hotspotStyles.catDeleteBtn}>
-                      <Trash2 size={15} color={PALETTE.danger} />
-                    </TouchableOpacity>
-                  </HoverTip>
-                ) : null}
               </View>
 
               {/* ---- Carte (Rajah) ---- */}

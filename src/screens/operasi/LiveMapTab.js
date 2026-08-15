@@ -59,6 +59,8 @@ export default function LiveMapTab({ theme, userRole, isEditMode, onNotify }) {
   const [pendingResolveId, setPendingResolveId] = useState(null);
   const history = usePatrolHistoryPanel(calamityPoints);
   const [deletePatrolTarget, setDeletePatrolTarget] = useState(null);
+  const displayDeletePatrolTargetRef = useRef(null);
+  if (deletePatrolTarget) displayDeletePatrolTargetRef.current = deletePatrolTarget;
   const [forceIdleTarget, setForceIdleTarget] = useState(null); // { id, label }
   const [forcingIdle, setForcingIdle] = useState(false);
   const displayForceIdleTargetRef = useRef(null);
@@ -249,6 +251,7 @@ export default function LiveMapTab({ theme, userRole, isEditMode, onNotify }) {
       ) : (
         <>
       <ScrollView showsVerticalScrollIndicator={false} style={{ marginTop: 8 }}>
+        {!isMobile ? (
         <View style={styles.calamityTableWrapper}>
           <View style={styles.calamityTableHeaderRow}>
             <View style={[styles.historyKenderaanColFlex, styles.calamityHeaderCellBox]}>
@@ -329,6 +332,74 @@ export default function LiveMapTab({ theme, userRole, isEditMode, onNotify }) {
             </View>
           ))}
         </View>
+        ) : (
+        <View>
+          {history.pagedHistory.map((h) => (
+            <View key={h.id}>
+              <View style={styles.historyCardMobile}>
+                <View style={styles.historyCardMobileTopRow}>
+                  <View style={{ flex: 1 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Text style={styles.tableCellAgency} numberOfLines={1} ellipsizeMode="tail">{h.vehicle_reg}</Text>
+                      {h.status === 'abandoned' && (
+                        <View style={styles.abandonedBadge}>
+                          <Text style={styles.abandonedBadgeText}>Ditinggalkan</Text>
+                        </View>
+                      )}
+                    </View>
+                    <Text style={styles.tableCellMember} numberOfLines={1} ellipsizeMode="tail">{h.vehicle_model}</Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', gap: 8 }}>
+                    <TouchableOpacity
+                      onPress={() => history.toggleHistoryRow(h.id)}
+                      style={[styles.routeBtn, history.expandedHistoryId === h.id && styles.routeBtnActive]}
+                    >
+                      <Route size={16} color={history.expandedHistoryId === h.id ? '#fff' : '#1E3A8A'} />
+                    </TouchableOpacity>
+                    {isEditMode && (
+                      <TouchableOpacity
+                        disabled={deletingPatrol}
+                        onPress={() => setDeletePatrolTarget({ id: h.id, vehicle_reg: h.vehicle_reg })}
+                        style={[styles.routeBtn, { backgroundColor: '#dc2626', opacity: deletingPatrol ? 0.5 : 1 }]}
+                      >
+                        <Trash2 size={16} color="#fff" />
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                </View>
+                <View style={styles.historyCardMobileStatsRow}>
+                  <Text style={styles.historyCardMobileStat}>{formatDuration(h.duration_seconds)}</Text>
+                  <Text style={styles.historyCardMobileStatDivider}>·</Text>
+                  <Text style={styles.historyCardMobileStat}>{h.distance_km?.toFixed(2) || '0.00'} km</Text>
+                  <Text style={styles.historyCardMobileStatDivider}>·</Text>
+                  <Text style={styles.historyCardMobileStat}>{new Date(h.ended_at).toLocaleDateString('ms-MY')} {new Date(h.ended_at).toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit' })}</Text>
+                </View>
+              </View>
+
+              {history.expandedHistoryId === h.id && (
+                <View style={styles.waypointPanel}>
+                  {history.loadingWaypointsId === h.id ? (
+                    <ActivityIndicator size="small" color="#1E3A8A" />
+                  ) : (history.historyWaypoints[h.id] || []).length === 0 ? (
+                    <Text style={styles.waypointEmptyText}>Tiada titik ditanda semasa patrol ini.</Text>
+                  ) : (
+                    (history.historyWaypoints[h.id] || []).map((wp, wpIndex) => (
+                      <View key={wp.id} style={styles.waypointRow}>
+                        <Text style={styles.waypointLabel}>
+                          {wpIndex === 0 ? 'Pangkalan' : `Titik ${wpIndex}`} → Titik {wpIndex + 1}
+                        </Text>
+                        <Text style={styles.waypointDetail}>
+                          {formatDuration(wp.duration_from_previous_seconds)} · {wp.distance_from_previous_km.toFixed(2)} km · {new Date(wp.marked_at).toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit' })}
+                        </Text>
+                      </View>
+                    ))
+                  )}
+                </View>
+              )}
+            </View>
+          ))}
+        </View>
+        )}
       </ScrollView>
 
       <View style={styles.paginationRow}>
@@ -426,10 +497,19 @@ export default function LiveMapTab({ theme, userRole, isEditMode, onNotify }) {
     </ScrollView>
   );
 
+  const showMobileFullscreenHistory = isMobile && sidePanel === 'history';
+  const ViewContainerWrapper = isMobile && !showMobileFullscreenHistory ? ScrollView : View;
+  const viewContainerWrapperProps = showMobileFullscreenHistory
+    ? { style: styles.viewContainer }
+    : isMobile
+      ? { style: { flex: 1 }, contentContainerStyle: [styles.viewContainer, styles.viewContainerMobile] }
+      : { style: styles.viewContainer };
+
   return (
     <>
-      <View style={styles.viewContainer}>
-        <View style={{ flex: 1, position: 'relative' }}>
+      <ViewContainerWrapper {...viewContainerWrapperProps}>
+        {!showMobileFullscreenHistory && (
+        <View style={[{ flex: 1, position: 'relative' }, isMobile && { flex: undefined, minHeight: 420 }]}>
           <View style={styles.mapContainer}>
             {Platform.OS === 'web' ? (
               createElement('iframe', {
@@ -494,7 +574,7 @@ export default function LiveMapTab({ theme, userRole, isEditMode, onNotify }) {
             return (
               <>
                 <TouchableOpacity
-                  style={[styles.historyToggleBtn, { right: canAddCalamity ? 116 : 16 }]}
+                  style={[styles.historyToggleBtn, { right: canAddCalamity ? (isMobile ? 88 : 116) : 16 }]}
                   onPress={() => setSidePanel(sidePanel === 'history' ? 'none' : 'history')}
                   {...(Platform.OS === 'web' ? {
                     onMouseEnter: () => setHistoryBtnHovered(true),
@@ -563,9 +643,10 @@ export default function LiveMapTab({ theme, userRole, isEditMode, onNotify }) {
             </View>
           )}
         </View>
+        )}
 
         {sidePanel === 'history' && (
-          <View style={styles.historyHalf}>
+          <View style={[styles.historyHalf, isMobile && styles.historyHalfMobile]}>
             <View style={styles.historyHeaderRow}>
               <Text style={styles.historyTitle}>Sejarah Patrol Kenderaan</Text>
               <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
@@ -629,7 +710,7 @@ export default function LiveMapTab({ theme, userRole, isEditMode, onNotify }) {
             {renderSummaryContent()}
           </View>
         )}
-      </View>
+      </ViewContainerWrapper>
 
       {/* Modal sélection statut résolution */}
       <Modal visible={resolveModalVisible} transparent animationType="fade">
@@ -720,7 +801,7 @@ export default function LiveMapTab({ theme, userRole, isEditMode, onNotify }) {
                 Padam Rekod Patrol
               </Text>
               <Text style={{ color: '#93c5fd', fontSize: 13, textAlign: 'center', lineHeight: 18 }}>
-                Padam rekod patrol kenderaan "{deletePatrolTarget?.vehicle_reg}"? Tindakan ini tidak boleh dibatalkan.
+                Padam rekod patrol kenderaan "{displayDeletePatrolTargetRef.current?.vehicle_reg}"? Tindakan ini tidak boleh dibatalkan.
               </Text>
             </View>
             <View style={{ flexDirection: 'row', gap: 10, padding: 16 }}>
