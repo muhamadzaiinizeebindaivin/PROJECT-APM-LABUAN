@@ -5,12 +5,11 @@ import { VEHICLE_GLYPHS } from '../../constants/vehicleGlyphs';
  * Builds the Leaflet map HTML shown inside the web <iframe>.
  *
  * Changes vs previous version:
- *  - Calamity points are now clustered (Leaflet.markercluster) with a
+ *  - Calamity points are clustered (Leaflet.markercluster) with a
  *    colored count badge, since they can pile up over time and overlap.
- *    Vehicles are intentionally left unclustered: they move continuously
- *    via live GPS, and markercluster doesn't reindex a marker's spatial
- *    position on setLatLng, so clustering them would make moving vehicles
- *    appear stuck inside stale clusters.
+ *    Vehicles are NOT clustered: they move continuously via live GPS and
+ *    are updated in place with setLatLng, so each pin always shows
+ *    individually rather than collapsing into a group badge.
  *  - Vehicle pins now show a shape specific to the vehicle type (lori,
  *    ambulans, motor, or default car), mirroring the rules in
  *    src/utils/vehicleIcons.js so the map matches the vehicle list.
@@ -45,7 +44,6 @@ export function buildOperasiMapHtml({ theme, userRole }) {
 
           /* Custom cluster badges */
           .cluster-badge { display: flex; align-items: center; justify-content: center; border-radius: 50%; color: #fff; font-weight: 800; font-family: sans-serif; box-shadow: 0 2px 6px rgba(0,0,0,0.35); border: 2px solid white; }
-          .cluster-vehicle { background-color: #2563eb; }
           .vehicle-name-tooltip { font-family: sans-serif; font-size: 11px; font-weight: 700; color: #1f2937; background: #fff; border: none; border-radius: 6px; padding: 3px 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.25); }
           .cluster-calamity { background-color: #ea580c; }
 
@@ -97,17 +95,9 @@ export function buildOperasiMapHtml({ theme, userRole }) {
             };
           }
 
-          // Vehicles are clustered too (nearby/overlapping ones collapse into a
-          // numbered badge; tapping it spiderfies them apart). To keep the
-          // cluster's spatial index correct as vehicles move, UPDATE_LOCATION
-          // below removes and recreates the marker instead of calling
-          // setLatLng() on it directly (same technique as agencyCluster in
-          // sekretariatMapTemplate.js).
-          var vehicleLayer = L.markerClusterGroup({
-            maxClusterRadius: 40,
-            spiderfyOnMaxZoom: true,
-            iconCreateFunction: makeClusterIcon('cluster-vehicle')
-          }).addTo(map);
+          // Vehicles are not clustered — each pin is shown individually and
+          // updated in place (setLatLng) as GPS location changes.
+          var vehicleLayer = L.layerGroup().addTo(map);
 
           // Kecemasan : plus de regroupement — chaque point s'affiche individuellement
           var calamityCluster = L.layerGroup().addTo(map);
@@ -252,17 +242,21 @@ export function buildOperasiMapHtml({ theme, userRole }) {
                 reg: data.reg || (prev && prev.reg)
               };
               if (data.status === 'Patrol') {
-                if (markers[data.id]) {
-                  vehicleLayer.removeLayer(markers[data.id]);
-                }
                 if (data.lat && data.lng) {
-                  markers[data.id] = L.marker([data.lat, data.lng], { icon: createIcon(data.color, meta.iconKey) })
-                    .bindPopup(createPopupContent(data.name, meta.reg, meta.type, data.status, data.id), {
-                      autoPanPaddingTopLeft: L.point(20, 20),
-                      autoPanPaddingBottomRight: L.point(20, 170)
-                    })
-                    .bindTooltip(data.name, { direction: 'top', offset: [0, -20], className: 'vehicle-name-tooltip' });
-                  vehicleLayer.addLayer(markers[data.id]);
+                  if (markers[data.id]) {
+                    markers[data.id].setLatLng([data.lat, data.lng]);
+                    markers[data.id].setIcon(createIcon(data.color, meta.iconKey));
+                    markers[data.id].setPopupContent(createPopupContent(data.name, meta.reg, meta.type, data.status, data.id));
+                    markers[data.id].setTooltipContent(data.name);
+                  } else {
+                    markers[data.id] = L.marker([data.lat, data.lng], { icon: createIcon(data.color, meta.iconKey) })
+                      .bindPopup(createPopupContent(data.name, meta.reg, meta.type, data.status, data.id), {
+                        autoPanPaddingTopLeft: L.point(20, 20),
+                        autoPanPaddingBottomRight: L.point(20, 170)
+                      })
+                      .bindTooltip(data.name, { direction: 'top', offset: [0, -20], className: 'vehicle-name-tooltip' });
+                    vehicleLayer.addLayer(markers[data.id]);
+                  }
                 }
               } else {
                 if (markers[data.id]) {
