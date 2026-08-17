@@ -4,10 +4,10 @@
  * Builds the Leaflet map HTML shown inside the Sekretariat web <iframe>.
  * Mirrors the structure/style of operasiMapTemplate.js exactly:
  *  - Single <script> tag, no duplication.
- *  - maxZoom set directly on the map (required by Leaflet.markercluster).
  *  - Map init deferred until window 'load' to avoid forced-layout warnings.
- *  - Bencana points are clustered (they can pile up over time); agency
- *    member markers are left unclustered since they move via live tracking.
+ *  - Neither bencana points nor agency member markers are clustered — each
+ *    pin is shown individually and updated in place (setLatLng) as
+ *    positions change.
  *  - Bencana markers use the same teardrop/pin shape as Operasi's calamity
  *    markers, but with a fixed color (no fixed category palette — the
  *    category is free text typed by the admin).
@@ -21,9 +21,6 @@ export function buildSekretariatMapHtml({ theme, userRole }) {
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
         <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-        <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
-        <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
-        <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
         <style>
           body { margin: 0; padding: 0; height: 100%; background-color: ${theme?.background || '#f8fafc'}; }
           #map { height: 100%; width: 100%; }
@@ -35,11 +32,6 @@ export function buildSekretariatMapHtml({ theme, userRole }) {
           .custom-popup span.badge { font-size: 12px; font-weight: bold; padding: 2px 8px; border-radius: 12px; display: inline-block; }
           .bencana-time { font-size: 10px; color: #9ca3af; display: block; margin-top: 4px; }
 
-          .cluster-badge { display: flex; align-items: center; justify-content: center; border-radius: 50%; color: #fff; font-weight: 800; font-family: sans-serif; box-shadow: 0 2px 6px rgba(0,0,0,0.35); border: 2px solid white; }
-          .cluster-bencana { background-color: #ea580c; }
-          .cluster-agency { background-color: #2563eb; }
-          .cluster-wrap { display: flex; flex-direction: column; align-items: center; }
-          .cluster-label { font-family: sans-serif; font-size: 10px; font-weight: 800; color: #1f2937; background: #fff; padding: 1px 6px; border-radius: 6px; margin-bottom: 2px; box-shadow: 0 1px 3px rgba(0,0,0,0.25); white-space: nowrap; }
           .agency-name-tooltip { font-family: sans-serif; font-size: 11px; font-weight: 700; color: #1f2937; background: #fff; border: none; border-radius: 6px; padding: 3px 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.25); }
 
           @keyframes pulse-ring {
@@ -82,32 +74,9 @@ export function buildSekretariatMapHtml({ theme, userRole }) {
             window.parent.postMessage(JSON.stringify({ type: 'DELETE_AGENCY_TRACKER_REQUEST', id: id }), '*');
           };
 
-          function makeClusterIcon(className, label) {
-            return function(cluster) {
-              var count = cluster.getChildCount();
-              var size = count < 10 ? 34 : count < 50 ? 40 : 48;
-              return L.divIcon({
-                html: '<div class="cluster-wrap">' +
-                        '<div class="cluster-label">' + label + '</div>' +
-                        '<div class="cluster-badge ' + className + '" style="width:' + size + 'px;height:' + size + 'px;font-size:' + (size < 40 ? 12 : 14) + 'px;">' + count + '</div>' +
-                      '</div>',
-                className: '',
-                iconSize: [size, size + 18],
-                iconAnchor: [size / 2, (size + 18) / 2]
-              });
-            };
-          }
-
-          // Agences en ligne : clusterisées. Contrairement aux véhicules d'Operasi,
-          // on ne fait pas setLatLng() sur un marker existant en cas de déplacement —
-          // on le retire et le recrée à chaque update, pour que markercluster réindexe
-          // correctement sa position dans l'arbre spatial du cluster.
-          var agencyCluster = L.markerClusterGroup({
-            maxClusterRadius: 50,
-            spiderfyOnMaxZoom: true,
-            disableClusteringAtZoom: 18,
-            iconCreateFunction: makeClusterIcon('cluster-agency', 'Agensi')
-          }).addTo(map);
+          // Agences en ligne : plus de regroupement — chaque marker est mis à
+          // jour sur place (setLatLng) au lieu d'être retiré et recréé.
+          var agencyCluster = L.layerGroup().addTo(map);
 
           // Bencana : plus de regroupement — chaque point s'affiche individuellement
           var bencanaCluster = L.layerGroup().addTo(map);
@@ -216,12 +185,16 @@ export function buildSekretariatMapHtml({ theme, userRole }) {
                 if (!isFinite(lat) || !isFinite(lng)) return;
                 a.lat = lat; a.lng = lng;
                 if (agencyMarkers[a.id]) {
-                  agencyCluster.removeLayer(agencyMarkers[a.id]);
+                  agencyMarkers[a.id].setLatLng([a.lat, a.lng]);
+                  agencyMarkers[a.id].setIcon(createAgencyIcon(a.color, a.logo));
+                  agencyMarkers[a.id].setPopupContent(buildAgencyPopup(a));
+                  agencyMarkers[a.id].setTooltipContent(a.agency);
+                } else {
+                  agencyMarkers[a.id] = L.marker([a.lat, a.lng], { icon: createAgencyIcon(a.color, a.logo) })
+                    .bindPopup(buildAgencyPopup(a))
+                    .bindTooltip(a.agency, { direction: 'top', offset: [0, -20], className: 'agency-name-tooltip' });
+                  agencyCluster.addLayer(agencyMarkers[a.id]);
                 }
-                agencyMarkers[a.id] = L.marker([a.lat, a.lng], { icon: createAgencyIcon(a.color, a.logo) })
-                  .bindPopup(buildAgencyPopup(a))
-                  .bindTooltip(a.agency, { direction: 'top', offset: [0, -20], className: 'agency-name-tooltip' });
-                agencyCluster.addLayer(agencyMarkers[a.id]);
               });
 
             } else if (data.type === 'FOCUS_AGENCY') {
