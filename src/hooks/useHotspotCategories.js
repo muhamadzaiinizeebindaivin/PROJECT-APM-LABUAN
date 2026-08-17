@@ -56,6 +56,16 @@ export function useHotspotCategories() {
     return true;
   };
 
+  const updateCategoryPhoto = async (id, photo_url) => {
+    const { error } = await supabaseSandbox.from('hotspot_categories').update({ photo_url }).eq('id', id);
+    if (error) {
+      Platform.OS === 'web' ? alert('Ralat: ' + error.message) : Alert.alert('Ralat', error.message);
+      return false;
+    }
+    await fetchCategories();
+    return true;
+  };
+
   const deleteCategory = async (cat) => {
     // Bloque la suppression si des hotspots utilisent encore cette catégorie
     const { count } = await supabaseSandbox
@@ -76,5 +86,5 @@ export function useHotspotCategories() {
     return true;
   };
 
-  return { categories, loadingCategories, addCategory, updateCategory, deleteCategory, fetchCategories };
+  return { categories, loadingCategories, addCategory, updateCategory, deleteCategory, updateCategoryPhoto, fetchCategories };
 }

@@ -1,16 +1,19 @@
 // src/screens/sekretariat/HotspotSection.js
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, TextInput, Modal, ActivityIndicator, Image, StyleSheet, Platform, useWindowDimensions } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import {
   Droplets, Waves, Mountain, MapPin, Plus, Edit, Trash2, X,
   Flame, Wind, Tornado, CloudRain, CloudLightning, CloudFog, Zap,
   Sun, Snowflake, Umbrella, TreePine, Trees, Globe, Bug,
   AlertTriangle, Biohazard, Radiation, Siren, ShieldAlert, LifeBuoy,
   Factory, Building2, Home, Tent, Warehouse, Landmark,
-  Ship, Anchor, Truck, Car, Plane, Fuel, Maximize2,
+  Ship, Anchor, Truck, Car, Plane, Fuel, Maximize2, Camera, ClipboardList, Calendar,
 } from 'lucide-react-native';
 import { useHotspots } from '../../hooks/useHotspots';
 import { useHotspotCategories } from '../../hooks/useHotspotCategories';
+import { useHotspotKejadian } from '../../hooks/useHotspotKejadian';
+import { useKejadianPhoto } from '../../hooks/useKejadianPhoto';
 import { appStyles as styles } from '../../styles/appStyles';
 import { PALETTE } from '../../constants/palette';
 
@@ -37,12 +40,23 @@ const ICONS = {
   Ship, Anchor, Truck, Car, Plane, Fuel,
 };
 const resolveIcon = (cat) => ICONS[cat?.icon] || MapPin;
-const CATEGORY_MAPS = {
-  banjir: { source: require('../../../assets/map_banjir.png'), caption: 'Peta Taburan Hotspot Banjir' },
-  cerun: { source: require('../../../assets/map_landslide.png'), caption: 'Lokasi Cerun Kritikal (Landslide)' },
-};
 
 const COLOR_CHOICES = ['#3B82F6', '#d97706', '#EA580C', '#16A34A', '#9333EA', '#DC2626', '#0891B2'];
+
+// Style calqué sur appStyles.input, pour le <input type="date"> HTML natif (web uniquement)
+const webDateInput = {
+  width: '100%',
+  boxSizing: 'border-box',
+  border: `1px solid ${PALETTE.cardLightBorder}`,
+  borderRadius: 10,
+  padding: 12,
+  fontSize: 14,
+  color: PALETTE.textDark,
+  backgroundColor: '#fafafa',
+  outline: 'none',
+  fontFamily: 'inherit',
+};
+const PREFIX_CHOICES = ['ID', 'NO.', 'REF', 'Bil', 'Lain-lain'];
 
 import HoverTip from '../../components/HoverTip';
 
@@ -91,6 +105,67 @@ function MapImage({ source, caption }) {
   );
 }
 
+function KejadianPhotoCard({ photoUrl, canEdit, uploading, onUpload }) {
+  const [fullscreen, setFullscreen] = useState(false);
+  const { width: screenWidth } = useWindowDimensions();
+  const isMobile = screenWidth < 768;
+
+  if (!photoUrl) {
+    return canEdit ? (
+      <TouchableOpacity style={hotspotStyles.photoUploadEmpty} onPress={onUpload} disabled={uploading} activeOpacity={0.8}>
+        {uploading ? <ActivityIndicator color={PALETTE.orange} /> : (
+          <>
+            <Camera size={28} color={PALETTE.orange} />
+            <Text style={hotspotStyles.photoUploadEmptyText}>Muat Naik Gambar Kejadian Biasa</Text>
+          </>
+        )}
+      </TouchableOpacity>
+    ) : (
+      <View style={hotspotStyles.photoEmptyReadOnly}>
+        <Camera size={22} color={PALETTE.textMutedDark} />
+        <Text style={hotspotStyles.photoEmptyReadOnlyText}>Belum ada gambar untuk kategori ini buat masa ini.</Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={hotspotStyles.mapCard}>
+      <TouchableOpacity activeOpacity={0.9} onPress={() => setFullscreen(true)} style={{ width: '100%' }}>
+        <Image
+          source={{ uri: photoUrl }}
+          style={[hotspotStyles.mapImage, { height: isMobile ? 220 : 420 }]}
+          resizeMode="contain"
+        />
+        <View style={hotspotStyles.mapZoomHint}>
+          <Maximize2 size={12} color="#fff" />
+          <Text style={hotspotStyles.mapZoomHintText}>Klik untuk besarkan</Text>
+        </View>
+      </TouchableOpacity>
+      <Text style={hotspotStyles.mapCaption}>Gambar Kejadian Biasa</Text>
+
+      {canEdit ? (
+        <TouchableOpacity style={hotspotStyles.photoReplaceBtn} onPress={onUpload} disabled={uploading}>
+          {uploading ? <ActivityIndicator size="small" color={PALETTE.orange} /> : (
+            <>
+              <Camera size={14} color={PALETTE.orange} />
+              <Text style={hotspotStyles.photoReplaceBtnText}>Tukar Gambar</Text>
+            </>
+          )}
+        </TouchableOpacity>
+      ) : null}
+
+      <Modal visible={fullscreen} transparent animationType="fade" onRequestClose={() => setFullscreen(false)}>
+        <View style={hotspotStyles.mapFullscreenOverlay}>
+          <TouchableOpacity style={hotspotStyles.mapFullscreenClose} onPress={() => setFullscreen(false)}>
+            <X size={22} color="#fff" />
+          </TouchableOpacity>
+          <Image source={{ uri: photoUrl }} style={hotspotStyles.mapFullscreenImage} resizeMode="contain" />
+        </View>
+      </Modal>
+    </View>
+  );
+}
+
 export default function HotspotSection({ userRole, isEditMode }) {
   const [selectedCat, setSelectedCat] = useState(null);
   const {
@@ -100,12 +175,23 @@ export default function HotspotSection({ userRole, isEditMode }) {
     openAddModal, openEditModal,
     handleSaveHotspot, confirmDeleteHotspot,
   } = useHotspots();
-  const { categories, loadingCategories, addCategory, updateCategory, deleteCategory } = useHotspotCategories();
+  const { categories, loadingCategories, addCategory, updateCategory, deleteCategory, updateCategoryPhoto } = useHotspotCategories();
+  const {
+    kejadianList, loadingKejadian,
+    modalKejadianVisible, setModalKejadianVisible,
+    formModeKejadian, formKejadian, setFormKejadian,
+    openAddKejadianModal, openEditKejadianModal,
+    handleSaveKejadian, confirmDeleteKejadian,
+  } = useHotspotKejadian();
+  const { pickAndUploadKejadianPhoto, uploadingKejadianPhoto } = useKejadianPhoto();
+  const [activeSubTab, setActiveSubTab] = useState('lokasi'); // 'lokasi' | 'kejadian'
+  const [showTarikhPicker, setShowTarikhPicker] = useState(false);
 
   // ---- Modale de gestion de catégorie ----
   const [modalCatVisible, setModalCatVisible] = useState(false);
   const [formCat, setFormCat] = useState({ label: '', sub: '', color: COLOR_CHOICES[0], prefix: 'ID', icon: 'MapPin' });
   const [editingCatId, setEditingCatId] = useState(null); // null = ajout, sinon = modification de cette catégorie
+  const [isCustomPrefix, setIsCustomPrefix] = useState(false); // true = mode "Lain-lain" avec saisie libre
 
   // Sélectionne la 1re catégorie au chargement
   useEffect(() => {
@@ -116,18 +202,25 @@ export default function HotspotSection({ userRole, isEditMode }) {
   const currentCat = categories.find((c) => c.key === selectedCat) || null;
   const currentColor = currentCat?.color || PALETTE.orange;
   const currentData = currentCat ? hotspotList.filter((h) => h.category === currentCat.key) : [];
+  const currentKejadianData = currentCat ? kejadianList.filter((k) => k.category === currentCat.key) : [];
   const CurrentIcon = resolveIcon(currentCat);
-  const currentMap = currentCat ? CATEGORY_MAPS[currentCat.key] : null;
+
+  useEffect(() => {
+    setActiveSubTab('lokasi');
+  }, [selectedCat]);
 
   const closeCatModal = () => {
     setModalCatVisible(false);
     setEditingCatId(null);
     setFormCat({ label: '', sub: '', color: COLOR_CHOICES[0], prefix: 'ID', icon: 'MapPin' });
+    setIsCustomPrefix(false);
   };
 
   const openEditCategoryModal = (cat) => {
     setEditingCatId(cat.id);
-    setFormCat({ label: cat.label, sub: cat.sub || '', color: cat.color, prefix: cat.prefix || 'ID', icon: cat.icon || 'MapPin' });
+    const catPrefix = cat.prefix || 'ID';
+    setFormCat({ label: cat.label, sub: cat.sub || '', color: cat.color, prefix: catPrefix, icon: cat.icon || 'MapPin' });
+    setIsCustomPrefix(!PREFIX_CHOICES.slice(0, -1).includes(catPrefix));
     setModalCatVisible(true);
   };
 
@@ -172,6 +265,37 @@ export default function HotspotSection({ userRole, isEditMode }) {
           </HoverTip>
           <HoverTip label="Padam titik ini">
             <TouchableOpacity onPress={() => confirmDeleteHotspot(item.id)} style={[hotspotStyles.itemActionBtn, { backgroundColor: PALETTE.danger + '18' }]}>
+              <Trash2 size={15} color={PALETTE.danger} />
+            </TouchableOpacity>
+          </HoverTip>
+        </View>
+      ) : null}
+    </View>
+  );
+
+  const renderKejadianItem = (item) => (
+    <View key={item.id} style={hotspotStyles.kejadianCard}>
+      <View style={hotspotStyles.kejadianHeader}>
+        <Text style={[hotspotStyles.kejadianDate, { color: currentColor }]}>{item.tarikh || '-'}</Text>
+        <Text style={hotspotStyles.kejadianJenis}>{item.jenis_bencana}</Text>
+      </View>
+      <Text style={hotspotStyles.kejadianLokasi}>{item.lokasi}</Text>
+      <View style={hotspotStyles.kejadianStatsRow}>
+        <Text style={hotspotStyles.kejadianStat}>Jumlah KIR: {item.jumlah_kir ?? '-'}</Text>
+        <Text style={hotspotStyles.kejadianStat}>Mangsa: {item.jumlah_mangsa ?? '-'}</Text>
+        <Text style={hotspotStyles.kejadianStat}>PPS: {item.pps || '-'}</Text>
+      </View>
+      {item.catatan ? <Text style={hotspotStyles.kejadianCatatan}>{item.catatan}</Text> : null}
+
+      {userRole === 'admin' && isEditMode ? (
+        <View style={hotspotStyles.itemActions}>
+          <HoverTip label="Kemaskini rekod ini">
+            <TouchableOpacity onPress={() => openEditKejadianModal(item)} style={[hotspotStyles.itemActionBtn, { backgroundColor: PALETTE.orange + '18' }]}>
+              <Edit size={15} color={PALETTE.orange} />
+            </TouchableOpacity>
+          </HoverTip>
+          <HoverTip label="Padam rekod ini">
+            <TouchableOpacity onPress={() => confirmDeleteKejadian(item.id)} style={[hotspotStyles.itemActionBtn, { backgroundColor: PALETTE.danger + '18' }]}>
               <Trash2 size={15} color={PALETTE.danger} />
             </TouchableOpacity>
           </HoverTip>
@@ -262,22 +386,73 @@ export default function HotspotSection({ userRole, isEditMode }) {
                 <Text style={[hotspotStyles.catBannerCount, { color: currentColor }]}>{currentData.length} lokasi</Text>
               </View>
 
-              {/* ---- Carte (Rajah) ---- */}
-              {currentMap ? <MapImage source={currentMap.source} caption={currentMap.caption} /> : null}
-
-              {/* ---- Bouton Tambah ---- */}
-              {userRole === 'admin' && isEditMode ? (
-                <TouchableOpacity style={[styles.addButton, hotspotStyles.addBtnBeforeList]} onPress={openAddModal}>
-                  <Plus size={16} color={PALETTE.white} />
-                  <Text style={styles.addButtonText}>Tambah</Text>
+              {/* ---- Sous-onglets ---- */}
+              <View style={hotspotStyles.subTabRow}>
+                <TouchableOpacity
+                  style={[hotspotStyles.subTabBtn, activeSubTab === 'lokasi' && { backgroundColor: currentColor }]}
+                  onPress={() => setActiveSubTab('lokasi')}
+                  activeOpacity={0.8}
+                >
+                  <MapPin size={14} color={activeSubTab === 'lokasi' ? PALETTE.white : currentColor} />
+                  <Text style={[hotspotStyles.subTabText, { color: activeSubTab === 'lokasi' ? PALETTE.white : currentColor }]}>Lokasi Hotspot</Text>
                 </TouchableOpacity>
-              ) : null}
+                <TouchableOpacity
+                  style={[hotspotStyles.subTabBtn, activeSubTab === 'kejadian' && { backgroundColor: currentColor }]}
+                  onPress={() => setActiveSubTab('kejadian')}
+                  activeOpacity={0.8}
+                >
+                  <ClipboardList size={14} color={activeSubTab === 'kejadian' ? PALETTE.white : currentColor} />
+                  <Text style={[hotspotStyles.subTabText, { color: activeSubTab === 'kejadian' ? PALETTE.white : currentColor }]}>Rekod</Text>
+                </TouchableOpacity>
+              </View>
 
-              {/* ---- Liste ---- */}
-              {currentData.length === 0 ? (
-                <Text style={styles.emptyText}>Tiada rekod untuk kategori ini.</Text>
+              {activeSubTab === 'lokasi' ? (
+                <>
+                  {/* ---- Gambar Kejadian Biasa ---- */}
+                  <KejadianPhotoCard
+                    photoUrl={currentCat.photo_url}
+                    canEdit={userRole === 'admin' && isEditMode}
+                    uploading={uploadingKejadianPhoto}
+                    onUpload={async () => {
+                      const url = await pickAndUploadKejadianPhoto();
+                      if (url) await updateCategoryPhoto(currentCat.id, url);
+                    }}
+                  />
+
+                  {/* ---- Bouton Tambah ---- */}
+                  {userRole === 'admin' && isEditMode ? (
+                    <TouchableOpacity style={[styles.addButton, hotspotStyles.addBtnBeforeList]} onPress={openAddModal}>
+                      <Plus size={16} color={PALETTE.white} />
+                      <Text style={styles.addButtonText}>Tambah</Text>
+                    </TouchableOpacity>
+                  ) : null}
+
+                  {/* ---- Liste ---- */}
+                  {currentData.length === 0 ? (
+                    <Text style={styles.emptyText}>Tiada rekod untuk kategori ini.</Text>
+                  ) : (
+                    currentData.map((item) => renderHotspotItem(item, currentColor, currentCat.prefix))
+                  )}
+                </>
               ) : (
-                currentData.map((item) => renderHotspotItem(item, currentColor, currentCat.prefix))
+                <>
+                  {/* ---- Bouton Tambah Kejadian ---- */}
+                  {userRole === 'admin' && isEditMode ? (
+                    <TouchableOpacity style={[styles.addButton, hotspotStyles.addBtnBeforeList]} onPress={() => openAddKejadianModal(currentCat.key, currentCat.label)}>
+                      <Plus size={16} color={PALETTE.white} />
+                      <Text style={styles.addButtonText}>Tambah</Text>
+                    </TouchableOpacity>
+                  ) : null}
+
+                  {/* ---- Liste Kejadian ---- */}
+                  {loadingKejadian && currentKejadianData.length === 0 ? (
+                    <ActivityIndicator size="small" color={PALETTE.orange} style={{ marginTop: 10 }} />
+                  ) : currentKejadianData.length === 0 ? (
+                    <Text style={styles.emptyText}>Tiada rekod untuk kategori ini.</Text>
+                  ) : (
+                    currentKejadianData.map((item) => renderKejadianItem(item))
+                  )}
+                </>
               )}
             </>
           ) : null}
@@ -315,6 +490,66 @@ export default function HotspotSection({ userRole, isEditMode }) {
               <TextInput style={[styles.input, { height: 60, textAlignVertical: 'top' }]} placeholder="Cth: Kg Rancha-Rancha / Slope ID 17/4" multiline value={formHotspot.area} onChangeText={(t) => setFormHotspot({ ...formHotspot, area: t })} />
               <TouchableOpacity style={styles.saveButton} onPress={handleSaveHotspot}>
                 {loadingHotspot ? <ActivityIndicator color={PALETTE.white} /> : <Text style={styles.saveButtonText}>Simpan Hotspot</Text>}
+              </TouchableOpacity>
+              <View style={{ height: 20 }} />
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+{/* ---- Modale rekod kejadian ---- */}
+      <Modal visible={modalKejadianVisible} animationType="fade" transparent={true}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContainer, { maxWidth: 640 }]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>{formModeKejadian === 'add' ? 'Tambah Rekod' : 'Kemaskini Rekod'}</Text>
+              <TouchableOpacity onPress={() => setModalKejadianVisible(false)}><X size={24} color={PALETTE.textMutedDark} /></TouchableOpacity>
+            </View>
+            <ScrollView contentContainerStyle={styles.modalForm}>
+              <Text style={styles.inputLabel}>Tarikh *</Text>
+              {Platform.OS === 'web' ? (
+                <input
+                  type="date"
+                  value={formKejadian.tarikh}
+                  onChange={(e) => setFormKejadian({ ...formKejadian, tarikh: e.target.value })}
+                  style={webDateInput}
+                />
+              ) : (
+                <>
+                  <TouchableOpacity style={hotspotStyles.dateInputBtn} onPress={() => setShowTarikhPicker(true)}>
+                    <Calendar size={16} color={PALETTE.textMutedDark} />
+                    <Text style={[hotspotStyles.dateInputBtnText, !formKejadian.tarikh && { color: PALETTE.textMutedDark }]}>
+                      {formKejadian.tarikh || 'Pilih tarikh'}
+                    </Text>
+                  </TouchableOpacity>
+                  {showTarikhPicker ? (
+                    <DateTimePicker
+                      value={formKejadian.tarikh ? new Date(formKejadian.tarikh) : new Date()}
+                      mode="date"
+                      display="default"
+                      onChange={(event, selectedDate) => {
+                        setShowTarikhPicker(false);
+                        if (event.type === 'set' && selectedDate) {
+                          const iso = selectedDate.toISOString().split('T')[0];
+                          setFormKejadian({ ...formKejadian, tarikh: iso });
+                        }
+                      }}
+                    />
+                  ) : null}
+                </>
+              )}
+              <Text style={styles.inputLabel}>Lokasi *</Text>
+              <TextInput style={styles.input} placeholder="Cth: Kg Rancha-Rancha" value={formKejadian.lokasi} onChangeText={(t) => setFormKejadian({ ...formKejadian, lokasi: t })} />
+              <Text style={styles.inputLabel}>Jumlah KIR</Text>
+              <TextInput style={styles.input} placeholder="Cth: 12" keyboardType="numeric" value={formKejadian.jumlah_kir} onChangeText={(t) => setFormKejadian({ ...formKejadian, jumlah_kir: t.replace(/[^0-9]/g, '') })} />
+              <Text style={styles.inputLabel}>Jumlah Mangsa</Text>
+              <TextInput style={styles.input} placeholder="Cth: 45" keyboardType="numeric" value={formKejadian.jumlah_mangsa} onChangeText={(t) => setFormKejadian({ ...formKejadian, jumlah_mangsa: t.replace(/[^0-9]/g, '') })} />
+              <Text style={styles.inputLabel}>PPS</Text>
+              <TextInput style={styles.input} placeholder="Cth: Dewan Komuniti Kg X" value={formKejadian.pps} onChangeText={(t) => setFormKejadian({ ...formKejadian, pps: t })} />
+              <Text style={styles.inputLabel}>Catatan</Text>
+              <TextInput style={[styles.input, { height: 60, textAlignVertical: 'top' }]} placeholder="Catatan tambahan" multiline value={formKejadian.catatan} onChangeText={(t) => setFormKejadian({ ...formKejadian, catatan: t })} />
+              <TouchableOpacity style={styles.saveButton} onPress={handleSaveKejadian}>
+                {loadingKejadian ? <ActivityIndicator color={PALETTE.white} /> : <Text style={styles.saveButtonText}>Simpan Rekod</Text>}
               </TouchableOpacity>
               <View style={{ height: 20 }} />
             </ScrollView>
@@ -376,7 +611,37 @@ export default function HotspotSection({ userRole, isEditMode }) {
               <Text style={styles.inputLabel}>Keterangan</Text>
               <TextInput style={styles.input} placeholder="Cth: Kawasan berisiko ribut kencang" value={formCat.sub} onChangeText={(t) => setFormCat({ ...formCat, sub: t })} />
               <Text style={styles.inputLabel}>Prefix Rujukan</Text>
-              <TextInput style={styles.input} placeholder="Cth: ID atau NO." value={formCat.prefix} onChangeText={(t) => setFormCat({ ...formCat, prefix: t })} />
+              <View style={hotspotStyles.prefixRow}>
+                {PREFIX_CHOICES.map((p) => {
+                  const isLain = p === 'Lain-lain';
+                  const isSelected = isLain ? isCustomPrefix : (!isCustomPrefix && formCat.prefix === p);
+                  return (
+                    <TouchableOpacity
+                      key={p}
+                      style={[hotspotStyles.prefixPill, isSelected && hotspotStyles.prefixPillSelected]}
+                      onPress={() => {
+                        if (isLain) {
+                          setIsCustomPrefix(true);
+                          setFormCat({ ...formCat, prefix: '' });
+                        } else {
+                          setIsCustomPrefix(false);
+                          setFormCat({ ...formCat, prefix: p });
+                        }
+                      }}
+                    >
+                      <Text style={[hotspotStyles.prefixPillText, isSelected && hotspotStyles.prefixPillTextSelected]}>{p}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+              {isCustomPrefix ? (
+                <TextInput
+                  style={styles.input}
+                  placeholder="Taip prefix anda sendiri"
+                  value={formCat.prefix}
+                  onChangeText={(t) => setFormCat({ ...formCat, prefix: t })}
+                />
+              ) : null}
               <Text style={styles.inputLabel}>Ikon</Text>
               <View style={hotspotStyles.iconGrid}>
                 {Object.entries(ICONS).map(([name, IconCmp]) => {
@@ -434,6 +699,48 @@ const hotspotStyles = StyleSheet.create({
   },
   pillAddText: { fontSize: 12, fontWeight: '700', color: PALETTE.orange, textAlign: 'center' },
 
+  // Sous-onglets
+  subTabRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
+  subTabBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 8,
+    borderRadius: 8, backgroundColor: PALETTE.cardLight, borderWidth: 1, borderColor: PALETTE.cardLightBorder,
+  },
+  subTabText: { fontSize: 12, fontWeight: '700' },
+
+  // Cartes de rekod kejadian
+  kejadianCard: { backgroundColor: PALETTE.cardLight, padding: 12, borderRadius: 10, marginBottom: 8, borderWidth: 1, borderColor: PALETTE.cardLightBorder, gap: 6 },
+  kejadianHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  kejadianDate: { fontSize: 12, fontWeight: '800' },
+  kejadianJenis: { fontSize: 13, fontWeight: '700', color: PALETTE.textDark },
+  kejadianLokasi: { fontSize: 13, color: PALETTE.textDark, fontWeight: '600' },
+  kejadianStatsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  kejadianStat: { fontSize: 11, color: PALETTE.textMutedDark, fontWeight: '600' },
+  kejadianCatatan: { fontSize: 12, color: PALETTE.textMutedDark, fontStyle: 'italic', marginTop: 2 },
+
+  // Upload photo kejadian
+  photoUploadEmpty: {
+    borderWidth: 1, borderStyle: 'dashed', borderColor: PALETTE.orange, borderRadius: 12,
+    paddingVertical: 30, alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 15,
+  },
+  photoUploadEmptyText: { fontSize: 13, fontWeight: '700', color: PALETTE.orange },
+  photoReplaceBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8,
+    paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: PALETTE.orange,
+  },
+  photoReplaceBtnText: { fontSize: 12, fontWeight: '700', color: PALETTE.orange },
+  photoEmptyReadOnly: {
+    borderWidth: 1, borderStyle: 'dashed', borderColor: PALETTE.cardLightBorder, borderRadius: 12,
+    paddingVertical: 26, alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 15,
+    backgroundColor: PALETTE.cardLight,
+  },
+  photoEmptyReadOnlyText: { fontSize: 13, fontWeight: '600', color: PALETTE.textMutedDark, textAlign: 'center' },
+  dateInputBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    borderWidth: 1, borderColor: PALETTE.cardLightBorder, borderRadius: 8,
+    paddingHorizontal: 12, paddingVertical: 12, backgroundColor: PALETTE.white,
+  },
+  dateInputBtnText: { fontSize: 14, color: PALETTE.textDark },
+
   // Bandeau catégorie
   catBanner: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
@@ -481,6 +788,14 @@ const hotspotStyles = StyleSheet.create({
   colorRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
   colorSwatch: { width: 34, height: 34, borderRadius: 17 },
   colorSwatchSelected: { borderWidth: 3, borderColor: PALETTE.textDark },
+  prefixRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 },
+  prefixPill: {
+    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, borderWidth: 1,
+    borderColor: PALETTE.cardLightBorder, backgroundColor: PALETTE.cardLight,
+  },
+  prefixPillSelected: { backgroundColor: PALETTE.orange + '18', borderColor: PALETTE.orange },
+  prefixPillText: { fontSize: 13, fontWeight: '700', color: PALETTE.textMutedDark },
+  prefixPillTextSelected: { color: PALETTE.orange },
   confirmOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 24 },
   confirmBox: {
     width: '100%', maxWidth: 400, borderRadius: 24, overflow: 'hidden',
