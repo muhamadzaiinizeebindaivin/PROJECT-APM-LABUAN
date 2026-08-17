@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Modal, KeyboardAvoidingView, TextInput, ActivityIndicator, Platform } from 'react-native';
-import { Lock, User, ArrowRight, AlertCircle, X, Eye, EyeOff, CheckCircle, Truck, Building2, ShieldAlert, Search } from 'lucide-react-native';
+import { Lock, User, ArrowRight, AlertCircle, X, Eye, EyeOff, CheckCircle, Truck, Building2, ShieldAlert, Search, ClipboardEdit } from 'lucide-react-native';
 import { PALETTE } from '../constants/palette';
 import { supabaseSandbox } from '../supabaseSandboxClient';
 
-export default function LoginModal({ visible, onClose, isMobile, handleLogin, onOpenSemakStatus }) {
+export default function LoginModal({ visible, onClose, isMobile, handleLogin, onOpenSemakStatus, onOpenSemakData }) {
   const [loginUsername, setLoginUsername] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState('');
@@ -73,7 +73,7 @@ export default function LoginModal({ visible, onClose, isMobile, handleLogin, on
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={closeLoginModal}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
-        <View style={{ width: '100%', maxWidth: 560, shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 20, elevation: 20, borderRadius: 24 }}>
+        <View style={{ width: '100%', maxWidth: 720, shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 20, elevation: 20, borderRadius: 24 }}>
 
           {/* Bandeau header sombre */}
           <View style={{ backgroundColor: '#0c0c0e', padding: 24, paddingBottom: 28, borderTopLeftRadius: 24, borderTopRightRadius: 24 }}>
@@ -202,6 +202,16 @@ export default function LoginModal({ visible, onClose, isMobile, handleLogin, on
               >
                 {!isMobile && <Search size={16} color={PALETTE.orange} />}
                 <Text style={{ color: PALETTE.orange, fontWeight: '800', fontSize: 12, textAlign: 'center' }}>Semak Status</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => { onClose(); onOpenSemakData(); }}
+                style={[
+                  { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#fff7ed', borderWidth: 1.5, borderColor: PALETTE.orange, borderRadius: 12 },
+                  isMobile ? { minHeight: 48, paddingVertical: 6 } : { height: 48 },
+                ]}
+              >
+                {!isMobile && <ClipboardEdit size={16} color={PALETTE.orange} />}
+                <Text style={{ color: PALETTE.orange, fontWeight: '800', fontSize: 12, textAlign: 'center' }}>Kemaskini</Text>
               </TouchableOpacity>
             </View>
           </View>

@@ -105,7 +105,7 @@ export default function SemakStatusModal({ visible, onClose }) {
       onShow={() => setTimeout(() => icBoxRefs.current[0]?.focus(), 50)}
     >
       <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
-        <View style={{ width: '100%', maxWidth: 640, maxHeight: '85%', borderRadius: 24, overflow: 'hidden', backgroundColor: '#fff' }}>
+        <View style={{ width: '100%', maxWidth: 900, maxHeight: '92%', borderRadius: 24, overflow: 'hidden', backgroundColor: '#fff' }}>
           <View style={{ backgroundColor: '#0c0c0e', padding: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
             <Text style={{ fontSize: 17, fontWeight: '900', color: '#fff' }}>Semak Status</Text>
             <TouchableOpacity onPress={statusResult ? handleCloseResult : closeStatusModal}>

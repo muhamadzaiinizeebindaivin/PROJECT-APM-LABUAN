@@ -106,7 +106,7 @@ const DATE_FIELDS = [
 
 const normalize = (str) => String(str || '').toUpperCase().replace(/\s+/g, ' ').trim();
 
-const matchColumn = (header) => {
+export const matchColumn = (header) => {
   const norm = normalize(header);
   for (const matcher of COLUMN_MATCHERS) {
     const included = matcher.patterns.every((p) => norm.includes(p));
@@ -121,6 +121,27 @@ const matchColumn = (header) => {
     }
   }
   return null;
+};
+
+// Construit un mapping { field: colIndex } à partir d'une ligne d'en-tête —
+// même logique de détection que le parsing d'import, réutilisée pour localiser
+// une colonne à modifier plutôt qu'à lire en masse.
+export const buildFieldColumnMap = (headerRow) => {
+  const map = {};
+  headerRow.forEach((h, i) => {
+    const match = matchColumn(h);
+    if (!match) return;
+    if (match.type === 'field') {
+      map[match.field] = i;
+    } else if (match.type === 'pasukan') {
+      const suffixedField = `${match.field === 'tarikh_tamat_watikah' ? 'tarikh_tamat_watikah'
+        : match.field === 'tarikh_kenaikan_pangkat' ? 'tarikh_kenaikan_pangkat'
+        : match.field === 'no_siri_watikah' ? 'no_siri_watikah'
+        : 'tempoh_aktif_watikah_hari'}_${match.pasukan_number}`;
+      map[suffixedField] = i;
+    }
+  });
+  return map;
 };
 
 const isValidDate = (y, m, d) => {
