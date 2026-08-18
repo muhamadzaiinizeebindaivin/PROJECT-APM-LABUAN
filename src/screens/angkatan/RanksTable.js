@@ -194,7 +194,7 @@ export default function RanksTable({ranks, isEditing, userRole, onAdd, onEdit, o
                 <View style={[styles.tableCell, { gap: 2, minWidth: layakUbkpWidth }]}>
                   <TouchableOpacity onPress={() => onOpenPromotion(item.rank, 'eligible')}>
                     <Text style={{ color: '#16a34a', fontWeight: '800', textDecorationLine: 'underline', textAlign: 'center', fontSize: 11 }}>
-                      Boleh Naik: {item.kenaikan?.eligible ?? 0}
+                      Layak: {item.kenaikan?.eligible ?? 0}
                     </Text>
                   </TouchableOpacity>
                   <TouchableOpacity onPress={() => onOpenPromotion(item.rank, 'needsCourse')}>
@@ -213,7 +213,7 @@ export default function RanksTable({ranks, isEditing, userRole, onAdd, onEdit, o
                     <>
                       <TouchableOpacity onPress={() => onOpenPromotion(item.rank, 'fastTrackEligible')}>
                         <Text style={{ color: '#16a34a', fontWeight: '800', textDecorationLine: 'underline', textAlign: 'center', fontSize: 11 }}>
-                          {EXTRA_ROUTE_LABELS.fastTrack} — Boleh Naik: {item.kenaikan.fastTrack.eligible}
+                          {EXTRA_ROUTE_LABELS.fastTrack} — Layak: {item.kenaikan.fastTrack.eligible}
                         </Text>
                       </TouchableOpacity>
                       <TouchableOpacity onPress={() => onOpenPromotion(item.rank, 'fastTrackNeedsCourse')}>
@@ -371,7 +371,7 @@ export default function RanksTable({ranks, isEditing, userRole, onAdd, onEdit, o
                   Bilangan ini menunjukkan anggota di rang <Text style={{ fontWeight: '800' }}>satu peringkat di bawah</Text> pangkat berkenaan, yang telah memenuhi syarat tempoh perkhidmatan untuk dinaikkan pangkat. Bagi setiap rang:
                 </Text>
                 <View style={{ flexDirection: 'row', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
-                  <RuleChip icon={GraduationCap} label="Boleh Naik — tempoh + kursus lengkap" tone="green" />
+                  <RuleChip icon={GraduationCap} label="Layak — tempoh + kursus lengkap" tone="green" />
                   <RuleChip icon={GraduationCap} label="Perlu Kursus — tempoh cukup, kursus belum" tone="orange" />
                 </View>
               </View>

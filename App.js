@@ -9,6 +9,7 @@ import { themes } from './theme';
 
 import { useAuthSession } from './src/hooks/useAuthSession';
 import { useBackButtonGuard } from './src/hooks/useBackButtonGuard';
+import { supabaseSandbox } from './src/supabaseSandboxClient';
 
 import LoginModal from './src/components/LoginModal';
 import LogoutModal from './src/components/LogoutModal';
@@ -31,6 +32,17 @@ export default function App() {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const navigationRef = useRef(null);
   const theme = isDarkMode ? themes.dark : themes.light;
+
+  // Tracking d'affluence global : une ligne insérée à chaque ouverture du
+  // site (peu importe la route ou si la personne se connecte ensuite), plus
+  // une présence Realtime pour le décompte "en ligne maintenant". Fait une
+  // seule fois par onglet, dès le montage — voir useSiteVisitorStats.js
+  // pour la lecture de ces stats côté Admin.
+  useEffect(() => {
+    supabaseSandbox.from('site_visits').insert([{}]).then(({ error }) => {
+      if (error) console.error('[site_visits insert error]', error);
+    });
+  }, []);
 
   const {
     userRole, isCheckingSession,

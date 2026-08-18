@@ -118,7 +118,7 @@ export const isEligibleFastTrackStafMuda = (emp) => {
   return true;
 };
 
-// Même critère sans vérifier le cours — pour Boleh Naik/Perlu Kursus côté Fast-Track.
+// Même critère sans vérifier le cours — pour Layak/Perlu Kursus côté Fast-Track.
 export const isEligibleFastTrackStafMudaByYearsAcademic = (emp) => {
   if (norm(emp.status_keaktifan) !== 'AKTIF') return false;
   const yrs = yearsSince(emp.tarikh_terima_pangkat_terkini);
@@ -136,7 +136,7 @@ export const isEligibleFastTrackLeftenanMuda = (emp) => {
   return true;
 };
 
-// Même critère sans vérifier le cours — pour Boleh Naik/Perlu Kursus côté Fast-Track.
+// Même critère sans vérifier le cours — pour Layak/Perlu Kursus côté Fast-Track.
 export const isEligibleFastTrackLeftenanMudaByYearsAcademic = (emp) => {
   if (norm(emp.status_keaktifan) !== 'AKTIF') return false;
   const yrs = yearsSince(emp.tarikh_terima_pangkat_terkini);
@@ -202,7 +202,7 @@ export const isEligibleForPegawaiWaranII = (emp) => {
   return true;
 };
 
-// Même critère sans vérifier le cours — pour distinguer Boleh Naik/Perlu Kursus.
+// Même critère sans vérifier le cours — pour distinguer Layak/Perlu Kursus.
 export const isEligibleForPegawaiWaranIIByYears = (emp) => {
   if (norm(emp.status_keaktifan) !== 'AKTIF') return false;
   const yrs = yearsSince(emp.tarikh_terima_pangkat_terkini);
@@ -220,7 +220,7 @@ export const isEligibleForPegawaiWaranI = (emp) => {
   return true;
 };
 
-// Même critère sans vérifier le cours — pour distinguer Boleh Naik/Perlu Kursus.
+// Même critère sans vérifier le cours — pour distinguer Layak/Perlu Kursus.
 export const isEligibleForPegawaiWaranIByYears = (emp) => {
   if (norm(emp.status_keaktifan) !== 'AKTIF') return false;
   const yrs = yearsSince(emp.tarikh_terima_pangkat_terkini);

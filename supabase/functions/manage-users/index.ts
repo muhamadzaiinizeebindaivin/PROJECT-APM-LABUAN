@@ -55,67 +55,39 @@ serve(async (req) => {
       const pageSize = Math.min(100, Math.max(1, body.pageSize || 20));
       const search = (body.search || "").trim();
       const sortBy = ["username", "role", "email"].includes(body.sortBy) ? body.sortBy : "username";
-      const sortDir = body.sortDir === "desc" ? true : false; // ascending: false
+      const sortDir = body.sortDir === "desc" ? "desc" : "asc";
 
       const from = (page - 1) * pageSize;
-      const to = from + pageSize - 1;
 
-      // Un seul appel à l'API Admin Auth, fait AVANT la requête profiles cette fois —
-      // pour pouvoir exclure les sessions anonymes (operasi/pemandu/agensi via kod akses)
-      // dès la requête paginée, sans fausser le compte total ni la pagination.
-      const pendingMap = new Map<string, boolean>();
-      const anonymousIds: string[] = [];
-      {
-        let authPage = 1;
-        const authPerPage = 200; // large marge, ajuste si ta base a plus de comptes que ça
-        let keepGoing = true;
-        while (keepGoing) {
-          const { data: authPageData, error: authListError } = await supabaseAdmin.auth.admin.listUsers({
-            page: authPage,
-            perPage: authPerPage,
-          });
-          if (authListError || !authPageData?.users?.length) break;
-          for (const u of authPageData.users) {
-            pendingMap.set(u.id, !u.email_confirmed_at);
-            if (u.is_anonymous) anonymousIds.push(u.id);
-          }
-          keepGoing = authPageData.users.length === authPerPage;
-          authPage += 1;
-        }
-      }
-
-      let query = supabaseAdmin
+      // Exclusion des comptes anonymes (operasi/pemandu/agensi via kod akses)
+      // faite entièrement côté base (fonction sandbox.list_registered_profiles),
+      // au lieu de paginer tout auth.users et d'embarquer une liste d'IDs
+      // potentiellement énorme dans l'URL — ça évite les erreurs de protocole
+      // HTTP/2 une fois que cette liste devient trop longue.
+      const { data, error } = await supabaseAdmin
         .schema("sandbox")
-        .from("profiles")
-        .select("id, username, role, email", { count: "exact" });
+        .rpc("list_registered_profiles", {
+          p_search: search,
+          p_sort_by: sortBy,
+          p_sort_dir: sortDir,
+          p_limit: pageSize,
+          p_offset: from,
+        });
 
-      if (anonymousIds.length > 0) {
-        query = query.not("id", "in", `(${anonymousIds.join(",")})`);
-      }
-
-      if (search) {
-        query = query.or(`username.ilike.%${search}%,email.ilike.%${search}%`);
-      }
-
-      query = query.order(sortBy, { ascending: !sortDir }).range(from, to);
-
-      const { data: profiles, error: profilesError, count } = await query;
-
-      if (profilesError) {
-        return new Response(JSON.stringify({ error: profilesError.message }), {
+      if (error) {
+        return new Response(JSON.stringify({ error: error.message }), {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
-      const usersWithStatus = (profiles || []).map((p) => ({
-        ...p,
-        pending: pendingMap.get(p.id) ?? false,
-      }));
+      const rows = data || [];
+      const total = rows.length > 0 ? Number(rows[0].total_count) : 0;
+      const users = rows.map(({ total_count, ...rest }) => rest);
 
       return new Response(JSON.stringify({
-        users: usersWithStatus,
-        total: count ?? 0,
+        users,
+        total,
         page,
         pageSize,
       }), {

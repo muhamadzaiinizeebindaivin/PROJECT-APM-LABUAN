@@ -4,10 +4,11 @@ import {
   UserPlus, CheckCircle, AlertCircle, User, Mail, ShieldCheck, Briefcase,
   Trash2, Users, Search, ChevronLeft, ChevronRight, ArrowUpDown,
   LayoutDashboard, CreditCard, Truck, GraduationCap, ShieldAlert, RefreshCw,
-  Building2, Eye, EyeOff, Pencil, Check, X, KeyRound
+  Building2, Eye, EyeOff, Pencil, Check, X, KeyRound, Globe
 } from 'lucide-react-native';
 import { supabaseSandbox as supabase } from '../supabaseSandboxClient';
 import { PALETTE } from '../constants/palette';
+import { useSiteVisitorStats } from '../hooks/useSiteVisitorStats';
 
 const ROLES = [
   { key: 'admin', label: 'Admin', icon: ShieldCheck, color: '#1E3A8A' },
@@ -25,6 +26,8 @@ const PAGE_SIZE = 20;
 export default function AdminUserManagementScreen() {
   const { width: screenWidth } = useWindowDimensions();
   const isMobile = screenWidth < 768;
+
+  const { totalVisits, loading: loadingVisitorStats } = useSiteVisitorStats();
 
   // ---- Kod akses (agensi & pemandu) ----
   const [accessCodes, setAccessCodes] = useState({ agency_code: '', driver_code: '', operasi_code: '' });
@@ -254,6 +257,23 @@ export default function AdminUserManagementScreen() {
       contentContainerStyle={styles.scrollContent}
       showsVerticalScrollIndicator={false}
     >
+      {/* ============ STATISTIK LAWATAN LAMAN WEB ============ */}
+      <View style={[styles.card, { flexDirection: 'row', gap: 14, marginBottom: 16 }, isMobile && { flexDirection: 'column' }]}>
+        <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <View style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: 'rgba(30, 58, 138, 0.1)', alignItems: 'center', justifyContent: 'center' }}>
+            <Globe size={20} color="#1E3A8A" />
+          </View>
+          <View>
+            <Text style={{ fontSize: 11, fontWeight: '800', color: PALETTE.textMutedDark, letterSpacing: 0.5 }}>JUMLAH LAWATAN</Text>
+            {loadingVisitorStats ? (
+              <ActivityIndicator size="small" color="#1E3A8A" style={{ marginTop: 4, alignSelf: 'flex-start' }} />
+            ) : (
+              <Text style={{ fontSize: 20, fontWeight: '900', color: PALETTE.textDark }}>{totalVisits}</Text>
+            )}
+          </View>
+        </View>
+      </View>
+
       {/* ============ KOD AKSES (agensi & pemandu) ============ */}
       <View style={[styles.card, { flexDirection: 'row', gap: 14, marginBottom: 16 }, isMobile && { flexDirection: 'column' }]}>
         {[
