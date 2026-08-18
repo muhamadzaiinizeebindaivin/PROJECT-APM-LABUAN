@@ -8,7 +8,7 @@ import { supabaseSandbox } from '../supabaseSandboxClient';
  * chargement, création, modification, suppression.
  * Schéma sandbox uniquement — ne touche jamais public.
  */
-export function useHotspotKejadian() {
+export function useHotspotKejadian(onNotify) {
   const [kejadianList, setKejadianList] = useState([]);
   const [loadingKejadian, setLoadingKejadian] = useState(true);
   const [modalKejadianVisible, setModalKejadianVisible] = useState(false);
@@ -71,12 +71,12 @@ export function useHotspotKejadian() {
     setLoadingKejadian(true);
     if (formModeKejadian === 'add') {
       const { error } = await supabaseSandbox.from('hotspot_kejadian').insert([payload]);
-      if (error) Alert.alert('Ralat', error.message);
-      else { Alert.alert('Berjaya', 'Rekod kejadian ditambah.'); setModalKejadianVisible(false); fetchKejadian(); }
+      if (error) onNotify?.('error', error.message);
+      else { onNotify?.('success', 'Rekod kejadian ditambah.'); setModalKejadianVisible(false); fetchKejadian(); }
     } else {
       const { error } = await supabaseSandbox.from('hotspot_kejadian').update(payload).eq('id', editIdKejadian);
-      if (error) Alert.alert('Ralat', error.message);
-      else { Alert.alert('Berjaya', 'Rekod kejadian dikemaskini.'); setModalKejadianVisible(false); fetchKejadian(); }
+      if (error) onNotify?.('error', error.message);
+      else { onNotify?.('success', 'Rekod kejadian dikemaskini.'); setModalKejadianVisible(false); fetchKejadian(); }
     }
     setLoadingKejadian(false);
   };
@@ -86,8 +86,9 @@ export function useHotspotKejadian() {
       setLoadingKejadian(true);
       const { error } = await supabaseSandbox.from('hotspot_kejadian').delete().eq('id', id);
       if (error) {
-        Platform.OS === 'web' ? alert('Ralat: ' + error.message) : Alert.alert('Ralat', error.message);
+        onNotify?.('error', error.message);
       } else {
+        onNotify?.('success', 'Rekod kejadian dipadam.');
         fetchKejadian();
       }
       setLoadingKejadian(false);

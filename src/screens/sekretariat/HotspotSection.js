@@ -42,6 +42,7 @@ const ICONS = {
 const resolveIcon = (cat) => ICONS[cat?.icon] || MapPin;
 
 const COLOR_CHOICES = ['#3B82F6', '#d97706', '#EA580C', '#16A34A', '#9333EA', '#DC2626', '#0891B2'];
+const DEFAULT_PREFIX = 'NO.';
 
 // Style calqué sur appStyles.input, pour le <input type="date"> HTML natif (web uniquement)
 const webDateInput = {
@@ -166,32 +167,35 @@ function KejadianPhotoCard({ photoUrl, canEdit, uploading, onUpload }) {
   );
 }
 
-export default function HotspotSection({ userRole, isEditMode }) {
+export default function HotspotSection({ userRole, isEditMode, onNotify }) {
   const [selectedCat, setSelectedCat] = useState(null);
+
   const {
     hotspotList, loadingHotspot,
     modalHotspotVisible, setModalHotspotVisible,
     formModeHotspot, formHotspot, setFormHotspot,
     openAddModal, openEditModal,
     handleSaveHotspot, confirmDeleteHotspot,
-  } = useHotspots();
-  const { categories, loadingCategories, addCategory, updateCategory, deleteCategory, updateCategoryPhoto } = useHotspotCategories();
+  } = useHotspots(onNotify);
+  const { categories, loadingCategories, addCategory, updateCategory, deleteCategory, updateCategoryPhoto } = useHotspotCategories(onNotify);
   const {
     kejadianList, loadingKejadian,
     modalKejadianVisible, setModalKejadianVisible,
     formModeKejadian, formKejadian, setFormKejadian,
     openAddKejadianModal, openEditKejadianModal,
     handleSaveKejadian, confirmDeleteKejadian,
-  } = useHotspotKejadian();
+  } = useHotspotKejadian(onNotify);
   const { pickAndUploadKejadianPhoto, uploadingKejadianPhoto } = useKejadianPhoto();
   const [activeSubTab, setActiveSubTab] = useState('lokasi'); // 'lokasi' | 'kejadian'
   const [showTarikhPicker, setShowTarikhPicker] = useState(false);
+  const [detailItem, setDetailItem] = useState(null);
+  const displayDetailItemRef = useRef(null);
+  if (detailItem) displayDetailItemRef.current = detailItem;
 
   // ---- Modale de gestion de catégorie ----
   const [modalCatVisible, setModalCatVisible] = useState(false);
-  const [formCat, setFormCat] = useState({ label: '', sub: '', color: COLOR_CHOICES[0], prefix: 'ID', icon: 'MapPin' });
+  const [formCat, setFormCat] = useState({ label: '', sub: '', color: COLOR_CHOICES[0], prefix: DEFAULT_PREFIX, icon: 'MapPin' });
   const [editingCatId, setEditingCatId] = useState(null); // null = ajout, sinon = modification de cette catégorie
-  const [isCustomPrefix, setIsCustomPrefix] = useState(false); // true = mode "Lain-lain" avec saisie libre
 
   // Sélectionne la 1re catégorie au chargement
   useEffect(() => {
@@ -212,15 +216,12 @@ export default function HotspotSection({ userRole, isEditMode }) {
   const closeCatModal = () => {
     setModalCatVisible(false);
     setEditingCatId(null);
-    setFormCat({ label: '', sub: '', color: COLOR_CHOICES[0], prefix: 'ID', icon: 'MapPin' });
-    setIsCustomPrefix(false);
+    setFormCat({ label: '', sub: '', color: COLOR_CHOICES[0], prefix: DEFAULT_PREFIX, icon: 'MapPin' });
   };
 
   const openEditCategoryModal = (cat) => {
     setEditingCatId(cat.id);
-    const catPrefix = cat.prefix || 'ID';
-    setFormCat({ label: cat.label, sub: cat.sub || '', color: cat.color, prefix: catPrefix, icon: cat.icon || 'MapPin' });
-    setIsCustomPrefix(!PREFIX_CHOICES.slice(0, -1).includes(catPrefix));
+    setFormCat({ label: cat.label, sub: cat.sub || '', color: cat.color, prefix: DEFAULT_PREFIX, icon: cat.icon || 'MapPin' });
     setModalCatVisible(true);
   };
 
@@ -247,14 +248,19 @@ export default function HotspotSection({ userRole, isEditMode }) {
 
   const renderHotspotItem = (item, badgeColor, prefixText) => (
     <View key={item.id} style={hotspotStyles.hotspotCard}>
-      <View style={[hotspotStyles.hotspotBadge, { backgroundColor: badgeColor + '18', borderColor: badgeColor }]}>
-        <Text style={[hotspotStyles.hotspotBadgeText, { color: badgeColor }]}>{prefixText} {item.ref_no || '-'}</Text>
-      </View>
+      <TouchableOpacity
+        onPress={() => (userRole === 'admin' && isEditMode ? openEditModal(item) : setDetailItem(item))}
+        style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}
+      >
+        <View style={[hotspotStyles.hotspotBadge, { backgroundColor: badgeColor + '18', borderColor: badgeColor }]}>
+          <Text style={[hotspotStyles.hotspotBadgeText, { color: badgeColor }]}>{prefixText} {item.ref_no || '-'}</Text>
+        </View>
 
-      <View style={{ flex: 1 }}>
-        <Text style={hotspotStyles.hotspotRiver}>{item.river}</Text>
-        <Text style={hotspotStyles.hotspotArea}>{item.area}</Text>
-      </View>
+        <View style={{ flex: 1 }}>
+          <Text style={hotspotStyles.hotspotRiver}>{item.river}</Text>
+          <Text style={hotspotStyles.hotspotArea}>{item.area}</Text>
+        </View>
+      </TouchableOpacity>
 
       {userRole === 'admin' && isEditMode ? (
         <View style={hotspotStyles.itemActions}>
@@ -421,7 +427,7 @@ export default function HotspotSection({ userRole, isEditMode }) {
 
                   {/* ---- Bouton Tambah ---- */}
                   {userRole === 'admin' && isEditMode ? (
-                    <TouchableOpacity style={[styles.addButton, hotspotStyles.addBtnBeforeList]} onPress={openAddModal}>
+                    <TouchableOpacity style={[styles.addButton, hotspotStyles.addBtnBeforeList]} onPress={() => openAddModal(currentCat.key)}>
                       <Plus size={16} color={PALETTE.white} />
                       <Text style={styles.addButtonText}>Tambah</Text>
                     </TouchableOpacity>
@@ -462,36 +468,100 @@ export default function HotspotSection({ userRole, isEditMode }) {
       {/* ---- Modale hotspot ---- */}
       <Modal visible={modalHotspotVisible} animationType="fade" transparent={true}>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
+          <View style={[styles.modalContainer, { maxWidth: 860 }]}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>{formModeHotspot === 'add' ? 'Tambah Hotspot' : 'Kemaskini Hotspot'}</Text>
               <TouchableOpacity onPress={() => setModalHotspotVisible(false)}><X size={24} color={PALETTE.textMutedDark} /></TouchableOpacity>
             </View>
             <ScrollView contentContainerStyle={styles.modalForm}>
               <Text style={styles.inputLabel}>Kategori Hotspot</Text>
-              <View style={styles.categoryWrap}>
-                {categories.map(cat => (
-                  <TouchableOpacity
-                    key={cat.id}
-                    style={[styles.categoryBtn, formHotspot.category === cat.key ? styles.categoryBtnActive : null]}
-                    onPress={() => setFormHotspot({ ...formHotspot, category: cat.key })}
-                  >
-                    <Text style={[styles.categoryBtnText, formHotspot.category === cat.key ? styles.categoryBtnTextActive : null]}>
-                      {cat.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+              <View style={[styles.categoryBtn, styles.categoryBtnActive, { alignSelf: 'flex-start' }]}>
+                <Text style={[styles.categoryBtnText, styles.categoryBtnTextActive]}>
+                  {categories.find(c => c.key === formHotspot.category)?.label || formHotspot.category}
+                </Text>
               </View>
-              <Text style={styles.inputLabel}>No. Rujukan / ID *</Text>
-              <TextInput style={styles.input} placeholder="Cth: 1, 2, atau 17/4" value={formHotspot.ref_no} onChangeText={(t) => setFormHotspot({ ...formHotspot, ref_no: t })} />
-              <Text style={styles.inputLabel}>Sungai / Koordinat / Lokasi Utama *</Text>
-              <TextInput style={styles.input} placeholder="Cth: Sg. Kinabenua / 5°22'16.5N 115..." value={formHotspot.river} onChangeText={(t) => setFormHotspot({ ...formHotspot, river: t })} />
-              <Text style={styles.inputLabel}>Kawasan Terjejas *</Text>
-              <TextInput style={[styles.input, { height: 60, textAlignVertical: 'top' }]} placeholder="Cth: Kg Rancha-Rancha / Slope ID 17/4" multiline value={formHotspot.area} onChangeText={(t) => setFormHotspot({ ...formHotspot, area: t })} />
+              <Text style={styles.inputLabel}>No. Rujukan</Text>
+              <TextInput style={styles.input} placeholder="Cth: 1, 2, 3,..." value={formHotspot.ref_no} onChangeText={(t) => setFormHotspot({ ...formHotspot, ref_no: t })} />
+              <Text style={styles.inputLabel}>Lokasi Utama</Text>
+              <TextInput style={styles.input} placeholder="Cth: Sg. Kinabenua" value={formHotspot.river} onChangeText={(t) => setFormHotspot({ ...formHotspot, river: t })} />
+              <Text style={styles.inputLabel}>Kawasan Terjejas</Text>
+              <TextInput style={styles.input} placeholder="Cth: Kg Rancha Rancha" value={formHotspot.area} onChangeText={(t) => setFormHotspot({ ...formHotspot, area: t })} />
+              <Text style={styles.inputLabel}>Latitud</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Cth: 5.372146"
+                keyboardType="numeric"
+                value={formHotspot.latitude}
+                onChangeText={(t) => setFormHotspot({ ...formHotspot, latitude: t.replace(/[^0-9.-]/g, '') })}
+              />
+              <Text style={styles.inputLabel}>Longitud</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Cth: 115.240419"
+                keyboardType="numeric"
+                value={formHotspot.longitude}
+                onChangeText={(t) => setFormHotspot({ ...formHotspot, longitude: t.replace(/[^0-9.-]/g, '') })}
+              />
               <TouchableOpacity style={styles.saveButton} onPress={handleSaveHotspot}>
                 {loadingHotspot ? <ActivityIndicator color={PALETTE.white} /> : <Text style={styles.saveButtonText}>Simpan Hotspot</Text>}
               </TouchableOpacity>
               <View style={{ height: 20 }} />
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ---- Modale butiran hotspot ---- */}
+      <Modal visible={!!detailItem} animationType="fade" transparent={true}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContainer, { maxWidth: 640 }]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Butiran Hotspot</Text>
+              <TouchableOpacity onPress={() => setDetailItem(null)}><X size={24} color={PALETTE.textMutedDark} /></TouchableOpacity>
+            </View>
+            <ScrollView contentContainerStyle={styles.modalForm}>
+              <View style={hotspotStyles.detailCatChip}>
+                <View style={[hotspotStyles.detailCatDot, { backgroundColor: categories.find(c => c.key === displayDetailItemRef.current?.category)?.color || PALETTE.orange }]} />
+                <Text style={[hotspotStyles.detailCatChipText, { color: categories.find(c => c.key === displayDetailItemRef.current?.category)?.color || PALETTE.orange }]}>
+                  {categories.find(c => c.key === displayDetailItemRef.current?.category)?.label || displayDetailItemRef.current?.category}
+                </Text>
+                <Text style={hotspotStyles.detailRefChipText}>#{displayDetailItemRef.current?.ref_no || '-'}</Text>
+              </View>
+
+              <View style={hotspotStyles.detailRow}>
+                <View style={hotspotStyles.detailIconBox}><MapPin size={16} color={PALETTE.orange} /></View>
+                <View style={{ flex: 1 }}>
+                  <Text style={hotspotStyles.detailLabel}>Lokasi Utama</Text>
+                  <Text style={hotspotStyles.detailValue}>{displayDetailItemRef.current?.river || '-'}</Text>
+                </View>
+              </View>
+
+              <View style={hotspotStyles.detailRow}>
+                <View style={hotspotStyles.detailIconBox}><Home size={16} color={PALETTE.orange} /></View>
+                <View style={{ flex: 1 }}>
+                  <Text style={hotspotStyles.detailLabel}>Kawasan Terjejas</Text>
+                  <Text style={hotspotStyles.detailValue}>{displayDetailItemRef.current?.area || '-'}</Text>
+                </View>
+              </View>
+
+              <View style={hotspotStyles.coordRow}>
+                <View style={hotspotStyles.coordBox}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                    <Globe size={13} color={PALETTE.textMutedDark} />
+                    <Text style={hotspotStyles.detailLabel}>Latitud</Text>
+                  </View>
+                  <Text style={hotspotStyles.detailValue}>{displayDetailItemRef.current?.latitude != null ? String(displayDetailItemRef.current.latitude) : '-'}</Text>
+                </View>
+                <View style={hotspotStyles.coordBox}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                    <Globe size={13} color={PALETTE.textMutedDark} />
+                    <Text style={hotspotStyles.detailLabel}>Longitud</Text>
+                  </View>
+                  <Text style={hotspotStyles.detailValue}>{displayDetailItemRef.current?.longitude != null ? String(displayDetailItemRef.current.longitude) : '-'}</Text>
+                </View>
+              </View>
+
+              <View style={{ height: 10 }} />
             </ScrollView>
           </View>
         </View>
@@ -610,38 +680,7 @@ export default function HotspotSection({ userRole, isEditMode }) {
               <TextInput style={styles.input} placeholder="Cth: HOTSPOT RIBUT" value={formCat.label} onChangeText={(t) => setFormCat({ ...formCat, label: t })} />
               <Text style={styles.inputLabel}>Keterangan</Text>
               <TextInput style={styles.input} placeholder="Cth: Kawasan berisiko ribut kencang" value={formCat.sub} onChangeText={(t) => setFormCat({ ...formCat, sub: t })} />
-              <Text style={styles.inputLabel}>Prefix Rujukan</Text>
-              <View style={hotspotStyles.prefixRow}>
-                {PREFIX_CHOICES.map((p) => {
-                  const isLain = p === 'Lain-lain';
-                  const isSelected = isLain ? isCustomPrefix : (!isCustomPrefix && formCat.prefix === p);
-                  return (
-                    <TouchableOpacity
-                      key={p}
-                      style={[hotspotStyles.prefixPill, isSelected && hotspotStyles.prefixPillSelected]}
-                      onPress={() => {
-                        if (isLain) {
-                          setIsCustomPrefix(true);
-                          setFormCat({ ...formCat, prefix: '' });
-                        } else {
-                          setIsCustomPrefix(false);
-                          setFormCat({ ...formCat, prefix: p });
-                        }
-                      }}
-                    >
-                      <Text style={[hotspotStyles.prefixPillText, isSelected && hotspotStyles.prefixPillTextSelected]}>{p}</Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-              {isCustomPrefix ? (
-                <TextInput
-                  style={styles.input}
-                  placeholder="Taip prefix anda sendiri"
-                  value={formCat.prefix}
-                  onChangeText={(t) => setFormCat({ ...formCat, prefix: t })}
-                />
-              ) : null}
+
               <Text style={styles.inputLabel}>Ikon</Text>
               <View style={hotspotStyles.iconGrid}>
                 {Object.entries(ICONS).map(([name, IconCmp]) => {
@@ -819,4 +858,29 @@ const hotspotStyles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
   },
   confirmConfirmText: { color: '#fff', fontWeight: '800', fontSize: 14 },
+
+  // Modale butiran hotspot
+  detailCatChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    alignSelf: 'flex-start', backgroundColor: PALETTE.surface,
+    borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6, marginBottom: 16,
+  },
+  detailCatDot: { width: 8, height: 8, borderRadius: 4 },
+  detailCatChipText: { fontSize: 12, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.3 },
+  detailRefChipText: { fontSize: 12, fontWeight: '700', color: PALETTE.textMutedDark, marginLeft: 4 },
+  detailRow: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 12,
+    paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: PALETTE.cardLightBorder,
+  },
+  detailIconBox: {
+    width: 32, height: 32, borderRadius: 8, backgroundColor: PALETTE.orange + '15',
+    alignItems: 'center', justifyContent: 'center', marginTop: 2,
+  },
+  detailLabel: { fontSize: 11, fontWeight: '700', color: PALETTE.textMutedDark, textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 2 },
+  detailValue: { fontSize: 15, fontWeight: '600', color: PALETTE.textDark },
+  coordRow: { flexDirection: 'row', gap: 12, marginTop: 12 },
+  coordBox: {
+    flex: 1, backgroundColor: PALETTE.surface, borderRadius: 12, padding: 12,
+    borderWidth: 1, borderColor: PALETTE.cardLightBorder,
+  },
 });

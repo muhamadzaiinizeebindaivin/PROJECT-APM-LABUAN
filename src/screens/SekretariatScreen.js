@@ -71,62 +71,64 @@ const SekretariatScreen = ({ theme, userRole }) => {
 
   return (
     <View style={styles.container}>
-      {canEdit && (
-        <View style={stickyHeaderStyles.stickyHeader}>
-          <View style={[stickyHeaderStyles.stickyHeaderCenter, { pointerEvents: 'none' }]}>
-            {dikemaskini ? (
-              <View style={stickyHeaderStyles.stickyHeaderDikemaskiniBadge}>
-                <View style={stickyHeaderStyles.stickyHeaderDikemaskiniDot} />
-                <Text style={stickyHeaderStyles.stickyHeaderDikemaskini}>DIKEMASKINI {dikemaskini}</Text>
-              </View>
-            ) : null}
+      <View style={{ position: 'relative', zIndex: 50 }}>
+        {canEdit && (
+          <View style={stickyHeaderStyles.stickyHeader}>
+            <View style={[stickyHeaderStyles.stickyHeaderCenter, { pointerEvents: 'none' }]}>
+              {dikemaskini ? (
+                <View style={stickyHeaderStyles.stickyHeaderDikemaskiniBadge}>
+                  <View style={stickyHeaderStyles.stickyHeaderDikemaskiniDot} />
+                  <Text style={stickyHeaderStyles.stickyHeaderDikemaskini}>DIKEMASKINI {dikemaskini}</Text>
+                </View>
+              ) : null}
+            </View>
+            <AdminEditButton isEditMode={isEditMode} setIsEditMode={setIsEditMode} userRole={userRole} section="Sekretariat" />
           </View>
-          <AdminEditButton isEditMode={isEditMode} setIsEditMode={setIsEditMode} userRole={userRole} section="Sekretariat" />
-        </View>
-      )}
+        )}
 
-      {notification && (
-        <View
-          pointerEvents="none"
-          style={{
-            position: 'absolute',
-            top: canEdit ? 130 : 78,
-            left: 0, right: 0,
-            alignItems: 'center', zIndex: 999, elevation: 30,
-          }}
-        >
+        {notification && (
           <View
+            pointerEvents="none"
             style={{
-              flexDirection: 'row', alignItems: 'center', gap: 10, maxWidth: '92%',
-              backgroundColor: notification.type === 'success' ? '#f0fdf4' : '#fef2f2',
-              borderWidth: 1,
-              borderColor: notification.type === 'success' ? '#bbf7d0' : '#fecaca',
-              borderRadius: 12,
-              paddingVertical: 10,
-              paddingHorizontal: 14,
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.12,
-              shadowRadius: 10,
-              elevation: 30,
+              position: 'absolute',
+              top: '100%',
+              left: 0, right: 0,
+              alignItems: 'center', paddingTop: 10, zIndex: 999, elevation: 30,
             }}
           >
-            {notification.type === 'success' ? (
-              <CheckCircle2 size={17} color="#16a34a" />
-            ) : (
-              <XCircle size={17} color="#dc2626" />
-            )}
-            <Text
+            <View
               style={{
-                color: notification.type === 'success' ? '#166534' : '#991b1b',
-                fontWeight: '700', fontSize: 13, flexShrink: 1,
+                flexDirection: 'row', alignItems: 'center', gap: 10, maxWidth: '92%',
+                backgroundColor: notification.type === 'success' ? '#f0fdf4' : '#fef2f2',
+                borderWidth: 1,
+                borderColor: notification.type === 'success' ? '#bbf7d0' : '#fecaca',
+                borderRadius: 12,
+                paddingVertical: 10,
+                paddingHorizontal: 14,
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.12,
+                shadowRadius: 10,
+                elevation: 30,
               }}
             >
-              {notification.message}
-            </Text>
+              {notification.type === 'success' ? (
+                <CheckCircle2 size={17} color="#16a34a" />
+              ) : (
+                <XCircle size={17} color="#dc2626" />
+              )}
+              <Text
+                style={{
+                  color: notification.type === 'success' ? '#166534' : '#991b1b',
+                  fontWeight: '700', fontSize: 13, flexShrink: 1,
+                }}
+              >
+                {notification.message}
+              </Text>
+            </View>
           </View>
-        </View>
-      )}
+        )}
+      </View>
 
       <View style={styles.tabBar}>
           <TouchableOpacity style={[styles.tabItem, activeTab === 'JPBD' && styles.tabItemActive]} onPress={() => setActiveTab('JPBD')} activeOpacity={0.8}>
@@ -153,7 +155,7 @@ const SekretariatScreen = ({ theme, userRole }) => {
         <ScrollView contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false}>
 
           {activeTab === 'JPBD' && <JpbdSection userRole={userRole} isEditMode={isEditMode} />}
-          {activeTab === 'HOTSPOT' && <HotspotSection userRole={userRole} isEditMode={isEditMode} />}
+          {activeTab === 'HOTSPOT' && <HotspotSection userRole={userRole} isEditMode={isEditMode} onNotify={showNotification} />}
           {activeTab === 'PPS' && <PpsSection userRole={userRole} isEditMode={isEditMode} />}
 
           <View style={styles.sectionDivider} />

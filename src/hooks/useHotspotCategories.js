@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { Alert, Platform } from 'react-native';
 import { supabaseSandbox } from '../supabaseSandboxClient';
 
-export function useHotspotCategories() {
+export function useHotspotCategories(onNotify) {
   const [categories, setCategories] = useState([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
 
@@ -31,9 +31,10 @@ export function useHotspotCategories() {
       display_order: categories.length + 1,
     }]);
     if (error) {
-      Platform.OS === 'web' ? alert('Ralat: ' + error.message) : Alert.alert('Ralat', error.message);
+      onNotify?.('error', error.message);
       return false;
     }
+    onNotify?.('success', 'Kategori ditambah.');
     await fetchCategories();
     return true;
   };
@@ -49,9 +50,10 @@ export function useHotspotCategories() {
       icon: icon || 'MapPin',
     }).eq('id', id);
     if (error) {
-      Platform.OS === 'web' ? alert('Ralat: ' + error.message) : Alert.alert('Ralat', error.message);
+      onNotify?.('error', error.message);
       return false;
     }
+    onNotify?.('success', 'Kategori dikemaskini.');
     await fetchCategories();
     return true;
   };
@@ -59,7 +61,7 @@ export function useHotspotCategories() {
   const updateCategoryPhoto = async (id, photo_url) => {
     const { error } = await supabaseSandbox.from('hotspot_categories').update({ photo_url }).eq('id', id);
     if (error) {
-      Platform.OS === 'web' ? alert('Ralat: ' + error.message) : Alert.alert('Ralat', error.message);
+      onNotify?.('error', error.message);
       return false;
     }
     await fetchCategories();
@@ -73,15 +75,15 @@ export function useHotspotCategories() {
       .select('id', { count: 'exact', head: true })
       .eq('category', cat.key);
     if (count > 0) {
-      const msg = `Kategori ini masih mempunyai ${count} rekod hotspot. Padam rekod tersebut dahulu.`;
-      Platform.OS === 'web' ? alert(msg) : Alert.alert('Tidak boleh padam', msg);
+      onNotify?.('error', `Kategori ini masih mempunyai ${count} rekod hotspot. Padam rekod tersebut dahulu.`);
       return false;
     }
     const { error } = await supabaseSandbox.from('hotspot_categories').delete().eq('id', cat.id);
     if (error) {
-      Platform.OS === 'web' ? alert('Ralat: ' + error.message) : Alert.alert('Ralat', error.message);
+      onNotify?.('error', error.message);
       return false;
     }
+    onNotify?.('success', 'Kategori dipadam.');
     await fetchCategories();
     return true;
   };

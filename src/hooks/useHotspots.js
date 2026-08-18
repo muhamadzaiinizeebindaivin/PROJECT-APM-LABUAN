@@ -8,14 +8,14 @@ import { supabaseSandbox } from '../supabaseSandboxClient';
  * modification, suppression. Extrait de SekretariatScreen.js.
  * Schéma sandbox uniquement — ne touche jamais public.
  */
-export function useHotspots() {
+export function useHotspots(onNotify) {
   const [hotspotList, setHotspotList] = useState([]);
   const [loadingHotspot, setLoadingHotspot] = useState(true);
   const [modalHotspotVisible, setModalHotspotVisible] = useState(false);
   const [formModeHotspot, setFormModeHotspot] = useState('add');
   const [editIdHotspot, setEditIdHotspot] = useState(null);
   const [formHotspot, setFormHotspot] = useState({
-    category: 'banjir', ref_no: '', river: '', area: ''
+    category: 'banjir', ref_no: '', river: '', area: '', latitude: '', longitude: ''
   });
 
   const fetchHotspots = async () => {
@@ -37,16 +37,20 @@ export function useHotspots() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const openAddModal = () => {
+  const openAddModal = (category) => {
     setFormModeHotspot('add');
-    setFormHotspot({ category: 'banjir', ref_no: '', river: '', area: '' });
+    setFormHotspot({ category: category || 'banjir', ref_no: '', river: '', area: '', latitude: '', longitude: '' });
     setModalHotspotVisible(true);
   };
 
   const openEditModal = (item) => {
     setFormModeHotspot('edit');
     setEditIdHotspot(item.id);
-    setFormHotspot({ category: item.category, ref_no: item.ref_no || '', river: item.river, area: item.area });
+    setFormHotspot({
+      category: item.category, ref_no: item.ref_no || '', river: item.river, area: item.area,
+      latitude: item.latitude != null ? String(item.latitude) : '',
+      longitude: item.longitude != null ? String(item.longitude) : '',
+    });
     setModalHotspotVisible(true);
   };
 
@@ -55,15 +59,21 @@ export function useHotspots() {
       return Alert.alert('Ralat', 'Sila masukkan No. Rujukan, maklumat Sungai/Lokasi dan Kawasan.');
     }
 
+    const payload = {
+      ...formHotspot,
+      latitude: formHotspot.latitude === '' ? null : Number(formHotspot.latitude),
+      longitude: formHotspot.longitude === '' ? null : Number(formHotspot.longitude),
+    };
+
     setLoadingHotspot(true);
     if (formModeHotspot === 'add') {
-      const { error } = await supabaseSandbox.from('hotspots').insert([formHotspot]);
-      if (error) Alert.alert('Ralat', error.message);
-      else { Alert.alert('Berjaya', 'Hotspot ditambah.'); setModalHotspotVisible(false); fetchHotspots(); }
+      const { error } = await supabaseSandbox.from('hotspots').insert([payload]);
+      if (error) onNotify?.('error', error.message);
+      else { onNotify?.('success', 'Hotspot ditambah.'); setModalHotspotVisible(false); fetchHotspots(); }
     } else {
-      const { error } = await supabaseSandbox.from('hotspots').update(formHotspot).eq('id', editIdHotspot);
-      if (error) Alert.alert('Ralat', error.message);
-      else { Alert.alert('Berjaya', 'Hotspot dikemaskini.'); setModalHotspotVisible(false); fetchHotspots(); }
+      const { error } = await supabaseSandbox.from('hotspots').update(payload).eq('id', editIdHotspot);
+      if (error) onNotify?.('error', error.message);
+      else { onNotify?.('success', 'Hotspot dikemaskini.'); setModalHotspotVisible(false); fetchHotspots(); }
     }
     setLoadingHotspot(false);
   };
@@ -73,8 +83,9 @@ export function useHotspots() {
       setLoadingHotspot(true);
       const { error } = await supabaseSandbox.from('hotspots').delete().eq('id', id);
       if (error) {
-        Platform.OS === 'web' ? alert('Ralat: ' + error.message) : Alert.alert('Ralat', error.message);
+        onNotify?.('error', error.message);
       } else {
+        onNotify?.('success', 'Hotspot dipadam.');
         fetchHotspots();
       }
       setLoadingHotspot(false);
