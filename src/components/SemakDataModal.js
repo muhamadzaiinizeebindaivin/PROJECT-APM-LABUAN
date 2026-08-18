@@ -75,7 +75,7 @@ function BulletListField({ label, value, onChange }) {
   );
 }
 
-export default function SemakDataModal({ visible, onClose }) {
+export default function SemakDataModal({ visible, onClose, userRole }) {
   const { width: appWidth } = useWindowDimensions();
   const isMobile = appWidth < 768;
 
@@ -151,7 +151,7 @@ export default function SemakDataModal({ visible, onClose }) {
           <View style={{ backgroundColor: '#0c0c0e', padding: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
             <Text style={{ fontSize: 17, fontWeight: '900', color: '#fff' }}>Kemaskini Data Anggota</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-              {searched && !submitted && form && (
+              {searched && !submitted && form && (userRole === 'admin' || userRole === 'angkatan') && (
                 <TouchableOpacity
                   onPress={submitKemaskini}
                   disabled={submitting}

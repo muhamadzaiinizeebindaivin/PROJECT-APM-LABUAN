@@ -13,7 +13,6 @@ import { useBackButtonGuard } from './src/hooks/useBackButtonGuard';
 import LoginModal from './src/components/LoginModal';
 import LogoutModal from './src/components/LogoutModal';
 import SemakStatusModal from './src/components/SemakStatusModal';
-import SemakDataModal from './src/components/SemakDataModal';
 
 import AuthFlow from './src/navigation/AuthFlow';
 import DepartmentFlow from './src/navigation/DepartmentFlow';
@@ -44,7 +43,6 @@ export default function App() {
   const [isInvitedUser, setIsInvitedUser] = useState(false);
   const [loginModalVisible, setLoginModalVisible] = useState(false);
   const [statusModalVisible, setStatusModalVisible] = useState(false);
-  const [semakDataModalVisible, setSemakDataModalVisible] = useState(false);
 
   const [fontsLoaded] = useFonts({
     Orbitron_600SemiBold,
@@ -100,7 +98,6 @@ export default function App() {
           isMobile={isMobile}
           handleLogin={handleLogin}
           onOpenSemakStatus={() => setStatusModalVisible(true)}
-          onOpenSemakData={() => setSemakDataModalVisible(true)}
         />
 
         <LogoutModal
@@ -112,11 +109,6 @@ export default function App() {
         <SemakStatusModal
           visible={statusModalVisible}
           onClose={() => setStatusModalVisible(false)}
-        />
-
-        <SemakDataModal
-          visible={semakDataModalVisible}
-          onClose={() => setSemakDataModalVisible(false)}
         />
 
         <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} backgroundColor={theme.background} />

@@ -1,11 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { View, ScrollView, ActivityIndicator, Text, useWindowDimensions, Alert, Platform, Linking, TouchableOpacity } from 'react-native';
-import { CheckCircle2, XCircle, Users } from 'lucide-react-native';
+import { CheckCircle2, XCircle, Users, ClipboardEdit } from 'lucide-react-native';
 import { PALETTE } from '../constants/palette';
 import { supabaseSandbox } from '../supabaseSandboxClient';
 import AdminEditButton from '../components/AdminEditButton';
 import { useExcelImport } from '../hooks/useExcelImport';
 import ExcelImportModal from '../components/ExcelImportModal';
+import SemakDataModal from '../components/SemakDataModal';
 import { useAngkatanEmployees, mapMyaspaLabel, normalizePangkat, isEligibleForPromotion, isEligibleByYearsOnly, isEligibleForPegawaiWaranII, isEligibleForPegawaiWaranIIByYears, isEligibleForPegawaiWaranI, isEligibleForPegawaiWaranIByYears, isEligibleForTBP, isEligibleFastTrackStafMuda, isEligibleFastTrackStafMudaByYearsAcademic, isEligibleFastTrackLeftenanMuda, isEligibleFastTrackLeftenanMudaByYearsAcademic, getEmployeesBelowRank, PANGKAT_HIERARCHY, hasKbp, hasKbpWaran, hasPtb, norm, isPindahKeanggotaanPfa } from '../hooks/useAngkatanEmployees';
 import { useAngkatanCommunity, SCHOOL_CATEGORIES, CDA_CATEGORIES } from '../hooks/useAngkatanCommunity';
 import { useEmployeeCertificates } from '../hooks/useEmployeeCertificates';
@@ -63,6 +64,8 @@ export default function AngkatanScreen({ userRole }) {
   const { kpiList, saveKpiItem, deleteKpiItem, reorderKpi, kpiUpdatedAt } = useKpi('angkatan');
   const angkatanBudget = useAngkatanBudget();
   const angkatanPameran = useAngkatanPameran();
+
+const [semakDataModalVisible, setSemakDataModalVisible] = useState(false);
 
   const [notification, setNotification] = useState(null);
   const notificationTimeoutRef = useRef(null);
@@ -511,7 +514,18 @@ export default function AngkatanScreen({ userRole }) {
               </View>
             ) : null}
           </View>
-          <AdminEditButton isEditMode={isEditing} setIsEditMode={setIsEditing} userRole={userRole} section="Angkatan" />
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            {(userRole === 'admin' || userRole === 'angkatan') && (
+              <TouchableOpacity
+                onPress={() => setSemakDataModalVisible(true)}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: PALETTE.orange, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8 }}
+              >
+                <ClipboardEdit size={14} color="#fff" />
+                <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>Kemaskini</Text>
+              </TouchableOpacity>
+            )}
+            <AdminEditButton isEditMode={isEditing} setIsEditMode={setIsEditing} userRole={userRole} section="Angkatan" />
+          </View>
 
           {notification && (
             <View
@@ -817,6 +831,12 @@ export default function AngkatanScreen({ userRole }) {
         importHook={excelImportHook}
         onImportComplete={fetchEmployees}
         onSaveImportMeta={saveSummaryExtra}
+      />
+
+      <SemakDataModal
+        visible={semakDataModalVisible}
+        onClose={() => setSemakDataModalVisible(false)}
+        userRole={userRole}
       />
     </View>
   );
