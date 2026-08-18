@@ -4,6 +4,11 @@ import { Platform } from 'react-native';
 import { supabaseSandbox } from '../supabaseSandboxClient';
 import { emptyEmployeeForm, formatICNumber, ALL_FIELDS } from '../screens/angkatan/employeeFieldGroups';
 
+// Accepte un client Supabase optionnel : par défaut le client partagé de
+// l'app, mais KemaskiniDataPage.js lui passe explicitement un client isolé
+// (session de connexion séparée) pour que la connexion sur cette page ne
+// touche jamais la session de l'onglet principal.
+
 const MIRROR_KEYS = ALL_FIELDS.filter((f) => f.type !== 'computed_days').map((f) => f.key);
 
 const buildKemaskiniPayload = (form, matchedEmployee) => {
@@ -16,7 +21,7 @@ const buildKemaskiniPayload = (form, matchedEmployee) => {
   };
 };
 
-export function useSemakData() {
+export function useSemakData(client = supabaseSandbox) {
   const [icInput, setIcInput] = useState('');
   const [searching, setSearching] = useState(false);
   const [searched, setSearched] = useState(false);
@@ -35,15 +40,15 @@ export function useSemakData() {
 
     setSearching(true);
     const [{ data: empData, error: empError }, { data: pendingData, error: pendingError }, { data: approvedData }] = await Promise.all([
-      supabaseSandbox.rpc('lookup_employee_by_ic', { p_ic: cleanIc }),
-      supabaseSandbox
+      client.rpc('lookup_employee_by_ic', { p_ic: cleanIc }),
+      client
         .from('angkatan_kemaskini')
         .select('*')
         .eq('ic_no', cleanIc)
         .in('review_status', ['pending', 'rejected'])
         .order('submitted_at', { ascending: false })
         .limit(1),
-      supabaseSandbox
+      client
         .from('angkatan_kemaskini')
         .select('id, reviewed_at')
         .eq('ic_no', cleanIc)
@@ -112,9 +117,9 @@ export function useSemakData() {
 
     let error;
     if (pendingId) {
-      ({ error } = await supabaseSandbox.from('angkatan_kemaskini').update(payload).eq('id', pendingId));
+      ({ error } = await client.from('angkatan_kemaskini').update(payload).eq('id', pendingId));
     } else {
-      ({ error } = await supabaseSandbox.from('angkatan_kemaskini').insert([payload]));
+      ({ error } = await client.from('angkatan_kemaskini').insert([payload]));
     }
     setSubmitting(false);
     if (error) {

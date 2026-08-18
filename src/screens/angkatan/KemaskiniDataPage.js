@@ -7,8 +7,9 @@
 // jamais par-dessus la liste des employés dans l'onglet principal.
 import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, TextInput, ActivityIndicator, useWindowDimensions } from 'react-native';
-import { AlertCircle, CheckCircle2, UserPlus, RefreshCw, Plus, Trash2, X, ClipboardEdit } from 'lucide-react-native';
+import { AlertCircle, CheckCircle2, UserPlus, RefreshCw, Plus, Trash2, X, ClipboardEdit, Lock, User, ArrowRight, Eye, EyeOff } from 'lucide-react-native';
 import { PALETTE } from '../../constants/palette';
+import { supabaseKemaskini } from '../../supabaseKemaskiniClient';
 import { useSemakData } from '../../hooks/useSemakData';
 import { FIELD_SECTIONS } from './employeeFieldGroups';
 import EmployeeField from './EmployeeField';
@@ -78,9 +79,46 @@ function BulletListField({ label, value, onChange }) {
   );
 }
 
-export default function KemaskiniDataPage({ userRole }) {
+export default function KemaskiniDataPage() {
   const { width: appWidth } = useWindowDimensions();
   const isMobile = appWidth < 768;
+
+  // Cette page exige toujours sa propre connexion à l'ouverture — même si
+  // l'onglet principal de l'app est déjà connecté ailleurs. C'est
+  // volontaire : la personne en charge (admin/angkatan) doit explicitement
+  // "ouvrir une session" ici avant de laisser un anggota consulter/modifier
+  // ses propres données.
+  const [authedRole, setAuthedRole] = useState(null);
+  const [loginUsername, setLoginUsername] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [loginError, setLoginError] = useState('');
+  const [loginLoading, setLoginLoading] = useState(false);
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
+
+  const handleLogin = async () => {
+    setLoginError('');
+    if (!loginUsername || !loginPassword) { setLoginError('Sila isi nama pengguna dan kata laluan.'); return; }
+    setLoginLoading(true);
+    try {
+      const email = loginUsername.toLowerCase().trim().includes('@') ? loginUsername.toLowerCase().trim() : `${loginUsername.toLowerCase().trim()}@apm-labuan.com`;
+      const { data, error } = await supabaseKemaskini.auth.signInWithPassword({ email, password: loginPassword });
+      if (error) { setLoginError('Nama pengguna atau kata laluan salah.'); setLoginPassword(''); setLoginLoading(false); return; }
+      const { data: profile } = await supabaseKemaskini.from('profiles').select('role').eq('id', data.session.user.id).maybeSingle();
+      if (!profile || (profile.role !== 'admin' && profile.role !== 'angkatan')) {
+        setLoginError('Akaun ini tidak dibenarkan mengakses halaman ini.');
+        await supabaseKemaskini.auth.signOut();
+        setLoginPassword('');
+        setLoginLoading(false);
+        return;
+      }
+      setAuthedRole(profile.role);
+      setLoginPassword('');
+    } catch {
+      setLoginError('Ralat sistem. Sila cuba lagi.');
+    } finally {
+      setLoginLoading(false);
+    }
+  };
 
   const [icDigits, setIcDigits] = useState(Array(12).fill(''));
   const icBoxRefs = useRef([]);
@@ -91,7 +129,7 @@ export default function KemaskiniDataPage({ userRole }) {
     setIcInput, searching, searched, matchedEmployee, form, setForm,
     searchByIc, resetSearch, submitting, submitted, submitKemaskini,
     pendingId, rejectionNote, lastApprovedAt, icNotFound,
-  } = useSemakData();
+  } = useSemakData(supabaseKemaskini);
 
   const [searchError, setSearchError] = useState('');
 
@@ -138,9 +176,71 @@ export default function KemaskiniDataPage({ userRole }) {
     setActiveSection(FIELD_SECTIONS[0]?.title);
   };
 
-  const handleCloseTab = () => {
-    if (typeof window !== 'undefined') window.close();
-  };
+
+
+  if (!authedRole) {
+    return (
+      <View style={{ flex: 1, backgroundColor: PALETTE.softOrangeBg || '#fff7ed', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+        <View style={{ width: '100%', maxWidth: 420, shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 20, elevation: 10, borderRadius: 24 }}>
+          <View style={{ backgroundColor: '#0c0c0e', padding: 24, paddingBottom: 28, borderTopLeftRadius: 24, borderTopRightRadius: 24, alignItems: 'center' }}>
+            <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: PALETTE.orange, alignItems: 'center', justifyContent: 'center', marginBottom: 10 }}>
+              <ClipboardEdit size={20} color="#fff" />
+            </View>
+            <Text style={{ fontSize: 10, fontWeight: '800', color: PALETTE.orange, letterSpacing: 2, textTransform: 'uppercase' }}>APM W.P LABUAN</Text>
+            <Text style={{ fontSize: 18, fontWeight: '900', color: '#fff', marginTop: 3 }}>Kemaskini Data Anggota</Text>
+            <Text style={{ fontSize: 12, color: '#94a3b8', marginTop: 4, textAlign: 'center' }}>Log masuk (admin / angkatan) untuk teruskan</Text>
+          </View>
+
+          <View style={{ padding: 24, gap: 12, backgroundColor: '#fff', borderBottomLeftRadius: 24, borderBottomRightRadius: 24 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', borderWidth: 1.5, borderColor: '#e2e8f0', borderRadius: 12, paddingHorizontal: 14, height: 52, backgroundColor: '#f8fafc' }}>
+              <User size={17} color="#94a3b8" style={{ marginRight: 10 }} />
+              <TextInput
+                style={{ flex: 1, fontSize: 14, fontWeight: '600', color: '#0f172a', outlineStyle: 'none' }}
+                placeholder="Nama Pengguna atau E-mel"
+                placeholderTextColor="#94a3b8"
+                value={loginUsername}
+                onChangeText={setLoginUsername}
+                autoCapitalize="none"
+                editable={!loginLoading}
+              />
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', borderWidth: 1.5, borderColor: '#e2e8f0', borderRadius: 12, paddingHorizontal: 14, height: 52, backgroundColor: '#f8fafc' }}>
+              <Lock size={17} color="#94a3b8" style={{ marginRight: 10 }} />
+              <TextInput
+                style={{ flex: 1, fontSize: 14, fontWeight: '600', color: '#0f172a', outlineStyle: 'none' }}
+                placeholder="Kata Laluan"
+                placeholderTextColor="#94a3b8"
+                value={loginPassword}
+                onChangeText={setLoginPassword}
+                secureTextEntry={!showLoginPassword}
+                returnKeyType="done"
+                editable={!loginLoading}
+                onSubmitEditing={handleLogin}
+              />
+              <TouchableOpacity onPress={() => setShowLoginPassword((v) => !v)} style={{ paddingLeft: 8 }}>
+                {showLoginPassword ? <EyeOff size={17} color="#94a3b8" /> : <Eye size={17} color="#94a3b8" />}
+              </TouchableOpacity>
+            </View>
+
+            {loginError ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#fef2f2', padding: 10, borderRadius: 8, borderWidth: 1, borderColor: '#fecaca' }}>
+                <AlertCircle size={14} color="#ef4444" />
+                <Text style={{ color: '#ef4444', fontSize: 12, fontWeight: '700', flex: 1 }}>{loginError}</Text>
+              </View>
+            ) : null}
+
+            <TouchableOpacity
+              onPress={handleLogin}
+              disabled={loginLoading}
+              style={{ backgroundColor: PALETTE.orange, borderRadius: 12, height: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: loginLoading ? 0.7 : 1, marginTop: 2 }}
+            >
+              {loginLoading ? <ActivityIndicator color="#fff" /> : <><Text style={{ color: '#fff', fontSize: 15, fontWeight: '800' }}>Log Masuk</Text><ArrowRight size={18} color="#fff" /></>}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={{ flex: 1, backgroundColor: PALETTE.softOrangeBg || '#fff7ed' }}>
@@ -161,7 +261,7 @@ export default function KemaskiniDataPage({ userRole }) {
           </View>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-          {searched && !submitted && form && (userRole === 'admin' || userRole === 'angkatan') && (
+          {searched && !submitted && form && (authedRole === 'admin' || authedRole === 'angkatan') && (
             <TouchableOpacity
               onPress={submitKemaskini}
               disabled={submitting}
@@ -174,18 +274,18 @@ export default function KemaskiniDataPage({ userRole }) {
               {submitting ? <ActivityIndicator size="small" color="#fff" /> : <Text style={{ color: '#fff', fontSize: 14, fontWeight: '800' }}>Hantar</Text>}
             </TouchableOpacity>
           )}
-          <TouchableOpacity
-            onPress={searched && !submitted ? handleBackToSearch : handleCloseTab}
-            style={{ width: 34, height: 34, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.08)', alignItems: 'center', justifyContent: 'center' }}
-          >
-            <X size={18} color="#fff" />
-          </TouchableOpacity>
+          {searched && (
+            <TouchableOpacity onPress={handleBackToSearch}>
+              <X size={18} color="#fff" />
+            </TouchableOpacity>
+          )}
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: 24, paddingTop: 32, maxWidth: 900, width: '100%', alignSelf: 'center' }}>
+      <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
         <View
           style={{
+            width: '100%', maxWidth: 900,
             backgroundColor: PALETTE.cardLight || '#fff', borderRadius: 20, borderWidth: 1,
             borderColor: PALETTE.cardLightBorder || '#f1f5f9', padding: 28,
             shadowColor: '#c9825a', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.08, shadowRadius: 20, elevation: 3,

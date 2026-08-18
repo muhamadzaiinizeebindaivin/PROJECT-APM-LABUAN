@@ -98,18 +98,9 @@ export default function App() {
   }
 
   if (isKemaskiniRoute) {
-    if (userRole === 'admin' || userRole === 'angkatan') {
-      return (
-        <View style={{ flex: 1 }}>
-          <KemaskiniDataPage userRole={userRole} />
-        </View>
-      );
-    }
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.background, padding: 24 }}>
-        <Text style={{ fontSize: 15, fontWeight: '700', color: theme.text, textAlign: 'center' }}>
-          Akses ditolak. Sila log masuk sebagai admin atau angkatan.
-        </Text>
+      <View style={{ flex: 1 }}>
+        <KemaskiniDataPage />
       </View>
     );
   }
