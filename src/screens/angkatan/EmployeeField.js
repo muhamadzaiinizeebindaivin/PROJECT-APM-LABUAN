@@ -3,7 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, Platform } from 'react-native'
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { PALETTE } from '../../constants/palette';
 import { angkatanStyles as styles } from './angkatanStyles';
-import { formatICNumber, computeDaysRemaining, formatDateMY } from './employeeFieldGroups';
+import { formatICNumber, computeDaysRemaining, computeYearsOfService, formatDateMY } from './employeeFieldGroups';
 import { cleanEscapedText } from '../../utils/textCleanup';
 
 export default function EmployeeField({ field: f, form, setForm, isEditing, activeDatePickerField, setActiveDatePickerField }) {
@@ -19,6 +19,18 @@ export default function EmployeeField({ field: f, form, setForm, isEditing, acti
           <Text style={[styles.fieldValue, days !== null && days < 0 && { color: '#dc2626', fontWeight: '800' }]}>
             {displayValue}
           </Text>
+        </View>
+      </FieldWrapper>
+    );
+  }
+
+  if (f.type === 'computed_years') {
+    const years = computeYearsOfService(form[f.fromDateKey]);
+    const displayValue = years === null ? '-' : `${years} tahun`;
+    return (
+      <FieldWrapper label={f.label}>
+        <View style={styles.fieldReadOnlyBox}>
+          <Text style={styles.fieldValue}>{displayValue}</Text>
         </View>
       </FieldWrapper>
     );
@@ -118,15 +130,18 @@ export default function EmployeeField({ field: f, form, setForm, isEditing, acti
     return (
       <FieldWrapper label={f.label}>
         <View style={styles.pickerRow}>
-          {['Lelaki', 'Perempuan'].map((opt) => (
-            <TouchableOpacity
-              key={opt}
-              onPress={() => setForm({ ...form, jantina: opt })}
-              style={[styles.pickerChip, value === opt && styles.pickerChipActive]}
-            >
-              <Text style={[styles.pickerChipText, value === opt && styles.pickerChipTextActive]}>{opt}</Text>
-            </TouchableOpacity>
-          ))}
+          {['LELAKI', 'PEREMPUAN'].map((opt) => {
+            const isSelected = String(value || '').toUpperCase() === opt;
+            return (
+              <TouchableOpacity
+                key={opt}
+                onPress={() => setForm({ ...form, jantina: opt })}
+                style={[styles.pickerChip, isSelected && styles.pickerChipActive]}
+              >
+                <Text style={[styles.pickerChipText, isSelected && styles.pickerChipTextActive]}>{opt}</Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
       </FieldWrapper>
     );

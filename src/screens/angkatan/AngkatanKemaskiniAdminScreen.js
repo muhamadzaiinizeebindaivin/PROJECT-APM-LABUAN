@@ -8,8 +8,7 @@ import { useAngkatanKemaskini } from '../../hooks/useAngkatanKemaskini';
 import { ALL_FIELDS } from './employeeFieldGroups';
 
 function DiffRow({ label, oldValue, newValue }) {
-  const changed = String(oldValue ?? '') !== String(newValue ?? '');
-  if (!changed && !newValue) return null; // rien à montrer si vide des deux côtés et inchangé
+  const changed = String(oldValue ?? '').trim().toUpperCase() !== String(newValue ?? '').trim().toUpperCase();
   return (
     <View style={{ flexDirection: 'row', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: PALETTE.cardLightBorder }}>
       <Text style={{ flex: 1, fontSize: 11, fontWeight: '700', color: PALETTE.textMutedDark }}>{label}</Text>
@@ -75,9 +74,17 @@ function PendingCard({ entry, processing, onApprove, onReject }) {
             <Text style={{ flex: 1, fontSize: 10, fontWeight: '800', color: PALETTE.textMutedDark }}>SEDIA ADA</Text>
             <Text style={{ flex: 1, fontSize: 10, fontWeight: '800', color: PALETTE.textMutedDark }}>DIHANTAR</Text>
           </View>
-          {ALL_FIELDS.filter((f) => f.type !== 'computed_days').map((f) => (
-            <DiffRow key={f.key} label={f.label} oldValue={entry._existingSnapshot?.[f.key]} newValue={entry[f.key]} />
-          ))}
+          {ALL_FIELDS.filter((f) => f.type !== 'computed_days' && f.type !== 'computed_years').map((f) => {
+            const normalize = (v) => (f.type === 'jantina_picker' ? String(v || '').toUpperCase() : v);
+            return (
+              <DiffRow
+                key={f.key}
+                label={f.label}
+                oldValue={normalize(entry._existingSnapshot?.[f.key])}
+                newValue={normalize(entry[f.key])}
+              />
+            );
+          })}
 
           {showRejectBox && (
             <View style={{ marginTop: 12 }}>

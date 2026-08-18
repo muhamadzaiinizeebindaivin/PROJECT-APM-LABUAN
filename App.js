@@ -23,6 +23,7 @@ import OperasiFlow from './src/navigation/OperasiFlow';
 
 import PublicNg999Form from './src/screens/PublicNg999Form';
 import SetPasswordScreen from './src/screens/SetPasswordScreen';
+import KemaskiniDataPage from './src/screens/angkatan/KemaskiniDataPage';
 
 export default function App() {
   const { width: appWidth } = useWindowDimensions();
@@ -64,6 +65,13 @@ export default function App() {
   const isPublicNg999Route = Platform.OS === 'web' && typeof window !== 'undefined' &&
     window.location.search.includes('lapor=ng999');
 
+  // Page Kemaskini Data Anggota, ouverte dans un nouvel onglet depuis
+  // AngkatanScreen — page à part pour ne jamais afficher les données
+  // d'employé par-dessus la liste dans l'onglet principal. Nécessite d'être
+  // connecté (admin/angkatan) : vérifié plus bas, après le chargement de la session.
+  const isKemaskiniRoute = Platform.OS === 'web' && typeof window !== 'undefined' &&
+    window.location.search.includes('kemaskini=data');
+
   if (isInvitedUser) {
     return (
       <View style={{ flex: 1 }}>
@@ -85,6 +93,23 @@ export default function App() {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.background }}>
         <ActivityIndicator size="large" color="#f97316" />
+      </View>
+    );
+  }
+
+  if (isKemaskiniRoute) {
+    if (userRole === 'admin' || userRole === 'angkatan') {
+      return (
+        <View style={{ flex: 1 }}>
+          <KemaskiniDataPage userRole={userRole} />
+        </View>
+      );
+    }
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.background, padding: 24 }}>
+        <Text style={{ fontSize: 15, fontWeight: '700', color: theme.text, textAlign: 'center' }}>
+          Akses ditolak. Sila log masuk sebagai admin atau angkatan.
+        </Text>
       </View>
     );
   }

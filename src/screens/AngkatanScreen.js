@@ -517,7 +517,13 @@ const [semakDataModalVisible, setSemakDataModalVisible] = useState(false);
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             {(userRole === 'admin' || userRole === 'angkatan') && (
               <TouchableOpacity
-                onPress={() => setSemakDataModalVisible(true)}
+                onPress={() => {
+                  if (Platform.OS === 'web') {
+                    window.open('?kemaskini=data', '_blank');
+                  } else {
+                    setSemakDataModalVisible(true);
+                  }
+                }}
                 style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: PALETTE.orange, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8 }}
               >
                 <ClipboardEdit size={14} color="#fff" />

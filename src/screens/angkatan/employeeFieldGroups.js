@@ -17,7 +17,7 @@ export const ALL_FIELDS = [
   { key: 'alamat_tempat_tinggal', label: 'Alamat Tempat Tinggal', type: 'text' },
   { key: 'jenis_darah', label: 'Jenis Darah', type: 'text' },
   { key: 'tarikh_menyertai_apm', label: 'Tarikh Menyertai APM', type: 'date' },
-  { key: 'tempoh_berkhidmat', label: 'Tempoh Berkhidmat (Tahun)', type: 'text' },
+  { key: 'tempoh_berkhidmat', label: 'Tempoh Berkhidmat (Tahun)', type: 'computed_years', fromDateKey: 'tarikh_menyertai_apm' },
   { key: 'tarikh_aktif_kad', label: 'Tarikh Aktif Kad', type: 'date' },
   { key: 'tarikh_tamat_kad', label: 'Tarikh Tamat Kad', type: 'date' },
   { key: 'tempoh_baki_aktif_kad_hari', label: 'Tempoh Baki Aktif Kad (Hari)', type: 'computed_days', fromDateKey: 'tarikh_tamat_kad' },
@@ -114,7 +114,7 @@ export const FIELD_GROUPS = {
     
     { key: 'tarikh_terima_pangkat_terkini', label: 'Tarikh Terima Pangkat Terkini', type: 'text' },
     { key: 'tarikh_menyertai_apm', label: 'Tarikh Menyertai APM', type: 'date' },
-    { key: 'tempoh_berkhidmat', label: 'Tempoh Berkhidmat (Tahun)', type: 'text' },
+    { key: 'tempoh_berkhidmat', label: 'Tempoh Berkhidmat (Tahun)', type: 'computed_years', fromDateKey: 'tarikh_menyertai_apm' },
     { key: 'status_myaspa', label: 'Status MyASPA', type: 'text' },
     { key: 'status_keaktifan', label: 'Status Keaktifan', type: 'text' },
     { key: 'tugas_hakiki', label: 'Tugas Hakiki', type: 'text' },
@@ -224,4 +224,21 @@ export const computeDaysRemaining = (dateStr) => {
   today.setHours(0, 0, 0, 0);
   target.setHours(0, 0, 0, 0);
   return Math.round((target.getTime() - today.getTime()) / 86400000);
+};
+
+// Calcule le nombre d'années complètes de service depuis une date de
+// menyertai APM (tient compte du mois/jour, pas juste une soustraction
+// d'année brute — ex: rejoint le 15 déc. 2020, aujourd'hui 1 déc. 2024 →
+// 3 ans complets, pas 4).
+export const computeYearsOfService = (dateStr) => {
+  if (!dateStr) return null;
+  const start = new Date(dateStr);
+  if (isNaN(start.getTime())) return null;
+  const today = new Date();
+  let years = today.getFullYear() - start.getFullYear();
+  const hasNotHadAnniversaryYet =
+    today.getMonth() < start.getMonth() ||
+    (today.getMonth() === start.getMonth() && today.getDate() < start.getDate());
+  if (hasNotHadAnniversaryYet) years -= 1;
+  return years < 0 ? 0 : years;
 };

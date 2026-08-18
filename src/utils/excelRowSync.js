@@ -1,5 +1,5 @@
 // src/utils/excelRowSync.js
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import { supabaseSandbox } from '../supabaseSandboxClient';
 import { matchColumn, buildFieldColumnMap } from '../hooks/useExcelImport';
 
@@ -11,6 +11,11 @@ const EXCEL_FILENAME = 'data_keseluruhan_anggota_daerah.xlsx';
 // est juste loggé, l'approbation en base reste la source de vérité.
 // Suppose que la colonne IC et les cellules de données ne sont pas fusionnées
 // (cas normal pour une ligne par anggota — les fusions concernent l'en-tête).
+//
+// Utilise exceljs (au lieu de xlsx) car il permet de ne modifier QUE la
+// valeur d'une cellule, sans toucher à son style — xlsx remplaçait l'objet
+// cellule entier, ce qui effaçait sa mise en forme (police, couleurs,
+// bordures) à chaque kemaskini approuvé.
 export async function syncApprovedRowToExcel(icNo, updatedFields) {
   try {
     const { data: fileBlob, error: downloadError } = await supabaseSandbox.storage
@@ -19,40 +24,60 @@ export async function syncApprovedRowToExcel(icNo, updatedFields) {
     if (downloadError || !fileBlob) throw downloadError || new Error('Fail Excel tiada.');
 
     const arrayBuffer = await fileBlob.arrayBuffer();
-    const workbook = XLSX.read(arrayBuffer, { type: 'array', cellDates: false });
-    const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(arrayBuffer);
+    const worksheet = workbook.worksheets[0];
+
+    // Convertit une ligne exceljs (1-indexée, avec un éventuel trou à
+    // l'index 0) en tableau 0-indexé classique, pour réutiliser telles
+    // quelles les heuristiques déjà écrites pour xlsx (matchColumn,
+    // buildFieldColumnMap attendent un tableau 0-indexé).
+    const rowToArray = (rowNumber) => {
+      const row = worksheet.getRow(rowNumber);
+      const arr = [];
+      for (let c = 1; c <= worksheet.columnCount; c++) {
+        arr[c - 1] = row.getCell(c).value;
+      }
+      return arr;
+    };
 
     // Même heuristique de détection de ligne d'en-tête que l'import.
+    // headerRowIndex reste 0-indexé (comme avec xlsx) ; on ajoute +1
+    // uniquement au moment d'appeler worksheet.getRow (1-indexé).
     let headerRowIndex = 0;
     let bestMatchCount = -1;
-    for (let i = 0; i < Math.min(15, rows.length); i++) {
-      const count = rows[i].filter((h) => matchColumn(h)).length;
+    const maxScanRows = Math.min(15, worksheet.rowCount);
+    for (let i = 0; i < maxScanRows; i++) {
+      const rowArr = rowToArray(i + 1);
+      const count = rowArr.filter((h) => matchColumn(h)).length;
       if (count > bestMatchCount) { bestMatchCount = count; headerRowIndex = i; }
     }
-    const fieldColumnMap = buildFieldColumnMap(rows[headerRowIndex]);
+    const fieldColumnMap = buildFieldColumnMap(rowToArray(headerRowIndex + 1));
     const icColIndex = fieldColumnMap.ic_no;
     if (icColIndex === undefined) throw new Error('Lajur IC tidak dijumpai dalam Excel.');
 
     let targetRowIndex = -1;
-    for (let r = headerRowIndex + 2; r < rows.length; r++) {
-      if (String(rows[r][icColIndex] || '').trim() === String(icNo).trim()) {
+    for (let r = headerRowIndex + 2; r < worksheet.rowCount; r++) {
+      const cellValue = worksheet.getRow(r + 1).getCell(icColIndex + 1).value;
+      if (String(cellValue ?? '').trim() === String(icNo).trim()) {
         targetRowIndex = r;
         break;
       }
     }
     if (targetRowIndex === -1) throw new Error(`Baris untuk IC ${icNo} tidak dijumpai dalam Excel.`);
 
-    // Écrit chaque champ modifié en texte brut — évite de casser une formule,
-    // au prix du formatage date natif Excel sur les cellules touchées.
+    // Écrit chaque champ modifié en ne touchant QUE .value — le style existant
+    // de la cellule (police, couleur, bordure, format) reste intact.
+    const targetRow = worksheet.getRow(targetRowIndex + 1);
     Object.entries(updatedFields).forEach(([field, value]) => {
       const colIndex = fieldColumnMap[field];
       if (colIndex === undefined) return;
-      const cellAddr = XLSX.utils.encode_cell({ r: targetRowIndex, c: colIndex });
-      sheet[cellAddr] = { t: 's', v: value === null || value === undefined ? '' : String(value) };
+      const cell = targetRow.getCell(colIndex + 1);
+      cell.value = value === null || value === undefined ? '' : String(value);
     });
+    targetRow.commit();
 
-    const outBuffer = XLSX.write(workbook, { type: 'array', bookType: 'xlsx' });
+    const outBuffer = await workbook.xlsx.writeBuffer();
     const outBlob = new Blob([outBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
 
     const { error: uploadError } = await supabaseSandbox.storage
