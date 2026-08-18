@@ -106,6 +106,13 @@ export default function LiveMapTab({ theme, userRole, isEditMode, onNotify }) {
   const [historyBtnHovered, setHistoryBtnHovered] = useState(false);
   const [summaryBtnHovered, setSummaryBtnHovered] = useState(false);
   const [fullscreenBtnHovered, setFullscreenBtnHovered] = useState(false);
+  // iOS (Safari, et tout navigateur iOS puisqu'ils utilisent tous WebKit)
+  // n'implémente jamais la Fullscreen API pour un élément générique comme
+  // une iframe — seulement pour <video>. requestFullscreen() n'y fait donc
+  // rien, silencieusement. On simule alors le plein écran avec du CSS
+  // (position fixed sur tout le viewport) plutôt que la vraie API.
+  const isIOS = Platform.OS === 'web' && typeof navigator !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const [pseudoFullscreen, setPseudoFullscreen] = useState(false);
   const [confirmStopVisible, setConfirmStopVisible] = useState(false);
 
   const [activeCalamityTool, setActiveCalamityTool] = useState(null);
@@ -523,7 +530,19 @@ export default function LiveMapTab({ theme, userRole, isEditMode, onNotify }) {
     <>
       <ViewContainerWrapper {...viewContainerWrapperProps}>
         {!showMobileFullscreenHistory && (
-        <View style={[{ flex: 1, position: 'relative' }, isMobile && { flex: undefined, minHeight: 420 }]}>
+        <View style={[
+          { flex: 1, position: 'relative' },
+          isMobile && { flex: undefined, minHeight: 420 },
+          pseudoFullscreen && { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999, minHeight: undefined },
+        ]}>
+          {pseudoFullscreen && (
+            <TouchableOpacity
+              onPress={() => setPseudoFullscreen(false)}
+              style={{ position: 'absolute', top: 12, right: 12, zIndex: 10000, width: 36, height: 36, borderRadius: 10, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 6, elevation: 4 }}
+            >
+              <X size={18} color="#1E3A8A" />
+            </TouchableOpacity>
+          )}
           <View style={styles.mapContainer}>
             {Platform.OS === 'web' ? (
               createElement('iframe', {
@@ -625,7 +644,7 @@ export default function LiveMapTab({ theme, userRole, isEditMode, onNotify }) {
 
                 <TouchableOpacity
                   style={[styles.summaryToggleBtn, { right: canAddCalamity ? 164 : 64 }]}
-                  onPress={() => iframeRef.current?.requestFullscreen?.()}
+                  onPress={() => (isIOS ? setPseudoFullscreen(true) : iframeRef.current?.requestFullscreen?.())}
                   {...(Platform.OS === 'web' ? {
                     onMouseEnter: () => setFullscreenBtnHovered(true),
                     onMouseLeave: () => setFullscreenBtnHovered(false),

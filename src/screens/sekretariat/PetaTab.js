@@ -160,6 +160,11 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
   const getAgencyLogo = (agencyName) => agencyLogoMap[agencyName] || null;
 
   const [fullscreenBtnHovered, setFullscreenBtnHovered] = useState(false);
+  // Voir la même note dans LiveMapTab.js : iOS n'a jamais la vraie
+  // Fullscreen API pour une iframe, donc on la simule en CSS sur cette
+  // plateforme uniquement.
+  const isIOS = Platform.OS === 'web' && typeof navigator !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const [pseudoFullscreen, setPseudoFullscreen] = useState(false);
   const [confirmStopVisible, setConfirmStopVisible] = useState(false);
   const petaMapHtml = buildSekretariatMapHtml({ theme, userRole });
 
@@ -673,7 +678,19 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
   return (
     <PetaContainerWrapper {...petaContainerWrapperProps}>
       {!showMobilePanelFullscreen && (
-      <View style={[styles.petaMapHalf, isMobile && styles.petaMapHalfMobile]}>
+      <View style={[
+        styles.petaMapHalf,
+        isMobile && styles.petaMapHalfMobile,
+        pseudoFullscreen && { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999, flex: undefined, minHeight: undefined },
+      ]}>
+        {pseudoFullscreen && (
+          <TouchableOpacity
+            onPress={() => setPseudoFullscreen(false)}
+            style={{ position: 'absolute', top: 12, right: 12, zIndex: 10000, width: 36, height: 36, borderRadius: 10, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 6, elevation: 4 }}
+          >
+            <X size={18} color={PALETTE.orange} />
+          </TouchableOpacity>
+        )}
         <View style={styles.petaMapContainer}>
           {Platform.OS === 'web' ? (
             createElement('iframe', {
@@ -775,7 +792,7 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
         <View style={styles.mapToolbar}>
           <TouchableOpacity
             style={styles.historyToggleBtn}
-            onPress={() => petaIframeRef.current?.requestFullscreen?.()}
+            onPress={() => (isIOS ? setPseudoFullscreen(true) : petaIframeRef.current?.requestFullscreen?.())}
             {...(Platform.OS === 'web' ? {
               onMouseEnter: () => setFullscreenBtnHovered(true),
               onMouseLeave: () => setFullscreenBtnHovered(false),

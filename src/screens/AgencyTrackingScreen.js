@@ -197,6 +197,11 @@ export default function AgencyTrackingScreen({ onLogout }) {
   const trackerMapIframeRef = useRef(null);
   const [trackerMapLoading, setTrackerMapLoading] = useState(true);
   const [fullscreenBtnHovered, setFullscreenBtnHovered] = useState(false);
+  // iOS n'implémente jamais la Fullscreen API pour une iframe (seulement
+  // <video>) — requestFullscreen() n'y fait rien silencieusement. On simule
+  // alors le plein écran en CSS sur cette plateforme uniquement.
+  const isIOS = Platform.OS === 'web' && typeof navigator !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const [pseudoFullscreen, setPseudoFullscreen] = useState(false);
   const [confirmStopVisible, setConfirmStopVisible] = useState(false);
 
   useEffect(() => {
@@ -743,11 +748,22 @@ export default function AgencyTrackingScreen({ onLogout }) {
           <Text style={styles.btnText}>{isTracking ? 'TAMAT JEJAK' : 'MULA JEJAK'}</Text>
         </TouchableOpacity>
 
-        <View style={{
-          width: '100%', maxWidth: 800, aspectRatio: 1, alignSelf: 'center', borderRadius: 16, overflow: 'hidden', marginTop: 20, position: 'relative',
-          borderWidth: 2, borderColor: 'rgba(249, 115, 22, 0.45)',
-          shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.12, shadowRadius: 14, elevation: 3,
-        }}>
+        <View style={[
+          {
+            width: '100%', maxWidth: 800, aspectRatio: 1, alignSelf: 'center', borderRadius: 16, overflow: 'hidden', marginTop: 20, position: 'relative',
+            borderWidth: 2, borderColor: 'rgba(249, 115, 22, 0.45)',
+            shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.12, shadowRadius: 14, elevation: 3,
+          },
+          pseudoFullscreen && { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999, width: undefined, maxWidth: undefined, aspectRatio: undefined, borderRadius: 0, marginTop: 0, borderWidth: 0 },
+        ]}>
+          {pseudoFullscreen && (
+            <TouchableOpacity
+              onPress={() => setPseudoFullscreen(false)}
+              style={{ position: 'absolute', top: 12, right: 12, zIndex: 10000, width: 36, height: 36, borderRadius: 10, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 6, elevation: 4 }}
+            >
+              <X size={18} color={PALETTE.orange} />
+            </TouchableOpacity>
+          )}
           {Platform.OS === 'web' ? (
             createElement('iframe', {
               ref: trackerMapIframeRef,
@@ -778,7 +794,7 @@ export default function AgencyTrackingScreen({ onLogout }) {
                 justifyContent: 'center', alignItems: 'center',
                 shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 6, elevation: 3,
               }}
-              onPress={() => trackerMapIframeRef.current?.requestFullscreen?.()}
+              onPress={() => (isIOS ? setPseudoFullscreen(true) : trackerMapIframeRef.current?.requestFullscreen?.())}
               onMouseEnter={() => setFullscreenBtnHovered(true)}
               onMouseLeave={() => setFullscreenBtnHovered(false)}
             >
