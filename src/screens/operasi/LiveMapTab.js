@@ -1,7 +1,7 @@
 // src/screens/operasi/LiveMapTab.js
 import React, { useState, useRef, useEffect, useMemo, createElement } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Platform, ActivityIndicator, Modal, TextInput, KeyboardAvoidingView, useWindowDimensions } from 'react-native';
-import { ShieldAlert, MapIcon, History, ClipboardList, Download, Route, X , Trash2, AlertTriangle} from 'lucide-react-native';
+import { ShieldAlert, MapIcon, History, ClipboardList, Download, Route, X , Trash2, AlertTriangle, Maximize2} from 'lucide-react-native';
 import { getVehicleIcon } from '../../utils/vehicleIcons';
 import { useVehicles } from '../../hooks/useVehicles';
 import { useCalamityPoints } from '../../hooks/useCalamityPoints';
@@ -105,6 +105,8 @@ export default function LiveMapTab({ theme, userRole, isEditMode, onNotify }) {
   const [sidePanel, setSidePanel] = useState('none'); // 'none' | 'history' | 'summary'
   const [historyBtnHovered, setHistoryBtnHovered] = useState(false);
   const [summaryBtnHovered, setSummaryBtnHovered] = useState(false);
+  const [fullscreenBtnHovered, setFullscreenBtnHovered] = useState(false);
+  const [confirmStopVisible, setConfirmStopVisible] = useState(false);
 
   const [activeCalamityTool, setActiveCalamityTool] = useState(null);
   const [pendingPlacement, setPendingPlacement] = useState(null);
@@ -113,11 +115,23 @@ export default function LiveMapTab({ theme, userRole, isEditMode, onNotify }) {
   const [calamityTooltip, setCalamityTooltip] = useState(null); // { text, top, left }
 
   useEffect(() => {
+    if (Platform.OS !== 'web') return undefined;
+    const handleFullscreenChange = () => {
+      const active = !!document.fullscreenElement;
+      iframeRef.current?.contentWindow?.postMessage(JSON.stringify({ type: 'FULLSCREEN_STATE', active }), '*');
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
+  useEffect(() => {
     const handleMapMessage = (event) => {
       if (event.source !== iframeRef.current?.contentWindow) return;
       let data;
       try { data = JSON.parse(event.data); } catch (e) { return; }
-      if (data.type === 'REQUEST_CALAMITY_REFRESH') {
+      if (data.type === 'EXIT_FULLSCREEN_REQUEST') {
+        if (document.exitFullscreen) document.exitFullscreen();
+      } else if (data.type === 'REQUEST_CALAMITY_REFRESH') {
         sendCalamities();
       } else if (data.type === 'MAP_CLICKED' && activeCalamityTool) {
         
@@ -204,7 +218,7 @@ export default function LiveMapTab({ theme, userRole, isEditMode, onNotify }) {
   const handleIframeLoad = () => setLoading(false);
 
   const mapHtml = useMemo(() => buildOperasiMapHtml({ theme }), [theme]);
-  const mapSrc = useMemo(() => `data:text/html;charset=utf-8,${encodeURIComponent(mapHtml)}`, [mapHtml]);
+
 
   vehiclesRef.current = vehicles;
 
@@ -606,6 +620,22 @@ export default function LiveMapTab({ theme, userRole, isEditMode, onNotify }) {
                   )}
                 </TouchableOpacity>
                 )}
+
+                <TouchableOpacity
+                  style={[styles.summaryToggleBtn, { right: canAddCalamity ? 164 : 64 }]}
+                  onPress={() => iframeRef.current?.requestFullscreen?.()}
+                  {...(Platform.OS === 'web' ? {
+                    onMouseEnter: () => setFullscreenBtnHovered(true),
+                    onMouseLeave: () => setFullscreenBtnHovered(false),
+                  } : {})}
+                >
+                  <Maximize2 size={18} color="#1E3A8A" />
+                  {fullscreenBtnHovered && (
+                    <View style={styles.historyTooltip}>
+                      <Text style={styles.historyTooltipText}>Skrin Penuh</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
               </>
             );
           })()}

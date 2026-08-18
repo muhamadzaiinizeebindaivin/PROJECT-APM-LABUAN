@@ -1,7 +1,7 @@
 // src/screens/DriverScreen.js
 import React, { useState, useEffect, useRef, useMemo, createElement } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, SectionList, TextInput, Platform, ScrollView } from 'react-native';
-import { Navigation, StopCircle, ArrowLeft, Search, MapPin, Eye, EyeOff, Lock } from 'lucide-react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, SectionList, TextInput, Platform, ScrollView, Modal } from 'react-native';
+import { Navigation, StopCircle, ArrowLeft, Search, MapPin, Eye, EyeOff, Lock, Maximize2 } from 'lucide-react-native';
 
 import { getVehicleIcon } from '../utils/vehicleIcons';
 import { useAvailableVehicles } from '../hooks/useAvailableVehicles';
@@ -179,13 +179,51 @@ export default function DriverScreen({ onLogout }) {
   const { calamityPoints } = useCalamityPoints();
   const mapIframeRef = useRef(null);
   const [mapLoading, setMapLoading] = useState(true);
+  const [fullscreenBtnHovered, setFullscreenBtnHovered] = useState(false);
+  const [confirmStopVisible, setConfirmStopVisible] = useState(false);
+  // Source unique de vérité pour "le suivi est réellement actif" — utilisée
+  // à la fois par le bouton et par l'effet qui envoie le marqueur à la
+  // carte, pour qu'il soit impossible que l'un affiche "TAMAT SYIF" sans
+  // que l'autre montre le véhicule (ou l'inverse).
+  const hasValidLocation = !!(location && location.latitude != null && location.longitude != null);
+
+  useEffect(() => {
+    if (Platform.OS !== 'web') return undefined;
+    const handleFullscreenChange = () => {
+      const active = !!document.fullscreenElement;
+      mapIframeRef.current?.contentWindow?.postMessage(JSON.stringify({ type: 'FULLSCREEN_STATE', active }), '*');
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
+  useEffect(() => {
+    if (Platform.OS !== 'web') return undefined;
+    const handleMapMessage = (event) => {
+      if (event.source !== mapIframeRef.current?.contentWindow) return;
+      let data;
+      try { data = JSON.parse(event.data); } catch (e) { return; }
+      if (data?.type === 'EXIT_FULLSCREEN_REQUEST') {
+        if (document.exitFullscreen) document.exitFullscreen();
+      }
+    };
+    window.addEventListener('message', handleMapMessage);
+    return () => window.removeEventListener('message', handleMapMessage);
+  }, []);
 
   const mapHtml = useMemo(() => buildOperasiMapHtml({ theme: { background: PALETTE.softOrangeBg } }), []);
-  const mapSrc = useMemo(() => `data:text/html;charset=utf-8,${encodeURIComponent(mapHtml)}`, [mapHtml]);
 
   const handleMapLoad = () => setMapLoading(false);
 
   const vehiclesLive = useVehicles((updatedVehicle) => {
+    // Le marqueur du véhicule ACTUELLEMENT piloté par ce pemandu est géré en
+    // local uniquement (handleToggleTracking, optimiste) — on ignore ici les
+    // mises à jour realtime pour ce même véhicule, sinon une confirmation DB
+    // en retard (après plusieurs bascules rapides MULA/TAMAT) peut arriver
+    // après un message optimiste plus récent et ré-effacer le marqueur à
+    // tort, même si le pemandu est bien "en syif". Les autres véhicules
+    // restent pilotés normalement par le realtime.
+    if (updatedVehicle.id === selectedVehicle?.id) return;
     if (mapIframeRef?.current?.contentWindow) {
       mapIframeRef.current.contentWindow.postMessage(JSON.stringify({
         type: 'UPDATE_LOCATION',
@@ -203,11 +241,39 @@ export default function DriverScreen({ onLogout }) {
   });
 
   useEffect(() => {
+    // Seule source de vérité pour le marqueur du pemandu lui-même : sa
+    // position GPS locale (toujours fraîche, sans aller-retour réseau) —
+    // le marqueur n'apparaît donc que lorsqu'une vraie position est reçue,
+    // jamais avant, et jamais avec une position périmée.
+    if (!isTracking || !selectedVehicle || !hasValidLocation) return;
+    if (!mapIframeRef.current?.contentWindow) return;
+    mapIframeRef.current.contentWindow.postMessage(JSON.stringify({
+      type: 'UPDATE_LOCATION',
+      id: selectedVehicle.id,
+      name: selectedVehicle.model,
+      reg: selectedVehicle.reg,
+      vehicleType: selectedVehicle.type,
+      iconKey: selectedVehicle.icon_key,
+      lat: location.latitude,
+      lng: location.longitude,
+      color: selectedVehicle.color || '#ef4444',
+      status: 'Patrol',
+    }), '*');
+  }, [location, isTracking, selectedVehicle]);
+
+  useEffect(() => {
     if (!mapLoading && mapIframeRef?.current?.contentWindow && vehiclesLive.length > 0) {
-      const payload = vehiclesLive.map((v) => ({ ...v, name: v.model, status: v.tracking_status }));
+      // Le véhicule du pemandu lui-même est exclu ici aussi : sa présence sur
+      // la carte est entièrement pilotée par handleToggleTracking (local),
+      // jamais par ce que la base contient déjà au chargement — sinon un
+      // ancien statut "Patrol" resté en base (session précédente mal fermée)
+      // ferait apparaître le point avant même que le GPS soit autorisé.
+      const payload = vehiclesLive
+        .filter((v) => v.id !== selectedVehicle?.id)
+        .map((v) => ({ ...v, name: v.model, status: v.tracking_status }));
       mapIframeRef.current.contentWindow.postMessage(JSON.stringify({ type: 'INIT_VEHICLES', payload }), '*');
     }
-  }, [vehiclesLive, mapLoading]);
+  }, [vehiclesLive, mapLoading, selectedVehicle]);
 
   useEffect(() => {
     if (!mapLoading && mapIframeRef?.current?.contentWindow) {
@@ -226,22 +292,26 @@ export default function DriverScreen({ onLogout }) {
     }
   }, [calamityPoints, mapLoading]);
 
+  const doStopTracking = () => {
+    setIsTracking(false);
+    // Retire le marqueur du véhicule immédiatement, en même temps que le
+    // changement du bouton — sans attendre l'aller-retour Supabase
+    // (usePatrolTracking → tracking_status → Realtime → vehiclesLive)
+    // qui, sinon, laisse le point visible un court instant après que le
+    // bouton soit déjà repassé à "MULA SYIF".
+    mapIframeRef.current?.contentWindow?.postMessage(JSON.stringify({
+      type: 'UPDATE_LOCATION',
+      id: selectedVehicle.id,
+      status: 'Idle',
+    }), '*');
+    if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+      localStorage.removeItem('apm_driver_active_vehicle');
+    }
+  };
+
   const handleToggleTracking = async () => {
     if (isTracking) {
-      const doStop = () => {
-        setIsTracking(false);
-        if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
-          localStorage.removeItem('apm_driver_active_vehicle');
-        }
-      };
-      if (Platform.OS === 'web') {
-        if (window.confirm('Adakah anda pasti mahu tamatkan syif ini?')) doStop();
-      } else {
-        Alert.alert('Tamat Syif', 'Adakah anda pasti mahu tamatkan syif ini?', [
-          { text: 'Batal', style: 'cancel' },
-          { text: 'Ya, Tamatkan', style: 'destructive', onPress: doStop },
-        ]);
-      }
+      setConfirmStopVisible(true);
     } else {
       const STALE_JOB_THRESHOLD_MS = 12 * 60 * 60 * 1000; // même seuil que usePatrolTracking.js
 
@@ -510,6 +580,14 @@ export default function DriverScreen({ onLogout }) {
             Alert.alert("Amaran", "Sila hentikan syif sebelum menukar kenderaan.");
             return;
           }
+          // Le retour au sélecteur démonte l'iframe de la carte — quand un
+          // nouveau véhicule sera choisi, une toute nouvelle instance Leaflet
+          // sera créée, vide. Sans ce reset, mapLoading reste déjà à false
+          // (jamais remis à true entre-temps), donc l'effet qui renvoie les
+          // points kecemasan (dépendant de [calamityPoints, mapLoading]) ne se
+          // redéclenche jamais pour cette nouvelle carte — d'où les points
+          // manquants après un changement de véhicule.
+          setMapLoading(true);
           setSelectedVehicle(null);
         }}
       >
@@ -543,14 +621,53 @@ export default function DriverScreen({ onLogout }) {
             style={[
               styles.button,
               styles.buttonSmall,
-              { backgroundColor: isTracking ? PALETTE.danger : PALETTE.orange }
+              { backgroundColor: isTracking ? PALETTE.danger : PALETTE.orange, opacity: (isTracking && !hasValidLocation) ? 0.75 : 1 }
             ]}
             onPress={handleToggleTracking}
             activeOpacity={0.85}
           >
-            {isTracking ? <StopCircle color="#fff" size={30} /> : <Navigation color="#fff" size={30} />}
-            <Text style={styles.btnTextSmall}>{isTracking ? 'TAMAT SYIF' : 'MULA SYIF'}</Text>
+            {isTracking && !hasValidLocation ? (
+              <ActivityIndicator color="#fff" size="small" />
+            ) : isTracking ? (
+              <StopCircle color="#fff" size={30} />
+            ) : (
+              <Navigation color="#fff" size={30} />
+            )}
+            <Text style={styles.btnTextSmall}>
+              {isTracking && !hasValidLocation ? 'MEMULAKAN...' : isTracking ? 'TAMAT SYIF' : 'MULA SYIF'}
+            </Text>
           </TouchableOpacity>
+
+          <Modal visible={confirmStopVisible} transparent animationType="fade" onRequestClose={() => setConfirmStopVisible(false)}>
+            <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+              <View style={{ width: '100%', maxWidth: 380, borderRadius: 24, overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 20, elevation: 20 }}>
+                <View style={{ backgroundColor: '#0c0c0e', padding: 24, alignItems: 'center' }}>
+                  <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(239, 68, 68, 0.15)', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
+                    <StopCircle size={26} color="#ef4444" />
+                  </View>
+                  <Text style={{ fontSize: 18, fontWeight: '900', color: '#fff' }}>Tamat Syif</Text>
+                  <Text style={{ fontSize: 13, color: '#94a3b8', marginTop: 6, textAlign: 'center' }}>
+                    Adakah anda pasti mahu tamatkan syif ini?
+                  </Text>
+                </View>
+                <View style={{ flexDirection: 'row', gap: 10, padding: 20, backgroundColor: '#fff' }}>
+                  <TouchableOpacity
+                    onPress={() => setConfirmStopVisible(false)}
+                    style={{ flex: 1, height: 48, borderRadius: 12, borderWidth: 1.5, borderColor: PALETTE.cardLightBorder, alignItems: 'center', justifyContent: 'center' }}
+                  >
+                    <Text style={{ color: PALETTE.textMutedDark, fontWeight: '800', fontSize: 14 }}>Batal</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => { setConfirmStopVisible(false); doStopTracking(); }}
+                    style={{ flex: 1, height: 48, borderRadius: 12, backgroundColor: '#ef4444', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+                  >
+                    <StopCircle size={16} color="#fff" />
+                    <Text style={{ color: '#fff', fontWeight: '800', fontSize: 14 }}>Ya, Tamatkan</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          </Modal>
 
           {isTracking && (
             <TouchableOpacity
@@ -579,10 +696,12 @@ export default function DriverScreen({ onLogout }) {
           {Platform.OS === 'web' ? (
             createElement('iframe', {
               ref: mapIframeRef,
-              src: mapSrc,
+              srcDoc: mapHtml,
               style: { width: '100%', height: '100%', border: 'none' },
               title: 'Peta Kedudukan',
               onLoad: handleMapLoad,
+              allowFullScreen: true,
+              allow: 'fullscreen',
             })
           ) : (
             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: PALETTE.cardLight }}>
@@ -596,9 +715,28 @@ export default function DriverScreen({ onLogout }) {
               <ActivityIndicator size="large" color={PALETTE.orange} />
             </View>
           )}
+          {Platform.OS === 'web' && !mapLoading && (
+            <TouchableOpacity
+              style={{
+                position: 'absolute', top: 12, right: 12, zIndex: 10,
+                width: 36, height: 36, borderRadius: 10, backgroundColor: '#fff',
+                justifyContent: 'center', alignItems: 'center',
+                shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 6, elevation: 3,
+              }}
+              onPress={() => mapIframeRef.current?.requestFullscreen?.()}
+              onMouseEnter={() => setFullscreenBtnHovered(true)}
+              onMouseLeave={() => setFullscreenBtnHovered(false)}
+            >
+              <Maximize2 size={16} color={PALETTE.orange} />
+              {fullscreenBtnHovered && (
+                <View style={{ position: 'absolute', top: 42, right: 0, backgroundColor: '#0f172a', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}>
+                  <Text style={{ color: '#fff', fontSize: 10, fontWeight: '700' }}>Skrin Penuh</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          )}
         </View>
 
-        {isTracking && <ActivityIndicator size="large" color={PALETTE.orange} style={{ marginTop: 20 }} />}
       </View>
       </ScrollView>
     </View>

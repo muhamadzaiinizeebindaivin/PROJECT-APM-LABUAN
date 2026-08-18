@@ -287,10 +287,14 @@ export function usePatrolTracking(selectedVehicle, isTracking, onPermissionDenie
       segmentDistanceRef.current = 0;
       lastWaypointTimeRef.current = null;
       waypointSeqRef.current = 0;
+      // Empêche une position périmée de fuiter dans une future session —
+      // sans ce reset, un redémarrage rapide (MULA SYIF) pouvait envoyer
+      // l'ancienne position au lieu d'attendre une vraie nouvelle localisation.
+      if (isMounted) setLocation(null);
 
       await supabaseSandbox
         .from('logistik')
-        .update({ tracking_status: 'Idle', job_started_at: null, job_distance_km: 0 })
+        .update({ tracking_status: 'Idle', job_started_at: null, job_distance_km: 0, latitude: null, longitude: null })
         .eq('id', selectedVehicle.id);
     };
 

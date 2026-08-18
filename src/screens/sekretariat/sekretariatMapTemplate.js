@@ -60,6 +60,38 @@ export function buildSekretariatMapHtml({ theme, userRole }) {
           }).addTo(map);
           L.control.zoom({ position: 'bottomright' }).addTo(map);
 
+          // Le bouton "quitter" est piloté par le parent (voir 'FULLSCREEN_STATE'
+          // dans le listener 'message' plus bas) plutôt que par son propre
+          // événement fullscreenchange : requestFullscreen() a été appelé sur
+          // l'iframe DEPUIS la page parente, et cet événement ne se propage
+          // pas de façon fiable au document interne de l'iframe selon les
+          // navigateurs — le parent, lui, reçoit toujours l'événement de façon
+          // fiable puisque c'est lui qui a fait l'appel.
+          var exitFullscreenContainer;
+          var ExitFullscreenControl = L.Control.extend({
+            options: { position: 'topright' },
+            onAdd: function() {
+              exitFullscreenContainer = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
+              exitFullscreenContainer.style.display = 'none';
+              var link = L.DomUtil.create('a', '', exitFullscreenContainer);
+              link.href = '#';
+              link.title = 'Keluar Skrin Penuh';
+              link.innerHTML = '✕';
+              link.style.fontSize = '18px';
+              link.style.fontWeight = 'bold';
+              link.style.display = 'flex';
+              link.style.alignItems = 'center';
+              link.style.justifyContent = 'center';
+              L.DomEvent.on(link, 'click', function(e) {
+                L.DomEvent.stopPropagation(e);
+                L.DomEvent.preventDefault(e);
+                window.parent.postMessage(JSON.stringify({ type: 'EXIT_FULLSCREEN_REQUEST' }), '*');
+              });
+              return exitFullscreenContainer;
+            }
+          });
+          map.addControl(new ExitFullscreenControl());
+
           window.addEventListener('resize', function() {
             map.invalidateSize();
           });
@@ -142,6 +174,12 @@ export function buildSekretariatMapHtml({ theme, userRole }) {
             var data;
             try { data = JSON.parse(event.data); } catch (e) { return; }
             if (!data || !data.type) return;
+
+            if (data.type === 'FULLSCREEN_STATE') {
+              if (exitFullscreenContainer) exitFullscreenContainer.style.display = data.active ? 'block' : 'none';
+              setTimeout(function() { map.invalidateSize(); }, 150);
+              return;
+            }
 
             if (data.type === 'UPDATE_AGENCIES') {
               var currentIds = data.payload.map(function(a) { return a.id; });
