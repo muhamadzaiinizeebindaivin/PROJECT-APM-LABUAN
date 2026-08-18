@@ -51,7 +51,13 @@ export function buildSekretariatMapHtml({ theme, userRole }) {
           function initMap() {
           var map = L.map('map', { zoomControl: false, attributionControl: false, maxZoom: 20 }).setView([5.2831, 115.2308], 12);
 
-          L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { maxZoom: 20, maxNativeZoom: 19 }).addTo(map);
+          L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            maxZoom: 20, maxNativeZoom: 19,
+            attribution: 'Tiles &copy; Esri'
+          }).addTo(map);
+          L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png', {
+            maxZoom: 20, maxNativeZoom: 19
+          }).addTo(map);
           L.control.zoom({ position: 'bottomright' }).addTo(map);
 
           window.addEventListener('resize', function() {
