@@ -507,6 +507,8 @@ export default function AgencyTrackingScreen({ onLogout }) {
           tracking_status: 'Offline',
           current_job_started_at: null,
           current_job_distance_km: 0,
+          latitude: null,
+          longitude: null,
         })
         .eq('id', trackerId);
     };
