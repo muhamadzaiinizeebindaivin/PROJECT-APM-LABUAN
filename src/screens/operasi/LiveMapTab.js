@@ -528,10 +528,12 @@ export default function LiveMapTab({ theme, userRole, isEditMode, onNotify }) {
             {Platform.OS === 'web' ? (
               createElement('iframe', {
                 ref: iframeRef,
-                src: mapSrc,
+                srcDoc: mapHtml,
                 style: { width: '100%', height: '100%', border: 'none' },
                 title: 'Leaflet Map',
-                onLoad: handleIframeLoad
+                onLoad: handleIframeLoad,
+                allowFullScreen: true,
+                allow: 'fullscreen',
               })
             ) : (
               <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.card }}>
