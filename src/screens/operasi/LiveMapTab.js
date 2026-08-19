@@ -532,7 +532,7 @@ export default function LiveMapTab({ theme, userRole, isEditMode, onNotify }) {
         {!showMobileFullscreenHistory && (
         <View style={[{ flex: 1, position: 'relative' }, isMobile && { flex: undefined, minHeight: 420 }]}>
           <View style={styles.mapContainer}>
-            {Platform.OS === 'web' ? (
+            {!pseudoFullscreen && (Platform.OS === 'web' ? (
               createElement('iframe', {
                 ref: iframeRef,
                 srcDoc: mapHtml,
@@ -549,7 +549,7 @@ export default function LiveMapTab({ theme, userRole, isEditMode, onNotify }) {
                   Live Map memerlukan 'react-native-webview' pada peranti mudah alih.
                 </Text>
               </View>
-            )}
+            ))}
             {loading && Platform.OS === 'web' && (
               <View style={[styles.loader, { backgroundColor: theme.background }]}><ActivityIndicator size="large" color="#f97316" /></View>
             )}

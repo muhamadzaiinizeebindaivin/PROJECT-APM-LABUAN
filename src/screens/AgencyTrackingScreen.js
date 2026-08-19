@@ -755,7 +755,7 @@ export default function AgencyTrackingScreen({ onLogout }) {
           borderWidth: 2, borderColor: 'rgba(249, 115, 22, 0.45)',
           shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.12, shadowRadius: 14, elevation: 3,
         }}>
-          {Platform.OS === 'web' ? (
+          {!pseudoFullscreen && (Platform.OS === 'web' ? (
             createElement('iframe', {
               ref: trackerMapIframeRef,
               srcDoc: trackerMapHtml,
@@ -771,7 +771,7 @@ export default function AgencyTrackingScreen({ onLogout }) {
                 Peta memerlukan 'react-native-webview' pada peranti mudah alih.
               </Text>
             </View>
-          )}
+          ))}
           {trackerMapLoading && Platform.OS === 'web' && (
             <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center', backgroundColor: PALETTE.softOrangeBg }}>
               <ActivityIndicator size="large" color={PALETTE.orange} />

@@ -680,7 +680,7 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
       {!showMobilePanelFullscreen && (
       <View style={[styles.petaMapHalf, isMobile && styles.petaMapHalfMobile]}>
         <View style={styles.petaMapContainer}>
-          {Platform.OS === 'web' ? (
+          {!pseudoFullscreen && (Platform.OS === 'web' ? (
             createElement('iframe', {
               ref: petaIframeRef,
               srcDoc: petaMapHtml,
@@ -697,7 +697,7 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
                 Peta memerlukan 'react-native-webview' pada peranti mudah alih.
               </Text>
             </View>
-          )}
+          ))}
           {petaIframeLoading && Platform.OS === 'web' && (
             <View style={[styles.loader, { backgroundColor: theme?.background || PALETTE.softOrangeBg }]}>
               <ActivityIndicator size="large" color={PALETTE.orange} />
