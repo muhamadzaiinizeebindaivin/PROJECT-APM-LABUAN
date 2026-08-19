@@ -584,13 +584,15 @@ export default function LiveMapTab({ theme, userRole, isEditMode, onNotify }) {
             </View>
           </Modal>
 
-          <View style={[styles.headerCard, { backgroundColor: theme.card }]}>
-            <View style={styles.iconCircle}><ShieldAlert color="#fff" size={20} /></View>
+          <View style={[styles.headerCard, { backgroundColor: theme.card }, isMobile && { padding: 10, gap: 8, minWidth: 0, borderRadius: 12 }]}>
+            <View style={[styles.iconCircle, isMobile && { width: 30, height: 30, borderRadius: 9 }]}>
+              <ShieldAlert color="#fff" size={isMobile ? 15 : 20} />
+            </View>
             <View>
-              <Text style={[styles.headerTitle, { color: theme.text }]}>Live Tracking</Text>
+              <Text style={[styles.headerTitle, { color: theme.text }, isMobile && { fontSize: 12 }]}>Live Tracking</Text>
               <View style={styles.liveTagContainer}>
-                {activeVehiclesCount > 0 && <View style={styles.liveDot} />}
-                <Text style={[styles.liveText, { color: activeVehiclesCount > 0 ? '#22c55e' : theme.textSecondary }]}>
+                {activeVehiclesCount > 0 && <View style={[styles.liveDot, isMobile && { width: 5, height: 5 }]} />}
+                <Text style={[styles.liveText, isMobile && { fontSize: 8 }, { color: activeVehiclesCount > 0 ? '#22c55e' : theme.textSecondary }]}>
                   {activeVehiclesCount} ACTIVE ASSETS
                 </Text>
               </View>
@@ -660,7 +662,12 @@ export default function LiveMapTab({ theme, userRole, isEditMode, onNotify }) {
                 )}
 
                 <TouchableOpacity
-                  style={[styles.summaryToggleBtn, { right: canAddCalamity ? 164 : 64 }]}
+                  style={[
+                    styles.summaryToggleBtn,
+                    isMobile
+                      ? { right: canAddCalamity ? (isMobile ? 88 : 116) : 16, top: 64 }
+                      : { right: canAddCalamity ? 164 : 64 },
+                  ]}
                   onPress={() => {
                     if (isMobile) {
                       setLoading(true);

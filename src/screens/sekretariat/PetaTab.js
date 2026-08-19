@@ -730,13 +730,15 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
           </View>
         </Modal>
 
-        <View style={styles.petaHeaderCard}>
-          <View style={styles.petaIconCircle}><Map color={PALETTE.white} size={20} /></View>
+        <View style={[styles.petaHeaderCard, isMobile && { padding: 10, gap: 8, minWidth: 0, borderRadius: 12 }]}>
+          <View style={[styles.petaIconCircle, isMobile && { width: 30, height: 30, borderRadius: 9 }]}>
+            <Map color={PALETTE.white} size={isMobile ? 15 : 20} />
+          </View>
           <View>
-            <Text style={styles.petaHeaderTitle}>Peta Agensi</Text>
+            <Text style={[styles.petaHeaderTitle, isMobile && { fontSize: 12 }]}>Peta Agensi</Text>
             <View style={styles.liveTagContainer}>
-              {onlineAgencies.length > 0 && <View style={styles.liveDot} />}
-              <Text style={[styles.liveText, { color: onlineAgencies.length > 0 ? PALETTE.success : PALETTE.textMutedDark }]}>
+              {onlineAgencies.length > 0 && <View style={[styles.liveDot, isMobile && { width: 5, height: 5 }]} />}
+              <Text style={[styles.liveText, isMobile && { fontSize: 8 }, { color: onlineAgencies.length > 0 ? PALETTE.success : PALETTE.textMutedDark }]}>
                 {onlineAgencies.length} AGENSI ONLINE
               </Text>
             </View>
@@ -802,7 +804,61 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
           </View>
         )}
 
-        <View style={styles.mapToolbar}>
+        <View style={[styles.mapToolbar, { flexDirection: 'column' }]}>
+          {(userRole === 'sekretariat' || userRole === 'admin') && (
+            <TouchableOpacity
+              style={[styles.addBencanaToggleBtn, isPlacingBencana && styles.addBencanaToggleBtnActive]}
+              onPress={() => setIsPlacingBencana(!isPlacingBencana)}
+              {...(Platform.OS === 'web' ? {
+                onMouseEnter: () => setAddBencanaBtnHovered(true),
+                onMouseLeave: () => setAddBencanaBtnHovered(false),
+              } : {})}
+            >
+              {isPlacingBencana ? (
+                <X size={18} color={PALETTE.white} />
+              ) : (
+                <Plus size={18} color={PALETTE.orange} />
+              )}
+              {addBencanaBtnHovered && !isPlacingBencana && (
+                <View style={styles.historyTooltip}>
+                  <Text style={styles.historyTooltipText}>Tambah Bencana</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          )}
+
+          <TouchableOpacity
+            style={styles.summaryToggleBtn}
+            onPress={() => setSidePanel(sidePanel === 'summary' ? 'none' : 'summary')}
+            {...(Platform.OS === 'web' ? {
+              onMouseEnter: () => setSummaryBtnHovered(true),
+              onMouseLeave: () => setSummaryBtnHovered(false),
+            } : {})}
+          >
+            <ClipboardList size={18} color={PALETTE.orange} />
+            {summaryBtnHovered && (
+              <View style={styles.historyTooltip}>
+                <Text style={styles.historyTooltipText}>Ringkasan Bencana</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.historyToggleBtn}
+            onPress={() => setSidePanel(sidePanel === 'history' ? 'none' : 'history')}
+            {...(Platform.OS === 'web' ? {
+              onMouseEnter: () => setHistoryBtnHovered(true),
+              onMouseLeave: () => setHistoryBtnHovered(false),
+            } : {})}
+          >
+            <History size={18} color={PALETTE.orange} />
+            {historyBtnHovered && (
+              <View style={styles.historyTooltip}>
+                <Text style={styles.historyTooltipText}>Sejarah Patrol Agensi</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+
           <TouchableOpacity
             style={styles.historyToggleBtn}
             onPress={() => {
@@ -825,60 +881,6 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
               </View>
             )}
           </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.historyToggleBtn}
-            onPress={() => setSidePanel(sidePanel === 'history' ? 'none' : 'history')}
-            {...(Platform.OS === 'web' ? {
-              onMouseEnter: () => setHistoryBtnHovered(true),
-              onMouseLeave: () => setHistoryBtnHovered(false),
-            } : {})}
-          >
-            <History size={18} color={PALETTE.orange} />
-            {historyBtnHovered && (
-              <View style={styles.historyTooltip}>
-                <Text style={styles.historyTooltipText}>Sejarah Patrol Agensi</Text>
-              </View>
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.summaryToggleBtn}
-            onPress={() => setSidePanel(sidePanel === 'summary' ? 'none' : 'summary')}
-            {...(Platform.OS === 'web' ? {
-              onMouseEnter: () => setSummaryBtnHovered(true),
-              onMouseLeave: () => setSummaryBtnHovered(false),
-            } : {})}
-          >
-            <ClipboardList size={18} color={PALETTE.orange} />
-            {summaryBtnHovered && (
-              <View style={styles.historyTooltip}>
-                <Text style={styles.historyTooltipText}>Ringkasan Bencana</Text>
-              </View>
-            )}
-          </TouchableOpacity>
-
-          {(userRole === 'sekretariat' || userRole === 'admin') && (
-            <TouchableOpacity
-              style={[styles.addBencanaToggleBtn, isPlacingBencana && styles.addBencanaToggleBtnActive]}
-              onPress={() => setIsPlacingBencana(!isPlacingBencana)}
-              {...(Platform.OS === 'web' ? {
-                onMouseEnter: () => setAddBencanaBtnHovered(true),
-                onMouseLeave: () => setAddBencanaBtnHovered(false),
-              } : {})}
-            >
-              {isPlacingBencana ? (
-                <X size={18} color={PALETTE.white} />
-              ) : (
-                <Plus size={18} color={PALETTE.orange} />
-              )}
-              {addBencanaBtnHovered && !isPlacingBencana && (
-                <View style={styles.historyTooltip}>
-                  <Text style={styles.historyTooltipText}>Tambah Bencana</Text>
-                </View>
-              )}
-            </TouchableOpacity>
-          )}
         </View>
         {isPlacingBencana && (
           <Text style={styles.placingBencanaHint}>Klik pada peta untuk letak titik</Text>

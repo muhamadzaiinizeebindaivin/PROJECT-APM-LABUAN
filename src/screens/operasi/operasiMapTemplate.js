@@ -70,7 +70,7 @@ export function buildOperasiMapHtml({ theme, userRole }) {
           L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png', {
             maxZoom: 19
           }).addTo(map);
-          L.control.zoom({ position: 'bottomright' }).addTo(map);
+
 
           // Le bouton "quitter" est piloté par le parent (voir 'FULLSCREEN_STATE'
           // dans le listener 'message' plus bas) plutôt que par son propre

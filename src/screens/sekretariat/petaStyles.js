@@ -38,7 +38,7 @@ export const petaStyles = StyleSheet.create({
     borderRadius: 16, width: 150, padding: 10,
     shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 12, elevation: 4,
   },
-  agencyLegendPaletteMobile: { top: 96, left: 16, width: 100, padding: 6, borderRadius: 12 },
+  agencyLegendPaletteMobile: { top: 74, left: 16, width: 100, padding: 6, borderRadius: 12 },
   agencyLegendHeader: {
     fontSize: 10, fontWeight: '800', color: PALETTE.textMutedDark, letterSpacing: 0.6,
     textTransform: 'uppercase', marginBottom: 6, paddingHorizontal: 2,
