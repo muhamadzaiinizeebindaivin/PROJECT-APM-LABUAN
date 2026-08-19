@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect, useMemo, createElement } from 'reac
 import { View, Text, TouchableOpacity, ScrollView, Platform, ActivityIndicator, Modal, TextInput, KeyboardAvoidingView, useWindowDimensions } from 'react-native';
 import { ShieldAlert, MapIcon, History, ClipboardList, Download, Route, X , Trash2, AlertTriangle, Maximize2} from 'lucide-react-native';
 import { getVehicleIcon } from '../../utils/vehicleIcons';
+import { PALETTE } from '../../constants/palette';
 import { useVehicles } from '../../hooks/useVehicles';
 import { useCalamityPoints } from '../../hooks/useCalamityPoints';
 import { usePatrolHistoryPanel } from '../../hooks/usePatrolHistoryPanel';
@@ -57,6 +58,8 @@ export default function LiveMapTab({ theme, userRole, isEditMode, onNotify }) {
   const { calamityPoints, saveCalamity, deleteCalamity, resolveCalamity } = useCalamityPoints();
   const [resolveModalVisible, setResolveModalVisible] = useState(false);
   const [pendingResolveId, setPendingResolveId] = useState(null);
+  const [selectedResolveStatus, setSelectedResolveStatus] = useState(null);
+  const [resolveReason, setResolveReason] = useState('');
   const history = usePatrolHistoryPanel(calamityPoints);
   const [deletePatrolTarget, setDeletePatrolTarget] = useState(null);
   const displayDeletePatrolTargetRef = useRef(null);
@@ -116,6 +119,8 @@ export default function LiveMapTab({ theme, userRole, isEditMode, onNotify }) {
   const [confirmStopVisible, setConfirmStopVisible] = useState(false);
 
   const [activeCalamityTool, setActiveCalamityTool] = useState(null);
+  const displayActiveCalamityToolRef = useRef(null);
+  if (activeCalamityTool) displayActiveCalamityToolRef.current = activeCalamityTool;
   const [pendingPlacement, setPendingPlacement] = useState(null);
   const [calamityDescription, setCalamityDescription] = useState('');
   const [calamityModalVisible, setCalamityModalVisible] = useState(false);
@@ -146,7 +151,7 @@ export default function LiveMapTab({ theme, userRole, isEditMode, onNotify }) {
         setCalamityModalVisible(true);
       } else if (data.type === 'DELETE_CALAMITY_REQUEST') {
         deleteCalamity(data.id).then((ok) => {
-          if (!ok) onNotify?.('error', 'Gagal memadam titik. Sila cuba lagi.');
+          onNotify?.(ok ? 'success' : 'error', ok ? 'Titik berjaya dipadam.' : 'Gagal memadam titik. Sila cuba lagi.');
         });
       } else if (data.type === 'RESOLVE_CALAMITY_REQUEST') {
         setPendingResolveId(data.id);
@@ -217,6 +222,7 @@ export default function LiveMapTab({ theme, userRole, isEditMode, onNotify }) {
       setCalamityDescription('');
       setPendingPlacement(null);
       setActiveCalamityTool(null);
+      onNotify?.('success', 'Titik berjaya ditambah.');
     } else {
       onNotify?.('error', `Gagal menyimpan titik: ${error.message || JSON.stringify(error)}`);
     }
@@ -783,42 +789,99 @@ export default function LiveMapTab({ theme, userRole, isEditMode, onNotify }) {
 
       {/* Modal sélection statut résolution */}
       <Modal visible={resolveModalVisible} transparent animationType="fade">
-        <View style={formStyles.modalOverlay}>
+        <KeyboardAvoidingView
+          style={formStyles.modalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
           <View style={[formStyles.modalContent, { backgroundColor: theme.background }]}>
             <View style={formStyles.modalHeader}>
               <Text style={{ fontSize: 16, fontWeight: '800', color: theme.text }}>Kemaskini Status</Text>
-              <TouchableOpacity onPress={() => setResolveModalVisible(false)}>
+              <TouchableOpacity onPress={() => {
+                setResolveModalVisible(false);
+                setPendingResolveId(null);
+                setSelectedResolveStatus(null);
+                setResolveReason('');
+              }}>
                 <X size={22} color={theme.textSecondary} />
               </TouchableOpacity>
             </View>
-            <Text style={{ fontSize: 13, color: theme.textSecondary, marginBottom: 16 }}>Pilih hasil tindakan untuk titik ini:</Text>
-            {['berjaya', 'gagal', 'batal', 'tunda', 'diambil agensi lain', 'diserah ke agensi lain'].map(s => (
-              <TouchableOpacity
-                key={s}
-                onPress={() => {
-                  resolveCalamity(pendingResolveId, s);
-                  setResolveModalVisible(false);
-                  setPendingResolveId(null);
-                }}
-                style={{
-                  paddingVertical: 14, paddingHorizontal: 16,
-                  borderRadius: 10, marginBottom: 8,
-                  backgroundColor: s === 'berjaya' ? '#f0fdf4' : s === 'gagal' ? '#fef2f2' : s === 'batal' ? '#fef9c3' : '#f8fafc',
-                  borderWidth: 1,
-                  borderColor: s === 'berjaya' ? '#bbf7d0' : s === 'gagal' ? '#fecaca' : s === 'batal' ? '#fde68a' : '#e2e8f0',
-                }}
-              >
-                <Text style={{
-                  fontSize: 14, fontWeight: '700',
-                  color: s === 'berjaya' ? '#16a34a' : s === 'gagal' ? '#dc2626' : s === 'batal' ? '#d97706' : '#475569',
-                  textTransform: 'capitalize',
-                }}>
-                  {s}
+
+            {!selectedResolveStatus ? (
+              <>
+                <Text style={{ fontSize: 13, color: theme.textSecondary, marginBottom: 16 }}>Pilih hasil tindakan untuk titik ini:</Text>
+                {['berjaya', 'gagal', 'batal', 'tunda', 'diambil agensi lain', 'diserah ke agensi lain'].map(s => (
+                  <TouchableOpacity
+                    key={s}
+                    onPress={() => {
+                      if (s === 'berjaya') {
+                        resolveCalamity(pendingResolveId, s);
+                        setResolveModalVisible(false);
+                        setPendingResolveId(null);
+                      } else {
+                        setSelectedResolveStatus(s);
+                      }
+                    }}
+                    style={{
+                      paddingVertical: 14, paddingHorizontal: 16,
+                      borderRadius: 10, marginBottom: 8,
+                      backgroundColor: s === 'berjaya' ? '#f0fdf4' : s === 'gagal' ? '#fef2f2' : s === 'batal' ? '#fef9c3' : '#f8fafc',
+                      borderWidth: 1,
+                      borderColor: s === 'berjaya' ? '#bbf7d0' : s === 'gagal' ? '#fecaca' : s === 'batal' ? '#fde68a' : '#e2e8f0',
+                    }}
+                  >
+                    <Text style={{
+                      fontSize: 14, fontWeight: '700',
+                      color: s === 'berjaya' ? '#16a34a' : s === 'gagal' ? '#dc2626' : s === 'batal' ? '#d97706' : '#475569',
+                      textTransform: 'capitalize',
+                    }}>
+                      {s}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </>
+            ) : (
+              <>
+                <Text style={{ fontSize: 13, color: theme.textSecondary, marginBottom: 8, textTransform: 'capitalize' }}>
+                  Sebab — {selectedResolveStatus}:
                 </Text>
-              </TouchableOpacity>
-            ))}
+                <TextInput
+                  style={{
+                    borderWidth: 1.5, borderColor: theme.border || '#e2e8f0', borderRadius: 10,
+                    padding: 12, minHeight: 90, textAlignVertical: 'top',
+                    fontSize: 14, color: theme.text, marginBottom: 16,
+                  }}
+                  placeholder="Nyatakan sebab..."
+                  placeholderTextColor={theme.textSecondary}
+                  value={resolveReason}
+                  onChangeText={setResolveReason}
+                  multiline
+                  autoFocus
+                />
+                <View style={{ flexDirection: 'row', gap: 10 }}>
+                  <TouchableOpacity
+                    onPress={() => { setSelectedResolveStatus(null); setResolveReason(''); }}
+                    style={{ flex: 1, paddingVertical: 14, borderRadius: 10, borderWidth: 1.5, borderColor: '#e2e8f0', alignItems: 'center' }}
+                  >
+                    <Text style={{ fontSize: 14, fontWeight: '700', color: theme.textSecondary }}>Kembali</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => {
+                      resolveCalamity(pendingResolveId, selectedResolveStatus, resolveReason);
+                      setResolveModalVisible(false);
+                      setPendingResolveId(null);
+                      setSelectedResolveStatus(null);
+                      setResolveReason('');
+                    }}
+                    disabled={!resolveReason.trim()}
+                    style={{ flex: 1, paddingVertical: 14, borderRadius: 10, backgroundColor: resolveReason.trim() ? PALETTE.orange : '#e2e8f0', alignItems: 'center' }}
+                  >
+                    <Text style={{ fontSize: 14, fontWeight: '700', color: resolveReason.trim() ? '#fff' : '#94a3b8' }}>Sahkan</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       <Modal visible={calamityModalVisible} transparent animationType="fade">
@@ -834,20 +897,43 @@ export default function LiveMapTab({ theme, userRole, isEditMode, onNotify }) {
               </TouchableOpacity>
             </View>
             <ScrollView keyboardShouldPersistTaps="handled">
-              <Text style={[formStyles.inputLabel, { color: theme.textSecondary }]}>
-                Kategori: {getCalamityMeta(activeCalamityTool).label}
+              <View style={{
+                flexDirection: 'row', alignItems: 'center', gap: 8,
+                alignSelf: 'flex-start', backgroundColor: theme.background,
+                borderRadius: 999, paddingHorizontal: 12, paddingVertical: 7, marginBottom: 18,
+                borderWidth: 1, borderColor: theme.border,
+              }}>
+                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: getCalamityMeta(displayActiveCalamityToolRef.current).color || '#ea580c' }} />
+                <Text style={{ fontSize: 12, fontWeight: '800', color: theme.text, textTransform: 'uppercase', letterSpacing: 0.3 }}>
+                  {getCalamityMeta(displayActiveCalamityToolRef.current).label}
+                </Text>
+              </View>
+
+              <Text style={{ fontSize: 11, fontWeight: '800', color: theme.textSecondary, textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 8 }}>
+                Keterangan (pilihan)
               </Text>
-              <Text style={[formStyles.inputLabel, { color: theme.textSecondary, marginTop: 10 }]}>Keterangan (pilihan)</Text>
               <TextInput
-                style={[formStyles.inputField, { backgroundColor: theme.background, color: theme.text, borderColor: theme.border, height: 80, textAlignVertical: 'top' }]}
+                style={{
+                  backgroundColor: theme.background, color: theme.text, borderColor: theme.border,
+                  borderWidth: 1.5, borderRadius: 12, padding: 14,
+                  height: 90, textAlignVertical: 'top', fontSize: 14, marginBottom: 20,
+                  outlineStyle: 'none',
+                }}
                 placeholder="Cth: Air naik setinggi 1 meter"
                 placeholderTextColor={theme.textSecondary}
                 multiline
                 value={calamityDescription}
                 onChangeText={setCalamityDescription}
               />
-              <TouchableOpacity style={formStyles.saveBtn} onPress={handleSaveCalamity}>
-                <Text style={formStyles.saveBtnText}>Simpan Titik</Text>
+
+              <TouchableOpacity
+                style={{
+                  backgroundColor: '#3b82f6', borderRadius: 12, paddingVertical: 15, alignItems: 'center',
+                  shadowColor: '#3b82f6', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 10, elevation: 4,
+                }}
+                onPress={handleSaveCalamity}
+              >
+                <Text style={{ color: '#fff', fontWeight: '800', fontSize: 15 }}>Simpan Titik</Text>
               </TouchableOpacity>
             </ScrollView>
           </View>

@@ -101,19 +101,19 @@ export function useNg999Report(filterYear, filterMonth) {
       .upsert({ tahun, bulan, category, jumlah_kes: next }, { onConflict: 'tahun,bulan,category' });
   }, []);
 
-  const saveRecord = useCallback(async ({ id, category, tarikh, status }) => {
+  const saveRecord = useCallback(async ({ id, category, tarikh, status, keterangan, description }) => {
     setLoadingNg(true);
     let error, recordId = id;
     const oldRecord = id ? ngData.find(r => r.id === id) : null;
     if (id) {
       ({ error } = await supabaseSandbox
         .from('laporan_ng999')
-        .update({ category, tarikh, status })
+        .update({ category, tarikh, status, keterangan: keterangan?.trim() || null, description: description?.trim() || null })
         .eq('id', id));
     } else {
       const { data, error: insertError } = await supabaseSandbox
         .from('laporan_ng999')
-        .insert([{ category, tarikh, status }])
+        .insert([{ category, tarikh, status, keterangan: keterangan?.trim() || null, description: description?.trim() || null }])
         .select('id')
         .single();
       error = insertError;

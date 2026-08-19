@@ -1,7 +1,7 @@
 // src/screens/LaporKesScreen.js
-import React, { useState, useEffect, createElement } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, TextInput, FlatList, ActivityIndicator, Alert, Image, Platform, ScrollView, Modal } from 'react-native';
-import { Search, ArrowLeft, Send, CheckCircle2, MapPin, FilePlus, ChevronRight, AlertCircle, Trash2, Eye, EyeOff, Lock, AlertTriangle } from 'lucide-react-native';
+import React, { useState, useEffect, useRef, useMemo, createElement } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, TextInput, FlatList, ActivityIndicator, Alert, Image, Platform, ScrollView, Modal, useWindowDimensions } from 'react-native';
+import { Search, ArrowLeft, Send, CheckCircle2, MapPin, FilePlus, ChevronRight, AlertCircle, Trash2, Eye, EyeOff, Lock, AlertTriangle, XCircle, Maximize2, X } from 'lucide-react-native';
 import { useCalamityPoints } from '../hooks/useCalamityPoints';
 import { CALAMITY_CATEGORIES, getCalamityLogoUrl } from '../constants/operasiConstants';
 import { supabaseSandbox } from '../supabaseSandboxClient';
@@ -125,7 +125,7 @@ function MiniMapPreview({ latitude, longitude }) {
   }
   if (Platform.OS === 'web') {
     return createElement('iframe', {
-      src: `data:text/html;charset=utf-8,${encodeURIComponent(buildMiniMapHtml(latitude, longitude))}`,
+      srcDoc: buildMiniMapHtml(latitude, longitude),
       style: { width: '100%', height: '100%', border: 'none', borderRadius: 12 },
       title: 'Lokasi Kes',
       scrolling: 'no',
@@ -148,8 +148,11 @@ const buildPinpointMapHtml = (lat, lng, hasMarker) => `
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
     var map = L.map('map', { zoomControl: true, attributionControl: true }).setView([${lat}, ${lng}], ${hasMarker ? 16 : 12});
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; OpenStreetMap &copy; CARTO', maxZoom: 20,
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+      attribution: 'Tiles &copy; Esri', maxZoom: 20,
+    }).addTo(map);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png', {
+      maxZoom: 20,
     }).addTo(map);
 
     var marker = ${hasMarker ? `L.marker([${lat}, ${lng}], { draggable: true })` : 'null'};
@@ -179,14 +182,10 @@ const buildPinpointMapHtml = (lat, lng, hasMarker) => `
 `;
 
 function PinpointMap({ latitude, longitude, onPick }) {
-  // Capturé UNE SEULE FOIS au montage — ignore volontairement les changements de
-  // latitude/longitude par la suite, pour que l'iframe (donc la carte) ne se
-  // recharge JAMAIS quand on déplace le marqueur (le marqueur vit dans l'iframe).
-  const [initial] = useState(() => ({
-    lat: latitude ?? DEFAULT_LAT,
-    lng: longitude ?? DEFAULT_LNG,
-    hasMarker: !!(latitude && longitude),
-  }));
+  const { width: screenWidth } = useWindowDimensions();
+  const isMobile = screenWidth < 768;
+  const [pseudoFullscreen, setPseudoFullscreen] = useState(false);
+  const iframeRef = useRef(null);
 
   useEffect(() => {
     if (Platform.OS !== 'web') return;
@@ -205,19 +204,81 @@ function PinpointMap({ latitude, longitude, onPick }) {
       </View>
     );
   }
-  return createElement('iframe', {
-    key: 'pinpoint-map',
-    src: `data:text/html;charset=utf-8,${encodeURIComponent(buildPinpointMapHtml(initial.lat, initial.lng, initial.hasMarker))}`,
-    style: { width: '100%', height: '100%', border: 'none', borderRadius: 12 },
-    title: 'Tandakan Lokasi',
-    scrolling: 'no',
-  });
+
+  // Reconstruit le HTML de la carte à chaque bascule inline/plein écran —
+  // capture la DERNIÈRE position connue à cet instant précis — mais pas à
+  // chaque déplacement du marqueur (sinon l'iframe actif se rechargerait
+  // en plein glissement). C'est ce qui empêche le marqueur de disparaître
+  // en changeant de mode : chaque nouvelle iframe démarre là où le
+  // marqueur a été laissé, au lieu de toujours repartir de la position
+  // capturée au tout premier montage.
+  const mapHtml = useMemo(
+    () => buildPinpointMapHtml(latitude ?? DEFAULT_LAT, longitude ?? DEFAULT_LNG, !!(latitude && longitude)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [pseudoFullscreen]
+  );
+
+  return (
+    <View style={{ flex: 1 }}>
+      {!pseudoFullscreen && createElement('iframe', {
+        key: 'pinpoint-map',
+        ref: iframeRef,
+        srcDoc: mapHtml,
+        style: { width: '100%', height: '100%', border: 'none', borderRadius: 12 },
+        title: 'Tandakan Lokasi',
+        scrolling: 'no',
+        allowFullScreen: true,
+        allow: 'fullscreen',
+      })}
+
+      <TouchableOpacity
+        style={{
+          position: 'absolute', top: 10, right: 10, zIndex: 10,
+          width: 34, height: 34, borderRadius: 10, backgroundColor: '#fff',
+          justifyContent: 'center', alignItems: 'center',
+          shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 6, elevation: 3,
+        }}
+        onPress={() => {
+          if (isMobile) setPseudoFullscreen(true);
+          else iframeRef.current?.requestFullscreen?.();
+        }}
+      >
+        <Maximize2 size={16} color={PALETTE.orange} />
+      </TouchableOpacity>
+
+      <Modal visible={pseudoFullscreen} animationType="fade" onRequestClose={() => setPseudoFullscreen(false)}>
+        <View style={{ flex: 1, backgroundColor: '#000' }}>
+          {pseudoFullscreen && createElement('iframe', {
+            key: 'pinpoint-map-fullscreen',
+            srcDoc: mapHtml,
+            style: { width: '100%', height: '100%', border: 'none' },
+            title: 'Tandakan Lokasi',
+            scrolling: 'no',
+          })}
+          <TouchableOpacity
+            onPress={() => setPseudoFullscreen(false)}
+            style={{ position: 'absolute', top: 12, right: 12, zIndex: 10000, width: 36, height: 36, borderRadius: 10, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 6, elevation: 4 }}
+          >
+            <X size={18} color={PALETTE.orange} />
+          </TouchableOpacity>
+        </View>
+      </Modal>
+    </View>
+  );
 }
 
 export default function LaporKesScreen({ onLogout }) {
   const { calamityPoints, saveCalamity, resolveTreatedCalamity, deleteCalamity } = useCalamityPoints();
   const [pendingDeleteId, setPendingDeleteId] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  const [notification, setNotification] = useState(null);
+  const notificationTimeoutRef = React.useRef(null);
+  const showNotification = (type, message) => {
+    setNotification({ type, message });
+    if (notificationTimeoutRef.current) clearTimeout(notificationTimeoutRef.current);
+    notificationTimeoutRef.current = setTimeout(() => setNotification(null), 3000);
+  };
 
   const [accessVerified, setAccessVerified] = useState(false);
   const [checkingAccess, setCheckingAccess] = useState(true);
@@ -320,7 +381,12 @@ export default function LaporKesScreen({ onLogout }) {
     setSubmitting(true);
     const result = await resolveTreatedCalamity(selectedPoint, { status, description });
     setSubmitting(false);
-    if (!result.error) closeResolveModal();
+    if (!result.error) {
+      closeResolveModal();
+      showNotification('success', 'Kes berjaya dikemaskini.');
+    } else {
+      showNotification('error', 'Gagal mengemaskini kes.');
+    }
   };
 
   const handleSubmitBaru = async () => {
@@ -336,7 +402,11 @@ export default function LaporKesScreen({ onLogout }) {
       longitude: pinLng,
     });
     setSubmitting(false);
-    if (!result.error) setSubmitted(true);
+    if (!result.error) {
+      setSubmitted(true);
+    } else {
+      showNotification('error', 'Gagal menghantar kes. Sila cuba lagi.');
+    }
   };
 
   if (checkingAccess) {
@@ -574,9 +644,10 @@ export default function LaporKesScreen({ onLogout }) {
                   disabled={isDeleting}
                   onPress={async () => {
                     setIsDeleting(true);
-                    await deleteCalamity(pendingDeleteId);
+                    const ok = await deleteCalamity(pendingDeleteId);
                     setIsDeleting(false);
                     setPendingDeleteId(null);
+                    showNotification(ok ? 'success' : 'error', ok ? 'Titik berjaya dipadam.' : 'Gagal memadam titik.');
                   }}
                 >
                   {isDeleting ? (
@@ -655,6 +726,25 @@ export default function LaporKesScreen({ onLogout }) {
                 </View>
               </View>
             </View>
+          </View>
+        </Modal>
+
+        <Modal visible={!!notification} transparent animationType="fade">
+          <View pointerEvents="none" style={{ flex: 1, alignItems: 'center', paddingTop: 60 }}>
+            {notification && (
+              <View style={{
+                flexDirection: 'row', alignItems: 'center', gap: 10, maxWidth: '90%',
+                backgroundColor: notification.type === 'success' ? '#f0fdf4' : '#fef2f2',
+                borderWidth: 1, borderColor: notification.type === 'success' ? '#bbf7d0' : '#fecaca',
+                borderRadius: 12, paddingVertical: 10, paddingHorizontal: 14,
+                shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 10, elevation: 5,
+              }}>
+                {notification.type === 'success' ? <CheckCircle2 size={17} color="#16a34a" /> : <XCircle size={17} color="#dc2626" />}
+                <Text style={{ color: notification.type === 'success' ? '#166534' : '#991b1b', fontWeight: '700', fontSize: 13, flexShrink: 1 }}>
+                  {notification.message}
+                </Text>
+              </View>
+            )}
           </View>
         </Modal>
       </View>
@@ -745,6 +835,25 @@ export default function LaporKesScreen({ onLogout }) {
             </TouchableOpacity>
           </View>
         )}
+
+        <Modal visible={!!notification} transparent animationType="fade">
+          <View pointerEvents="none" style={{ flex: 1, alignItems: 'center', paddingTop: 60 }}>
+            {notification && (
+              <View style={{
+                flexDirection: 'row', alignItems: 'center', gap: 10, maxWidth: '90%',
+                backgroundColor: notification.type === 'success' ? '#f0fdf4' : '#fef2f2',
+                borderWidth: 1, borderColor: notification.type === 'success' ? '#bbf7d0' : '#fecaca',
+                borderRadius: 12, paddingVertical: 10, paddingHorizontal: 14,
+                shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 10, elevation: 5,
+              }}>
+                {notification.type === 'success' ? <CheckCircle2 size={17} color="#16a34a" /> : <XCircle size={17} color="#dc2626" />}
+                <Text style={{ color: notification.type === 'success' ? '#166534' : '#991b1b', fontWeight: '700', fontSize: 13, flexShrink: 1 }}>
+                  {notification.message}
+                </Text>
+              </View>
+            )}
+          </View>
+        </Modal>
       </ScrollView>
     );
   }

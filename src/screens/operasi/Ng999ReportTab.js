@@ -26,6 +26,7 @@ const STATUS_LIST = [
 ];
 const statusLabel = (key) => STATUS_LIST.find(s => s.key === key)?.label || 'Aktif';
 const statusColor = (key) => STATUS_LIST.find(s => s.key === key)?.color || '#3b82f6';
+const NON_SUCCESS_STATUSES = ['gagal', 'batal', 'tunda', 'diambil agensi lain', 'diserah ke agensi lain'];
 
 export default function Ng999ReportTab({ theme, isEditMode, onNotify }) {
   const { width: screenWidth } = useWindowDimensions();
@@ -49,7 +50,7 @@ export default function Ng999ReportTab({ theme, isEditMode, onNotify }) {
 
   // Modale
   const [modalVisible, setModalVisible] = useState(false);
-  const [form, setForm] = useState({ id: null, category: '', tarikh: '', status: 'active' });
+  const [form, setForm] = useState({ id: null, category: '', tarikh: '', status: 'active', keterangan: '', description: '' });
   const [categoryOpen, setCategoryOpen] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
   const [savingRecord, setSavingRecord] = useState(false);
@@ -57,6 +58,9 @@ export default function Ng999ReportTab({ theme, isEditMode, onNotify }) {
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [recordPage, setRecordPage] = useState(1);
+  const [detailItem, setDetailItem] = useState(null);
+  const displayDetailItemRef = useRef(null);
+  if (detailItem) displayDetailItemRef.current = detailItem;
 
   const daysInFilterMonth = new Date(filterYear, filterMonth + 1, 0).getDate();
   const dayOptions = ['Semua Hari', ...Array.from({ length: daysInFilterMonth }, (_, i) => String(i + 1))];
@@ -95,8 +99,12 @@ export default function Ng999ReportTab({ theme, isEditMode, onNotify }) {
       onNotify?.('error', 'Sila lengkapkan semua medan.');
       return;
     }
+    if (NON_SUCCESS_STATUSES.includes(form.status) && !form.keterangan.trim()) {
+      onNotify?.('error', 'Sila nyatakan sebab/keterangan untuk status ini.');
+      return;
+    }
     setSavingRecord(true);
-    const { error } = await saveRecord({ id: form.id, category: form.category, tarikh: form.tarikh, status: form.status });
+    const { error } = await saveRecord({ id: form.id, category: form.category, tarikh: form.tarikh, status: form.status, keterangan: form.keterangan, description: form.description });
     setSavingRecord(false);
     closeModal();
     onNotify?.(error ? 'error' : 'success', error ? 'Gagal menyimpan rekod.' : (form.id ? 'Rekod berjaya dikemaskini.' : 'Rekod berjaya ditambah.'));
@@ -113,7 +121,7 @@ export default function Ng999ReportTab({ theme, isEditMode, onNotify }) {
   };
 
   const openEditModal = (record) => {
-    setForm({ id: record.id, category: record.category, tarikh: record.tarikh, status: record.status || 'active' });
+    setForm({ id: record.id, category: record.category, tarikh: record.tarikh, status: record.status || 'active', keterangan: record.keterangan || '', description: record.description || '' });
     setModalVisible(true);
   };
 
@@ -121,7 +129,7 @@ export default function Ng999ReportTab({ theme, isEditMode, onNotify }) {
     setModalVisible(false);
     setCategoryOpen(false);
     setStatusOpen(false);
-    setForm({ id: null, category: '', tarikh: '', status: 'active' });
+    setForm({ id: null, category: '', tarikh: '', status: 'active', keterangan: '', description: '' });
   };
 
   const tableHeader = (
@@ -144,7 +152,12 @@ export default function Ng999ReportTab({ theme, isEditMode, onNotify }) {
   );
 
   const renderRecordRow = (item, index) => (
-    <View key={item.id} style={[tableStyles.calamityTableRow, { backgroundColor: index % 2 === 0 ? '#ffffff' : '#f8fafc' }]}>
+    <TouchableOpacity
+      key={item.id}
+      activeOpacity={isEditMode ? 0.6 : 1}
+      onPress={() => { if (isEditMode) openEditModal(item); else setDetailItem(item); }}
+      style={[tableStyles.calamityTableRow, { backgroundColor: index % 2 === 0 ? '#ffffff' : '#f8fafc' }]}
+    >
       <Text style={[tableStyles.calamityTableCell, { flex: 2, textAlign: 'left', paddingLeft: 16 }]} numberOfLines={1}>
         {item.category}
       </Text>
@@ -164,7 +177,7 @@ export default function Ng999ReportTab({ theme, isEditMode, onNotify }) {
           </TouchableOpacity>
         </View>
       )}
-    </View>
+    </TouchableOpacity>
   );
 
   return (
@@ -259,7 +272,7 @@ export default function Ng999ReportTab({ theme, isEditMode, onNotify }) {
             </View>
             {isEditMode && (
               <View style={{ paddingHorizontal: 16, marginBottom: 12, flexDirection: 'row', justifyContent: 'flex-end' }}>
-                <TouchableOpacity style={styles.addBtn} onPress={() => { setForm({ id: null, category: '', tarikh: '', status: 'active' }); setModalVisible(true); }}>
+                <TouchableOpacity style={styles.addBtn} onPress={() => { setForm({ id: null, category: '', tarikh: '', status: 'active', keterangan: '', description: '' }); setModalVisible(true); }}>
                   <Plus size={16} color="#fff" />
                   <Text style={styles.addBtnText}>Tambah Rekod</Text>
                 </TouchableOpacity>
@@ -345,11 +358,39 @@ export default function Ng999ReportTab({ theme, isEditMode, onNotify }) {
               )}
             </View>
 
+            <View style={[formStyles.inputGroup, { zIndex: 1 }]}>
+              <Text style={[formStyles.inputLabel, { color: PALETTE.textMutedDark }]}>Keterangan</Text>
+              <TextInput
+                style={[formStyles.inputField, { backgroundColor: PALETTE.surface, color: PALETTE.textDark, borderColor: PALETTE.cardLightBorder, borderWidth: 1, minHeight: 80, textAlignVertical: 'top', outlineStyle: 'none' }]}
+                placeholder="Penerangan asal kes (jika ada)"
+                placeholderTextColor={PALETTE.textMutedDark}
+                value={form.description}
+                onChangeText={(t) => setForm({ ...form, description: t })}
+                multiline
+              />
+            </View>
+
             <ModalSelectField theme={theme} label="Status" value={statusLabel(form.status)}
               placeholder="Select Status..." options={STATUS_LIST.map(s => s.label)} isOpen={statusOpen}
               onToggle={() => { setStatusOpen(!statusOpen); setCategoryOpen(false); }}
               onSelect={(opt) => { setForm({ ...form, status: STATUS_LIST.find(s => s.label === opt)?.key || 'active' }); setStatusOpen(false); }}
               stackIndex={1500} />
+
+            {form.status !== 'berjaya' && (
+              <View style={[formStyles.inputGroup, { zIndex: 1 }]}>
+                <Text style={[formStyles.inputLabel, { color: PALETTE.textMutedDark }]}>
+                  Sebab {statusLabel(form.status)}{NON_SUCCESS_STATUSES.includes(form.status) ? ' *' : ''}
+                </Text>
+                <TextInput
+                  style={[formStyles.inputField, { backgroundColor: PALETTE.surface, color: PALETTE.textDark, borderColor: PALETTE.cardLightBorder, borderWidth: 1, minHeight: 80, textAlignVertical: 'top', outlineStyle: 'none' }]}
+                  placeholder="Nyatakan sebab status ini..."
+                  placeholderTextColor={PALETTE.textMutedDark}
+                  value={form.keterangan}
+                  onChangeText={(t) => setForm({ ...form, keterangan: t })}
+                  multiline
+                />
+              </View>
+            )}
 
             <TouchableOpacity
               style={[formStyles.saveBtn, (savingRecord || categoryOpen) && { opacity: 0.7 }]}
@@ -386,6 +427,74 @@ export default function Ng999ReportTab({ theme, isEditMode, onNotify }) {
                 {isDeleting ? <ActivityIndicator size="small" color="#fff" /> : (<><Trash2 size={16} color="#fff" /><Text style={pentadbiranStyles.confirmConfirmText}>Padam</Text></>)}
               </TouchableOpacity>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* --- Butiran rekod (mod bukan edit) --- */}
+      <Modal visible={detailItem !== null} transparent animationType="fade" onRequestClose={() => setDetailItem(null)}>
+        <View style={formStyles.modalOverlay}>
+          <View style={[formStyles.modalContent, { backgroundColor: PALETTE.cardLight }]}>
+            <View style={formStyles.modalHeader}>
+              <Text style={{ fontSize: 18, fontWeight: '800', color: PALETTE.textDark }}>Butiran Rekod</Text>
+              <TouchableOpacity onPress={() => setDetailItem(null)}>
+                <X size={24} color={PALETTE.textMutedDark} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={{ marginBottom: 16 }}>
+              <Text style={{ fontSize: 11, fontWeight: '800', color: PALETTE.textMutedDark, textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 4 }}>
+                Kategori Kes
+              </Text>
+              <Text style={{ fontSize: 15, fontWeight: '600', color: PALETTE.textDark }}>
+                {displayDetailItemRef.current?.category || '-'}
+              </Text>
+            </View>
+
+            <View style={{ marginBottom: 16 }}>
+              <Text style={{ fontSize: 11, fontWeight: '800', color: PALETTE.textMutedDark, textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 4 }}>
+                Tarikh
+              </Text>
+              <Text style={{ fontSize: 15, fontWeight: '600', color: PALETTE.textDark }}>
+                {displayDetailItemRef.current?.tarikh || '-'}
+              </Text>
+            </View>
+
+            <View style={{ marginBottom: 16 }}>
+              <Text style={{ fontSize: 11, fontWeight: '800', color: PALETTE.textMutedDark, textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 4 }}>
+                Keterangan
+              </Text>
+              <Text style={{ fontSize: 14, fontWeight: '600', color: PALETTE.textDark }}>
+                {displayDetailItemRef.current?.description || '-'}
+              </Text>
+            </View>
+
+            <View style={{ marginBottom: 16 }}>
+              <Text style={{ fontSize: 11, fontWeight: '800', color: PALETTE.textMutedDark, textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 6 }}>
+                Status
+              </Text>
+              <View style={{
+                alignSelf: 'flex-start',
+                backgroundColor: statusColor(displayDetailItemRef.current?.status) + '18',
+                borderWidth: 1, borderColor: statusColor(displayDetailItemRef.current?.status),
+                borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5,
+              }}>
+                <Text style={{ fontSize: 12, fontWeight: '800', color: statusColor(displayDetailItemRef.current?.status) }}>
+                  {statusLabel(displayDetailItemRef.current?.status)}
+                </Text>
+              </View>
+            </View>
+
+            {displayDetailItemRef.current?.status !== 'berjaya' && (
+              <View style={{ marginBottom: 8 }}>
+                <Text style={{ fontSize: 11, fontWeight: '800', color: PALETTE.textMutedDark, textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 4 }}>
+                  Sebab {statusLabel(displayDetailItemRef.current?.status)}
+                </Text>
+                <Text style={{ fontSize: 14, fontWeight: '600', color: PALETTE.textDark }}>
+                  {displayDetailItemRef.current?.keterangan || '-'}
+                </Text>
+              </View>
+            )}
           </View>
         </View>
       </Modal>

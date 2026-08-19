@@ -47,13 +47,16 @@ export function useCalamityPoints() {
   const resolveTreatedCalamity = async (point, { status, description }) => {
     if (!point?.id || !status) return { error: true };
 
+    // Écrit dans `keterangan` (raison de clôture), pas `description` — évite
+    // d'écraser la description originale du signalement, cohérent avec
+    // resolveCalamity ci-dessus.
     // ng999_historique se met à jour tout seul via le trigger sandbox.sync_ng999_historique
     // (déclenché sur ce même UPDATE) — plus d'appel RPC manuel ici.
     const { error } = await supabaseSandbox
       .from('laporan_ng999')
       .update({
         status,
-        description: description?.trim() || null,
+        keterangan: description?.trim() || null,
       })
       .eq('id', point.id);
 
@@ -74,8 +77,10 @@ export function useCalamityPoints() {
   // resolveTreatedCalamity : +1 sur ng999_historique au moment de la clôture.
   // ng999_historique se met à jour tout seul via le trigger sandbox.sync_ng999_historique
   // (déclenché sur ce même UPDATE) — plus besoin de retrouver le point localement ni d'appel RPC manuel.
-  const resolveCalamity = async (id, status) => {
-    const { error } = await supabaseSandbox.from('laporan_ng999').update({ status }).eq('id', id);
+  const resolveCalamity = async (id, status, reason) => {
+    const payload = { status };
+    if (reason && reason.trim()) payload.keterangan = reason.trim();
+    const { error } = await supabaseSandbox.from('laporan_ng999').update(payload).eq('id', id);
     if (!error) fetchCalamityPoints();
   };
 
