@@ -104,8 +104,8 @@ export default function KemaskiniDataPage() {
       const { data, error } = await supabaseKemaskini.auth.signInWithPassword({ email, password: loginPassword });
       if (error) { setLoginError('Nama pengguna atau kata laluan salah.'); setLoginPassword(''); setLoginLoading(false); return; }
       const { data: profile } = await supabaseKemaskini.from('profiles').select('role').eq('id', data.session.user.id).maybeSingle();
-      if (!profile || (profile.role !== 'admin' && profile.role !== 'angkatan')) {
-        setLoginError('Akaun ini tidak dibenarkan mengakses halaman ini.');
+      if (!profile) {
+        setLoginError('Akaun tiada peranan. Hubungi admin.');
         await supabaseKemaskini.auth.signOut();
         setLoginPassword('');
         setLoginLoading(false);
@@ -188,7 +188,7 @@ export default function KemaskiniDataPage() {
             </View>
             <Text style={{ fontSize: 10, fontWeight: '800', color: PALETTE.orange, letterSpacing: 2, textTransform: 'uppercase' }}>APM W.P LABUAN</Text>
             <Text style={{ fontSize: 18, fontWeight: '900', color: '#fff', marginTop: 3 }}>Kemaskini Data Anggota</Text>
-            <Text style={{ fontSize: 12, color: '#94a3b8', marginTop: 4, textAlign: 'center' }}>Log masuk (admin / angkatan) untuk teruskan</Text>
+            <Text style={{ fontSize: 12, color: '#94a3b8', marginTop: 4, textAlign: 'center' }}>Log masuk untuk teruskan</Text>
           </View>
 
           <View style={{ padding: 24, gap: 12, backgroundColor: '#fff', borderBottomLeftRadius: 24, borderBottomRightRadius: 24 }}>
@@ -261,7 +261,7 @@ export default function KemaskiniDataPage() {
           </View>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-          {searched && !submitted && form && (authedRole === 'admin' || authedRole === 'angkatan') && (
+          {searched && !submitted && form && (
             <TouchableOpacity
               onPress={submitKemaskini}
               disabled={submitting}

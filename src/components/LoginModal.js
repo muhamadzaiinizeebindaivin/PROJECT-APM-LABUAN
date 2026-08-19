@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Modal, KeyboardAvoidingView, TextInput, ActivityIndicator, Platform } from 'react-native';
-import { Lock, User, ArrowRight, AlertCircle, X, Eye, EyeOff, CheckCircle, Truck, Building2, ShieldAlert, Search } from 'lucide-react-native';
+import { Lock, User, ArrowRight, AlertCircle, X, Eye, EyeOff, CheckCircle, Truck, Building2, ShieldAlert, Search, ClipboardEdit } from 'lucide-react-native';
 import { PALETTE } from '../constants/palette';
 import { supabaseSandbox } from '../supabaseSandboxClient';
 
@@ -202,6 +202,21 @@ export default function LoginModal({ visible, onClose, isMobile, handleLogin, on
               >
                 {!isMobile && <Search size={16} color={PALETTE.orange} />}
                 <Text style={{ color: PALETTE.orange, fontWeight: '800', fontSize: 12, textAlign: 'center' }}>Semak Status</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => {
+                  if (Platform.OS === 'web') {
+                    window.open('?kemaskini=data', '_blank');
+                  }
+                  onClose();
+                }}
+                style={[
+                  { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#fff7ed', borderWidth: 1.5, borderColor: PALETTE.orange, borderRadius: 12 },
+                  isMobile ? { minHeight: 48, paddingVertical: 6 } : { height: 48 },
+                ]}
+              >
+                {!isMobile && <ClipboardEdit size={16} color={PALETTE.orange} />}
+                <Text style={{ color: PALETTE.orange, fontWeight: '800', fontSize: 12, textAlign: 'center' }}>Borang</Text>
               </TouchableOpacity>
             </View>
           </View>

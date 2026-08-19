@@ -57,5 +57,10 @@
   "devDependencies": {
     "@types/react": "~19.1.10",
     "typescript": "~5.9.2"
+  },
+  "lavamoat": {
+    "allowScripts": {
+      "jspdf>core-js#3.49.0": false
+    }
   }
 }
