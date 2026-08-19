@@ -1,6 +1,6 @@
 // src/screens/AgencyTrackingScreen.js
 import React, { useState, useEffect, useRef, useMemo, createElement } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, FlatList, TextInput, Platform, Image, Modal, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, FlatList, TextInput, Platform, Image, Modal, ScrollView, useWindowDimensions } from 'react-native';
 import * as Location from 'expo-location';
 
 // Sur web (notamment Safari iOS), on contourne expo-location et on utilise
@@ -165,6 +165,8 @@ function AgencyLogo({ url, size, fallbackSize }) {
 }
 
 export default function AgencyTrackingScreen({ onLogout }) {
+  const { width: screenWidth } = useWindowDimensions();
+  const isMobile = screenWidth < 768;
   const [agencies, setAgencies] = useState([]);
   const [loadingAgencies, setLoadingAgencies] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -748,22 +750,11 @@ export default function AgencyTrackingScreen({ onLogout }) {
           <Text style={styles.btnText}>{isTracking ? 'TAMAT JEJAK' : 'MULA JEJAK'}</Text>
         </TouchableOpacity>
 
-        <View style={[
-          {
-            width: '100%', maxWidth: 800, aspectRatio: 1, alignSelf: 'center', borderRadius: 16, overflow: 'hidden', marginTop: 20, position: 'relative',
-            borderWidth: 2, borderColor: 'rgba(249, 115, 22, 0.45)',
-            shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.12, shadowRadius: 14, elevation: 3,
-          },
-          pseudoFullscreen && { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999, width: undefined, maxWidth: undefined, aspectRatio: undefined, borderRadius: 0, marginTop: 0, borderWidth: 0 },
-        ]}>
-          {pseudoFullscreen && (
-            <TouchableOpacity
-              onPress={() => setPseudoFullscreen(false)}
-              style={{ position: 'absolute', top: 12, right: 12, zIndex: 10000, width: 36, height: 36, borderRadius: 10, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 6, elevation: 4 }}
-            >
-              <X size={18} color={PALETTE.orange} />
-            </TouchableOpacity>
-          )}
+        <View style={{
+          width: '100%', maxWidth: 800, aspectRatio: 1, alignSelf: 'center', borderRadius: 16, overflow: 'hidden', marginTop: 20, position: 'relative',
+          borderWidth: 2, borderColor: 'rgba(249, 115, 22, 0.45)',
+          shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.12, shadowRadius: 14, elevation: 3,
+        }}>
           {Platform.OS === 'web' ? (
             createElement('iframe', {
               ref: trackerMapIframeRef,
@@ -794,7 +785,14 @@ export default function AgencyTrackingScreen({ onLogout }) {
                 justifyContent: 'center', alignItems: 'center',
                 shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 6, elevation: 3,
               }}
-              onPress={() => (isIOS ? setPseudoFullscreen(true) : trackerMapIframeRef.current?.requestFullscreen?.())}
+              onPress={() => {
+                if (isMobile) {
+                  setTrackerMapLoading(true);
+                  setPseudoFullscreen(true);
+                } else {
+                  trackerMapIframeRef.current?.requestFullscreen?.();
+                }
+              }}
               onMouseEnter={() => setFullscreenBtnHovered(true)}
               onMouseLeave={() => setFullscreenBtnHovered(false)}
             >
@@ -807,6 +805,31 @@ export default function AgencyTrackingScreen({ onLogout }) {
             </TouchableOpacity>
           )}
         </View>
+
+        <Modal visible={pseudoFullscreen} animationType="fade" onRequestClose={() => setPseudoFullscreen(false)}>
+          <View style={{ flex: 1, backgroundColor: '#000' }}>
+            {Platform.OS === 'web' && pseudoFullscreen ? (
+              createElement('iframe', {
+                ref: trackerMapIframeRef,
+                srcDoc: trackerMapHtml,
+                style: { width: '100%', height: '100%', border: 'none' },
+                title: 'Peta Agensi & Bencana',
+                onLoad: handleTrackerMapLoad,
+              })
+            ) : null}
+            {trackerMapLoading && (
+              <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center', backgroundColor: PALETTE.softOrangeBg }}>
+                <ActivityIndicator size="large" color={PALETTE.orange} />
+              </View>
+            )}
+            <TouchableOpacity
+              onPress={() => setPseudoFullscreen(false)}
+              style={{ position: 'absolute', top: 12, right: 12, zIndex: 10000, width: 36, height: 36, borderRadius: 10, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 6, elevation: 4 }}
+            >
+              <X size={18} color={PALETTE.orange} />
+            </TouchableOpacity>
+          </View>
+        </Modal>
       </View>
     </ScrollView>
     </View>

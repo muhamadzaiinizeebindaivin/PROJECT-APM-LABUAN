@@ -678,19 +678,7 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
   return (
     <PetaContainerWrapper {...petaContainerWrapperProps}>
       {!showMobilePanelFullscreen && (
-      <View style={[
-        styles.petaMapHalf,
-        isMobile && styles.petaMapHalfMobile,
-        pseudoFullscreen && { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999, flex: undefined, minHeight: undefined },
-      ]}>
-        {pseudoFullscreen && (
-          <TouchableOpacity
-            onPress={() => setPseudoFullscreen(false)}
-            style={{ position: 'absolute', top: 12, right: 12, zIndex: 10000, width: 36, height: 36, borderRadius: 10, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 6, elevation: 4 }}
-          >
-            <X size={18} color={PALETTE.orange} />
-          </TouchableOpacity>
-        )}
+      <View style={[styles.petaMapHalf, isMobile && styles.petaMapHalfMobile]}>
         <View style={styles.petaMapContainer}>
           {Platform.OS === 'web' ? (
             createElement('iframe', {
@@ -716,6 +704,31 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
             </View>
           )}
         </View>
+
+        <Modal visible={pseudoFullscreen} animationType="fade" onRequestClose={() => setPseudoFullscreen(false)}>
+          <View style={{ flex: 1, backgroundColor: '#000' }}>
+            {Platform.OS === 'web' && pseudoFullscreen ? (
+              createElement('iframe', {
+                ref: petaIframeRef,
+                srcDoc: petaMapHtml,
+                style: { width: '100%', height: '100%', border: 'none' },
+                title: 'Peta Agensi',
+                onLoad: handlePetaIframeLoad,
+              })
+            ) : null}
+            {petaIframeLoading && (
+              <View style={[styles.loader, { backgroundColor: theme?.background || PALETTE.softOrangeBg }]}>
+                <ActivityIndicator size="large" color={PALETTE.orange} />
+              </View>
+            )}
+            <TouchableOpacity
+              onPress={() => setPseudoFullscreen(false)}
+              style={{ position: 'absolute', top: 12, right: 12, zIndex: 10000, width: 36, height: 36, borderRadius: 10, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 6, elevation: 4 }}
+            >
+              <X size={18} color={PALETTE.orange} />
+            </TouchableOpacity>
+          </View>
+        </Modal>
 
         <View style={styles.petaHeaderCard}>
           <View style={styles.petaIconCircle}><Map color={PALETTE.white} size={20} /></View>
@@ -792,7 +805,14 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
         <View style={styles.mapToolbar}>
           <TouchableOpacity
             style={styles.historyToggleBtn}
-            onPress={() => (isIOS ? setPseudoFullscreen(true) : petaIframeRef.current?.requestFullscreen?.())}
+            onPress={() => {
+              if (isMobile) {
+                setPetaIframeLoading(true);
+                setPseudoFullscreen(true);
+              } else {
+                petaIframeRef.current?.requestFullscreen?.();
+              }
+            }}
             {...(Platform.OS === 'web' ? {
               onMouseEnter: () => setFullscreenBtnHovered(true),
               onMouseLeave: () => setFullscreenBtnHovered(false),

@@ -1,7 +1,7 @@
 // src/screens/DriverScreen.js
 import React, { useState, useEffect, useRef, useMemo, createElement } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, SectionList, TextInput, Platform, ScrollView, Modal } from 'react-native';
-import { Navigation, StopCircle, ArrowLeft, Search, MapPin, Eye, EyeOff, Lock, Maximize2 } from 'lucide-react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, SectionList, TextInput, Platform, ScrollView, Modal, useWindowDimensions } from 'react-native';
+import { Navigation, StopCircle, ArrowLeft, Search, MapPin, Eye, EyeOff, Lock, Maximize2, X } from 'lucide-react-native';
 
 import { getVehicleIcon } from '../utils/vehicleIcons';
 import { useAvailableVehicles } from '../hooks/useAvailableVehicles';
@@ -97,6 +97,8 @@ const bgStyles = StyleSheet.create({
 });
 
 export default function DriverScreen({ onLogout }) {
+  const { width: screenWidth } = useWindowDimensions();
+  const isMobile = screenWidth < 768;
   const { vehicles, loading: loadingVehicles } = useAvailableVehicles();
 
   const [selectedVehicle, setSelectedVehicle] = useState(null);
@@ -693,22 +695,11 @@ export default function DriverScreen({ onLogout }) {
           )}
         </View>
 
-        <View style={[
-          {
-            width: '100%', maxWidth: 800, aspectRatio: 1, alignSelf: 'center', borderRadius: 16, overflow: 'hidden', marginTop: 20, position: 'relative',
-            borderWidth: 2, borderColor: 'rgba(249, 115, 22, 0.45)',
-            shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.12, shadowRadius: 14, elevation: 3,
-          },
-          pseudoFullscreen && { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999, width: undefined, maxWidth: undefined, aspectRatio: undefined, borderRadius: 0, marginTop: 0, borderWidth: 0 },
-        ]}>
-          {pseudoFullscreen && (
-            <TouchableOpacity
-              onPress={() => setPseudoFullscreen(false)}
-              style={{ position: 'absolute', top: 12, right: 12, zIndex: 10000, width: 36, height: 36, borderRadius: 10, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 6, elevation: 4 }}
-            >
-              <X size={18} color={PALETTE.orange} />
-            </TouchableOpacity>
-          )}
+        <View style={{
+          width: '100%', maxWidth: 800, aspectRatio: 1, alignSelf: 'center', borderRadius: 16, overflow: 'hidden', marginTop: 20, position: 'relative',
+          borderWidth: 2, borderColor: 'rgba(249, 115, 22, 0.45)',
+          shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.12, shadowRadius: 14, elevation: 3,
+        }}>
           {Platform.OS === 'web' ? (
             createElement('iframe', {
               ref: mapIframeRef,
@@ -739,7 +730,14 @@ export default function DriverScreen({ onLogout }) {
                 justifyContent: 'center', alignItems: 'center',
                 shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 6, elevation: 3,
               }}
-              onPress={() => (isIOS ? setPseudoFullscreen(true) : mapIframeRef.current?.requestFullscreen?.())}
+              onPress={() => {
+                if (isMobile) {
+                  setMapLoading(true);
+                  setPseudoFullscreen(true);
+                } else {
+                  mapIframeRef.current?.requestFullscreen?.();
+                }
+              }}
               onMouseEnter={() => setFullscreenBtnHovered(true)}
               onMouseLeave={() => setFullscreenBtnHovered(false)}
             >
@@ -752,6 +750,31 @@ export default function DriverScreen({ onLogout }) {
             </TouchableOpacity>
           )}
         </View>
+
+        <Modal visible={pseudoFullscreen} animationType="fade" onRequestClose={() => setPseudoFullscreen(false)}>
+          <View style={{ flex: 1, backgroundColor: '#000' }}>
+            {Platform.OS === 'web' && pseudoFullscreen ? (
+              createElement('iframe', {
+                ref: mapIframeRef,
+                srcDoc: mapHtml,
+                style: { width: '100%', height: '100%', border: 'none' },
+                title: 'Peta Kedudukan',
+                onLoad: handleMapLoad,
+              })
+            ) : null}
+            {mapLoading && (
+              <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center', backgroundColor: PALETTE.softOrangeBg }}>
+                <ActivityIndicator size="large" color={PALETTE.orange} />
+              </View>
+            )}
+            <TouchableOpacity
+              onPress={() => setPseudoFullscreen(false)}
+              style={{ position: 'absolute', top: 12, right: 12, zIndex: 10000, width: 36, height: 36, borderRadius: 10, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 6, elevation: 4 }}
+            >
+              <X size={18} color={PALETTE.orange} />
+            </TouchableOpacity>
+          </View>
+        </Modal>
 
       </View>
       </ScrollView>

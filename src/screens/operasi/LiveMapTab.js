@@ -530,19 +530,7 @@ export default function LiveMapTab({ theme, userRole, isEditMode, onNotify }) {
     <>
       <ViewContainerWrapper {...viewContainerWrapperProps}>
         {!showMobileFullscreenHistory && (
-        <View style={[
-          { flex: 1, position: 'relative' },
-          isMobile && { flex: undefined, minHeight: 420 },
-          pseudoFullscreen && { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999, minHeight: undefined },
-        ]}>
-          {pseudoFullscreen && (
-            <TouchableOpacity
-              onPress={() => setPseudoFullscreen(false)}
-              style={{ position: 'absolute', top: 12, right: 12, zIndex: 10000, width: 36, height: 36, borderRadius: 10, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 6, elevation: 4 }}
-            >
-              <X size={18} color="#1E3A8A" />
-            </TouchableOpacity>
-          )}
+        <View style={[{ flex: 1, position: 'relative' }, isMobile && { flex: undefined, minHeight: 420 }]}>
           <View style={styles.mapContainer}>
             {Platform.OS === 'web' ? (
               createElement('iframe', {
@@ -566,6 +554,29 @@ export default function LiveMapTab({ theme, userRole, isEditMode, onNotify }) {
               <View style={[styles.loader, { backgroundColor: theme.background }]}><ActivityIndicator size="large" color="#f97316" /></View>
             )}
           </View>
+
+          <Modal visible={pseudoFullscreen} animationType="fade" onRequestClose={() => setPseudoFullscreen(false)}>
+            <View style={{ flex: 1, backgroundColor: '#000' }}>
+              {Platform.OS === 'web' && pseudoFullscreen ? (
+                createElement('iframe', {
+                  ref: iframeRef,
+                  srcDoc: mapHtml,
+                  style: { width: '100%', height: '100%', border: 'none' },
+                  title: 'Leaflet Map',
+                  onLoad: handleIframeLoad,
+                })
+              ) : null}
+              {loading && (
+                <View style={[styles.loader, { backgroundColor: theme.background }]}><ActivityIndicator size="large" color="#f97316" /></View>
+              )}
+              <TouchableOpacity
+                onPress={() => setPseudoFullscreen(false)}
+                style={{ position: 'absolute', top: 12, right: 12, zIndex: 10000, width: 36, height: 36, borderRadius: 10, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 6, elevation: 4 }}
+              >
+                <X size={18} color="#1E3A8A" />
+              </TouchableOpacity>
+            </View>
+          </Modal>
 
           <View style={[styles.headerCard, { backgroundColor: theme.card }]}>
             <View style={styles.iconCircle}><ShieldAlert color="#fff" size={20} /></View>
@@ -644,7 +655,14 @@ export default function LiveMapTab({ theme, userRole, isEditMode, onNotify }) {
 
                 <TouchableOpacity
                   style={[styles.summaryToggleBtn, { right: canAddCalamity ? 164 : 64 }]}
-                  onPress={() => (isIOS ? setPseudoFullscreen(true) : iframeRef.current?.requestFullscreen?.())}
+                  onPress={() => {
+                    if (isMobile) {
+                      setLoading(true);
+                      setPseudoFullscreen(true);
+                    } else {
+                      iframeRef.current?.requestFullscreen?.();
+                    }
+                  }}
                   {...(Platform.OS === 'web' ? {
                     onMouseEnter: () => setFullscreenBtnHovered(true),
                     onMouseLeave: () => setFullscreenBtnHovered(false),
