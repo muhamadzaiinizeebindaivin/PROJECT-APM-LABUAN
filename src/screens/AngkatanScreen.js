@@ -40,6 +40,7 @@ import CategoryEditModal from './angkatan/CategoryEditModal';
 import RankEditModal from './angkatan/RankEditModal';
 import CommunityEditModal from './angkatan/CommunityEditModal';
 import PyramidEditModal from './angkatan/PyramidEditModal';
+import AngkatanKemaskiniAdminScreen from './angkatan/AngkatanKemaskiniAdminScreen';
 
 const EMPLOYEES_PER_PAGE = 10;
 
@@ -364,6 +365,7 @@ const [semakDataModalVisible, setSemakDataModalVisible] = useState(false);
   // ── Import Excel ──
   const [showExcelImportModal, setShowExcelImportModal] = useState(false);
   const [communitySubTab, setCommunitySubTab] = useState('pasukan');
+  const [anggotaSubTab, setAnggotaSubTab] = useState('senarai');
 
   // ── Modal liste filtrée (catégorie ou statut) ──
   const [filterModal, setFilterModal] = useState({ visible: false, title: '', list: [], page: 1 });
@@ -729,30 +731,7 @@ const [semakDataModalVisible, setSemakDataModalVisible] = useState(false);
         </View>
 
         {communitySubTab === 'pasukan' ? (
-          <>
-            <PyramidChart pyramidStats={pyramidStats} isEditing={isEditing} onAdd={openAddPyramid} onEdit={openEditPyramid} onDelete={deletePyramidItem} onReorder={reorderPyramidItems} onNotify={showNotification} />
-
-            <EmployeesListCard
-              paginatedEmployees={paginatedEmployees}
-              filteredCount={filteredEmployees.length}
-              employeeSearch={employeeSearch}
-              setEmployeeSearch={setEmployeeSearch}
-              employeePage={employeePage}
-              setEmployeePage={setEmployeePage}
-              totalEmployeePages={totalEmployeePages}
-              isEditing={isEditing}
-              userRole={userRole}
-              onOpenDetail={openEmployeeDetail}
-              onOpenCertificates={openCertificatesOnly}
-              onAddNew={openAddEmployee}
-              onImportExcel={() => setShowExcelImportModal(true)}
-              onDeleteEmployee={handleDeleteEmployee}
-              canViewLatestImport={canEdit}
-              latestImportFilename={summary.latest_import_filename}
-              latestImportAt={summary.latest_import_at}
-              onDownloadLatestImport={handleDownloadLatestImport}
-            />
-          </>
+          <PyramidChart pyramidStats={pyramidStats} isEditing={isEditing} onAdd={openAddPyramid} onEdit={openEditPyramid} onDelete={deletePyramidItem} onReorder={reorderPyramidItems} onNotify={showNotification} />
         ) : (
           <View style={styles.card}>
             <Text style={{ color: PALETTE.textMutedDark, fontSize: 13, fontWeight: '600', textAlign: 'center', paddingVertical: 30 }}>
@@ -760,6 +739,57 @@ const [semakDataModalVisible, setSemakDataModalVisible] = useState(false);
             </Text>
           </View>
         )}
+
+        <View style={{ flexDirection: 'row', margin: 0, padding: 6, borderRadius: 16, backgroundColor: PALETTE.cardLight, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 5, elevation: 3, gap: 8 }}>
+          {[
+            { key: 'senarai', label: 'Senarai Anggota', Icon: Users },
+            { key: 'kemaskini', label: 'Permohonan Kemaskini', Icon: ClipboardEdit },
+          ].map(({ key, label, Icon }) => {
+            const isActive = anggotaSubTab === key;
+            return (
+              <TouchableOpacity
+                key={key}
+                onPress={() => setAnggotaSubTab(key)}
+                activeOpacity={0.8}
+                style={[
+                  { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 12, borderRadius: 12, gap: 8, borderWidth: 1, borderColor: PALETTE.cardLightBorder },
+                  isActive && { backgroundColor: PALETTE.orange, borderColor: PALETTE.orange },
+                ]}
+              >
+                <Icon size={16} color={isActive ? '#fff' : PALETTE.textMutedDark} />
+                <Text style={{ fontSize: 13, fontWeight: '700', color: isActive ? '#fff' : PALETTE.textMutedDark }}>
+                  {label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        {anggotaSubTab === 'senarai' ? (
+          <EmployeesListCard
+            paginatedEmployees={paginatedEmployees}
+            filteredCount={filteredEmployees.length}
+            employeeSearch={employeeSearch}
+            setEmployeeSearch={setEmployeeSearch}
+            employeePage={employeePage}
+            setEmployeePage={setEmployeePage}
+            totalEmployeePages={totalEmployeePages}
+            isEditing={isEditing}
+            userRole={userRole}
+            onOpenDetail={openEmployeeDetail}
+            onOpenCertificates={openCertificatesOnly}
+            onAddNew={openAddEmployee}
+            onImportExcel={() => setShowExcelImportModal(true)}
+            onDeleteEmployee={handleDeleteEmployee}
+            canViewLatestImport={canEdit}
+            latestImportFilename={summary.latest_import_filename}
+            latestImportAt={summary.latest_import_at}
+            onDownloadLatestImport={handleDownloadLatestImport}
+          />
+        ) : (
+          <AngkatanKemaskiniAdminScreen />
+        )}
+
         <AngkatanUnitSection
           unitList={unit.staffList}
           loadingUnit={unit.loading}

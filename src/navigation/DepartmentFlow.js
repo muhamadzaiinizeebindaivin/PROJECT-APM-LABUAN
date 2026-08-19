@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { View, TouchableOpacity, Text, Animated, Platform, useWindowDimensions } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { LayoutDashboard, Users, CreditCard, GraduationCap, Truck, ShieldAlert, Briefcase, Info, UserCog, X, ClipboardCheck } from 'lucide-react-native';
+import { LayoutDashboard, Users, CreditCard, GraduationCap, Truck, ShieldAlert, Briefcase, Info, UserCog, X } from 'lucide-react-native';
 import { FONTS } from '../styles/tacticalTheme';
 import { ROLE_PERMISSIONS } from '../permissions';
 import CustomHeader from '../components/CustomHeader';
@@ -15,7 +15,6 @@ import LogistikScreen from '../screens/LogistikScreen';
 import OperasiScreen from '../screens/OperasiScreen';
 import SekretariatScreen from '../screens/SekretariatScreen';
 import AdminUserManagementScreen from '../screens/AdminUserManagementScreen';
-import AngkatanKemaskiniAdminScreen from '../screens/angkatan/AngkatanKemaskiniAdminScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -26,7 +25,7 @@ const TAB_ICONS = {
   Utama: Info, Pentadbiran: LayoutDashboard, Sekretariat: Briefcase,
   Angkatan: Users, Kewangan: CreditCard, Latihan: GraduationCap,
   Logistik: Truck, Operasi: ShieldAlert,
-  Admin: UserCog, Kemaskini: ClipboardCheck,
+  Admin: UserCog,
 };
 
 export default function DepartmentFlow({ userRole, theme, handleLogin, handleLogout, onLoginPress, navigationRef }) {
@@ -93,7 +92,6 @@ export default function DepartmentFlow({ userRole, theme, handleLogin, handleLog
       render: (props) => <OperasiScreen {...props} theme={theme} userRole={userRole} />
     },
     { name: 'Admin', options: { tabBarActiveTintColor: '#8b5cf6' }, render: (props) => <AdminUserManagementScreen {...props} /> },
-    { name: 'Kemaskini', options: { tabBarActiveTintColor: '#8b5cf6' }, render: (props) => <AngkatanKemaskiniAdminScreen {...props} /> },
   ];
 
   const allowedTabs = ROLE_PERMISSIONS[userRole] || [];
