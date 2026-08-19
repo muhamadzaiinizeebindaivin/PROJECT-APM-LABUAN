@@ -528,7 +528,7 @@ const [semakDataModalVisible, setSemakDataModalVisible] = useState(false);
               </View>
             ) : null}
           </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
             {(userRole === 'admin' || userRole === 'angkatan') && (
               <TouchableOpacity
                 onPress={() => {
@@ -538,10 +538,12 @@ const [semakDataModalVisible, setSemakDataModalVisible] = useState(false);
                     setSemakDataModalVisible(true);
                   }
                 }}
-                style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: PALETTE.orange, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8 }}
+                style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: PALETTE.orange, borderRadius: 10, paddingHorizontal: 14, paddingLeft: 6, paddingVertical: 6, height: 36 }}
               >
-                <ClipboardEdit size={14} color="#fff" />
-                <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>Kemaskini Data Anggota</Text>
+                <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' }}>
+                  <ClipboardEdit size={13} color="#fff" />
+                </View>
+                <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700', letterSpacing: 0.2 }}>Borang</Text>
               </TouchableOpacity>
             )}
             <AdminEditButton isEditMode={isEditing} setIsEditMode={setIsEditing} userRole={userRole} section="Angkatan" />
