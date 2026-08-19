@@ -190,7 +190,7 @@ export default function FilteredEmployeeListModal({
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.modalOverlay}>
-        <View style={[styles.modalContainer, { maxHeight: '80%' }]}>
+        <View style={[styles.modalContainer, { maxHeight: '80%', maxWidth: 700 }]}>
           <View style={[styles.modalHeader, { alignItems: 'center' }]}>
             <View style={{ flex: 1 }}>
               <Text style={styles.modalTitle}>{title}</Text>

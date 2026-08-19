@@ -282,11 +282,23 @@ const [semakDataModalVisible, setSemakDataModalVisible] = useState(false);
 
   // ── Modal Catégorie ──
   const [showCategoryModal, setShowCategoryModal] = useState(false);
-  const [categoryForm, setCategoryForm] = useState({ id: null, name: '', count: '', color: '#1D4E89' });
-  const openAddCategory = () => { setCategoryForm({ id: null, name: '', count: '', color: '#1D4E89' }); setShowCategoryModal(true); };
-  const openEditCategory = (cat) => { setCategoryForm({ ...cat, count: String(cat.count) }); setShowCategoryModal(true); };
-  const handleSaveCategory = async () => { await saveCategory(categoryForm); setShowCategoryModal(false); };
-  const handleDeleteCategory = async (id) => { await deleteCategoryItem(id); };
+  const [categoryForm, setCategoryForm] = useState({ id: null, name: '', count: '', color: '#1D4E89', myaspa_key: '' });
+  const openAddCategory = () => { setCategoryForm({ id: null, name: '', count: '', color: '#1D4E89', myaspa_key: '' }); setShowCategoryModal(true); };
+  const openEditCategory = (cat) => { setCategoryForm({ ...cat, count: String(cat.count), myaspa_key: cat.myaspa_key || '' }); setShowCategoryModal(true); };
+  const handleSaveCategory = async () => {
+    const ok = await saveCategory(categoryForm);
+    if (ok) {
+      setShowCategoryModal(false);
+      showNotification('success', categoryForm.id ? 'Penjawatan berjaya dikemaskini.' : 'Penjawatan berjaya ditambah.');
+    } else {
+      showNotification('error', 'Gagal menyimpan penjawatan.');
+    }
+  };
+  const handleDeleteCategory = async (id) => {
+    const ok = await deleteCategoryItem(id);
+    showNotification(ok ? 'success' : 'error', ok ? 'Penjawatan berjaya dipadam.' : 'Gagal memadam penjawatan.');
+    return ok;
+  };
 
   // ── Modal Rang ──
   const [showRankModal, setShowRankModal] = useState(false);
@@ -355,9 +367,11 @@ const [semakDataModalVisible, setSemakDataModalVisible] = useState(false);
 
   // ── Modal liste filtrée (catégorie ou statut) ──
   const [filterModal, setFilterModal] = useState({ visible: false, title: '', list: [], page: 1 });
-  const openCategoryEmployees = (categoryName) => {
-    const list = employees.filter((e) => mapMyaspaLabel(e.status_myaspa)?.toUpperCase() === categoryName.toUpperCase());
-    setFilterModal({ visible: true, title: categoryName, list, page: 1 });
+  const openCategoryEmployees = (cat) => {
+    const list = cat.myaspa_key
+      ? employees.filter((e) => norm(e.status_myaspa) === norm(cat.myaspa_key))
+      : [];
+    setFilterModal({ visible: true, title: cat.name, list, page: 1 });
   };
   const openStatusEmployees = (statusValue, label) => {
     const list = employees.filter((e) => String(e.status_keaktifan || '').trim().toUpperCase() === statusValue);
@@ -527,7 +541,7 @@ const [semakDataModalVisible, setSemakDataModalVisible] = useState(false);
                 style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: PALETTE.orange, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8 }}
               >
                 <ClipboardEdit size={14} color="#fff" />
-                <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>Kemaskini</Text>
+                <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>Kemaskini Data Anggota</Text>
               </TouchableOpacity>
             )}
             <AdminEditButton isEditMode={isEditing} setIsEditMode={setIsEditing} userRole={userRole} section="Angkatan" />

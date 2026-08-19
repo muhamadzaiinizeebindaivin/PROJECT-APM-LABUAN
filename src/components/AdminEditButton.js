@@ -3,7 +3,7 @@ import { TouchableOpacity, View, Text, StyleSheet } from 'react-native';
 import { Edit2, X } from 'lucide-react-native';
 import { canEditSection } from '../permissions';
 
-export default function AdminEditButton({ isEditMode, setIsEditMode, userRole, section }) {
+export default function AdminEditButton({ isEditMode, setIsEditMode, userRole, section, label = 'Kemaskini' }) {
   const allowed = section ? canEditSection(userRole, section) : (!userRole || userRole === 'admin');
   if (!allowed) return null;
 
@@ -19,7 +19,7 @@ export default function AdminEditButton({ isEditMode, setIsEditMode, userRole, s
         {isEditMode ? <X size={13} color="#fff" /> : <Edit2 size={13} color="#fff" />}
       </View>
       <Text style={styles.adminBtnText}>
-        {isEditMode ? 'Tutup Kemaskini' : 'Kemaskini'}
+        {isEditMode ? `Tutup ${label}` : label}
       </Text>
     </TouchableOpacity>
   );

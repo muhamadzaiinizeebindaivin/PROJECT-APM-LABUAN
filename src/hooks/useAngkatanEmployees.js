@@ -283,9 +283,15 @@ export function useAngkatanEmployees() {
     }));
 
     // Catégories
+    // Comparaison directe sur un mot-clé fixe (myaspa_key), indépendant du
+    // nom affiché — renommer la catégorie ne peut plus casser le comptage,
+    // et deux catégories ne peuvent plus se "voler" mutuellement des
+    // employés comme avec l'ancienne correspondance floue sur le nom.
     setCategories(cats.map((cat) => ({
       ...cat,
-      count: data.filter((e) => mapMyaspaLabel(e.status_myaspa)?.toUpperCase() === cat.name.toUpperCase()).length,
+      count: cat.myaspa_key
+        ? data.filter((e) => norm(e.status_myaspa) === norm(cat.myaspa_key)).length
+        : 0,
     })));
 
     // Pyramide
@@ -438,6 +444,19 @@ export function useAngkatanEmployees() {
     })();
   }, [fetchEmployees]);
 
+  // Synchronisation en temps réel — reflète les changements de catégorie faits
+  // depuis un autre onglet/session sans attendre un refresh manuel.
+  useEffect(() => {
+    const subscription = supabaseSandbox
+      .channel('angkatan_categories_changes')
+      .on('postgres_changes', { event: '*', schema: 'sandbox', table: 'angkatan_categories' }, () => {
+        fetchEmployees();
+      })
+      .subscribe();
+    return () => { supabaseSandbox.removeChannel(subscription); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const saveEmployee = async (employeeForm) => {
     try {
       const { id, ...payload } = employeeForm;
@@ -469,14 +488,29 @@ export function useAngkatanEmployees() {
   };
 
   const saveCategory = async (categoryForm) => {
-    const payload = { name: categoryForm.name, count: parseInt(categoryForm.count, 10), color: categoryForm.color };
-    if (categoryForm.id) await supabaseSandbox.from('angkatan_categories').update(payload).eq('id', categoryForm.id);
-    else await supabaseSandbox.from('angkatan_categories').insert([payload]);
-    await fetchEmployees();
+    try {
+      const payload = { name: categoryForm.name, count: parseInt(categoryForm.count, 10), color: categoryForm.color, myaspa_key: categoryForm.myaspa_key?.trim() || null };
+      const { error } = categoryForm.id
+        ? await supabaseSandbox.from('angkatan_categories').update(payload).eq('id', categoryForm.id)
+        : await supabaseSandbox.from('angkatan_categories').insert([payload]);
+      if (error) throw error;
+      await fetchEmployees();
+      return true;
+    } catch (error) {
+      console.error('Error saving category:', error);
+      return false;
+    }
   };
   const deleteCategoryItem = async (id) => {
-    await supabaseSandbox.from('angkatan_categories').delete().eq('id', id);
-    await fetchEmployees();
+    try {
+      const { error } = await supabaseSandbox.from('angkatan_categories').delete().eq('id', id);
+      if (error) throw error;
+      await fetchEmployees();
+      return true;
+    } catch (error) {
+      console.error('Error deleting category:', error);
+      return false;
+    }
   };
 
   const savePyramidItem = async (pyramidForm) => {
