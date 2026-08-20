@@ -279,97 +279,106 @@ export function buildSekretariatMapHtml({ theme, userRole }) {
                 }
               });
 
+              var buildBencanaPopup = function(b) {
+                var popupDiv = document.createElement('div');
+                popupDiv.className = 'custom-popup';
+
+                var strongEl = document.createElement('strong');
+                strongEl.textContent = b.categoryLabel || b.category;
+                popupDiv.appendChild(strongEl);
+
+                if (b.lokasi) {
+                  var lokasiEl = document.createElement('span');
+                  lokasiEl.className = 'sub';
+                  lokasiEl.textContent = 'Kawasan Terjejas: ' + b.lokasi;
+                  popupDiv.appendChild(lokasiEl);
+                }
+
+                if (b.pps) {
+                  var ppsEl = document.createElement('span');
+                  ppsEl.className = 'sub';
+                  ppsEl.textContent = 'PPS: ' + b.pps;
+                  popupDiv.appendChild(ppsEl);
+                }
+
+                var descEl = document.createElement('span');
+                descEl.className = 'sub';
+                descEl.textContent = b.description ? ('Keterangan: ' + b.description) : 'Tiada keterangan';
+                popupDiv.appendChild(descEl);
+
+                if (b.created_at) {
+                  var timeEl = document.createElement('span');
+                  timeEl.className = 'bencana-time';
+                  timeEl.textContent = formatTimeAgo(b.created_at);
+                  popupDiv.appendChild(timeEl);
+                }
+
+                if (canDeleteBencana) {
+                  var editBtnEl = document.createElement('button');
+                  editBtnEl.textContent = 'Kemaskini';
+                  editBtnEl.style.marginTop = '6px';
+                  editBtnEl.style.backgroundColor = '#f97316';
+                  editBtnEl.style.color = 'white';
+                  editBtnEl.style.border = 'none';
+                  editBtnEl.style.padding = '4px 10px';
+                  editBtnEl.style.borderRadius = '6px';
+                  editBtnEl.style.fontSize = '11px';
+                  editBtnEl.style.fontWeight = '700';
+                  editBtnEl.style.cursor = 'pointer';
+                  editBtnEl.style.width = '100%';
+                  editBtnEl.addEventListener('click', function() {
+                    window.requestEditBencana(b.id);
+                  });
+                  popupDiv.appendChild(editBtnEl);
+
+                  var resolveBtnEl = document.createElement('button');
+                  resolveBtnEl.textContent = 'Selesai';
+                  resolveBtnEl.style.marginTop = '6px';
+                  resolveBtnEl.style.backgroundColor = '#22c55e';
+                  resolveBtnEl.style.color = 'white';
+                  resolveBtnEl.style.border = 'none';
+                  resolveBtnEl.style.padding = '4px 10px';
+                  resolveBtnEl.style.borderRadius = '6px';
+                  resolveBtnEl.style.fontSize = '11px';
+                  resolveBtnEl.style.fontWeight = '700';
+                  resolveBtnEl.style.cursor = 'pointer';
+                  resolveBtnEl.style.width = '100%';
+                  resolveBtnEl.addEventListener('click', function() {
+                    window.requestResolveBencana(b.id);
+                  });
+                  popupDiv.appendChild(resolveBtnEl);
+
+                  var btnEl = document.createElement('button');
+                  btnEl.textContent = 'Padam Titik';
+                  btnEl.style.marginTop = '6px';
+                  btnEl.style.backgroundColor = '#ef4444';
+                  btnEl.style.color = 'white';
+                  btnEl.style.border = 'none';
+                  btnEl.style.padding = '4px 10px';
+                  btnEl.style.borderRadius = '6px';
+                  btnEl.style.fontSize = '11px';
+                  btnEl.style.fontWeight = '700';
+                  btnEl.style.cursor = 'pointer';
+                  btnEl.style.width = '100%';
+                  btnEl.addEventListener('click', function() {
+                    window.requestDeleteBencana(b.id);
+                  });
+                  popupDiv.appendChild(btnEl);
+                }
+
+                return popupDiv;
+              };
+
               data.payload.forEach(function(b) {
+                var popupDiv = buildBencanaPopup(b);
                 if (!bencanaMarkers[b.id]) {
-                  var popupDiv = document.createElement('div');
-                  popupDiv.className = 'custom-popup';
-
-                  var strongEl = document.createElement('strong');
-                  strongEl.textContent = b.categoryLabel || b.category;
-                  popupDiv.appendChild(strongEl);
-
-                  if (b.lokasi) {
-                    var lokasiEl = document.createElement('span');
-                    lokasiEl.className = 'sub';
-                    lokasiEl.textContent = 'Kawasan Terjejas: ' + b.lokasi;
-                    popupDiv.appendChild(lokasiEl);
-                  }
-
-                  if (b.pps) {
-                    var ppsEl = document.createElement('span');
-                    ppsEl.className = 'sub';
-                    ppsEl.textContent = 'PPS: ' + b.pps;
-                    popupDiv.appendChild(ppsEl);
-                  }
-
-                  var descEl = document.createElement('span');
-                  descEl.className = 'sub';
-                  descEl.textContent = b.description ? ('Keterangan: ' + b.description) : 'Tiada keterangan';
-                  popupDiv.appendChild(descEl);
-
-                  if (b.created_at) {
-                    var timeEl = document.createElement('span');
-                    timeEl.className = 'bencana-time';
-                    timeEl.textContent = formatTimeAgo(b.created_at);
-                    popupDiv.appendChild(timeEl);
-                  }
-
-                  if (canDeleteBencana) {
-                    var editBtnEl = document.createElement('button');
-                    editBtnEl.textContent = 'Kemaskini';
-                    editBtnEl.style.marginTop = '6px';
-                    editBtnEl.style.backgroundColor = '#f97316';
-                    editBtnEl.style.color = 'white';
-                    editBtnEl.style.border = 'none';
-                    editBtnEl.style.padding = '4px 10px';
-                    editBtnEl.style.borderRadius = '6px';
-                    editBtnEl.style.fontSize = '11px';
-                    editBtnEl.style.fontWeight = '700';
-                    editBtnEl.style.cursor = 'pointer';
-                    editBtnEl.style.width = '100%';
-                    editBtnEl.addEventListener('click', function() {
-                      window.requestEditBencana(b.id);
-                    });
-                    popupDiv.appendChild(editBtnEl);
-
-                    var resolveBtnEl = document.createElement('button');
-                    resolveBtnEl.textContent = 'Selesai';
-                    resolveBtnEl.style.marginTop = '6px';
-                    resolveBtnEl.style.backgroundColor = '#22c55e';
-                    resolveBtnEl.style.color = 'white';
-                    resolveBtnEl.style.border = 'none';
-                    resolveBtnEl.style.padding = '4px 10px';
-                    resolveBtnEl.style.borderRadius = '6px';
-                    resolveBtnEl.style.fontSize = '11px';
-                    resolveBtnEl.style.fontWeight = '700';
-                    resolveBtnEl.style.cursor = 'pointer';
-                    resolveBtnEl.style.width = '100%';
-                    resolveBtnEl.addEventListener('click', function() {
-                      window.requestResolveBencana(b.id);
-                    });
-                    popupDiv.appendChild(resolveBtnEl);
-
-                    var btnEl = document.createElement('button');
-                    btnEl.textContent = 'Padam Titik';
-                    btnEl.style.marginTop = '6px';
-                    btnEl.style.backgroundColor = '#ef4444';
-                    btnEl.style.color = 'white';
-                    btnEl.style.border = 'none';
-                    btnEl.style.padding = '4px 10px';
-                    btnEl.style.borderRadius = '6px';
-                    btnEl.style.fontSize = '11px';
-                    btnEl.style.fontWeight = '700';
-                    btnEl.style.cursor = 'pointer';
-                    btnEl.style.width = '100%';
-                    btnEl.addEventListener('click', function() {
-                      window.requestDeleteBencana(b.id);
-                    });
-                    popupDiv.appendChild(btnEl);
-                  }
-
                   bencanaMarkers[b.id] = L.marker([b.lat, b.lng], { icon: createBencanaIcon(b.icon, b.color) })
                     .bindPopup(popupDiv);
                   bencanaCluster.addLayer(bencanaMarkers[b.id]);
+                } else {
+                  bencanaMarkers[b.id].setPopupContent(popupDiv);
+                  bencanaMarkers[b.id].setIcon(createBencanaIcon(b.icon, b.color));
+                  bencanaMarkers[b.id].setLatLng([b.lat, b.lng]);
                 }
               });
             }
