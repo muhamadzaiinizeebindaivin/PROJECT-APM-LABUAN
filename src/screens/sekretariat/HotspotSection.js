@@ -195,6 +195,32 @@ export default function HotspotSection({ userRole, isEditMode, onNotify }) {
   const displayDetailItemRef = useRef(null);
   if (detailItem) displayDetailItemRef.current = detailItem;
 
+  // ---- Champ koordonnées combiné (format Google Maps: "lat, lng") ----
+  const [coordsText, setCoordsText] = useState('');
+  useEffect(() => {
+    if (modalHotspotVisible) {
+      setCoordsText(
+        formHotspot.latitude && formHotspot.longitude
+          ? `${formHotspot.latitude}, ${formHotspot.longitude}`
+          : ''
+      );
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modalHotspotVisible]);
+
+  const handleCoordsChange = (raw) => {
+    const cleaned = raw.replace(/[^0-9.\-,\s]/g, '');
+    setCoordsText(cleaned);
+    const parts = cleaned.split(',').map((s) => s.trim());
+    if (parts.length === 2) {
+      const lat = parseFloat(parts[0]);
+      const lng = parseFloat(parts[1]);
+      if (!isNaN(lat) && !isNaN(lng)) {
+        setFormHotspot({ ...formHotspot, latitude: parts[0], longitude: parts[1] });
+      }
+    }
+  };
+
   // ---- Modale de gestion de catégorie ----
   const [modalCatVisible, setModalCatVisible] = useState(false);
   const [formCat, setFormCat] = useState({ label: '', sub: '', color: COLOR_CHOICES[0], prefix: DEFAULT_PREFIX, icon: 'MapPin' });
@@ -208,7 +234,21 @@ export default function HotspotSection({ userRole, isEditMode, onNotify }) {
 
   const currentCat = categories.find((c) => c.key === selectedCat) || null;
   const currentColor = currentCat?.color || PALETTE.orange;
-  const currentData = currentCat ? hotspotList.filter((h) => h.category === currentCat.key) : [];
+  const currentData = currentCat
+    ? hotspotList
+        .filter((h) => h.category === currentCat.key)
+        .slice()
+        .sort((a, b) => {
+          const numA = parseFloat(a.ref_no);
+          const numB = parseFloat(b.ref_no);
+          const validA = !isNaN(numA);
+          const validB = !isNaN(numB);
+          if (validA && validB && numA !== numB) return numA - numB;
+          if (validA !== validB) return validA ? -1 : 1;
+          // Nombor rujukan sama atau bukan angka: susun ikut teks ref_no
+          return String(a.ref_no || '').localeCompare(String(b.ref_no || ''));
+        })
+    : [];
   const [kejadianFilterYear, setKejadianFilterYear] = useState(null); // null = tous
   const [kejadianFilterMonth, setKejadianFilterMonth] = useState(null); // null = tous, 0-11 sinon
   const [kejadianYearDropdownOpen, setKejadianYearDropdownOpen] = useState(false);
@@ -832,21 +872,15 @@ export default function HotspotSection({ userRole, isEditMode, onNotify }) {
               <TextInput style={styles.input} placeholder="Cth: Sg. Kinabenua" value={formHotspot.river} onChangeText={(t) => setFormHotspot({ ...formHotspot, river: t })} />
               <Text style={styles.inputLabel}>Kawasan Terjejas</Text>
               <TextInput style={styles.input} placeholder="Cth: Kg Rancha Rancha" value={formHotspot.area} onChangeText={(t) => setFormHotspot({ ...formHotspot, area: t })} />
-              <Text style={styles.inputLabel}>Latitud</Text>
+              <Text style={styles.inputLabel}>Koordinat (Latitud, Longitud)</Text>
+              <Text style={{ fontSize: 11, fontStyle: 'italic', color: PALETTE.textMutedDark, marginTop: -8, marginBottom: 6 }}>
+                Salin terus dari Google Maps (klik lokasi pada peta, tampal di sini)
+              </Text>
               <TextInput
                 style={styles.input}
-                placeholder="Cth: 5.372146"
-                keyboardType="numeric"
-                value={formHotspot.latitude}
-                onChangeText={(t) => setFormHotspot({ ...formHotspot, latitude: t.replace(/[^0-9.-]/g, '') })}
-              />
-              <Text style={styles.inputLabel}>Longitud</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Cth: 115.240419"
-                keyboardType="numeric"
-                value={formHotspot.longitude}
-                onChangeText={(t) => setFormHotspot({ ...formHotspot, longitude: t.replace(/[^0-9.-]/g, '') })}
+                placeholder="Cth: 5.263464499491023, 115.22960127925502"
+                value={coordsText}
+                onChangeText={handleCoordsChange}
               />
               <TouchableOpacity style={styles.saveButton} onPress={handleSaveHotspot}>
                 {loadingHotspot ? <ActivityIndicator color={PALETTE.white} /> : <Text style={styles.saveButtonText}>Simpan Hotspot</Text>}

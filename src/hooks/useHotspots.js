@@ -18,10 +18,24 @@ export function useHotspots(onNotify) {
     category: 'banjir', ref_no: '', river: '', area: '', latitude: '', longitude: ''
   });
 
+  // Susun ikut Nombor Rujukan (ref_no), bukan created_at — supaya kemaskini
+  // sesuatu rekod tidak mengubah kedudukannya dalam senarai.
+  const sortByRefNo = (rows) => {
+    return [...rows].sort((a, b) => {
+      const numA = parseFloat(a.ref_no);
+      const numB = parseFloat(b.ref_no);
+      const validA = !isNaN(numA);
+      const validB = !isNaN(numB);
+      if (validA && validB && numA !== numB) return numA - numB;
+      if (validA !== validB) return validA ? -1 : 1;
+      return String(a.ref_no || '').localeCompare(String(b.ref_no || ''));
+    });
+  };
+
   const fetchHotspots = async () => {
     setLoadingHotspot(true);
-    const { data, error } = await supabaseSandbox.from('hotspots').select('*').order('created_at', { ascending: true });
-    if (!error) setHotspotList(data || []);
+    const { data, error } = await supabaseSandbox.from('hotspots').select('*');
+    if (!error) setHotspotList(sortByRefNo(data || []));
     setLoadingHotspot(false);
   };
 
