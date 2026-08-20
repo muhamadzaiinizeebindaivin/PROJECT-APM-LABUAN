@@ -3,12 +3,12 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, TextInput, Modal, ActivityIndicator, Image, StyleSheet, Platform, useWindowDimensions } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import {
-  Droplets, Waves, Mountain, MapPin, Plus, Edit, Trash2, X,
+  Droplets, Waves, Mountain, MapPin, Plus, Edit, Trash2, X, Users,
   Flame, Wind, Tornado, CloudRain, CloudLightning, CloudFog, Zap,
   Sun, Snowflake, Umbrella, TreePine, Trees, Globe, Bug,
   AlertTriangle, Biohazard, Radiation, Siren, ShieldAlert, LifeBuoy,
   Factory, Building2, Home, Tent, Warehouse, Landmark,
-  Ship, Anchor, Truck, Car, Plane, Fuel, Maximize2, Camera, ClipboardList, Calendar,
+  Ship, Anchor, Truck, Car, Plane, Fuel, Maximize2, Camera, ClipboardList, Calendar, ChevronDown, ChevronUp, BarChart2, ChevronLeft, ChevronRight,
 } from 'lucide-react-native';
 import { useHotspots } from '../../hooks/useHotspots';
 import { useHotspotCategories } from '../../hooks/useHotspotCategories';
@@ -168,6 +168,8 @@ function KejadianPhotoCard({ photoUrl, canEdit, uploading, onUpload }) {
 }
 
 export default function HotspotSection({ userRole, isEditMode, onNotify }) {
+  const { width: screenWidth } = useWindowDimensions();
+  const isMobile = screenWidth < 768;
   const [selectedCat, setSelectedCat] = useState(null);
 
   const {
@@ -188,6 +190,7 @@ export default function HotspotSection({ userRole, isEditMode, onNotify }) {
   const { pickAndUploadKejadianPhoto, uploadingKejadianPhoto } = useKejadianPhoto();
   const [activeSubTab, setActiveSubTab] = useState('lokasi'); // 'lokasi' | 'kejadian'
   const [showTarikhPicker, setShowTarikhPicker] = useState(false);
+  const [kejadianHotspotId, setKejadianHotspotId] = useState(null);
   const [detailItem, setDetailItem] = useState(null);
   const displayDetailItemRef = useRef(null);
   if (detailItem) displayDetailItemRef.current = detailItem;
@@ -206,11 +209,37 @@ export default function HotspotSection({ userRole, isEditMode, onNotify }) {
   const currentCat = categories.find((c) => c.key === selectedCat) || null;
   const currentColor = currentCat?.color || PALETTE.orange;
   const currentData = currentCat ? hotspotList.filter((h) => h.category === currentCat.key) : [];
-  const currentKejadianData = currentCat ? kejadianList.filter((k) => k.category === currentCat.key) : [];
+  const [kejadianFilterYear, setKejadianFilterYear] = useState(null); // null = tous
+  const [kejadianFilterMonth, setKejadianFilterMonth] = useState(null); // null = tous, 0-11 sinon
+  const [kejadianYearDropdownOpen, setKejadianYearDropdownOpen] = useState(false);
+  const [kejadianMonthDropdownOpen, setKejadianMonthDropdownOpen] = useState(false);
+  const [lokasiPage, setLokasiPage] = useState(0);
+
+  const currentKejadianDataAll = currentCat ? kejadianList.filter((k) => k.category === currentCat.key) : [];
+
+  const kejadianAvailableYears = React.useMemo(() => {
+    const years = new Set(
+      currentKejadianDataAll
+        .filter((k) => k.tarikh)
+        .map((k) => new Date(k.tarikh).getFullYear())
+    );
+    return Array.from(years).sort((a, b) => b - a);
+  }, [currentKejadianDataAll]);
+
+  const currentKejadianData = currentKejadianDataAll.filter((k) => {
+    if (!k.tarikh) return kejadianFilterYear === null && kejadianFilterMonth === null;
+    const d = new Date(k.tarikh);
+    if (kejadianFilterYear !== null && d.getFullYear() !== kejadianFilterYear) return false;
+    if (kejadianFilterMonth !== null && d.getMonth() !== kejadianFilterMonth) return false;
+    return true;
+  });
   const CurrentIcon = resolveIcon(currentCat);
 
   useEffect(() => {
     setActiveSubTab('lokasi');
+    setKejadianFilterYear(null);
+    setKejadianFilterMonth(null);
+    setLokasiPage(0);
   }, [selectedCat]);
 
   const closeCatModal = () => {
@@ -279,36 +308,304 @@ export default function HotspotSection({ userRole, isEditMode, onNotify }) {
     </View>
   );
 
-  const renderKejadianItem = (item) => (
-    <View key={item.id} style={hotspotStyles.kejadianCard}>
-      <View style={hotspotStyles.kejadianHeader}>
-        <Text style={[hotspotStyles.kejadianDate, { color: currentColor }]}>{item.tarikh || '-'}</Text>
-        <Text style={hotspotStyles.kejadianJenis}>{item.jenis_bencana}</Text>
-      </View>
-      <Text style={hotspotStyles.kejadianLokasi}>{item.lokasi}</Text>
-      <View style={hotspotStyles.kejadianStatsRow}>
-        <Text style={hotspotStyles.kejadianStat}>Jumlah KIR: {item.jumlah_kir ?? '-'}</Text>
-        <Text style={hotspotStyles.kejadianStat}>Mangsa: {item.jumlah_mangsa ?? '-'}</Text>
-        <Text style={hotspotStyles.kejadianStat}>PPS: {item.pps || '-'}</Text>
-      </View>
-      {item.catatan ? <Text style={hotspotStyles.kejadianCatatan}>{item.catatan}</Text> : null}
+  const kejadianTableCols = [
+    { key: 'tarikh', label: 'Tarikh' },
+    { key: 'lokasi', label: 'Kawasan Terjejas' },
+    { key: 'jumlah_kir', label: 'Jumlah KIR' },
+    { key: 'jumlah_mangsa', label: 'Jumlah Mangsa' },
+    { key: 'pps', label: 'PPS' },
+  ];
 
-      {userRole === 'admin' && isEditMode ? (
-        <View style={hotspotStyles.itemActions}>
+  const renderKejadianTableHeader = (canEditKejadian) => (
+    <View style={{ flexDirection: 'row', backgroundColor: '#1e3a8a' }}>
+      {kejadianTableCols.map((col) => (
+        <View key={col.key} style={{ flex: 1, paddingVertical: 14, paddingHorizontal: 10 }}>
+          <Text style={{ fontSize: 12, fontWeight: '800', color: '#fff', textAlign: 'center' }}>{col.label}</Text>
+        </View>
+      ))}
+      {canEditKejadian && (
+        <View style={{ width: 90, paddingVertical: 14, paddingHorizontal: 10 }}>
+          <Text style={{ fontSize: 12, fontWeight: '800', color: '#fff', textAlign: 'center' }}>Aksi</Text>
+        </View>
+      )}
+    </View>
+  );
+
+  const renderKejadianRow = (item, index, canEditKejadian) => (
+    <TouchableOpacity
+      key={item.id}
+      activeOpacity={0.7}
+      onPress={() => openEditKejadianModal(item)}
+      style={{
+        flexDirection: 'row', alignItems: 'center',
+        backgroundColor: index % 2 === 1 ? (PALETTE.surface || '#f8fafc') : '#fff',
+        borderTopWidth: 1, borderTopColor: PALETTE.cardLightBorder || '#e2e8f0',
+      }}
+    >
+      <View style={{ flex: 1, paddingVertical: 14, paddingHorizontal: 10 }}>
+        <Text style={{ fontSize: 13, color: PALETTE.textDark, textAlign: 'center' }}>{item.tarikh || '-'}</Text>
+      </View>
+      <View style={{ flex: 1, paddingVertical: 14, paddingHorizontal: 10 }}>
+        <Text style={{ fontSize: 13, color: PALETTE.textDark, textAlign: 'center' }}>{item.lokasi || '-'}</Text>
+      </View>
+      <View style={{ flex: 1, paddingVertical: 14, paddingHorizontal: 10 }}>
+        <Text style={{ fontSize: 13, color: PALETTE.textDark, textAlign: 'center' }}>{item.jumlah_kir ?? '-'}</Text>
+      </View>
+      <View style={{ flex: 1, paddingVertical: 14, paddingHorizontal: 10 }}>
+        <Text style={{ fontSize: 13, color: PALETTE.textDark, textAlign: 'center' }}>{item.jumlah_mangsa ?? '-'}</Text>
+      </View>
+      <View style={{ flex: 1, paddingVertical: 14, paddingHorizontal: 10 }}>
+        <Text style={{ fontSize: 13, color: PALETTE.textDark, textAlign: 'center' }}>{item.pps || '-'}</Text>
+      </View>
+      {canEditKejadian && (
+        <View style={{ width: 90, flexDirection: 'row', justifyContent: 'center', gap: 8, paddingVertical: 14 }}>
           <HoverTip label="Kemaskini rekod ini">
-            <TouchableOpacity onPress={() => openEditKejadianModal(item)} style={[hotspotStyles.itemActionBtn, { backgroundColor: PALETTE.orange + '18' }]}>
-              <Edit size={15} color={PALETTE.orange} />
+            <TouchableOpacity
+              onPress={(e) => { e.stopPropagation?.(); openEditKejadianModal(item); }}
+              style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: PALETTE.orange + '18', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <Edit size={13} color={PALETTE.orange} />
             </TouchableOpacity>
           </HoverTip>
           <HoverTip label="Padam rekod ini">
-            <TouchableOpacity onPress={() => confirmDeleteKejadian(item.id)} style={[hotspotStyles.itemActionBtn, { backgroundColor: PALETTE.danger + '18' }]}>
-              <Trash2 size={15} color={PALETTE.danger} />
+            <TouchableOpacity
+              onPress={(e) => { e.stopPropagation?.(); confirmDeleteKejadian(item.id); }}
+              style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: PALETTE.danger + '18', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <Trash2 size={13} color={PALETTE.danger} />
             </TouchableOpacity>
           </HoverTip>
         </View>
-      ) : null}
-    </View>
+      )}
+    </TouchableOpacity>
   );
+
+  const BULAN_LABELS = ['Januari', 'Februari', 'Mac', 'April', 'Mei', 'Jun', 'Julai', 'Ogos', 'September', 'Oktober', 'November', 'Disember'];
+
+  const renderKejadianAnalytics = () => {
+    const data = currentKejadianDataAll;
+    const totalKejadian = data.length;
+    const totalMangsa = data.reduce((sum, k) => sum + (k.jumlah_mangsa || 0), 0);
+    const totalKir = data.reduce((sum, k) => sum + (k.jumlah_kir || 0), 0);
+    const purataMangsa = totalKejadian > 0 ? (totalMangsa / totalKejadian).toFixed(1) : '0';
+
+    // Trend bulanan — année la plus récente présente dans les données, sinon année courante
+    const years = data.filter((k) => k.tarikh).map((k) => new Date(k.tarikh).getFullYear());
+    const trendYear = years.length > 0 ? Math.max(...years) : new Date().getFullYear();
+    const monthlyCounts = Array(12).fill(0);
+    const monthlyMangsa = Array(12).fill(0);
+    const monthlyKir = Array(12).fill(0);
+    data.forEach((k) => {
+      if (!k.tarikh) return;
+      const d = new Date(k.tarikh);
+      if (d.getFullYear() === trendYear) {
+        monthlyCounts[d.getMonth()] += 1;
+        monthlyMangsa[d.getMonth()] += k.jumlah_mangsa || 0;
+        monthlyKir[d.getMonth()] += k.jumlah_kir || 0;
+      }
+    });
+    const maxMonthly = Math.max(1, ...monthlyCounts);
+    const peakMonthIdx = monthlyCounts.indexOf(Math.max(...monthlyCounts));
+
+    // Kawasan Terjejas paling kerap
+    const lokasiCounts = {};
+    data.forEach((k) => {
+      if (!k.lokasi?.trim()) return;
+      lokasiCounts[k.lokasi.trim()] = (lokasiCounts[k.lokasi.trim()] || 0) + 1;
+    });
+    const sortedLokasi = Object.entries(lokasiCounts).sort((a, b) => b[1] - a[1]);
+    const maxLokasiCount = sortedLokasi.length > 0 ? sortedLokasi[0][1] : 1;
+    const LOKASI_PAGE_SIZE = 5;
+    const totalLokasiPages = Math.ceil(sortedLokasi.length / LOKASI_PAGE_SIZE);
+    const safeLokasiPage = Math.min(lokasiPage, Math.max(0, totalLokasiPages - 1));
+    const pagedLokasi = sortedLokasi.slice(safeLokasiPage * LOKASI_PAGE_SIZE, safeLokasiPage * LOKASI_PAGE_SIZE + LOKASI_PAGE_SIZE);
+
+    const statCards = [
+      { label: 'Jumlah Kejadian', value: totalKejadian, Icon: ClipboardList, color: '#2563eb', bg: '#eff6ff' },
+      { label: 'Jumlah Mangsa', value: totalMangsa, Icon: Users, color: '#dc2626', bg: '#fef2f2' },
+      { label: 'Jumlah KIR', value: totalKir, Icon: ShieldAlert, color: '#16a34a', bg: '#f0fdf4' },
+      { label: 'Purata Mangsa/Kejadian', value: purataMangsa, Icon: BarChart2, color: '#7c3aed', bg: '#f5f3ff' },
+    ];
+
+    const rankColors = ['#eab308', '#f97316', '#65a30d', '#22c55e', '#ec4899', '#94a3b8', '#a855f7', '#ef4444'];
+
+    if (totalKejadian === 0) {
+      return (
+        <View style={{ alignItems: 'center', paddingVertical: 40 }}>
+          <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: `${currentColor}12`, alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+            <BarChart2 size={24} color={currentColor} />
+          </View>
+          <Text style={styles.emptyText}>Tiada data untuk dianalisis bagi kategori ini.</Text>
+        </View>
+      );
+    }
+
+    const sectionCardStyle = {
+      backgroundColor: '#fff', borderRadius: 14, borderWidth: 1, borderColor: PALETTE.cardLightBorder || '#e2e8f0',
+      padding: 16, marginBottom: 20,
+      shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 1,
+    };
+
+    return (
+      <View>
+        {/* ---- Ringkasan ---- */}
+        <View style={sectionCardStyle}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+            <View style={{ width: 28, height: 28, borderRadius: 8, backgroundColor: `${currentColor}14`, alignItems: 'center', justifyContent: 'center' }}>
+              <ClipboardList size={14} color={currentColor} />
+            </View>
+            <Text style={{ fontSize: 13, fontWeight: '800', color: PALETTE.textDark, textTransform: 'uppercase', letterSpacing: 0.3 }}>Ringkasan</Text>
+          </View>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
+            {statCards.map((card) => (
+              <View
+                key={card.label}
+                style={{
+                  flexBasis: '48%', flexGrow: 1, backgroundColor: card.bg, borderRadius: 12, padding: 14,
+                  borderWidth: 1, borderColor: `${card.color}30`,
+                }}
+              >
+                <Text style={{ fontSize: 11, fontWeight: '800', color: PALETTE.textMutedDark, textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 6 }}>{card.label}</Text>
+                <Text style={{ fontSize: 26, fontWeight: '900', color: card.color }}>{card.value}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        {/* ---- Trend Bulanan ---- */}
+        <View style={[sectionCardStyle, { padding: 0 }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, padding: 16, paddingBottom: 14 }}>
+              <View style={{ width: 28, height: 28, borderRadius: 8, backgroundColor: '#eff6ff', alignItems: 'center', justifyContent: 'center' }}>
+                <BarChart2 size={14} color="#2563eb" />
+              </View>
+              <Text style={{ fontSize: 13, fontWeight: '800', color: PALETTE.textDark, textTransform: 'uppercase', letterSpacing: 0.3 }}>Trend Bulanan · {trendYear}</Text>
+            </View>
+
+            <View style={{ borderRadius: 14, overflow: 'hidden', marginHorizontal: 16, marginBottom: 16, borderWidth: 1, borderColor: PALETTE.cardLightBorder || '#e2e8f0' }}>
+              <View style={{ flexDirection: 'row', backgroundColor: '#1e3a8a' }}>
+                <View style={{ width: 140, paddingVertical: 14, paddingHorizontal: 14 }}>
+                  <Text style={{ fontSize: 14, fontWeight: '800', color: '#fff' }}>Bulan</Text>
+                </View>
+                <View style={{ flex: 1, paddingVertical: 14, paddingHorizontal: 10 }}>
+                  <Text style={{ fontSize: 14, fontWeight: '800', color: '#fff', textAlign: 'center' }}>Kejadian</Text>
+                </View>
+                <View style={{ flex: 1, paddingVertical: 14, paddingHorizontal: 10 }}>
+                  <Text style={{ fontSize: 14, fontWeight: '800', color: '#fff', textAlign: 'center' }}>Mangsa</Text>
+                </View>
+                <View style={{ flex: 1, paddingVertical: 14, paddingHorizontal: 10 }}>
+                  <Text style={{ fontSize: 14, fontWeight: '800', color: '#fff', textAlign: 'center' }}>KIR</Text>
+                </View>
+              </View>
+              {BULAN_LABELS.map((label, idx) => {
+                const isPeak = monthlyCounts[idx] === maxMonthly && maxMonthly > 0 && idx === peakMonthIdx;
+                return (
+                  <View
+                    key={label}
+                    style={{
+                      flexDirection: 'row', alignItems: 'center',
+                      backgroundColor: isPeak ? '#eff6ff' : (idx % 2 === 1 ? (PALETTE.surface || '#f8fafc') : '#fff'),
+                      borderTopWidth: 1, borderTopColor: PALETTE.cardLightBorder || '#e2e8f0',
+                    }}
+                  >
+                    <View style={{ width: 140, paddingVertical: 14, paddingHorizontal: 14 }}>
+                      <Text style={{ fontSize: 15, fontWeight: isPeak ? '800' : '600', color: PALETTE.textDark }}>{label}</Text>
+                    </View>
+                    <View style={{ flex: 1, paddingVertical: 14, paddingHorizontal: 10 }}>
+                      <Text style={{ fontSize: 15, fontWeight: '800', color: isPeak ? '#2563eb' : PALETTE.textDark, textAlign: 'center' }}>{monthlyCounts[idx]}</Text>
+                    </View>
+                    <View style={{ flex: 1, paddingVertical: 14, paddingHorizontal: 10 }}>
+                      <Text style={{ fontSize: 15, fontWeight: '600', color: PALETTE.textDark, textAlign: 'center' }}>{monthlyMangsa[idx]}</Text>
+                    </View>
+                    <View style={{ flex: 1, paddingVertical: 14, paddingHorizontal: 10 }}>
+                      <Text style={{ fontSize: 15, fontWeight: '600', color: PALETTE.textDark, textAlign: 'center' }}>{monthlyKir[idx]}</Text>
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          </View>
+
+        {/* ---- Kawasan Terjejas Paling Kerap ---- */}
+        <View style={[sectionCardStyle, { padding: 0, marginBottom: 0 }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, padding: 16, paddingBottom: 14 }}>
+              <View style={{ width: 28, height: 28, borderRadius: 8, backgroundColor: '#eff6ff', alignItems: 'center', justifyContent: 'center' }}>
+                <MapPin size={14} color="#2563eb" />
+              </View>
+              <Text style={{ fontSize: 13, fontWeight: '800', color: PALETTE.textDark, textTransform: 'uppercase', letterSpacing: 0.3 }}>Kawasan Terjejas Paling Kerap</Text>
+            </View>
+
+            {pagedLokasi.length === 0 ? (
+              <Text style={{ paddingHorizontal: 16, paddingBottom: 16, fontSize: 13, color: PALETTE.textMutedDark, fontStyle: 'italic' }}>Tiada kawasan direkodkan.</Text>
+            ) : (
+              <View style={{ borderRadius: 14, overflow: 'hidden', marginHorizontal: 16, marginBottom: 16, borderWidth: 1, borderColor: PALETTE.cardLightBorder || '#e2e8f0' }}>
+                <View style={{ flexDirection: 'row', backgroundColor: '#1e3a8a' }}>
+                  <View style={{ width: 60, paddingVertical: 14 }}>
+                    <Text style={{ fontSize: 14, fontWeight: '800', color: '#fff', textAlign: 'center' }}>#</Text>
+                  </View>
+                  <View style={{ flex: 2, paddingVertical: 14, paddingHorizontal: 10 }}>
+                    <Text style={{ fontSize: 14, fontWeight: '800', color: '#fff' }}>Kawasan</Text>
+                  </View>
+                  <View style={{ flex: 1, paddingVertical: 14, paddingHorizontal: 10 }}>
+                    <Text style={{ fontSize: 14, fontWeight: '800', color: '#fff', textAlign: 'center' }}>Kejadian</Text>
+                  </View>
+                </View>
+                {pagedLokasi.map(([lokasi, count], i) => {
+                  const globalIdx = safeLokasiPage * LOKASI_PAGE_SIZE + i;
+                  return (
+                    <View
+                      key={lokasi}
+                      style={{
+                        flexDirection: 'row', alignItems: 'center',
+                        backgroundColor: i % 2 === 1 ? (PALETTE.surface || '#f8fafc') : '#fff',
+                        borderTopWidth: 1, borderTopColor: PALETTE.cardLightBorder || '#e2e8f0',
+                      }}
+                    >
+                      <View style={{ width: 60, paddingVertical: 14 }}>
+                        <Text style={{ fontSize: 15, fontWeight: '800', color: PALETTE.textMutedDark, textAlign: 'center' }}>{globalIdx + 1}</Text>
+                      </View>
+                      <View style={{ flex: 2, paddingVertical: 14, paddingHorizontal: 10 }}>
+                        <Text style={{ fontSize: 15, fontWeight: '700', color: PALETTE.textDark }} numberOfLines={1}>{lokasi}</Text>
+                      </View>
+                      <View style={{ flex: 1, paddingVertical: 14, paddingHorizontal: 10 }}>
+                        <Text style={{ fontSize: 15, fontWeight: '700', color: PALETTE.textDark, textAlign: 'center' }}>{count}</Text>
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
+            )}
+
+            {totalLokasiPages > 1 && (
+              <View style={{ alignItems: 'center', paddingVertical: 16, paddingTop: 4, gap: 8 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+                  <TouchableOpacity
+                    disabled={safeLokasiPage === 0}
+                    onPress={() => setLokasiPage((p) => Math.max(0, p - 1))}
+                    style={{
+                      width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center',
+                      backgroundColor: safeLokasiPage === 0 ? (PALETTE.surface || '#f1f5f9') : 'rgba(249, 115, 22, 0.10)',
+                    }}
+                  >
+                    <ChevronLeft size={17} color={safeLokasiPage === 0 ? PALETTE.textMutedDark : PALETTE.orange} />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    disabled={safeLokasiPage >= totalLokasiPages - 1}
+                    onPress={() => setLokasiPage((p) => Math.min(totalLokasiPages - 1, p + 1))}
+                    style={{
+                      width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center',
+                      backgroundColor: safeLokasiPage >= totalLokasiPages - 1 ? (PALETTE.surface || '#f1f5f9') : 'rgba(249, 115, 22, 0.10)',
+                    }}
+                  >
+                    <ChevronRight size={17} color={safeLokasiPage >= totalLokasiPages - 1 ? PALETTE.textMutedDark : PALETTE.orange} />
+                  </TouchableOpacity>
+                </View>
+                <Text style={{ fontSize: 12, fontWeight: '600', color: PALETTE.textMutedDark }}>{safeLokasiPage + 1} / {totalLokasiPages}</Text>
+              </View>
+            )}
+        </View>
+      </View>
+    );
+  };
 
   const isLoading = (loadingHotspot || loadingCategories) && hotspotList.length === 0 && categories.length === 0;
 
@@ -393,23 +690,47 @@ export default function HotspotSection({ userRole, isEditMode, onNotify }) {
               </View>
 
               {/* ---- Sous-onglets ---- */}
-              <View style={hotspotStyles.subTabRow}>
-                <TouchableOpacity
-                  style={[hotspotStyles.subTabBtn, activeSubTab === 'lokasi' && { backgroundColor: currentColor }]}
-                  onPress={() => setActiveSubTab('lokasi')}
-                  activeOpacity={0.8}
-                >
-                  <MapPin size={14} color={activeSubTab === 'lokasi' ? PALETTE.white : currentColor} />
-                  <Text style={[hotspotStyles.subTabText, { color: activeSubTab === 'lokasi' ? PALETTE.white : currentColor }]}>Lokasi Hotspot</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[hotspotStyles.subTabBtn, activeSubTab === 'kejadian' && { backgroundColor: currentColor }]}
-                  onPress={() => setActiveSubTab('kejadian')}
-                  activeOpacity={0.8}
-                >
-                  <ClipboardList size={14} color={activeSubTab === 'kejadian' ? PALETTE.white : currentColor} />
-                  <Text style={[hotspotStyles.subTabText, { color: activeSubTab === 'kejadian' ? PALETTE.white : currentColor }]}>Rekod</Text>
-                </TouchableOpacity>
+              <View style={[hotspotStyles.subTabRow, { justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', rowGap: 8 }]}>
+                <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+                  <TouchableOpacity
+                    style={[hotspotStyles.subTabBtn, activeSubTab === 'lokasi' && { backgroundColor: currentColor }]}
+                    onPress={() => setActiveSubTab('lokasi')}
+                    activeOpacity={0.8}
+                  >
+                    <MapPin size={14} color={activeSubTab === 'lokasi' ? PALETTE.white : currentColor} />
+                    <Text style={[hotspotStyles.subTabText, { color: activeSubTab === 'lokasi' ? PALETTE.white : currentColor }]}>Lokasi Hotspot</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[hotspotStyles.subTabBtn, activeSubTab === 'kejadian' && { backgroundColor: currentColor }]}
+                    onPress={() => setActiveSubTab('kejadian')}
+                    activeOpacity={0.8}
+                  >
+                    <ClipboardList size={14} color={activeSubTab === 'kejadian' ? PALETTE.white : currentColor} />
+                    <Text style={[hotspotStyles.subTabText, { color: activeSubTab === 'kejadian' ? PALETTE.white : currentColor }]}>Rekod</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[hotspotStyles.subTabBtn, activeSubTab === 'analisis' && { backgroundColor: currentColor }]}
+                    onPress={() => setActiveSubTab('analisis')}
+                    activeOpacity={0.8}
+                  >
+                    <BarChart2 size={14} color={activeSubTab === 'analisis' ? PALETTE.white : currentColor} />
+                    <Text style={[hotspotStyles.subTabText, { color: activeSubTab === 'analisis' ? PALETTE.white : currentColor }]}>Analisis dan Statistik</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {userRole === 'admin' && isEditMode && activeSubTab !== 'analisis' ? (
+                  activeSubTab === 'lokasi' ? (
+                    <TouchableOpacity style={styles.addButton} onPress={() => openAddModal(currentCat.key)}>
+                      <Plus size={16} color={PALETTE.white} />
+                      <Text style={styles.addButtonText}>Tambah</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <TouchableOpacity style={styles.addButton} onPress={() => openAddKejadianModal(currentCat.key, currentCat.label)}>
+                      <Plus size={16} color={PALETTE.white} />
+                      <Text style={styles.addButtonText}>Tambah</Text>
+                    </TouchableOpacity>
+                  )
+                ) : null}
               </View>
 
               {activeSubTab === 'lokasi' ? (
@@ -425,14 +746,6 @@ export default function HotspotSection({ userRole, isEditMode, onNotify }) {
                     }}
                   />
 
-                  {/* ---- Bouton Tambah ---- */}
-                  {userRole === 'admin' && isEditMode ? (
-                    <TouchableOpacity style={[styles.addButton, hotspotStyles.addBtnBeforeList]} onPress={() => openAddModal(currentCat.key)}>
-                      <Plus size={16} color={PALETTE.white} />
-                      <Text style={styles.addButtonText}>Tambah</Text>
-                    </TouchableOpacity>
-                  ) : null}
-
                   {/* ---- Liste ---- */}
                   {currentData.length === 0 ? (
                     <Text style={styles.emptyText}>Tiada rekod untuk kategori ini.</Text>
@@ -440,15 +753,43 @@ export default function HotspotSection({ userRole, isEditMode, onNotify }) {
                     currentData.map((item) => renderHotspotItem(item, currentColor, currentCat.prefix))
                   )}
                 </>
-              ) : (
+              ) : activeSubTab === 'kejadian' ? (
                 <>
-                  {/* ---- Bouton Tambah Kejadian ---- */}
-                  {userRole === 'admin' && isEditMode ? (
-                    <TouchableOpacity style={[styles.addButton, hotspotStyles.addBtnBeforeList]} onPress={() => openAddKejadianModal(currentCat.key, currentCat.label)}>
-                      <Plus size={16} color={PALETTE.white} />
-                      <Text style={styles.addButtonText}>Tambah</Text>
-                    </TouchableOpacity>
-                  ) : null}
+                  {/* ---- Filtre Tahun/Bulan ---- */}
+                  {currentKejadianDataAll.length > 0 && (
+                    <View style={{ flexDirection: 'row', gap: 16, marginBottom: 16 }}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 13, fontWeight: '700', color: PALETTE.textDark, marginBottom: 8 }}>Tahun</Text>
+                        <TouchableOpacity
+                          onPress={() => setKejadianYearDropdownOpen(true)}
+                          style={{
+                            borderWidth: 1, borderColor: PALETTE.cardLightBorder || '#e2e8f0', borderRadius: 8,
+                            paddingHorizontal: 14, paddingVertical: 12, backgroundColor: '#fff',
+                          }}
+                        >
+                          <Text style={{ fontSize: 14, fontWeight: '600', color: PALETTE.textDark }}>
+                            {kejadianFilterYear === null ? 'Semua Tahun' : kejadianFilterYear}
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+
+                      <View style={{ flex: 1, opacity: kejadianFilterYear === null ? 0.5 : 1 }}>
+                        <Text style={{ fontSize: 13, fontWeight: '700', color: PALETTE.textDark, marginBottom: 8 }}>Bulan</Text>
+                        <TouchableOpacity
+                          disabled={kejadianFilterYear === null}
+                          onPress={() => setKejadianMonthDropdownOpen(true)}
+                          style={{
+                            borderWidth: 1, borderColor: PALETTE.cardLightBorder || '#e2e8f0', borderRadius: 8,
+                            paddingHorizontal: 14, paddingVertical: 12, backgroundColor: '#fff',
+                          }}
+                        >
+                          <Text style={{ fontSize: 14, fontWeight: '600', color: PALETTE.textDark }}>
+                            {kejadianFilterMonth === null ? 'Semua Bulan' : ['Januari', 'Februari', 'Mac', 'April', 'Mei', 'Jun', 'Julai', 'Ogos', 'September', 'Oktober', 'November', 'Disember'][kejadianFilterMonth]}
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  )}
 
                   {/* ---- Liste Kejadian ---- */}
                   {loadingKejadian && currentKejadianData.length === 0 ? (
@@ -456,9 +797,14 @@ export default function HotspotSection({ userRole, isEditMode, onNotify }) {
                   ) : currentKejadianData.length === 0 ? (
                     <Text style={styles.emptyText}>Tiada rekod untuk kategori ini.</Text>
                   ) : (
-                    currentKejadianData.map((item) => renderKejadianItem(item))
+                    <View style={{ borderRadius: 14, borderWidth: 1, borderColor: PALETTE.cardLightBorder || '#e2e8f0', overflow: 'hidden' }}>
+                      {renderKejadianTableHeader(userRole === 'admin' && isEditMode)}
+                      {currentKejadianData.map((item, index) => renderKejadianRow(item, index, userRole === 'admin' && isEditMode))}
+                    </View>
                   )}
                 </>
+              ) : (
+                renderKejadianAnalytics()
               )}
             </>
           ) : null}
@@ -572,56 +918,191 @@ export default function HotspotSection({ userRole, isEditMode, onNotify }) {
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContainer, { maxWidth: 640 }]}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{formModeKejadian === 'add' ? 'Tambah Rekod' : 'Kemaskini Rekod'}</Text>
+              <Text style={styles.modalTitle}>{formModeKejadian === 'add' ? 'Tambah Rekod' : (isEditMode ? 'Kemaskini Rekod' : 'Butiran Rekod')}</Text>
               <TouchableOpacity onPress={() => setModalKejadianVisible(false)}><X size={24} color={PALETTE.textMutedDark} /></TouchableOpacity>
             </View>
             <ScrollView contentContainerStyle={styles.modalForm}>
-              <Text style={styles.inputLabel}>Tarikh *</Text>
-              {Platform.OS === 'web' ? (
-                <input
-                  type="date"
-                  value={formKejadian.tarikh}
-                  onChange={(e) => setFormKejadian({ ...formKejadian, tarikh: e.target.value })}
-                  style={webDateInput}
+              <Text style={styles.inputLabel}>Tarikh</Text>
+              {isEditMode ? (
+                Platform.OS === 'web' ? (
+                  <input
+                    type="date"
+                    value={formKejadian.tarikh}
+                    onChange={(e) => setFormKejadian({ ...formKejadian, tarikh: e.target.value })}
+                    style={webDateInput}
+                  />
+                ) : (
+                  <>
+                    <TouchableOpacity style={hotspotStyles.dateInputBtn} onPress={() => setShowTarikhPicker(true)}>
+                      <Calendar size={16} color={PALETTE.textMutedDark} />
+                      <Text style={[hotspotStyles.dateInputBtnText, !formKejadian.tarikh && { color: PALETTE.textMutedDark }]}>
+                        {formKejadian.tarikh || 'Pilih tarikh'}
+                      </Text>
+                    </TouchableOpacity>
+                    {showTarikhPicker ? (
+                      <DateTimePicker
+                        value={formKejadian.tarikh ? new Date(formKejadian.tarikh) : new Date()}
+                        mode="date"
+                        display="default"
+                        onChange={(event, selectedDate) => {
+                          setShowTarikhPicker(false);
+                          if (event.type === 'set' && selectedDate) {
+                            const iso = selectedDate.toISOString().split('T')[0];
+                            setFormKejadian({ ...formKejadian, tarikh: iso });
+                          }
+                        }}
+                      />
+                    ) : null}
+                  </>
+                )
+              ) : (
+                <View style={{ backgroundColor: PALETTE.surface || '#f8fafc', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 12, marginBottom: 10 }}>
+                  <Text style={{ fontSize: 14, color: PALETTE.textDark }}>{formKejadian.tarikh}</Text>
+                </View>
+              )}
+
+              <Text style={styles.inputLabel}>Kawasan Terjejas</Text>
+              {isEditMode ? (
+                <TextInput
+                  style={styles.input}
+                  placeholder="Cth: Kg Rancha-Rancha"
+                  value={formKejadian.lokasi}
+                  onChangeText={(t) => setFormKejadian({ ...formKejadian, lokasi: t })}
                 />
               ) : (
-                <>
-                  <TouchableOpacity style={hotspotStyles.dateInputBtn} onPress={() => setShowTarikhPicker(true)}>
-                    <Calendar size={16} color={PALETTE.textMutedDark} />
-                    <Text style={[hotspotStyles.dateInputBtnText, !formKejadian.tarikh && { color: PALETTE.textMutedDark }]}>
-                      {formKejadian.tarikh || 'Pilih tarikh'}
-                    </Text>
-                  </TouchableOpacity>
-                  {showTarikhPicker ? (
-                    <DateTimePicker
-                      value={formKejadian.tarikh ? new Date(formKejadian.tarikh) : new Date()}
-                      mode="date"
-                      display="default"
-                      onChange={(event, selectedDate) => {
-                        setShowTarikhPicker(false);
-                        if (event.type === 'set' && selectedDate) {
-                          const iso = selectedDate.toISOString().split('T')[0];
-                          setFormKejadian({ ...formKejadian, tarikh: iso });
-                        }
-                      }}
-                    />
-                  ) : null}
-                </>
+                <View style={{ backgroundColor: PALETTE.surface || '#f8fafc', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 12, marginBottom: 10 }}>
+                  <Text style={{ fontSize: 14, color: PALETTE.textDark }}>{formKejadian.lokasi}</Text>
+                </View>
               )}
-              <Text style={styles.inputLabel}>Lokasi *</Text>
-              <TextInput style={styles.input} placeholder="Cth: Kg Rancha-Rancha" value={formKejadian.lokasi} onChangeText={(t) => setFormKejadian({ ...formKejadian, lokasi: t })} />
+
               <Text style={styles.inputLabel}>Jumlah KIR</Text>
-              <TextInput style={styles.input} placeholder="Cth: 12" keyboardType="numeric" value={formKejadian.jumlah_kir} onChangeText={(t) => setFormKejadian({ ...formKejadian, jumlah_kir: t.replace(/[^0-9]/g, '') })} />
+              {isEditMode ? (
+                <TextInput style={styles.input} placeholder="Cth: 12" keyboardType="numeric" value={formKejadian.jumlah_kir} onChangeText={(t) => setFormKejadian({ ...formKejadian, jumlah_kir: t.replace(/[^0-9]/g, '') })} />
+              ) : (
+                <View style={{ backgroundColor: PALETTE.surface || '#f8fafc', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 12, marginBottom: 10 }}>
+                  <Text style={{ fontSize: 14, color: PALETTE.textDark }}>{formKejadian.jumlah_kir}</Text>
+                </View>
+              )}
+
               <Text style={styles.inputLabel}>Jumlah Mangsa</Text>
-              <TextInput style={styles.input} placeholder="Cth: 45" keyboardType="numeric" value={formKejadian.jumlah_mangsa} onChangeText={(t) => setFormKejadian({ ...formKejadian, jumlah_mangsa: t.replace(/[^0-9]/g, '') })} />
+              {isEditMode ? (
+                <TextInput style={styles.input} placeholder="Cth: 45" keyboardType="numeric" value={formKejadian.jumlah_mangsa} onChangeText={(t) => setFormKejadian({ ...formKejadian, jumlah_mangsa: t.replace(/[^0-9]/g, '') })} />
+              ) : (
+                <View style={{ backgroundColor: PALETTE.surface || '#f8fafc', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 12, marginBottom: 10 }}>
+                  <Text style={{ fontSize: 14, color: PALETTE.textDark }}>{formKejadian.jumlah_mangsa}</Text>
+                </View>
+              )}
+
               <Text style={styles.inputLabel}>PPS</Text>
-              <TextInput style={styles.input} placeholder="Cth: Dewan Komuniti Kg X" value={formKejadian.pps} onChangeText={(t) => setFormKejadian({ ...formKejadian, pps: t })} />
+              {isEditMode ? (
+                <TextInput style={styles.input} placeholder="Cth: Dewan Komuniti Kg X" value={formKejadian.pps} onChangeText={(t) => setFormKejadian({ ...formKejadian, pps: t })} />
+              ) : (
+                <View style={{ backgroundColor: PALETTE.surface || '#f8fafc', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 12, marginBottom: 10 }}>
+                  <Text style={{ fontSize: 14, color: PALETTE.textDark }}>{formKejadian.pps}</Text>
+                </View>
+              )}
+
               <Text style={styles.inputLabel}>Catatan</Text>
-              <TextInput style={[styles.input, { height: 60, textAlignVertical: 'top' }]} placeholder="Catatan tambahan" multiline value={formKejadian.catatan} onChangeText={(t) => setFormKejadian({ ...formKejadian, catatan: t })} />
-              <TouchableOpacity style={styles.saveButton} onPress={handleSaveKejadian}>
-                {loadingKejadian ? <ActivityIndicator color={PALETTE.white} /> : <Text style={styles.saveButtonText}>Simpan Rekod</Text>}
-              </TouchableOpacity>
+              {isEditMode ? (
+                <TextInput style={[styles.input, { height: 60, textAlignVertical: 'top' }]} placeholder="Catatan tambahan" multiline value={formKejadian.description} onChangeText={(t) => setFormKejadian({ ...formKejadian, description: t })} />
+              ) : (
+                <View style={{ backgroundColor: PALETTE.surface || '#f8fafc', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 12, marginBottom: 10, minHeight: 60 }}>
+                  <Text style={{ fontSize: 14, color: PALETTE.textDark }}>{formKejadian.description}</Text>
+                </View>
+              )}
+
+              {isEditMode && (
+                <TouchableOpacity style={styles.saveButton} onPress={handleSaveKejadian}>
+                  {loadingKejadian ? <ActivityIndicator color={PALETTE.white} /> : <Text style={styles.saveButtonText}>Simpan Rekod</Text>}
+                </TouchableOpacity>
+              )}
               <View style={{ height: 20 }} />
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+{/* ---- Sélecteur Tahun (Rekod) ---- */}
+      <Modal visible={kejadianYearDropdownOpen} transparent animationType="fade" onRequestClose={() => setKejadianYearDropdownOpen(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContainer, { maxWidth: 440, maxHeight: '80%' }]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Pilih Tahun</Text>
+              <TouchableOpacity onPress={() => setKejadianYearDropdownOpen(false)}>
+                <X size={24} color={PALETTE.textMutedDark} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView contentContainerStyle={{ padding: 16, gap: 8 }}>
+              <TouchableOpacity
+                onPress={() => { setKejadianFilterYear(null); setKejadianFilterMonth(null); setKejadianYearDropdownOpen(false); }}
+                style={{
+                  flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+                  paddingHorizontal: 18, paddingVertical: 16, borderRadius: 12,
+                  borderWidth: 1.5, borderColor: kejadianFilterYear === null ? PALETTE.orange : (PALETTE.cardLightBorder || '#e2e8f0'),
+                  backgroundColor: kejadianFilterYear === null ? PALETTE.orange + '14' : '#fff',
+                }}
+              >
+                <Text style={{ fontSize: 16, fontWeight: kejadianFilterYear === null ? '800' : '600', color: kejadianFilterYear === null ? PALETTE.orange : PALETTE.textDark }}>Semua Tahun</Text>
+                {kejadianFilterYear === null && <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: PALETTE.orange }} />}
+              </TouchableOpacity>
+              {kejadianAvailableYears.map((y) => (
+                <TouchableOpacity
+                  key={y}
+                  onPress={() => { setKejadianFilterYear(y); setKejadianYearDropdownOpen(false); }}
+                  style={{
+                    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+                    paddingHorizontal: 18, paddingVertical: 16, borderRadius: 12,
+                    borderWidth: 1.5, borderColor: kejadianFilterYear === y ? PALETTE.orange : (PALETTE.cardLightBorder || '#e2e8f0'),
+                    backgroundColor: kejadianFilterYear === y ? PALETTE.orange + '14' : '#fff',
+                  }}
+                >
+                  <Text style={{ fontSize: 16, fontWeight: kejadianFilterYear === y ? '800' : '600', color: kejadianFilterYear === y ? PALETTE.orange : PALETTE.textDark }}>{y}</Text>
+                  {kejadianFilterYear === y && <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: PALETTE.orange }} />}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ---- Sélecteur Bulan (Rekod) ---- */}
+      <Modal visible={kejadianMonthDropdownOpen} transparent animationType="fade" onRequestClose={() => setKejadianMonthDropdownOpen(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContainer, { maxWidth: 440, maxHeight: '85%' }]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Pilih Bulan</Text>
+              <TouchableOpacity onPress={() => setKejadianMonthDropdownOpen(false)}>
+                <X size={24} color={PALETTE.textMutedDark} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView contentContainerStyle={{ padding: 16, gap: 8 }}>
+              <TouchableOpacity
+                onPress={() => { setKejadianFilterMonth(null); setKejadianMonthDropdownOpen(false); }}
+                style={{
+                  flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+                  paddingHorizontal: 18, paddingVertical: 16, borderRadius: 12,
+                  borderWidth: 1.5, borderColor: kejadianFilterMonth === null ? PALETTE.orange : (PALETTE.cardLightBorder || '#e2e8f0'),
+                  backgroundColor: kejadianFilterMonth === null ? PALETTE.orange + '14' : '#fff',
+                }}
+              >
+                <Text style={{ fontSize: 16, fontWeight: kejadianFilterMonth === null ? '800' : '600', color: kejadianFilterMonth === null ? PALETTE.orange : PALETTE.textDark }}>Semua Bulan</Text>
+                {kejadianFilterMonth === null && <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: PALETTE.orange }} />}
+              </TouchableOpacity>
+              {['Januari', 'Februari', 'Mac', 'April', 'Mei', 'Jun', 'Julai', 'Ogos', 'September', 'Oktober', 'November', 'Disember'].map((m, idx) => (
+                <TouchableOpacity
+                  key={m}
+                  onPress={() => { setKejadianFilterMonth(idx); setKejadianMonthDropdownOpen(false); }}
+                  style={{
+                    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+                    paddingHorizontal: 18, paddingVertical: 16, borderRadius: 12,
+                    borderWidth: 1.5, borderColor: kejadianFilterMonth === idx ? PALETTE.orange : (PALETTE.cardLightBorder || '#e2e8f0'),
+                    backgroundColor: kejadianFilterMonth === idx ? PALETTE.orange + '14' : '#fff',
+                  }}
+                >
+                  <Text style={{ fontSize: 16, fontWeight: kejadianFilterMonth === idx ? '800' : '600', color: kejadianFilterMonth === idx ? PALETTE.orange : PALETTE.textDark }}>{m}</Text>
+                  {kejadianFilterMonth === idx && <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: PALETTE.orange }} />}
+                </TouchableOpacity>
+              ))}
             </ScrollView>
           </View>
         </View>
@@ -745,16 +1226,6 @@ const hotspotStyles = StyleSheet.create({
     borderRadius: 8, backgroundColor: PALETTE.cardLight, borderWidth: 1, borderColor: PALETTE.cardLightBorder,
   },
   subTabText: { fontSize: 12, fontWeight: '700' },
-
-  // Cartes de rekod kejadian
-  kejadianCard: { backgroundColor: PALETTE.cardLight, padding: 12, borderRadius: 10, marginBottom: 8, borderWidth: 1, borderColor: PALETTE.cardLightBorder, gap: 6 },
-  kejadianHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  kejadianDate: { fontSize: 12, fontWeight: '800' },
-  kejadianJenis: { fontSize: 13, fontWeight: '700', color: PALETTE.textDark },
-  kejadianLokasi: { fontSize: 13, color: PALETTE.textDark, fontWeight: '600' },
-  kejadianStatsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  kejadianStat: { fontSize: 11, color: PALETTE.textMutedDark, fontWeight: '600' },
-  kejadianCatatan: { fontSize: 12, color: PALETTE.textMutedDark, fontStyle: 'italic', marginTop: 2 },
 
   // Upload photo kejadian
   photoUploadEmpty: {

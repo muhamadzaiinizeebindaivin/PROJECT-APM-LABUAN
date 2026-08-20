@@ -1,11 +1,25 @@
 // src/screens/sekretariat/PetaTab.js
 import React, { useState, useEffect, useRef, createElement } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Platform, Modal, TextInput, ActivityIndicator, Alert, Image, useWindowDimensions } from 'react-native';
-import { Map, History, ClipboardList, AlertTriangle, X, Plus, Download, Trash2, Maximize2 } from 'lucide-react-native';
+import { Map, History, ClipboardList, AlertTriangle, X, Plus, Download, Trash2, Maximize2, MapPin, ChevronLeft, PlusCircle, Check, Droplets, Waves, Mountain, Flame, Wind, CloudRain, Zap, Siren } from 'lucide-react-native';
+
+const CATEGORY_ICON_OPTIONS = [
+  { key: 'MapPin', Icon: MapPin },
+  { key: 'Droplets', Icon: Droplets },
+  { key: 'Waves', Icon: Waves },
+  { key: 'Mountain', Icon: Mountain },
+  { key: 'Flame', Icon: Flame },
+  { key: 'Wind', Icon: Wind },
+  { key: 'CloudRain', Icon: CloudRain },
+  { key: 'Zap', Icon: Zap },
+  { key: 'Siren', Icon: Siren },
+];
 import { supabaseSandbox } from '../../supabaseSandboxClient';
 import { buildSekretariatMapHtml } from './sekretariatMapTemplate';
 import { useOnlineAgencies } from '../../hooks/useOnlineAgencies';
 import { useBencanaPoints } from '../../hooks/useBencanaPoints';
+import { useHotspots } from '../../hooks/useHotspots';
+import { useHotspotCategories } from '../../hooks/useHotspotCategories';
 import { useAgencyTrackingHistory } from '../../hooks/useAgencyTrackingHistory';
 import ModalSelectField from '../../components/ModalSelectField';
 import FullscreenViewer from '../../components/FullscreenViewer';
@@ -52,7 +66,133 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
   const { onlineAgencies } = useOnlineAgencies();
   const onlineAgenciesRef = useRef([]);
   onlineAgenciesRef.current = onlineAgencies;
-  const { bencanaPoints, saveBencana, resolveBencana, deleteBencana } = useBencanaPoints();
+  const { bencanaPoints, saveBencana, completeBencana, updateBencana, deleteBencana } = useBencanaPoints();
+  const [editingBencana, setEditingBencana] = useState(null);
+  const [editForm, setEditForm] = useState({ category: '', lokasi: '', pps: '', description: '' });
+  const [editingSaving, setEditingSaving] = useState(false);
+
+  const openEditBencana = (id) => {
+    const item = bencanaPointsRef.current.find((b) => b.id === id);
+    if (!item) return;
+    setEditingBencana(item);
+    setEditForm({ category: item.category || '', lokasi: item.lokasi || '', pps: item.pps || '', description: item.description || '' });
+  };
+
+  const handleEditSave = async () => {
+    if (!editingBencana) return;
+    setEditingSaving(true);
+    const { error } = await updateBencana(editingBencana.id, editForm);
+    setEditingSaving(false);
+    if (!error) {
+      onNotify?.('success', 'Titik bencana berjaya dikemaskini.');
+      setEditingBencana(null);
+    } else {
+      onNotify?.('error', 'Gagal mengemaskini titik bencana.');
+    }
+  };
+  const { hotspotList } = useHotspots(onNotify);
+  const { categories: hotspotCategories } = useHotspotCategories(onNotify);
+
+  // Étape du flux "Tambah Titik Bencana" : null (fermé) → 'choice' (choix
+  // initial) → soit 'existingList' (cartes de hotspots, clic = plot direct),
+  // soit map en mode placement puis le formulaire "point libre".
+  const [bencanaFlowStep, setBencanaFlowStep] = useState(null); // null | 'choice' | 'existingList'
+  const [newHotspotCategory, setNewHotspotCategory] = useState('');
+  const [newHotspotCategoryOpen, setNewHotspotCategoryOpen] = useState(false);
+  const [customCategoryText, setCustomCategoryText] = useState('');
+  const [customCategoryColor, setCustomCategoryColor] = useState('#1D4E89');
+  const [customCategoryIcon, setCustomCategoryIcon] = useState('MapPin');
+  const [savingBencana, setSavingBencana] = useState(false);
+  const { addCategory: addHotspotCategory } = useHotspotCategories(onNotify);
+
+  const CATEGORY_COLORS = ['#1D4E89', '#F4762B', '#7c3aed', '#dc2626', '#16a34a', '#0891b2', '#d97706', '#db2777'];
+
+  const resetBencanaForm = () => {
+    setBencanaModalVisible(false);
+    setBencanaFlowStep(null);
+    setIsPlacingBencana(false);
+    setPendingBencanaPlacement(null);
+    setBencanaCategory('');
+    setBencanaDescription('');
+    setNewHotspotCategory('');
+    setCustomCategoryText('');
+    setCustomCategoryColor('#1D4E89');
+    setCustomCategoryIcon('MapPin');
+    setSelectedExistingHotspot(null);
+    setExistingKeterangan('');
+    setExistingLokasi('');
+    setExistingPps('');
+    setExistingCategoryFilter(null);
+    setBencanaLokasi('');
+    setBencanaPps('');
+  };
+
+  const [existingCategoryFilter, setExistingCategoryFilter] = useState(null);
+  const [selectedExistingHotspot, setSelectedExistingHotspot] = useState(null);
+  const [existingKeterangan, setExistingKeterangan] = useState('');
+  const [existingLokasi, setExistingLokasi] = useState('');
+  const [existingPps, setExistingPps] = useState('');
+  const [savingExistingHotspot, setSavingExistingHotspot] = useState(false);
+  const [bencanaLokasi, setBencanaLokasi] = useState('');
+  const [bencanaPps, setBencanaPps] = useState('');
+
+  // "Selesai" — formulaire de clôture d'un titik bencana actif
+  const [completingBencana, setCompletingBencana] = useState(null); // le point en cours de clôture, ou null
+  const [completeForm, setCompleteForm] = useState({ jenis_bencana: '', lokasi: '', jumlah_kir: '', jumlah_mangsa: '', pps: '', description: '' });
+  const [completingSaving, setCompletingSaving] = useState(false);
+
+  // Ref pour éviter la closure périmée dans handleMapMessage ci-dessous —
+  // cet effet ne se réabonne que sur [isPlacingBencana], pas sur bencanaPoints.
+  const bencanaPointsRef = useRef([]);
+  bencanaPointsRef.current = bencanaPoints;
+
+  const openCompleteBencana = (id) => {
+    const item = bencanaPointsRef.current.find((b) => b.id === id);
+    if (!item) return;
+    setCompletingBencana(item);
+    setCompleteForm({ jenis_bencana: item.jenis_bencana || '', lokasi: item.lokasi || '', jumlah_kir: item.jumlah_kir?.toString() || '', jumlah_mangsa: item.jumlah_mangsa?.toString() || '', pps: item.pps || '', description: item.description || '' });
+  };
+
+  const handleCompleteSave = async () => {
+    if (!completingBencana) return;
+    setCompletingSaving(true);
+    const { error } = await completeBencana(completingBencana.id, completeForm);
+    setCompletingSaving(false);
+    if (!error) {
+      onNotify?.('success', 'Titik bencana berjaya dikemaskini.');
+      setCompletingBencana(null);
+    } else {
+      onNotify?.('error', 'Gagal mengemaskini titik bencana.');
+    }
+  };
+
+  const handlePickExistingHotspot = (hotspot) => {
+    if (hotspot.latitude == null || hotspot.longitude == null) return;
+    setSelectedExistingHotspot(hotspot);
+    setExistingLokasi(hotspot.area || '');
+    setExistingPps('');
+  };
+
+  const confirmSaveExistingHotspot = async () => {
+    if (!selectedExistingHotspot) return;
+    setSavingExistingHotspot(true);
+    const categoryLabel = hotspotCategories.find((c) => c.key === selectedExistingHotspot.category)?.label || selectedExistingHotspot.category;
+    const { error } = await saveBencana({
+      category: selectedExistingHotspot.category,
+      description: existingKeterangan,
+      latitude: selectedExistingHotspot.latitude,
+      longitude: selectedExistingHotspot.longitude,
+      hotspot_id: selectedExistingHotspot.id,
+      jenis_bencana: categoryLabel,
+      lokasi: existingLokasi,
+      pps: existingPps,
+    });
+    setSavingExistingHotspot(false);
+    if (!error) {
+      onNotify?.('success', 'Titik bencana ditambah.');
+      resetBencanaForm();
+    }
+  };
   const { trackingHistory, loadingHistory, deleteTrackingHistory } = useAgencyTrackingHistory();
 
   // Liste légère des agences, uniquement pour la légende de couleurs de la carte
@@ -202,14 +342,24 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
   useEffect(() => {
     if (mapReady && petaIframeRef?.current?.contentWindow) {
       const payload = bencanaPoints
-        .filter(b => b.status !== 'resolved')
-        .map(b => ({
-          id: b.id, category: b.category, description: b.description || '',
-          lat: b.latitude, lng: b.longitude, created_at: b.created_at
-        }));
+        .filter(b => b.status !== 'resolved' && b.latitude != null && b.longitude != null)
+        .map(b => {
+          const cat = hotspotCategories.find((c) => c.key === b.category);
+          return {
+            id: b.id,
+            category: b.category,
+            categoryLabel: cat?.label || b.category,
+            icon: cat?.icon || 'MapPin',
+            color: cat?.color || '#f97316',
+            description: b.description || '',
+            lokasi: b.lokasi || '',
+            pps: b.pps || '',
+            lat: b.latitude, lng: b.longitude, created_at: b.created_at,
+          };
+        });
       petaIframeRef.current.contentWindow.postMessage(JSON.stringify({ type: 'UPDATE_BENCANA', payload }), '*');
     }
-  }, [bencanaPoints, mapReady]);
+  }, [bencanaPoints, hotspotCategories, mapReady]);
 
   useEffect(() => {
     // La carte tourne dans une <iframe> web (voir plus bas) : `window` n'existe
@@ -227,16 +377,12 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
           setBencanaModalVisible(true);
           setIsPlacingBencana(false);
         } else if (data.type === 'DELETE_BENCANA_REQUEST') {
-          (async () => {
-            const result = await deleteBencana(data.id);
-            if (result?.cancelled) return;
-            onNotify?.(
-              !result?.error ? 'success' : 'error',
-              !result?.error ? 'Titik bencana berjaya dipadam.' : 'Gagal memadam titik bencana.'
-            );
-          })();
+          const point = bencanaPointsRef.current.find((b) => b.id === data.id);
+          handleDeleteBencanaSummary(data.id, point?.category || 'Titik Bencana');
         } else if (data.type === 'RESOLVE_BENCANA_REQUEST') {
-          resolveBencana(data.id);
+          openCompleteBencana(data.id);
+        } else if (data.type === 'EDIT_BENCANA_REQUEST') {
+          openEditBencana(data.id);
         } else if (data.type === 'DELETE_AGENCY_TRACKER_REQUEST') {
           const agency = onlineAgenciesRef.current.find(a => a.id === data.id);
           const label = [agency?.jpbd_directory?.agency, agency?.member_name].map(s => s?.trim()).find(s => s) || '-';
@@ -249,30 +395,47 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isPlacingBencana]);
 
+  const showBencanaError = (msg) => {
+    if (Platform.OS === 'web') window.alert(msg);
+    else Alert.alert('Ralat', msg);
+  };
+
   const handleSaveBencana = async () => {
     if (!pendingBencanaPlacement) return;
 
-    if (!bencanaCategory.trim()) {
-      if (Platform.OS === 'web') {
-        window.alert('Sila isi nama bencana.');
-      } else {
-        Alert.alert('Ralat', 'Sila isi nama bencana.');
-      }
+    const isCustom = newHotspotCategory === '__custom__';
+    if (!newHotspotCategory || (isCustom && !customCategoryText.trim())) {
+      showBencanaError(isCustom ? 'Sila taip kategori.' : 'Sila pilih kategori.');
       return;
     }
 
+    setSavingBencana(true);
+    let categoryKey = newHotspotCategory;
+
+    if (isCustom) {
+      const ok = await addHotspotCategory({
+        label: customCategoryText.trim(), sub: '', color: customCategoryColor, prefix: 'ID', icon: customCategoryIcon,
+      });
+      if (!ok) { setSavingBencana(false); return; }
+      // Même dérivation de clé que useHotspotCategories.addCategory
+      categoryKey = customCategoryText.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_');
+    }
+
+    // Point libre — pas lié à un hotspot (hotspots ne sert que de raccourci
+    // pour pointer un lieu déjà connu, pas à enregistrer de nouvelles données).
+    const categoryLabel = hotspotCategories.find((c) => c.key === categoryKey)?.label || (isCustom ? customCategoryText.trim() : categoryKey);
     const { error } = await saveBencana({
-      category: bencanaCategory,
+      category: categoryKey,
       description: bencanaDescription,
       latitude: pendingBencanaPlacement.lat,
       longitude: pendingBencanaPlacement.lng,
+      hotspot_id: null,
+      jenis_bencana: categoryLabel,
+      lokasi: bencanaLokasi,
+      pps: bencanaPps,
     });
-    if (!error) {
-      setBencanaModalVisible(false);
-      setBencanaCategory('');
-      setBencanaDescription('');
-      setPendingBencanaPlacement(null);
-    }
+    setSavingBencana(false);
+    if (!error) resetBencanaForm();
   };
 
   const handleDeleteBencanaSummary = (id, label) => {
@@ -807,8 +970,11 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
         <View style={[styles.mapToolbar, { flexDirection: 'column' }]}>
           {(userRole === 'sekretariat' || userRole === 'admin') && (
             <TouchableOpacity
-              style={[styles.addBencanaToggleBtn, isPlacingBencana && styles.addBencanaToggleBtnActive]}
-              onPress={() => setIsPlacingBencana(!isPlacingBencana)}
+              style={[styles.addBencanaToggleBtn, isPlacingBencana && styles.addBencanaToggleBtnActive, addBencanaBtnHovered && { zIndex: 100, elevation: 100 }]}
+              onPress={() => {
+                if (isPlacingBencana) { setIsPlacingBencana(false); return; }
+                setBencanaFlowStep('choice');
+              }}
               {...(Platform.OS === 'web' ? {
                 onMouseEnter: () => setAddBencanaBtnHovered(true),
                 onMouseLeave: () => setAddBencanaBtnHovered(false),
@@ -828,7 +994,7 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
           )}
 
           <TouchableOpacity
-            style={styles.summaryToggleBtn}
+            style={[styles.summaryToggleBtn, summaryBtnHovered && { zIndex: 100, elevation: 100 }]}
             onPress={() => setSidePanel(sidePanel === 'summary' ? 'none' : 'summary')}
             {...(Platform.OS === 'web' ? {
               onMouseEnter: () => setSummaryBtnHovered(true),
@@ -844,7 +1010,7 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.historyToggleBtn}
+            style={[styles.historyToggleBtn, historyBtnHovered && { zIndex: 100, elevation: 100 }]}
             onPress={() => setSidePanel(sidePanel === 'history' ? 'none' : 'history')}
             {...(Platform.OS === 'web' ? {
               onMouseEnter: () => setHistoryBtnHovered(true),
@@ -860,7 +1026,7 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.historyToggleBtn}
+            style={[styles.historyToggleBtn, fullscreenBtnHovered && { zIndex: 100, elevation: 100 }]}
             onPress={() => {
               if (isMobile) {
                 setPetaIframeLoading(true);
@@ -883,7 +1049,24 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
           </TouchableOpacity>
         </View>
         {isPlacingBencana && (
-          <Text style={styles.placingBencanaHint}>Klik pada peta untuk letak titik</Text>
+          <View
+            style={{
+              position: 'absolute', top: 16, left: 0, right: 0,
+              alignItems: 'center', zIndex: 500, pointerEvents: 'none',
+            }}
+          >
+            <View
+              style={{
+                flexDirection: 'row', alignItems: 'center', gap: 8,
+                backgroundColor: 'rgba(15, 23, 42, 0.9)', borderRadius: 999,
+                paddingHorizontal: 16, paddingVertical: 10,
+                shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 6,
+              }}
+            >
+              <MapPin size={16} color={PALETTE.orange} />
+              <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>Klik pada peta untuk letak titik</Text>
+            </View>
+          </View>
         )}
       </View>
       )}
@@ -956,25 +1139,285 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
         </View>
       )}
 
-      <Modal visible={bencanaModalVisible} transparent={true} animationType="fade">
+      {/* Étape 1 — choix initial, dès le clic sur "+" */}
+      <Modal visible={bencanaFlowStep === 'choice'} transparent={true} animationType="fade">
         <View style={sekretariatStyles.modalOverlay}>
-          <View style={sekretariatStyles.modalContainer}>
+          <View style={[sekretariatStyles.modalContainer, { maxWidth: 640, width: '100%' }]}>
             <View style={sekretariatStyles.modalHeader}>
               <Text style={sekretariatStyles.modalTitle}>Tambah Titik Bencana</Text>
-              <TouchableOpacity onPress={() => { setBencanaModalVisible(false); setPendingBencanaPlacement(null); setBencanaCategory(''); setBencanaDescription(''); }}>
+              <TouchableOpacity onPress={resetBencanaForm}>
+                <X size={24} color={PALETTE.textMutedDark} />
+              </TouchableOpacity>
+            </View>
+            <View style={[sekretariatStyles.modalForm, { gap: 12 }]}>
+              <TouchableOpacity
+                onPress={() => setBencanaFlowStep('existingList')}
+                style={{
+                  flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16,
+                  borderRadius: 14, borderWidth: 1.5, borderColor: PALETTE.orange, backgroundColor: '#fff7ed',
+                }}
+              >
+                <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: PALETTE.orange, alignItems: 'center', justifyContent: 'center' }}>
+                  <MapPin size={20} color="#fff" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 14, fontWeight: '800', color: PALETTE.textDark }}>Pilih Hotspot Sedia Ada</Text>
+                  <Text style={{ fontSize: 12, color: PALETTE.textMutedDark, marginTop: 2 }}>Titik diletakkan terus pada lokasi hotspot</Text>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => { setBencanaFlowStep(null); setIsPlacingBencana(true); }}
+                style={{
+                  flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16,
+                  borderRadius: 14, borderWidth: 1.5, borderColor: PALETTE.cardLightBorder || '#e2e8f0', backgroundColor: '#fff',
+                }}
+              >
+                <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: PALETTE.surface || '#f1f5f9', alignItems: 'center', justifyContent: 'center' }}>
+                  <PlusCircle size={20} color={PALETTE.orange} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 14, fontWeight: '800', color: PALETTE.textDark }}>Hotspot Baharu</Text>
+                  <Text style={{ fontSize: 12, color: PALETTE.textMutedDark, marginTop: 2 }}>Tandakan lokasi sendiri pada peta</Text>
+                </View>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Étape 2a — liste des hotspots existants, clic = plot direct */}
+      <Modal visible={bencanaFlowStep === 'existingList'} transparent={true} animationType="fade">
+        <View style={sekretariatStyles.modalOverlay}>
+          <View style={[sekretariatStyles.modalContainer, { maxWidth: 640, width: '100%', maxHeight: '90%' }]}>
+            <View style={sekretariatStyles.modalHeader}>
+              <TouchableOpacity
+                onPress={() => {
+                  if (selectedExistingHotspot) setSelectedExistingHotspot(null);
+                  else if (existingCategoryFilter) setExistingCategoryFilter(null);
+                  else setBencanaFlowStep('choice');
+                }}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
+              >
+                <ChevronLeft size={20} color={PALETTE.textMutedDark} />
+                <Text style={sekretariatStyles.modalTitle}>
+                  {selectedExistingHotspot ? 'Keterangan' : existingCategoryFilter ? 'Pilih Hotspot' : 'Pilih Kategori'}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={resetBencanaForm}>
+                <X size={24} color={PALETTE.textMutedDark} />
+              </TouchableOpacity>
+            </View>
+
+            {selectedExistingHotspot ? (
+              <View style={sekretariatStyles.modalForm}>
+                <Text style={sekretariatStyles.inputLabel}>Kategori *</Text>
+                <View style={[sekretariatStyles.input, { justifyContent: 'center' }]}>
+                  <Text style={{ fontSize: 14, color: PALETTE.textDark }}>
+                    {hotspotCategories.find((c) => c.key === selectedExistingHotspot.category)?.label || selectedExistingHotspot.category}
+                  </Text>
+                </View>
+                <Text style={sekretariatStyles.inputLabel}>Kawasan Terjejas</Text>
+                <TextInput
+                  style={sekretariatStyles.input}
+                  placeholder="Cth: Kg Rancha-Rancha"
+                  placeholderTextColor={PALETTE.textMutedDark}
+                  value={existingLokasi}
+                  onChangeText={setExistingLokasi}
+                />
+                <Text style={sekretariatStyles.inputLabel}>PPS</Text>
+                <TextInput
+                  style={sekretariatStyles.input}
+                  placeholder="Cth: Dewan Komuniti Kg X"
+                  placeholderTextColor={PALETTE.textMutedDark}
+                  value={existingPps}
+                  onChangeText={setExistingPps}
+                />
+                <Text style={sekretariatStyles.inputLabel}>Catatan (pilihan)</Text>
+                <TextInput
+                  style={[sekretariatStyles.input, { height: 80, textAlignVertical: 'top' }]}
+                  placeholder="Cth: Air naik setinggi 1 meter"
+                  placeholderTextColor={PALETTE.textMutedDark}
+                  multiline
+                  value={existingKeterangan}
+                  onChangeText={setExistingKeterangan}
+                />
+                <TouchableOpacity style={sekretariatStyles.saveButton} onPress={confirmSaveExistingHotspot} disabled={savingExistingHotspot}>
+                  {savingExistingHotspot ? <ActivityIndicator size="small" color="#fff" /> : <Text style={sekretariatStyles.saveButtonText}>Simpan Titik</Text>}
+                </TouchableOpacity>
+              </View>
+            ) : existingCategoryFilter ? (
+              <ScrollView style={{ maxHeight: 520 }} contentContainerStyle={{ padding: 16, gap: 10 }}>
+                {hotspotList.filter((h) => h.category === existingCategoryFilter.key).length === 0 ? (
+                  <Text style={{ fontSize: 13, color: PALETTE.textMutedDark, textAlign: 'center', paddingVertical: 20 }}>
+                    Tiada hotspot direkodkan untuk kategori ini.
+                  </Text>
+                ) : hotspotList.filter((h) => h.category === existingCategoryFilter.key).map((h) => {
+                  const hasCoords = h.latitude != null && h.longitude != null;
+                  return (
+                    <TouchableOpacity
+                      key={h.id}
+                      disabled={!hasCoords}
+                      onPress={() => handlePickExistingHotspot(h)}
+                      style={{
+                        flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14,
+                        borderRadius: 12, borderWidth: 1, borderColor: PALETTE.cardLightBorder || '#e2e8f0',
+                        backgroundColor: hasCoords ? '#fff' : '#f8fafc', opacity: hasCoords ? 1 : 0.6,
+                      }}
+                    >
+                      <View style={{ width: 34, height: 34, borderRadius: 10, backgroundColor: '#fff7ed', alignItems: 'center', justifyContent: 'center' }}>
+                        <MapPin size={16} color={PALETTE.orange} />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 13, fontWeight: '700', color: PALETTE.textDark }}>{h.river}, {h.area}</Text>
+                        {!hasCoords && (
+                          <Text style={{ fontSize: 11, color: '#dc2626', marginTop: 2 }}>Tiada koordinat direkodkan</Text>
+                        )}
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            ) : (
+              <ScrollView style={{ maxHeight: 520 }} contentContainerStyle={{ padding: 16, gap: 10 }}>
+                {hotspotCategories.length === 0 ? (
+                  <Text style={{ fontSize: 13, color: PALETTE.textMutedDark, textAlign: 'center', paddingVertical: 20 }}>
+                    Tiada kategori direkodkan lagi.
+                  </Text>
+                ) : hotspotCategories.map((cat) => {
+                  const pointCount = hotspotList.filter((h) => h.category === cat.key).length;
+                  return (
+                    <TouchableOpacity
+                      key={cat.id}
+                      onPress={() => setExistingCategoryFilter(cat)}
+                      style={{
+                        flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14,
+                        borderRadius: 12, borderWidth: 1, borderColor: PALETTE.cardLightBorder || '#e2e8f0', backgroundColor: '#fff',
+                      }}
+                    >
+                      <View style={{ width: 34, height: 34, borderRadius: 10, backgroundColor: `${cat.color}18`, alignItems: 'center', justifyContent: 'center' }}>
+                        <MapPin size={16} color={cat.color} />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 13, fontWeight: '700', color: PALETTE.textDark }}>{cat.label}</Text>
+                        {!!cat.sub && <Text style={{ fontSize: 11, color: PALETTE.textMutedDark, marginTop: 1 }}>{cat.sub}</Text>}
+                      </View>
+                      <View style={{ backgroundColor: `${cat.color}18`, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 }}>
+                        <Text style={{ fontSize: 12, fontWeight: '800', color: cat.color }}>{pointCount}</Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* Étape 2b — formulaire point libre, après avoir cliqué sur la carte */}
+      <Modal visible={bencanaModalVisible} transparent={true} animationType="fade">
+        <View style={sekretariatStyles.modalOverlay}>
+          <View style={[sekretariatStyles.modalContainer, { maxWidth: 640, width: '100%' }]}>
+            <View style={sekretariatStyles.modalHeader}>
+              <Text style={sekretariatStyles.modalTitle}>Titik Baharu</Text>
+              <TouchableOpacity onPress={resetBencanaForm}>
                 <X size={24} color={PALETTE.textMutedDark} />
               </TouchableOpacity>
             </View>
             <View style={sekretariatStyles.modalForm}>
-              <Text style={sekretariatStyles.inputLabel}>Kategori Bencana *</Text>
+              <ModalSelectField
+                theme={theme}
+                label="Kategori *"
+                value={
+                  newHotspotCategory === '__custom__'
+                    ? 'Lain-lain'
+                    : newHotspotCategory ? (hotspotCategories.find((c) => c.key === newHotspotCategory)?.label || newHotspotCategory) : ''
+                }
+                placeholder="Pilih kategori"
+                options={[...hotspotCategories.map((c) => c.label), 'Lain-lain']}
+                isOpen={newHotspotCategoryOpen}
+                onToggle={() => setNewHotspotCategoryOpen((v) => !v)}
+                onSelect={(label) => {
+                  if (label === 'Lain-lain') {
+                    setNewHotspotCategory('__custom__');
+                  } else {
+                    const match = hotspotCategories.find((c) => c.label === label);
+                    setNewHotspotCategory(match ? match.key : '');
+                    setCustomCategoryText('');
+                  }
+                  setNewHotspotCategoryOpen(false);
+                }}
+                stackIndex={500}
+              />
+              {newHotspotCategory === '__custom__' && (
+                <View style={{ marginBottom: 14 }}>
+                  <Text style={sekretariatStyles.inputLabel}>Nama Kategori Baharu *</Text>
+                  <TextInput
+                    style={sekretariatStyles.input}
+                    placeholder="Cth: Ribut Petir"
+                    placeholderTextColor={PALETTE.textMutedDark}
+                    value={customCategoryText}
+                    onChangeText={setCustomCategoryText}
+                    autoFocus
+                  />
+                  <Text style={[sekretariatStyles.inputLabel, { marginTop: 10 }]}>Ikon</Text>
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 10 }}>
+                    {CATEGORY_ICON_OPTIONS.map(({ key, Icon }) => {
+                      const selected = customCategoryIcon === key;
+                      return (
+                        <TouchableOpacity
+                          key={key}
+                          onPress={() => setCustomCategoryIcon(key)}
+                          style={{
+                            width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center',
+                            backgroundColor: selected ? customCategoryColor : '#f1f5f9',
+                            borderWidth: selected ? 0 : 1, borderColor: '#e2e8f0',
+                          }}
+                        >
+                          <Icon size={17} color={selected ? '#fff' : PALETTE.textMutedDark} />
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                  <Text style={sekretariatStyles.inputLabel}>Warna</Text>
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+                    {CATEGORY_COLORS.map((color) => {
+                      const selected = customCategoryColor === color;
+                      return (
+                        <TouchableOpacity
+                          key={color}
+                          onPress={() => setCustomCategoryColor(color)}
+                          style={{
+                            width: 30, height: 30, borderRadius: 15, backgroundColor: color,
+                            alignItems: 'center', justifyContent: 'center',
+                            borderWidth: selected ? 3 : 0, borderColor: '#fff',
+                            shadowColor: selected ? color : 'transparent', shadowOpacity: selected ? 0.5 : 0, shadowRadius: 4, elevation: selected ? 3 : 0,
+                          }}
+                        >
+                          {selected && <Check size={14} color="#fff" />}
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </View>
+              )}
+              <Text style={sekretariatStyles.inputLabel}>Kawasan Terjejas</Text>
               <TextInput
                 style={sekretariatStyles.input}
-                placeholder="Cth: Banjir Kilat, Tanah Runtuh, Ribut..."
+                placeholder="Cth: Kg Rancha-Rancha"
                 placeholderTextColor={PALETTE.textMutedDark}
-                value={bencanaCategory}
-                onChangeText={setBencanaCategory}
+                value={bencanaLokasi}
+                onChangeText={setBencanaLokasi}
               />
-              <Text style={sekretariatStyles.inputLabel}>Keterangan (pilihan)</Text>
+              <Text style={sekretariatStyles.inputLabel}>PPS</Text>
+              <TextInput
+                style={sekretariatStyles.input}
+                placeholder="Cth: Dewan Komuniti Kg X"
+                placeholderTextColor={PALETTE.textMutedDark}
+                value={bencanaPps}
+                onChangeText={setBencanaPps}
+              />
+              <Text style={sekretariatStyles.inputLabel}>Catatan (pilihan)</Text>
               <TextInput
                 style={[sekretariatStyles.input, { height: 80, textAlignVertical: 'top' }]}
                 placeholder="Cth: Air naik setinggi 1 meter"
@@ -983,8 +1426,8 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
                 value={bencanaDescription}
                 onChangeText={setBencanaDescription}
               />
-              <TouchableOpacity style={sekretariatStyles.saveButton} onPress={handleSaveBencana}>
-                <Text style={sekretariatStyles.saveButtonText}>Simpan Titik</Text>
+              <TouchableOpacity style={sekretariatStyles.saveButton} onPress={handleSaveBencana} disabled={savingBencana}>
+                {savingBencana ? <ActivityIndicator size="small" color="#fff" /> : <Text style={sekretariatStyles.saveButtonText}>Simpan Titik</Text>}
               </TouchableOpacity>
             </View>
           </View>
@@ -1045,6 +1488,126 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
                 )}
               </TouchableOpacity>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={completingBencana !== null} transparent={true} animationType="fade">
+        <View style={sekretariatStyles.modalOverlay}>
+          <View style={[sekretariatStyles.modalContainer, { maxWidth: 640, width: '100%', maxHeight: '90%' }]}>
+            <View style={sekretariatStyles.modalHeader}>
+              <Text style={sekretariatStyles.modalTitle}>Lengkapkan Titik Bencana</Text>
+              <TouchableOpacity onPress={() => setCompletingBencana(null)} disabled={completingSaving}>
+                <X size={24} color={PALETTE.textMutedDark} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={{ maxHeight: 640 }} contentContainerStyle={sekretariatStyles.modalForm}>
+              <Text style={sekretariatStyles.inputLabel}>Jenis Bencana</Text>
+              <TextInput
+                style={sekretariatStyles.input}
+                placeholder="Cth: Banjir Kilat"
+                placeholderTextColor={PALETTE.textMutedDark}
+                value={completeForm.jenis_bencana}
+                onChangeText={(t) => setCompleteForm((f) => ({ ...f, jenis_bencana: t }))}
+              />
+              <Text style={sekretariatStyles.inputLabel}>Lokasi</Text>
+              <TextInput
+                style={sekretariatStyles.input}
+                placeholder="Cth: Kampung Bebuloh"
+                placeholderTextColor={PALETTE.textMutedDark}
+                value={completeForm.lokasi}
+                onChangeText={(t) => setCompleteForm((f) => ({ ...f, lokasi: t }))}
+              />
+              <Text style={sekretariatStyles.inputLabel}>Jumlah KIR</Text>
+              <TextInput
+                style={sekretariatStyles.input}
+                placeholder="Cth: 4"
+                placeholderTextColor={PALETTE.textMutedDark}
+                keyboardType="number-pad"
+                value={completeForm.jumlah_kir}
+                onChangeText={(t) => setCompleteForm((f) => ({ ...f, jumlah_kir: t.replace(/[^0-9]/g, '') }))}
+              />
+              <Text style={sekretariatStyles.inputLabel}>Jumlah Mangsa</Text>
+              <TextInput
+                style={sekretariatStyles.input}
+                placeholder="Cth: 12"
+                placeholderTextColor={PALETTE.textMutedDark}
+                keyboardType="number-pad"
+                value={completeForm.jumlah_mangsa}
+                onChangeText={(t) => setCompleteForm((f) => ({ ...f, jumlah_mangsa: t.replace(/[^0-9]/g, '') }))}
+              />
+              <Text style={sekretariatStyles.inputLabel}>PPS</Text>
+              <TextInput
+                style={sekretariatStyles.input}
+                placeholder="Cth: Dewan Serbaguna Kampung Bebuloh"
+                placeholderTextColor={PALETTE.textMutedDark}
+                value={completeForm.pps}
+                onChangeText={(t) => setCompleteForm((f) => ({ ...f, pps: t }))}
+              />
+              <Text style={sekretariatStyles.inputLabel}>Catatan</Text>
+              <TextInput
+                style={[sekretariatStyles.input, { height: 80, textAlignVertical: 'top' }]}
+                placeholder="Catatan tambahan"
+                placeholderTextColor={PALETTE.textMutedDark}
+                multiline
+                value={completeForm.description}
+                onChangeText={(t) => setCompleteForm((f) => ({ ...f, description: t }))}
+              />
+              <TouchableOpacity style={sekretariatStyles.saveButton} onPress={handleCompleteSave} disabled={completingSaving}>
+                {completingSaving ? <ActivityIndicator size="small" color="#fff" /> : <Text style={sekretariatStyles.saveButtonText}>Simpan & Tandakan Selesai</Text>}
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={editingBencana !== null} transparent={true} animationType="fade">
+        <View style={sekretariatStyles.modalOverlay}>
+          <View style={sekretariatStyles.modalContainer}>
+            <View style={sekretariatStyles.modalHeader}>
+              <Text style={sekretariatStyles.modalTitle}>Kemaskini Titik Bencana</Text>
+              <TouchableOpacity onPress={() => setEditingBencana(null)} disabled={editingSaving}>
+                <X size={24} color={PALETTE.textMutedDark} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={{ maxHeight: 460 }} contentContainerStyle={sekretariatStyles.modalForm}>
+              <Text style={sekretariatStyles.inputLabel}>Kategori</Text>
+              <TextInput
+                style={sekretariatStyles.input}
+                placeholder="Kategori"
+                placeholderTextColor={PALETTE.textMutedDark}
+                value={editForm.category}
+                onChangeText={(t) => setEditForm((f) => ({ ...f, category: t }))}
+              />
+              <Text style={sekretariatStyles.inputLabel}>Kawasan Terjejas</Text>
+              <TextInput
+                style={sekretariatStyles.input}
+                placeholder="Cth: Kg Rancha-Rancha"
+                placeholderTextColor={PALETTE.textMutedDark}
+                value={editForm.lokasi}
+                onChangeText={(t) => setEditForm((f) => ({ ...f, lokasi: t }))}
+              />
+              <Text style={sekretariatStyles.inputLabel}>PPS</Text>
+              <TextInput
+                style={sekretariatStyles.input}
+                placeholder="Cth: Dewan Serbaguna Kampung Bebuloh"
+                placeholderTextColor={PALETTE.textMutedDark}
+                value={editForm.pps}
+                onChangeText={(t) => setEditForm((f) => ({ ...f, pps: t }))}
+              />
+              <Text style={sekretariatStyles.inputLabel}>Catatan</Text>
+              <TextInput
+                style={[sekretariatStyles.input, { height: 80, textAlignVertical: 'top' }]}
+                placeholder="Catatan tambahan"
+                placeholderTextColor={PALETTE.textMutedDark}
+                multiline
+                value={editForm.description}
+                onChangeText={(t) => setEditForm((f) => ({ ...f, description: t }))}
+              />
+              <TouchableOpacity style={sekretariatStyles.saveButton} onPress={handleEditSave} disabled={editingSaving}>
+                {editingSaving ? <ActivityIndicator size="small" color="#fff" /> : <Text style={sekretariatStyles.saveButtonText}>Simpan</Text>}
+              </TouchableOpacity>
+            </ScrollView>
           </View>
         </View>
       </Modal>

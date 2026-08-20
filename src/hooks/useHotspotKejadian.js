@@ -4,9 +4,8 @@ import { Alert, Platform } from 'react-native';
 import { supabaseSandbox } from '../supabaseSandboxClient';
 
 /**
- * Gère la liste des rekod kejadian (historique d'incidents par catégorie) :
- * chargement, création, modification, suppression.
- * Schéma sandbox uniquement — ne touche jamais public.
+ * Rekod kejadian (onglet "Rekod" par catégorie dans HotspotSection.js) —
+ * lit/écrit sekretariat_bencana_points, filtré par catégorie côté composant.
  */
 export function useHotspotKejadian(onNotify) {
   const [kejadianList, setKejadianList] = useState([]);
@@ -15,13 +14,16 @@ export function useHotspotKejadian(onNotify) {
   const [formModeKejadian, setFormModeKejadian] = useState('add');
   const [editIdKejadian, setEditIdKejadian] = useState(null);
   const [formKejadian, setFormKejadian] = useState({
-    category: 'banjir', tarikh: '', jenis_bencana: '', lokasi: '',
-    jumlah_kir: '', jumlah_mangsa: '', pps: '', catatan: ''
+    category: '', jenis_bencana: '', tarikh: '', lokasi: '',
+    jumlah_kir: '', jumlah_mangsa: '', pps: '', description: '',
   });
 
   const fetchKejadian = async () => {
     setLoadingKejadian(true);
-    const { data, error } = await supabaseSandbox.from('hotspot_kejadian').select('*').order('tarikh', { ascending: false });
+    const { data, error } = await supabaseSandbox
+      .from('sekretariat_bencana_points')
+      .select('*')
+      .order('tarikh', { ascending: false });
     if (!error) setKejadianList(data || []);
     setLoadingKejadian(false);
   };
@@ -29,8 +31,8 @@ export function useHotspotKejadian(onNotify) {
   useEffect(() => {
     fetchKejadian();
     const subscription = supabaseSandbox
-      .channel('hotspot_kejadian_changes')
-      .on('postgres_changes', { event: '*', schema: 'sandbox', table: 'hotspot_kejadian' }, () => {
+      .channel('sekretariat_bencana_points_kejadian_changes')
+      .on('postgres_changes', { event: '*', schema: 'sandbox', table: 'sekretariat_bencana_points' }, () => {
         fetchKejadian();
       })
       .subscribe();
@@ -38,9 +40,9 @@ export function useHotspotKejadian(onNotify) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const openAddKejadianModal = (category, categoryLabel) => {
+  const openAddKejadianModal = (categoryKey, categoryLabel) => {
     setFormModeKejadian('add');
-    setFormKejadian({ category, tarikh: '', jenis_bencana: categoryLabel, lokasi: '', jumlah_kir: '', jumlah_mangsa: '', pps: '', catatan: '' });
+    setFormKejadian({ category: categoryKey, jenis_bencana: categoryLabel || '', tarikh: '', lokasi: '', jumlah_kir: '', jumlah_mangsa: '', pps: '', description: '' });
     setModalKejadianVisible(true);
   };
 
@@ -49,34 +51,39 @@ export function useHotspotKejadian(onNotify) {
     setEditIdKejadian(item.id);
     setFormKejadian({
       category: item.category,
-      tarikh: item.tarikh || '',
       jenis_bencana: item.jenis_bencana || '',
+      tarikh: item.tarikh || '',
       lokasi: item.lokasi || '',
       jumlah_kir: item.jumlah_kir != null ? String(item.jumlah_kir) : '',
       jumlah_mangsa: item.jumlah_mangsa != null ? String(item.jumlah_mangsa) : '',
       pps: item.pps || '',
-      catatan: item.catatan || '',
+      description: item.description || '',
     });
     setModalKejadianVisible(true);
   };
 
   const handleSaveKejadian = async () => {
+    // Tous les champs sont optionnels — l'utilisateur peut compléter plus tard.
     const payload = {
-      ...formKejadian,
-      tarikh: formKejadian.tarikh === '' ? null : formKejadian.tarikh,
-      jumlah_kir: formKejadian.jumlah_kir === '' ? null : Number(formKejadian.jumlah_kir),
-      jumlah_mangsa: formKejadian.jumlah_mangsa === '' ? null : Number(formKejadian.jumlah_mangsa),
+      category: formKejadian.category,
+      jenis_bencana: formKejadian.jenis_bencana?.trim() || null,
+      tarikh: formKejadian.tarikh || null,
+      lokasi: formKejadian.lokasi?.trim() || null,
+      jumlah_kir: formKejadian.jumlah_kir === '' ? null : parseInt(formKejadian.jumlah_kir, 10),
+      jumlah_mangsa: formKejadian.jumlah_mangsa === '' ? null : parseInt(formKejadian.jumlah_mangsa, 10),
+      pps: formKejadian.pps?.trim() || null,
+      description: formKejadian.description?.trim() || null,
     };
 
     setLoadingKejadian(true);
     if (formModeKejadian === 'add') {
-      const { error } = await supabaseSandbox.from('hotspot_kejadian').insert([payload]);
+      const { error } = await supabaseSandbox.from('sekretariat_bencana_points').insert([payload]);
       if (error) onNotify?.('error', error.message);
-      else { onNotify?.('success', 'Rekod kejadian ditambah.'); setModalKejadianVisible(false); fetchKejadian(); }
+      else { onNotify?.('success', 'Rekod ditambah.'); setModalKejadianVisible(false); fetchKejadian(); }
     } else {
-      const { error } = await supabaseSandbox.from('hotspot_kejadian').update(payload).eq('id', editIdKejadian);
+      const { error } = await supabaseSandbox.from('sekretariat_bencana_points').update(payload).eq('id', editIdKejadian);
       if (error) onNotify?.('error', error.message);
-      else { onNotify?.('success', 'Rekod kejadian dikemaskini.'); setModalKejadianVisible(false); fetchKejadian(); }
+      else { onNotify?.('success', 'Rekod dikemaskini.'); setModalKejadianVisible(false); fetchKejadian(); }
     }
     setLoadingKejadian(false);
   };
@@ -84,20 +91,16 @@ export function useHotspotKejadian(onNotify) {
   const confirmDeleteKejadian = (id) => {
     const executeDelete = async () => {
       setLoadingKejadian(true);
-      const { error } = await supabaseSandbox.from('hotspot_kejadian').delete().eq('id', id);
-      if (error) {
-        onNotify?.('error', error.message);
-      } else {
-        onNotify?.('success', 'Rekod kejadian dipadam.');
-        fetchKejadian();
-      }
+      const { error } = await supabaseSandbox.from('sekretariat_bencana_points').delete().eq('id', id);
+      if (error) onNotify?.('error', error.message);
+      else { onNotify?.('success', 'Rekod dipadam.'); fetchKejadian(); }
       setLoadingKejadian(false);
     };
 
     if (Platform.OS === 'web') {
-      if (window.confirm('Pengesahan: Padam rekod kejadian ini?')) executeDelete();
+      if (window.confirm('Padam rekod ini?')) executeDelete();
     } else {
-      Alert.alert('Pengesahan Padam', 'Padam rekod kejadian ini?', [
+      Alert.alert('Pengesahan Padam', 'Padam rekod ini?', [
         { text: 'Batal', style: 'cancel' },
         { text: 'Padam', style: 'destructive', onPress: executeDelete },
       ]);

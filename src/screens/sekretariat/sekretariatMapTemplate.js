@@ -108,6 +108,10 @@ export function buildSekretariatMapHtml({ theme, userRole }) {
             window.parent.postMessage(JSON.stringify({ type: 'RESOLVE_BENCANA_REQUEST', id: id }), '*');
           };
 
+          window.requestEditBencana = function(id) {
+            window.parent.postMessage(JSON.stringify({ type: 'EDIT_BENCANA_REQUEST', id: id }), '*');
+          };
+
           window.requestDeleteAgencyTracker = function(id) {
             window.parent.postMessage(JSON.stringify({ type: 'DELETE_AGENCY_TRACKER_REQUEST', id: id }), '*');
           };
@@ -139,15 +143,32 @@ export function buildSekretariatMapHtml({ theme, userRole }) {
             });
           };
 
-          var createBencanaIcon = function() {
+          // Chemins SVG (style Lucide, viewBox 24x24, stroke uniquement) pour les
+          // icônes de catégorie utilisées sur les points bencana.
+          var BENCANA_ICON_PATHS = {
+            MapPin: '<path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/>',
+            Droplets: '<path d="M7 16.3c2.2 0 4-1.83 4-4.05 0-1.16-.57-2.26-1.71-3.19S7.29 6.75 7 5.3c-.29 1.45-1.14 2.84-2.29 3.76S3 11.1 3 12.25c0 2.22 1.8 4.05 4 4.05z"/><path d="M12.56 6.6A10.97 10.97 0 0 0 14 3.02c.5 2.5 2 4.9 4 6.5s3 3.5 3 5.5a6.98 6.98 0 0 1-11.91 4.97"/>',
+            Waves: '<path d="M2 6c.6.5 1.2 1 2.5 1C7 7 7 5 9.5 5c2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/><path d="M2 12c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/><path d="M2 18c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/>',
+            Mountain: '<path d="m8 3 4 8 5-5 5 15H2L8 3z"/>',
+            Flame: '<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>',
+            Wind: '<path d="M12.8 19.6A2 2 0 1 0 14 16H2"/><path d="M17.5 8a2.5 2.5 0 1 1 2 4H2"/><path d="M9.8 4.4A2 2 0 1 1 11 8H2"/>',
+            CloudRain: '<path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M16 14v6"/><path d="M8 14v6"/><path d="M12 16v6"/>',
+            Zap: '<path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/>',
+            Siren: '<path d="M7 18v-6a5 5 0 1 1 10 0v6"/><path d="M5 21a1 1 0 0 1-1-1v-2a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1z"/>'
+          };
+
+          var createBencanaIcon = function(iconKey, color) {
+            var pinColor = color || '#ea580c';
+            var iconInner = BENCANA_ICON_PATHS[iconKey] || BENCANA_ICON_PATHS.MapPin;
             return L.divIcon({
               className: 'bencana-pin',
               html: '<div class="pulse-wrap" style="width:44px;height:44px;opacity:1;">' +
-                      '<div class="pulse-ring" style="background:#ea580c;opacity:0.4;"></div>' +
+                      '<div class="pulse-ring" style="background:' + pinColor + ';opacity:0.4;"></div>' +
                       '<svg width="28" height="36" viewBox="0 0 28 36" style="filter:drop-shadow(0 2px 3px rgba(0,0,0,0.35));position:relative;">' +
-                        '<path d="M14 0C6.3 0 0 6.3 0 14c0 10.5 14 22 14 22s14-11.5 14-22C28 6.3 21.7 0 14 0z" fill="#ea580c" stroke="white" stroke-width="2"/>' +
-                        '<polygon points="14,7 20,18 8,18" fill="white"/>' +
-                        '<text x="14" y="17" text-anchor="middle" font-size="9" font-weight="900" fill="#ea580c" font-family="sans-serif">!</text>' +
+                        '<path d="M14 0C6.3 0 0 6.3 0 14c0 10.5 14 22 14 22s14-11.5 14-22C28 6.3 21.7 0 14 0z" fill="' + pinColor + '"/>' +
+                        '<g transform="translate(7,4) scale(0.58)" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">' +
+                          iconInner +
+                        '</g>' +
                       '</svg>' +
                     '</div>',
               iconSize: [44, 44], iconAnchor: [22, 44], popupAnchor: [0, -44]
@@ -264,12 +285,26 @@ export function buildSekretariatMapHtml({ theme, userRole }) {
                   popupDiv.className = 'custom-popup';
 
                   var strongEl = document.createElement('strong');
-                  strongEl.textContent = b.category;
+                  strongEl.textContent = b.categoryLabel || b.category;
                   popupDiv.appendChild(strongEl);
+
+                  if (b.lokasi) {
+                    var lokasiEl = document.createElement('span');
+                    lokasiEl.className = 'sub';
+                    lokasiEl.textContent = 'Kawasan Terjejas: ' + b.lokasi;
+                    popupDiv.appendChild(lokasiEl);
+                  }
+
+                  if (b.pps) {
+                    var ppsEl = document.createElement('span');
+                    ppsEl.className = 'sub';
+                    ppsEl.textContent = 'PPS: ' + b.pps;
+                    popupDiv.appendChild(ppsEl);
+                  }
 
                   var descEl = document.createElement('span');
                   descEl.className = 'sub';
-                  descEl.textContent = b.description || 'Tiada keterangan';
+                  descEl.textContent = b.description ? ('Keterangan: ' + b.description) : 'Tiada keterangan';
                   popupDiv.appendChild(descEl);
 
                   if (b.created_at) {
@@ -280,6 +315,23 @@ export function buildSekretariatMapHtml({ theme, userRole }) {
                   }
 
                   if (canDeleteBencana) {
+                    var editBtnEl = document.createElement('button');
+                    editBtnEl.textContent = 'Kemaskini';
+                    editBtnEl.style.marginTop = '6px';
+                    editBtnEl.style.backgroundColor = '#f97316';
+                    editBtnEl.style.color = 'white';
+                    editBtnEl.style.border = 'none';
+                    editBtnEl.style.padding = '4px 10px';
+                    editBtnEl.style.borderRadius = '6px';
+                    editBtnEl.style.fontSize = '11px';
+                    editBtnEl.style.fontWeight = '700';
+                    editBtnEl.style.cursor = 'pointer';
+                    editBtnEl.style.width = '100%';
+                    editBtnEl.addEventListener('click', function() {
+                      window.requestEditBencana(b.id);
+                    });
+                    popupDiv.appendChild(editBtnEl);
+
                     var resolveBtnEl = document.createElement('button');
                     resolveBtnEl.textContent = 'Selesai';
                     resolveBtnEl.style.marginTop = '6px';
@@ -315,7 +367,7 @@ export function buildSekretariatMapHtml({ theme, userRole }) {
                     popupDiv.appendChild(btnEl);
                   }
 
-                  bencanaMarkers[b.id] = L.marker([b.lat, b.lng], { icon: createBencanaIcon() })
+                  bencanaMarkers[b.id] = L.marker([b.lat, b.lng], { icon: createBencanaIcon(b.icon, b.color) })
                     .bindPopup(popupDiv);
                   bencanaCluster.addLayer(bencanaMarkers[b.id]);
                 }

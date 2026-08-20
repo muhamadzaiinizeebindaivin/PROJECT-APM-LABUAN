@@ -40,6 +40,7 @@ import { PALETTE } from '../constants/palette';
 import { buildSekretariatMapHtml } from './sekretariat/sekretariatMapTemplate';
 import { useOnlineAgencies } from '../hooks/useOnlineAgencies';
 import { useBencanaPoints } from '../hooks/useBencanaPoints';
+import { useHotspotCategories } from '../hooks/useHotspotCategories';
 
 const STORAGE_KEY = 'apm_agency_session';
 
@@ -196,6 +197,7 @@ export default function AgencyTrackingScreen({ onLogout }) {
 
   const { onlineAgencies } = useOnlineAgencies();
   const { bencanaPoints } = useBencanaPoints();
+  const { categories: hotspotCategories } = useHotspotCategories();
   const trackerMapIframeRef = useRef(null);
   const [trackerMapLoading, setTrackerMapLoading] = useState(true);
   const [fullscreenBtnHovered, setFullscreenBtnHovered] = useState(false);
@@ -282,14 +284,24 @@ export default function AgencyTrackingScreen({ onLogout }) {
   useEffect(() => {
     if (trackerMapReady && trackerMapIframeRef?.current?.contentWindow) {
       const payload = bencanaPoints
-        .filter((b) => b.status !== 'resolved')
-        .map((b) => ({
-          id: b.id, category: b.category, description: b.description || '',
-          lat: b.latitude, lng: b.longitude, created_at: b.created_at,
-        }));
+        .filter((b) => b.status !== 'resolved' && b.latitude != null && b.longitude != null)
+        .map((b) => {
+          const cat = hotspotCategories.find((c) => c.key === b.category);
+          return {
+            id: b.id,
+            category: b.category,
+            categoryLabel: cat?.label || b.jenis_bencana || b.category,
+            icon: cat?.icon || 'MapPin',
+            color: cat?.color || '#f97316',
+            description: b.description || '',
+            lokasi: b.lokasi || '',
+            pps: b.pps || '',
+            lat: b.latitude, lng: b.longitude, created_at: b.created_at,
+          };
+        });
       trackerMapIframeRef.current.contentWindow.postMessage(JSON.stringify({ type: 'UPDATE_BENCANA', payload }), '*');
     }
-  }, [bencanaPoints, trackerMapReady]);
+  }, [bencanaPoints, hotspotCategories, trackerMapReady]);
 
   const handleTrackerMapLoad = () => setTrackerMapLoading(false);
 

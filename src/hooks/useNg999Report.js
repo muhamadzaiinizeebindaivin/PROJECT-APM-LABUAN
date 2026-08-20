@@ -14,8 +14,12 @@ export function useNg999Report(filterYear, filterMonth) {
     if (!filterYear || filterMonth === undefined) return;
     setLoadingNg(true);
 
-    const startDate = `${filterYear}-${String(filterMonth + 1).padStart(2, '0')}-01`;
-    const endDate = `${filterYear}-${String(filterMonth + 1).padStart(2, '0')}-${new Date(filterYear, filterMonth + 1, 0).getDate()}`;
+    const startDate = filterMonth === null
+      ? `${filterYear}-01-01`
+      : `${filterYear}-${String(filterMonth + 1).padStart(2, '0')}-01`;
+    const endDate = filterMonth === null
+      ? `${filterYear}-12-31`
+      : `${filterYear}-${String(filterMonth + 1).padStart(2, '0')}-${new Date(filterYear, filterMonth + 1, 0).getDate()}`;
 
     const { data, error } = await supabaseSandbox
       .from('laporan_ng999')

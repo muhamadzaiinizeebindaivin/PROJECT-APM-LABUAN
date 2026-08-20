@@ -62,8 +62,10 @@ export default function Ng999ReportTab({ theme, isEditMode, onNotify }) {
   const displayDetailItemRef = useRef(null);
   if (detailItem) displayDetailItemRef.current = detailItem;
 
-  const daysInFilterMonth = new Date(filterYear, filterMonth + 1, 0).getDate();
-  const dayOptions = ['Semua Hari', ...Array.from({ length: daysInFilterMonth }, (_, i) => String(i + 1))];
+  const daysInFilterMonth = filterMonth !== null ? new Date(filterYear, filterMonth + 1, 0).getDate() : 0;
+  const dayOptions = filterMonth !== null
+    ? ['Semua Hari', ...Array.from({ length: daysInFilterMonth }, (_, i) => String(i + 1))]
+    : ['Semua Hari'];
 
   const filteredNgData = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -243,25 +245,32 @@ export default function Ng999ReportTab({ theme, isEditMode, onNotify }) {
             </View>
             <View style={[tableStyles.historyFilterRow, { marginBottom: 4 }, isMobile && { flexWrap: 'wrap', rowGap: 10 }]}>
               <View style={isMobile ? { flexBasis: '48%' } : { flex: 1 }}>
-                <ModalSelectField theme={theme} label="Tahun" value={String(filterYear)} placeholder="Tahun"
-                  options={availableYears.map(String)} isOpen={filterYearOpen}
-                  onToggle={() => { setFilterYearOpen(!filterYearOpen); setFilterMonthOpen(false); setFilterDayOpen(false); }}
-                  onSelect={(opt) => { setFilterYear(Number(opt)); setFilterDay(null); setFilterYearOpen(false); }}
-                  stackIndex={3000} />
+                <Text style={{ fontSize: 12, fontWeight: '700', color: PALETTE.textMutedDark, marginBottom: 6 }}>Tahun</Text>
+                <TouchableOpacity
+                  onPress={() => setFilterYearOpen(true)}
+                  style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: PALETTE.cardLightBorder, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, backgroundColor: '#fff' }}
+                >
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: PALETTE.textDark }}>{filterYear}</Text>
+                </TouchableOpacity>
               </View>
               <View style={isMobile ? { flexBasis: '48%' } : { flex: 1 }}>
-                <ModalSelectField theme={theme} label="Bulan" value={BULAN_MS[filterMonth]}
-                  placeholder="Bulan" options={BULAN_MS} isOpen={filterMonthOpen}
-                  onToggle={() => { setFilterMonthOpen(!filterMonthOpen); setFilterYearOpen(false); setFilterDayOpen(false); }}
-                  onSelect={(opt) => { setFilterMonth(BULAN_MS.indexOf(opt)); setFilterDay(null); setFilterMonthOpen(false); }}
-                  stackIndex={2000} />
+                <Text style={{ fontSize: 12, fontWeight: '700', color: PALETTE.textMutedDark, marginBottom: 6 }}>Bulan</Text>
+                <TouchableOpacity
+                  onPress={() => setFilterMonthOpen(true)}
+                  style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: PALETTE.cardLightBorder, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, backgroundColor: '#fff' }}
+                >
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: PALETTE.textDark }}>{filterMonth === null ? 'Semua Bulan' : BULAN_MS[filterMonth]}</Text>
+                </TouchableOpacity>
               </View>
-              <View style={isMobile ? { flexBasis: '100%' } : { flex: 1 }}>
-                <ModalSelectField theme={theme} label="Hari" value={filterDay === null ? 'Semua Hari' : String(filterDay)}
-                  placeholder="Hari" options={dayOptions} isOpen={filterDayOpen}
-                  onToggle={() => { setFilterDayOpen(!filterDayOpen); setFilterYearOpen(false); setFilterMonthOpen(false); }}
-                  onSelect={(opt) => { setFilterDay(opt === 'Semua Hari' ? null : Number(opt)); setFilterDayOpen(false); }}
-                  stackIndex={1000} />
+              <View style={isMobile ? { flexBasis: '100%' } : { flex: 1, opacity: filterMonth === null ? 0.5 : 1 }}>
+                <Text style={{ fontSize: 12, fontWeight: '700', color: PALETTE.textMutedDark, marginBottom: 6 }}>Hari</Text>
+                <TouchableOpacity
+                  disabled={filterMonth === null}
+                  onPress={() => setFilterDayOpen(true)}
+                  style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: PALETTE.cardLightBorder, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, backgroundColor: '#fff' }}
+                >
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: PALETTE.textDark }}>{filterDay === null ? 'Semua Hari' : filterDay}</Text>
+                </TouchableOpacity>
               </View>
             </View>
             <View style={{ paddingHorizontal: 16, marginBottom: 12 }}>
@@ -497,6 +506,114 @@ export default function Ng999ReportTab({ theme, isEditMode, onNotify }) {
             )}
           </View>
         </View>
+      </Modal>
+
+      {/* --- Pilih Tahun --- */}
+      <Modal visible={filterYearOpen} transparent animationType="fade" onRequestClose={() => setFilterYearOpen(false)}>
+        <TouchableOpacity style={formStyles.modalOverlay} activeOpacity={1} onPress={() => setFilterYearOpen(false)}>
+          <TouchableOpacity activeOpacity={1} style={[formStyles.modalContent, { backgroundColor: PALETTE.cardLight, maxWidth: 440, maxHeight: '80%' }]}>
+            <View style={formStyles.modalHeader}>
+              <Text style={{ fontSize: 18, fontWeight: '800', color: PALETTE.textDark }}>Pilih Tahun</Text>
+              <TouchableOpacity onPress={() => setFilterYearOpen(false)}>
+                <X size={24} color={PALETTE.textMutedDark} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView contentContainerStyle={{ gap: 8 }}>
+              {availableYears.map((y) => (
+                <TouchableOpacity
+                  key={y}
+                  onPress={() => { setFilterYear(y); setFilterDay(null); setFilterYearOpen(false); }}
+                  style={{
+                    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+                    paddingHorizontal: 18, paddingVertical: 16, borderRadius: 12,
+                    borderWidth: 1.5, borderColor: filterYear === y ? PALETTE.orange : PALETTE.cardLightBorder,
+                    backgroundColor: filterYear === y ? PALETTE.orange + '14' : '#fff',
+                  }}
+                >
+                  <Text style={{ fontSize: 16, fontWeight: filterYear === y ? '800' : '600', color: filterYear === y ? PALETTE.orange : PALETTE.textDark }}>{y}</Text>
+                  {filterYear === y && <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: PALETTE.orange }} />}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* --- Pilih Bulan --- */}
+      <Modal visible={filterMonthOpen} transparent animationType="fade" onRequestClose={() => setFilterMonthOpen(false)}>
+        <TouchableOpacity style={formStyles.modalOverlay} activeOpacity={1} onPress={() => setFilterMonthOpen(false)}>
+          <TouchableOpacity activeOpacity={1} style={[formStyles.modalContent, { backgroundColor: PALETTE.cardLight, maxWidth: 440, maxHeight: '85%' }]}>
+            <View style={formStyles.modalHeader}>
+              <Text style={{ fontSize: 18, fontWeight: '800', color: PALETTE.textDark }}>Pilih Bulan</Text>
+              <TouchableOpacity onPress={() => setFilterMonthOpen(false)}>
+                <X size={24} color={PALETTE.textMutedDark} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView contentContainerStyle={{ gap: 8 }}>
+              <TouchableOpacity
+                onPress={() => { setFilterMonth(null); setFilterDay(null); setFilterMonthOpen(false); }}
+                style={{
+                  flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+                  paddingHorizontal: 18, paddingVertical: 16, borderRadius: 12,
+                  borderWidth: 1.5, borderColor: filterMonth === null ? PALETTE.orange : PALETTE.cardLightBorder,
+                  backgroundColor: filterMonth === null ? PALETTE.orange + '14' : '#fff',
+                }}
+              >
+                <Text style={{ fontSize: 16, fontWeight: filterMonth === null ? '800' : '600', color: filterMonth === null ? PALETTE.orange : PALETTE.textDark }}>Semua Bulan</Text>
+                {filterMonth === null && <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: PALETTE.orange }} />}
+              </TouchableOpacity>
+              {BULAN_MS.map((m, idx) => (
+                <TouchableOpacity
+                  key={m}
+                  onPress={() => { setFilterMonth(idx); setFilterDay(null); setFilterMonthOpen(false); }}
+                  style={{
+                    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+                    paddingHorizontal: 18, paddingVertical: 16, borderRadius: 12,
+                    borderWidth: 1.5, borderColor: filterMonth === idx ? PALETTE.orange : PALETTE.cardLightBorder,
+                    backgroundColor: filterMonth === idx ? PALETTE.orange + '14' : '#fff',
+                  }}
+                >
+                  <Text style={{ fontSize: 16, fontWeight: filterMonth === idx ? '800' : '600', color: filterMonth === idx ? PALETTE.orange : PALETTE.textDark }}>{m}</Text>
+                  {filterMonth === idx && <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: PALETTE.orange }} />}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* --- Pilih Hari --- */}
+      <Modal visible={filterDayOpen} transparent animationType="fade" onRequestClose={() => setFilterDayOpen(false)}>
+        <TouchableOpacity style={formStyles.modalOverlay} activeOpacity={1} onPress={() => setFilterDayOpen(false)}>
+          <TouchableOpacity activeOpacity={1} style={[formStyles.modalContent, { backgroundColor: PALETTE.cardLight, maxWidth: 440, maxHeight: '85%' }]}>
+            <View style={formStyles.modalHeader}>
+              <Text style={{ fontSize: 18, fontWeight: '800', color: PALETTE.textDark }}>Pilih Hari</Text>
+              <TouchableOpacity onPress={() => setFilterDayOpen(false)}>
+                <X size={24} color={PALETTE.textMutedDark} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView contentContainerStyle={{ gap: 8 }}>
+              {dayOptions.map((opt) => {
+                const isSelected = opt === 'Semua Hari' ? filterDay === null : filterDay === Number(opt);
+                return (
+                  <TouchableOpacity
+                    key={opt}
+                    onPress={() => { setFilterDay(opt === 'Semua Hari' ? null : Number(opt)); setFilterDayOpen(false); }}
+                    style={{
+                      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+                      paddingHorizontal: 18, paddingVertical: 16, borderRadius: 12,
+                      borderWidth: 1.5, borderColor: isSelected ? PALETTE.orange : PALETTE.cardLightBorder,
+                      backgroundColor: isSelected ? PALETTE.orange + '14' : '#fff',
+                    }}
+                  >
+                    <Text style={{ fontSize: 16, fontWeight: isSelected ? '800' : '600', color: isSelected ? PALETTE.orange : PALETTE.textDark }}>{opt}</Text>
+                    {isSelected && <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: PALETTE.orange }} />}
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </TouchableOpacity>
+        </TouchableOpacity>
       </Modal>
 
       </>

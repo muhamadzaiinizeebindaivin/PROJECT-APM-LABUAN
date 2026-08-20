@@ -1,7 +1,7 @@
 // src/screens/operasi/LiveMapTab.js
 import React, { useState, useRef, useEffect, useMemo, createElement } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Platform, ActivityIndicator, Modal, TextInput, KeyboardAvoidingView, useWindowDimensions } from 'react-native';
-import { ShieldAlert, MapIcon, History, ClipboardList, Download, Route, X , Trash2, AlertTriangle, Maximize2} from 'lucide-react-native';
+import { ShieldAlert, MapIcon, History, ClipboardList, Download, Route, X , Trash2, AlertTriangle, Maximize2, MapPin} from 'lucide-react-native';
 import { getVehicleIcon } from '../../utils/vehicleIcons';
 import { PALETTE } from '../../constants/palette';
 import { useVehicles } from '../../hooks/useVehicles';
@@ -61,9 +61,12 @@ export default function LiveMapTab({ theme, userRole, isEditMode, onNotify }) {
   const [selectedResolveStatus, setSelectedResolveStatus] = useState(null);
   const [resolveReason, setResolveReason] = useState('');
   const history = usePatrolHistoryPanel(calamityPoints);
-  const [deletePatrolTarget, setDeletePatrolTarget] = useState(null);
-  const displayDeletePatrolTargetRef = useRef(null);
-  if (deletePatrolTarget) displayDeletePatrolTargetRef.current = deletePatrolTarget;
+  const [deleteTarget, setDeleteTarget] = useState(null); // { type: 'patrol' | 'calamity', id, label }
+  const displayDeleteTargetRef = useRef(null);
+  if (deleteTarget) displayDeleteTargetRef.current = deleteTarget;
+  const [deletingTarget, setDeletingTarget] = useState(false);
+  const calamityPointsRef = useRef([]);
+  calamityPointsRef.current = calamityPoints;
   const [forceIdleTarget, setForceIdleTarget] = useState(null); // { id, label }
   const [forcingIdle, setForcingIdle] = useState(false);
   const displayForceIdleTargetRef = useRef(null);
@@ -84,7 +87,7 @@ export default function LiveMapTab({ theme, userRole, isEditMode, onNotify }) {
     setForceIdleTarget(null);
     onNotify?.(!error ? 'success' : 'error', !error ? 'Kenderaan berjaya diputuskan daripada peta.' : 'Gagal memutuskan kenderaan.');
   };
-  const [deletingPatrol, setDeletingPatrol] = useState(false);
+
   const summary = useCalamitySummaryPanel(calamityPoints);
 
   const vehiclesRef = useRef([]);
@@ -150,9 +153,8 @@ export default function LiveMapTab({ theme, userRole, isEditMode, onNotify }) {
         setPendingPlacement({ lat: data.lat, lng: data.lng });
         setCalamityModalVisible(true);
       } else if (data.type === 'DELETE_CALAMITY_REQUEST') {
-        deleteCalamity(data.id).then((ok) => {
-          onNotify?.(ok ? 'success' : 'error', ok ? 'Titik berjaya dipadam.' : 'Gagal memadam titik. Sila cuba lagi.');
-        });
+        const point = calamityPointsRef.current.find((c) => c.id === data.id);
+        setDeleteTarget({ type: 'calamity', id: data.id, label: point?.category || 'Titik' });
       } else if (data.type === 'RESOLVE_CALAMITY_REQUEST') {
         setPendingResolveId(data.id);
         setResolveModalVisible(true);
@@ -327,7 +329,7 @@ export default function LiveMapTab({ theme, userRole, isEditMode, onNotify }) {
                   {isEditMode && (
                     <TouchableOpacity
                       disabled={deletingPatrol}
-                      onPress={() => setDeletePatrolTarget({ id: h.id, vehicle_reg: h.vehicle_reg })}
+                      onPress={() => setDeleteTarget({ type: 'patrol', id: h.id, label: h.vehicle_reg })}
                       style={[styles.routeBtn, { backgroundColor: '#dc2626', opacity: deletingPatrol ? 0.5 : 1 }]}
                     >
                       <Trash2 size={16} color="#fff" />
@@ -386,7 +388,7 @@ export default function LiveMapTab({ theme, userRole, isEditMode, onNotify }) {
                     {isEditMode && (
                       <TouchableOpacity
                         disabled={deletingPatrol}
-                        onPress={() => setDeletePatrolTarget({ id: h.id, vehicle_reg: h.vehicle_reg })}
+                        onPress={() => setDeleteTarget({ type: 'patrol', id: h.id, label: h.vehicle_reg })}
                         style={[styles.routeBtn, { backgroundColor: '#dc2626', opacity: deletingPatrol ? 0.5 : 1 }]}
                       >
                         <Trash2 size={16} color="#fff" />
@@ -724,6 +726,27 @@ export default function LiveMapTab({ theme, userRole, isEditMode, onNotify }) {
               )}
             </View>
           )}
+
+          {activeCalamityTool && (
+            <View
+              style={{
+                position: 'absolute', top: 16, left: 0, right: 0,
+                alignItems: 'center', zIndex: 500, pointerEvents: 'none',
+              }}
+            >
+              <View
+                style={{
+                  flexDirection: 'row', alignItems: 'center', gap: 8,
+                  backgroundColor: 'rgba(15, 23, 42, 0.9)', borderRadius: 999,
+                  paddingHorizontal: 16, paddingVertical: 10,
+                  shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 6,
+                }}
+              >
+                <MapPin size={16} color={PALETTE.orange} />
+                <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>Klik pada peta untuk letak titik</Text>
+              </View>
+            </View>
+          )}
         </View>
         )}
 
@@ -948,7 +971,7 @@ export default function LiveMapTab({ theme, userRole, isEditMode, onNotify }) {
       </Modal>
 
       {/* Modal confirmation padam rekod patrol */}
-      <Modal visible={!!deletePatrolTarget} transparent animationType="fade">
+      <Modal visible={!!deleteTarget} transparent animationType="fade">
         <View style={formStyles.modalOverlay}>
           <View style={{ width: 340, maxWidth: '90%', borderRadius: 20, overflow: 'hidden', backgroundColor: '#fff' }}>
             <View style={{ backgroundColor: '#111318', paddingVertical: 28, paddingHorizontal: 20, alignItems: 'center' }}>
@@ -960,43 +983,52 @@ export default function LiveMapTab({ theme, userRole, isEditMode, onNotify }) {
                 <AlertTriangle size={26} color="#ef4444" />
               </View>
               <Text style={{ color: '#fff', fontSize: 17, fontWeight: '800', marginBottom: 8 }}>
-                Padam Rekod Patrol
+                {displayDeleteTargetRef.current?.type === 'calamity' ? 'Padam Titik' : 'Padam Rekod Patrol'}
               </Text>
               <Text style={{ color: '#93c5fd', fontSize: 13, textAlign: 'center', lineHeight: 18 }}>
-                Padam rekod patrol kenderaan "{displayDeletePatrolTargetRef.current?.vehicle_reg}"? Tindakan ini tidak boleh dibatalkan.
+                {displayDeleteTargetRef.current?.type === 'calamity'
+                  ? `Padam titik "${displayDeleteTargetRef.current?.label}"? Tindakan ini tidak boleh dibatalkan.`
+                  : `Padam rekod patrol kenderaan "${displayDeleteTargetRef.current?.label}"? Tindakan ini tidak boleh dibatalkan.`}
               </Text>
             </View>
             <View style={{ flexDirection: 'row', gap: 10, padding: 16 }}>
               <TouchableOpacity
-                disabled={deletingPatrol}
-                onPress={() => setDeletePatrolTarget(null)}
+                disabled={deletingTarget}
+                onPress={() => setDeleteTarget(null)}
                 style={{
                   flex: 1, paddingVertical: 13, borderRadius: 12,
                   borderWidth: 1, borderColor: '#e2e8f0',
                   alignItems: 'center', justifyContent: 'center',
-                  opacity: deletingPatrol ? 0.5 : 1,
+                  opacity: deletingTarget ? 0.5 : 1,
                 }}
               >
                 <Text style={{ color: '#334155', fontSize: 14, fontWeight: '700' }}>Batal</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                disabled={deletingPatrol}
+                disabled={deletingTarget}
                 onPress={async () => {
-                  const target = deletePatrolTarget;
-                  setDeletingPatrol(true);
-                  const ok = await history.deletePatrolRecord(target.id);
-                  setDeletingPatrol(false);
-                  setDeletePatrolTarget(null);
-                  onNotify?.(ok ? 'success' : 'error', ok ? 'Rekod patrol berjaya dipadam.' : 'Gagal memadam rekod patrol.');
+                  const target = deleteTarget;
+                  setDeletingTarget(true);
+                  const ok = target.type === 'calamity'
+                    ? await deleteCalamity(target.id)
+                    : await history.deletePatrolRecord(target.id);
+                  setDeletingTarget(false);
+                  setDeleteTarget(null);
+                  onNotify?.(
+                    ok ? 'success' : 'error',
+                    ok
+                      ? (target.type === 'calamity' ? 'Titik berjaya dipadam.' : 'Rekod patrol berjaya dipadam.')
+                      : (target.type === 'calamity' ? 'Gagal memadam titik. Sila cuba lagi.' : 'Gagal memadam rekod patrol.')
+                  );
                 }}
                 style={{
                   flex: 1, flexDirection: 'row', gap: 8, paddingVertical: 13, borderRadius: 12,
                   backgroundColor: '#ef4444',
                   alignItems: 'center', justifyContent: 'center',
-                  opacity: deletingPatrol ? 0.7 : 1,
+                  opacity: deletingTarget ? 0.7 : 1,
                 }}
               >
-                {deletingPatrol ? (
+                {deletingTarget ? (
                   <ActivityIndicator size="small" color="#fff" />
                 ) : (
                   <>

@@ -54,7 +54,7 @@ export const petaStyles = StyleSheet.create({
   agencyLegendLabelMobile: { fontSize: 9 },
 
   mapToolbar: {
-    position: 'absolute', top: 16, right: 16, zIndex: 10,
+    position: 'absolute', top: 16, right: 16, zIndex: 9999,
     flexDirection: 'row', gap: 10,
   },
   historyToggleBtn: {
@@ -79,7 +79,7 @@ export const petaStyles = StyleSheet.create({
     paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, maxWidth: 130, textAlign: 'center',
   },
   historyTooltip: {
-    position: 'absolute', top: 46, right: 0, zIndex: 20,
+    position: 'absolute', top: 46, right: 0, zIndex: 10000,
     backgroundColor: PALETTE.textDark, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8,
   },
   historyTooltipText: { color: '#fff', fontSize: 11, fontWeight: '700' },
