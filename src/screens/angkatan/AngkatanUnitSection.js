@@ -7,7 +7,7 @@ import UnitEditModal from '../kewangan/UnitEditModal';
 
 const EMPTY_DRAFT = { name: '', role: '' };
 
-export default function AngkatanUnitSection({ unitList, loadingUnit, isEditMode, saveUnitItem, deleteUnitItem, reorderUnit }) {
+export default function AngkatanUnitSection({ unitList, loadingUnit, isEditMode, saveUnitItem, deleteUnitItem, reorderUnit, title = 'UNIT ANGKATAN' }) {
   const [hoveredIndex, setHoveredIndex] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [editItem, setEditItem] = useState(null);
@@ -36,7 +36,7 @@ export default function AngkatanUnitSection({ unitList, loadingUnit, isEditMode,
       <View style={unitStyles.headerRow}>
         <View style={unitStyles.titleGroup}>
           <View style={unitStyles.iconBadge}><UserCog size={16} color={PALETTE.orange} /></View>
-          <Text style={unitStyles.title}>UNIT ANGKATAN</Text>
+          <Text style={unitStyles.title}>{title}</Text>
         </View>
       </View>
 

@@ -8,6 +8,7 @@ import JpbdSection from './sekretariat/JpbdSection';
 import HotspotSection from './sekretariat/HotspotSection';
 import PpsSection from './sekretariat/PpsSection';
 import PetaTab from './sekretariat/PetaTab';
+import CatatanSection from './sekretariat/CatatanSection';
 import UnitEditModal from './kewangan/UnitEditModal';
 import { useUnitStaff } from '../hooks/useUnitStaff';
 import { useSekretariatMeta } from '../hooks/useSekretariatMeta';
@@ -240,6 +241,11 @@ const SekretariatScreen = ({ theme, userRole }) => {
               </TouchableOpacity>
             )}
           </View>
+
+          <View style={styles.sectionDivider} />
+
+          {/* ---- Section CATATAN (commune à tous les onglets) ---- */}
+          <CatatanSection isEditMode={canEdit && isEditMode} onNotify={showNotification} />
         </ScrollView>
       )}
 

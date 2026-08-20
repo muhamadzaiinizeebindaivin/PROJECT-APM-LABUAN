@@ -178,6 +178,7 @@ export default function OperasiScreen({ theme, userRole }) {
               saveUnitItem={unit.saveStaffItem}
               deleteUnitItem={unit.deleteStaffItem}
               reorderUnit={unit.reorderStaff}
+              title="UNIT OPERASI"
             />
           </View>
         </ScrollView>
