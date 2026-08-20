@@ -76,37 +76,67 @@ export async function generateAgencyHistoryPdf({ rows, periodLabel }) {
 }
 
 /**
- * Export PDF pour "Ringkasan Bencana" — une ligne par bencana, avec
- * nom, date de début, date de fin (ou "-" si toujours actif).
+ * Export PDF pour "Rekod Kejadian" (Hotspot) — une ligne par kejadian,
+ * avec tarikh, kawasan terjejas, jumlah KIR, jumlah mangsa, PPS.
  */
-export async function generateBencanaHistoryPdf({ rows, periodLabel }) {
+export async function generateKejadianPdf({ rows, categoryLabel, periodLabel }) {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-  const { pageWidth, cursorY } = await addLogoAndHeader(doc, 'Ringkasan Bencana', periodLabel);
+  const { pageWidth, cursorY } = await addLogoAndHeader(doc, `Rekod Kejadian - ${categoryLabel}`, periodLabel);
 
   if (rows.length === 0) {
     doc.setFontSize(11);
     doc.setFont(undefined, 'italic');
     doc.setTextColor(100);
-    doc.text('Tiada rekod bencana untuk tempoh ini.', pageWidth / 2, cursorY + 10, { align: 'center' });
+    doc.text('Tiada rekod kejadian untuk tempoh ini.', pageWidth / 2, cursorY + 10, { align: 'center' });
     doc.setTextColor(0);
   } else {
-    const tableRows = rows.map((b, index) => [
+    const tableRows = rows.map((k, index) => [
       index + 1,
-      b.category,
-      new Date(b.created_at).toLocaleDateString('ms-MY'),
-      b.resolved_at ? new Date(b.resolved_at).toLocaleDateString('ms-MY') : 'Bencana Belum Selesai',
+      k.tarikh || '-',
+      k.jenis_bencana || '-',
+      k.lokasi || '-',
+      k.jumlah_kir ?? '-',
+      k.jumlah_mangsa ?? '-',
+      k.pps || '-',
+      k.status === 'resolved' ? 'Selesai' : 'Aktif',
+      k.resolved_at ? new Date(k.resolved_at).toLocaleDateString('ms-MY') : '-',
     ]);
+
+    const marginLeft = 14;
+    const marginRight = 14;
 
     autoTable(doc, {
       startY: cursorY,
-      head: [['#', 'Nama Bencana', 'Tarikh Mula', 'Tarikh Tamat']],
+      margin: { left: marginLeft, right: marginRight },
+      head: [['#', 'Tarikh', 'Jenis Bencana', 'Kawasan Terjejas', 'Jumlah KIR', 'Jumlah Mangsa', 'PPS', 'Status', 'Tarikh Selesai']],
       body: tableRows,
-      styles: { fontSize: 9, cellPadding: 3 },
-      headStyles: { fillColor: [30, 58, 138], textColor: 255, fontStyle: 'bold' },
+      theme: 'grid',
+      styles: {
+        fontSize: 6.5, cellPadding: 2, overflow: 'linebreak',
+        lineColor: [30, 58, 138], lineWidth: 0.3,
+      },
+      headStyles: {
+        fillColor: [30, 58, 138], textColor: 255, fontStyle: 'bold',
+        lineColor: [30, 58, 138], lineWidth: 0.3,
+      },
+      bodyStyles: { lineColor: [180, 190, 210], lineWidth: 0.2 },
       alternateRowStyles: { fillColor: [248, 250, 252] },
+      columnStyles: {
+        0: { cellWidth: 8 },
+        1: { cellWidth: 18 },
+        2: { cellWidth: 22 },
+        3: { cellWidth: 'auto' },
+        4: { cellWidth: 16 },
+        5: { cellWidth: 18 },
+        6: { cellWidth: 18 },
+        7: { cellWidth: 16 },
+        8: { cellWidth: 20 },
+      },
     });
+
+
   }
 
-  const filename = `ringkasan-bencana-${periodLabel.replace(/\s+/g, '-').toLowerCase()}.pdf`;
+  const filename = `rekod-kejadian-${categoryLabel.replace(/\s+/g, '-').toLowerCase()}-${periodLabel.replace(/\s+/g, '-').toLowerCase()}.pdf`;
   doc.save(filename);
 }

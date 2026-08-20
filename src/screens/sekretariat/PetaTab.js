@@ -1,7 +1,7 @@
 // src/screens/sekretariat/PetaTab.js
 import React, { useState, useEffect, useRef, createElement } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Platform, Modal, TextInput, ActivityIndicator, Alert, Image, useWindowDimensions } from 'react-native';
-import { Map, History, ClipboardList, AlertTriangle, X, Plus, Download, Trash2, Maximize2, MapPin, ChevronLeft, PlusCircle, Check, Droplets, Waves, Mountain, Flame, Wind, CloudRain, Zap, Siren } from 'lucide-react-native';
+import { Map, History, ClipboardList, AlertTriangle, X, Plus, Download, Trash2, Maximize2, MapPin, ChevronLeft, PlusCircle, Check, Droplets, Waves, Mountain, Flame, Wind, CloudRain, Zap, Siren, Search } from 'lucide-react-native';
 
 const CATEGORY_ICON_OPTIONS = [
   { key: 'MapPin', Icon: MapPin },
@@ -18,12 +18,13 @@ import { supabaseSandbox } from '../../supabaseSandboxClient';
 import { buildSekretariatMapHtml } from './sekretariatMapTemplate';
 import { useOnlineAgencies } from '../../hooks/useOnlineAgencies';
 import { useBencanaPoints } from '../../hooks/useBencanaPoints';
+import { useHotspotKejadian } from '../../hooks/useHotspotKejadian';
 import { useHotspots } from '../../hooks/useHotspots';
 import { useHotspotCategories } from '../../hooks/useHotspotCategories';
 import { useAgencyTrackingHistory } from '../../hooks/useAgencyTrackingHistory';
 import ModalSelectField from '../../components/ModalSelectField';
 import FullscreenViewer from '../../components/FullscreenViewer';
-import { generateAgencyHistoryPdf, generateBencanaHistoryPdf } from '../../utils/agencyReportsPdf';
+import { generateAgencyHistoryPdf, generateKejadianPdf } from '../../utils/agencyReportsPdf';
 import { appStyles as sekretariatStyles } from '../../styles/appStyles';
 import { petaStyles as styles } from './petaStyles';
 import { PALETTE } from '../../constants/palette';
@@ -67,6 +68,7 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
   const onlineAgenciesRef = useRef([]);
   onlineAgenciesRef.current = onlineAgencies;
   const { bencanaPoints, saveBencana, completeBencana, updateBencana, deleteBencana } = useBencanaPoints();
+  const { kejadianList } = useHotspotKejadian();
   const [editingBencana, setEditingBencana] = useState(null);
   const [editForm, setEditForm] = useState({ category: '', lokasi: '', pps: '', description: '' });
   const [editingSaving, setEditingSaving] = useState(false);
@@ -285,7 +287,7 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
   const handleExportSummaryPdf = async () => {
     setExportingSummaryPdf(true);
     try {
-      await generateBencanaHistoryPdf({ rows: filteredBencanaSummary, periodLabel: summaryPeriodLabel });
+      await generateKejadianPdf({ rows: filteredKejadianForSummaryPdf, categoryLabel: 'Semua Kategori', periodLabel: summaryPeriodLabel });
     } catch (e) {
       console.error('Gagal menjana PDF:', e);
     } finally {
@@ -527,6 +529,16 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
       .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   }, [bencanaPoints, summaryYear, summaryMonth, searchSummaryQuery]);
 
+  const filteredKejadianForSummaryPdf = React.useMemo(() => {
+    return (kejadianList || []).filter(k => {
+      if (!k.tarikh) return false;
+      const d = new Date(k.tarikh);
+      if (d.getFullYear() !== summaryYear) return false;
+      if (summaryMonth !== null && d.getMonth() !== summaryMonth) return false;
+      return true;
+    });
+  }, [kejadianList, summaryYear, summaryMonth]);
+
   const summaryTotalPages = Math.max(1, Math.ceil(filteredBencanaSummary.length / PAGE_SIZE));
   const pagedBencanaSummary = React.useMemo(() => {
     const start = summaryPage * PAGE_SIZE;
@@ -721,14 +733,17 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
         </View>
       </View>
 
-      <View style={{ paddingHorizontal: 16, marginBottom: 8 }}>
-        <TextInput
-          style={sekretariatStyles.input}
-          placeholder="Cari nama bencana..."
-          placeholderTextColor={PALETTE.textMutedDark}
-          value={searchSummaryQuery}
-          onChangeText={setSearchSummaryQuery}
-        />
+      <View style={{ paddingHorizontal: 16, marginBottom: 16 }}>
+        <View style={{ position: 'relative', justifyContent: 'center' }}>
+          <Search size={16} color={PALETTE.textMutedDark} style={{ position: 'absolute', left: 12, zIndex: 1 }} />
+          <TextInput
+            style={[sekretariatStyles.input, { paddingLeft: 38 }]}
+            placeholder="Cari bencana..."
+            placeholderTextColor={PALETTE.textMutedDark}
+            value={searchSummaryQuery}
+            onChangeText={setSearchSummaryQuery}
+          />
+        </View>
       </View>
 
       {pagedBencanaSummary.length === 0 ? (
@@ -736,28 +751,34 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
       ) : (
         <>
           {!isMobile ? (
-          <View style={styles.calamityTableWrapper}>
-            <View style={styles.calamityTableHeaderRow}>
+          <View style={[styles.calamityTableWrapper, { borderRadius: 14, borderWidth: 1, borderColor: PALETTE.cardLightBorder || '#e2e8f0', overflow: 'hidden' }]}>
+            <View style={[styles.calamityTableHeaderRow, { backgroundColor: '#1e3a8a' }]}>
               <View style={[styles.historyAgencyColFlex, styles.calamityHeaderCellBox]}>
-                <Text style={[styles.calamityTableHeaderCell, large && { fontSize: 16 }]}>Nama Bencana</Text>
+                <Text style={[styles.calamityTableHeaderCell, { color: '#fff', fontWeight: '800' }, large && { fontSize: 16 }]}>Kategori Bencana</Text>
               </View>
               <View style={[styles.calamityTotalColFlex, styles.calamityHeaderCellBox]}>
-                <Text style={[styles.calamityTableHeaderCell, large && { fontSize: 16 }]}>Tarikh Mula</Text>
+                <Text style={[styles.calamityTableHeaderCell, { color: '#fff', fontWeight: '800' }, large && { fontSize: 16 }]}>Tempat</Text>
               </View>
               <View style={[styles.calamityTotalColFlex, styles.calamityHeaderCellBox]}>
-                <Text style={[styles.calamityTableHeaderCell, large && { fontSize: 16 }]}>Tarikh Tamat</Text>
+                <Text style={[styles.calamityTableHeaderCell, { color: '#fff', fontWeight: '800' }, large && { fontSize: 16 }]}>Tarikh Mula</Text>
+              </View>
+              <View style={[styles.calamityTotalColFlex, styles.calamityHeaderCellBox]}>
+                <Text style={[styles.calamityTableHeaderCell, { color: '#fff', fontWeight: '800' }, large && { fontSize: 16 }]}>Tarikh Tamat</Text>
               </View>
               {isEditMode && (userRole === 'sekretariat' || userRole === 'admin') && (
                 <View style={[{ width: 50 }, styles.calamityHeaderCellBox]}>
-                  <Text style={[styles.calamityTableHeaderCell, large && { fontSize: 16 }]}></Text>
+                  <Text style={[styles.calamityTableHeaderCell, { color: '#fff', fontWeight: '800' }, large && { fontSize: 16 }]}></Text>
                 </View>
               )}
             </View>
             <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 380 }}>
               {pagedBencanaSummary.map((b, index) => (
-                <View key={b.id} style={[styles.calamityTableRow, { backgroundColor: index % 2 === 0 ? PALETTE.cardLight : PALETTE.surface }]}>
-                  <Text style={[styles.calamityTableCell, styles.historyAgencyColFlex, { textAlign: 'left', paddingLeft: 16, fontWeight: '700' }, large && { fontSize: 16 }]} numberOfLines={1}>
+                <View key={b.id} style={[styles.calamityTableRow, { backgroundColor: index % 2 === 1 ? (PALETTE.surface || '#f8fafc') : '#fff', borderTopWidth: 1, borderTopColor: PALETTE.cardLightBorder || '#e2e8f0' }]}>
+                  <Text style={[styles.calamityTableCell, styles.historyAgencyColFlex, { textAlign: 'center', fontWeight: '700' }, large && { fontSize: 16 }]} numberOfLines={1}>
                     {b.category}
+                  </Text>
+                  <Text style={[styles.calamityTableCell, styles.calamityTotalColFlex, large && { fontSize: 16 }]} numberOfLines={1}>
+                    {b.lokasi || '-'}
                   </Text>
                   <Text style={[styles.calamityTableCell, styles.calamityTotalColFlex, large && { fontSize: 16 }]}>
                     {new Date(b.created_at).toLocaleDateString('ms-MY')}

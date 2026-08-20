@@ -8,8 +8,9 @@ import {
   Sun, Snowflake, Umbrella, TreePine, Trees, Globe, Bug,
   AlertTriangle, Biohazard, Radiation, Siren, ShieldAlert, LifeBuoy,
   Factory, Building2, Home, Tent, Warehouse, Landmark,
-  Ship, Anchor, Truck, Car, Plane, Fuel, Maximize2, Camera, ClipboardList, Calendar, ChevronDown, ChevronUp, BarChart2, ChevronLeft, ChevronRight,
+  Ship, Anchor, Truck, Car, Plane, Fuel, Maximize2, Camera, ClipboardList, Calendar, ChevronDown, ChevronUp, BarChart2, ChevronLeft, ChevronRight, FileDown,
 } from 'lucide-react-native';
+import { generateKejadianPdf } from '../../utils/agencyReportsPdf';
 import { useHotspots } from '../../hooks/useHotspots';
 import { useHotspotCategories } from '../../hooks/useHotspotCategories';
 import { useHotspotKejadian } from '../../hooks/useHotspotKejadian';
@@ -422,6 +423,26 @@ export default function HotspotSection({ userRole, isEditMode, onNotify }) {
 
   const BULAN_LABELS = ['Januari', 'Februari', 'Mac', 'April', 'Mei', 'Jun', 'Julai', 'Ogos', 'September', 'Oktober', 'November', 'Disember'];
 
+  const [exportingKejadianPdf, setExportingKejadianPdf] = useState(false);
+
+  const handleExportKejadianPdf = async () => {
+    const catLabel = currentCat?.label || 'Semua';
+    const periodLabel = [
+      kejadianFilterYear !== null ? kejadianFilterYear : null,
+      kejadianFilterMonth !== null ? BULAN_LABELS[kejadianFilterMonth] : null,
+    ].filter(Boolean).join(' ') || 'Semua Rekod';
+
+    setExportingKejadianPdf(true);
+    try {
+      await generateKejadianPdf({ rows: currentKejadianData, categoryLabel: catLabel, periodLabel });
+    } catch (e) {
+      console.error('Ralat PDF Kejadian:', e);
+      onNotify?.('error', 'Gagal menjana PDF.');
+    } finally {
+      setExportingKejadianPdf(false);
+    }
+  };
+
   const renderKejadianAnalytics = () => {
     const data = currentKejadianDataAll;
     const totalKejadian = data.length;
@@ -521,48 +542,50 @@ export default function HotspotSection({ userRole, isEditMode, onNotify }) {
               <Text style={{ fontSize: 13, fontWeight: '800', color: PALETTE.textDark, textTransform: 'uppercase', letterSpacing: 0.3 }}>Trend Bulanan · {trendYear}</Text>
             </View>
 
-            <View style={{ borderRadius: 14, overflow: 'hidden', marginHorizontal: 16, marginBottom: 16, borderWidth: 1, borderColor: PALETTE.cardLightBorder || '#e2e8f0' }}>
-              <View style={{ flexDirection: 'row', backgroundColor: '#1e3a8a' }}>
-                <View style={{ width: 140, paddingVertical: 14, paddingHorizontal: 14 }}>
-                  <Text style={{ fontSize: 14, fontWeight: '800', color: '#fff' }}>Bulan</Text>
-                </View>
-                <View style={{ flex: 1, paddingVertical: 14, paddingHorizontal: 10 }}>
-                  <Text style={{ fontSize: 14, fontWeight: '800', color: '#fff', textAlign: 'center' }}>Kejadian</Text>
-                </View>
-                <View style={{ flex: 1, paddingVertical: 14, paddingHorizontal: 10 }}>
-                  <Text style={{ fontSize: 14, fontWeight: '800', color: '#fff', textAlign: 'center' }}>Mangsa</Text>
-                </View>
-                <View style={{ flex: 1, paddingVertical: 14, paddingHorizontal: 10 }}>
-                  <Text style={{ fontSize: 14, fontWeight: '800', color: '#fff', textAlign: 'center' }}>KIR</Text>
-                </View>
-              </View>
-              {BULAN_LABELS.map((label, idx) => {
-                const isPeak = monthlyCounts[idx] === maxMonthly && maxMonthly > 0 && idx === peakMonthIdx;
-                return (
-                  <View
-                    key={label}
-                    style={{
-                      flexDirection: 'row', alignItems: 'center',
-                      backgroundColor: isPeak ? '#eff6ff' : (idx % 2 === 1 ? (PALETTE.surface || '#f8fafc') : '#fff'),
-                      borderTopWidth: 1, borderTopColor: PALETTE.cardLightBorder || '#e2e8f0',
-                    }}
-                  >
-                    <View style={{ width: 140, paddingVertical: 14, paddingHorizontal: 14 }}>
-                      <Text style={{ fontSize: 15, fontWeight: isPeak ? '800' : '600', color: PALETTE.textDark }}>{label}</Text>
-                    </View>
-                    <View style={{ flex: 1, paddingVertical: 14, paddingHorizontal: 10 }}>
-                      <Text style={{ fontSize: 15, fontWeight: '800', color: isPeak ? '#2563eb' : PALETTE.textDark, textAlign: 'center' }}>{monthlyCounts[idx]}</Text>
-                    </View>
-                    <View style={{ flex: 1, paddingVertical: 14, paddingHorizontal: 10 }}>
-                      <Text style={{ fontSize: 15, fontWeight: '600', color: PALETTE.textDark, textAlign: 'center' }}>{monthlyMangsa[idx]}</Text>
-                    </View>
-                    <View style={{ flex: 1, paddingVertical: 14, paddingHorizontal: 10 }}>
-                      <Text style={{ fontSize: 15, fontWeight: '600', color: PALETTE.textDark, textAlign: 'center' }}>{monthlyKir[idx]}</Text>
-                    </View>
+            <ScrollView horizontal={isMobile} showsHorizontalScrollIndicator={isMobile} style={{ marginHorizontal: 16, marginBottom: 16 }}>
+              <View style={{ borderRadius: 14, overflow: 'hidden', borderWidth: 1, borderColor: PALETTE.cardLightBorder || '#e2e8f0', minWidth: isMobile ? 440 : '100%' }}>
+                <View style={{ flexDirection: 'row', backgroundColor: '#1e3a8a' }}>
+                  <View style={{ width: 140, paddingVertical: 14, paddingHorizontal: 14 }}>
+                    <Text style={{ fontSize: 14, fontWeight: '800', color: '#fff' }}>Bulan</Text>
                   </View>
-                );
-              })}
-            </View>
+                  <View style={{ width: isMobile ? 100 : undefined, flex: isMobile ? undefined : 1, paddingVertical: 14, paddingHorizontal: 10 }}>
+                    <Text style={{ fontSize: 14, fontWeight: '800', color: '#fff', textAlign: 'center' }}>Kejadian</Text>
+                  </View>
+                  <View style={{ width: isMobile ? 100 : undefined, flex: isMobile ? undefined : 1, paddingVertical: 14, paddingHorizontal: 10 }}>
+                    <Text style={{ fontSize: 14, fontWeight: '800', color: '#fff', textAlign: 'center' }}>Mangsa</Text>
+                  </View>
+                  <View style={{ width: isMobile ? 100 : undefined, flex: isMobile ? undefined : 1, paddingVertical: 14, paddingHorizontal: 10 }}>
+                    <Text style={{ fontSize: 14, fontWeight: '800', color: '#fff', textAlign: 'center' }}>KIR</Text>
+                  </View>
+                </View>
+                {BULAN_LABELS.map((label, idx) => {
+                  const isPeak = monthlyCounts[idx] === maxMonthly && maxMonthly > 0 && idx === peakMonthIdx;
+                  return (
+                    <View
+                      key={label}
+                      style={{
+                        flexDirection: 'row', alignItems: 'center',
+                        backgroundColor: isPeak ? '#eff6ff' : (idx % 2 === 1 ? (PALETTE.surface || '#f8fafc') : '#fff'),
+                        borderTopWidth: 1, borderTopColor: PALETTE.cardLightBorder || '#e2e8f0',
+                      }}
+                    >
+                      <View style={{ width: 140, paddingVertical: 14, paddingHorizontal: 14 }}>
+                        <Text style={{ fontSize: 15, fontWeight: isPeak ? '800' : '600', color: PALETTE.textDark }}>{label}</Text>
+                      </View>
+                      <View style={{ width: isMobile ? 100 : undefined, flex: isMobile ? undefined : 1, paddingVertical: 14, paddingHorizontal: 10 }}>
+                        <Text style={{ fontSize: 15, fontWeight: '800', color: isPeak ? '#2563eb' : PALETTE.textDark, textAlign: 'center' }}>{monthlyCounts[idx]}</Text>
+                      </View>
+                      <View style={{ width: isMobile ? 100 : undefined, flex: isMobile ? undefined : 1, paddingVertical: 14, paddingHorizontal: 10 }}>
+                        <Text style={{ fontSize: 15, fontWeight: '600', color: PALETTE.textDark, textAlign: 'center' }}>{monthlyMangsa[idx]}</Text>
+                      </View>
+                      <View style={{ width: isMobile ? 100 : undefined, flex: isMobile ? undefined : 1, paddingVertical: 14, paddingHorizontal: 10 }}>
+                        <Text style={{ fontSize: 15, fontWeight: '600', color: PALETTE.textDark, textAlign: 'center' }}>{monthlyKir[idx]}</Text>
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
+            </ScrollView>
           </View>
 
         {/* ---- Kawasan Terjejas Paling Kerap ---- */}
@@ -577,42 +600,44 @@ export default function HotspotSection({ userRole, isEditMode, onNotify }) {
             {pagedLokasi.length === 0 ? (
               <Text style={{ paddingHorizontal: 16, paddingBottom: 16, fontSize: 13, color: PALETTE.textMutedDark, fontStyle: 'italic' }}>Tiada kawasan direkodkan.</Text>
             ) : (
-              <View style={{ borderRadius: 14, overflow: 'hidden', marginHorizontal: 16, marginBottom: 16, borderWidth: 1, borderColor: PALETTE.cardLightBorder || '#e2e8f0' }}>
-                <View style={{ flexDirection: 'row', backgroundColor: '#1e3a8a' }}>
-                  <View style={{ width: 60, paddingVertical: 14 }}>
-                    <Text style={{ fontSize: 14, fontWeight: '800', color: '#fff', textAlign: 'center' }}>#</Text>
-                  </View>
-                  <View style={{ flex: 2, paddingVertical: 14, paddingHorizontal: 10 }}>
-                    <Text style={{ fontSize: 14, fontWeight: '800', color: '#fff' }}>Kawasan</Text>
-                  </View>
-                  <View style={{ flex: 1, paddingVertical: 14, paddingHorizontal: 10 }}>
-                    <Text style={{ fontSize: 14, fontWeight: '800', color: '#fff', textAlign: 'center' }}>Kejadian</Text>
-                  </View>
-                </View>
-                {pagedLokasi.map(([lokasi, count], i) => {
-                  const globalIdx = safeLokasiPage * LOKASI_PAGE_SIZE + i;
-                  return (
-                    <View
-                      key={lokasi}
-                      style={{
-                        flexDirection: 'row', alignItems: 'center',
-                        backgroundColor: i % 2 === 1 ? (PALETTE.surface || '#f8fafc') : '#fff',
-                        borderTopWidth: 1, borderTopColor: PALETTE.cardLightBorder || '#e2e8f0',
-                      }}
-                    >
-                      <View style={{ width: 60, paddingVertical: 14 }}>
-                        <Text style={{ fontSize: 15, fontWeight: '800', color: PALETTE.textMutedDark, textAlign: 'center' }}>{globalIdx + 1}</Text>
-                      </View>
-                      <View style={{ flex: 2, paddingVertical: 14, paddingHorizontal: 10 }}>
-                        <Text style={{ fontSize: 15, fontWeight: '700', color: PALETTE.textDark }} numberOfLines={1}>{lokasi}</Text>
-                      </View>
-                      <View style={{ flex: 1, paddingVertical: 14, paddingHorizontal: 10 }}>
-                        <Text style={{ fontSize: 15, fontWeight: '700', color: PALETTE.textDark, textAlign: 'center' }}>{count}</Text>
-                      </View>
+              <ScrollView horizontal={isMobile} showsHorizontalScrollIndicator={isMobile} style={{ marginHorizontal: 16, marginBottom: 16 }}>
+                <View style={{ borderRadius: 14, overflow: 'hidden', borderWidth: 1, borderColor: PALETTE.cardLightBorder || '#e2e8f0', minWidth: isMobile ? 500 : '100%' }}>
+                  <View style={{ flexDirection: 'row', backgroundColor: '#1e3a8a' }}>
+                    <View style={{ width: 60, paddingVertical: 14 }}>
+                      <Text style={{ fontSize: 14, fontWeight: '800', color: '#fff', textAlign: 'center' }}>#</Text>
                     </View>
-                  );
-                })}
-              </View>
+                    <View style={{ width: isMobile ? 300 : undefined, flex: isMobile ? undefined : 2, paddingVertical: 14, paddingHorizontal: 10 }}>
+                      <Text style={{ fontSize: 14, fontWeight: '800', color: '#fff' }}>Kawasan</Text>
+                    </View>
+                    <View style={{ width: isMobile ? 140 : undefined, flex: isMobile ? undefined : 1, paddingVertical: 14, paddingHorizontal: 10 }}>
+                      <Text style={{ fontSize: 14, fontWeight: '800', color: '#fff', textAlign: 'center' }}>Kejadian</Text>
+                    </View>
+                  </View>
+                  {pagedLokasi.map(([lokasi, count], i) => {
+                    const globalIdx = safeLokasiPage * LOKASI_PAGE_SIZE + i;
+                    return (
+                      <View
+                        key={lokasi}
+                        style={{
+                          flexDirection: 'row', alignItems: 'center',
+                          backgroundColor: i % 2 === 1 ? (PALETTE.surface || '#f8fafc') : '#fff',
+                          borderTopWidth: 1, borderTopColor: PALETTE.cardLightBorder || '#e2e8f0',
+                        }}
+                      >
+                        <View style={{ width: 60, paddingVertical: 14 }}>
+                          <Text style={{ fontSize: 15, fontWeight: '800', color: PALETTE.textMutedDark, textAlign: 'center' }}>{globalIdx + 1}</Text>
+                        </View>
+                        <View style={{ width: isMobile ? 300 : undefined, flex: isMobile ? undefined : 2, paddingVertical: 14, paddingHorizontal: 10 }}>
+                          <Text style={{ fontSize: 15, fontWeight: '700', color: PALETTE.textDark }} numberOfLines={1}>{lokasi}</Text>
+                        </View>
+                        <View style={{ width: isMobile ? 140 : undefined, flex: isMobile ? undefined : 1, paddingVertical: 14, paddingHorizontal: 10 }}>
+                          <Text style={{ fontSize: 15, fontWeight: '700', color: PALETTE.textDark, textAlign: 'center' }}>{count}</Text>
+                        </View>
+                      </View>
+                    );
+                  })}
+                </View>
+              </ScrollView>
             )}
 
             {totalLokasiPages > 1 && (
@@ -731,7 +756,12 @@ export default function HotspotSection({ userRole, isEditMode, onNotify }) {
 
               {/* ---- Sous-onglets ---- */}
               <View style={[hotspotStyles.subTabRow, { justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', rowGap: 8 }]}>
-                <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={{ flexDirection: 'row', gap: 8 }}
+                  style={{ maxWidth: '100%' }}
+                >
                   <TouchableOpacity
                     style={[hotspotStyles.subTabBtn, activeSubTab === 'lokasi' && { backgroundColor: currentColor }]}
                     onPress={() => setActiveSubTab('lokasi')}
@@ -754,23 +784,25 @@ export default function HotspotSection({ userRole, isEditMode, onNotify }) {
                     activeOpacity={0.8}
                   >
                     <BarChart2 size={14} color={activeSubTab === 'analisis' ? PALETTE.white : currentColor} />
-                    <Text style={[hotspotStyles.subTabText, { color: activeSubTab === 'analisis' ? PALETTE.white : currentColor }]}>Analisis dan Statistik</Text>
+                    <Text style={[hotspotStyles.subTabText, { color: activeSubTab === 'analisis' ? PALETTE.white : currentColor }]}>Analisis & Statistik</Text>
                   </TouchableOpacity>
-                </View>
+                </ScrollView>
 
-                {userRole === 'admin' && isEditMode && activeSubTab !== 'analisis' ? (
-                  activeSubTab === 'lokasi' ? (
-                    <TouchableOpacity style={styles.addButton} onPress={() => openAddModal(currentCat.key)}>
-                      <Plus size={16} color={PALETTE.white} />
-                      <Text style={styles.addButtonText}>Tambah</Text>
-                    </TouchableOpacity>
-                  ) : (
-                    <TouchableOpacity style={styles.addButton} onPress={() => openAddKejadianModal(currentCat.key, currentCat.label)}>
-                      <Plus size={16} color={PALETTE.white} />
-                      <Text style={styles.addButtonText}>Tambah</Text>
-                    </TouchableOpacity>
-                  )
-                ) : null}
+                <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+                  {userRole === 'admin' && isEditMode && activeSubTab !== 'analisis' ? (
+                    activeSubTab === 'lokasi' ? (
+                      <TouchableOpacity style={styles.addButton} onPress={() => openAddModal(currentCat.key)}>
+                        <Plus size={16} color={PALETTE.white} />
+                        <Text style={styles.addButtonText}>Tambah</Text>
+                      </TouchableOpacity>
+                    ) : (
+                      <TouchableOpacity style={styles.addButton} onPress={() => openAddKejadianModal(currentCat.key, currentCat.label)}>
+                        <Plus size={16} color={PALETTE.white} />
+                        <Text style={styles.addButtonText}>Tambah</Text>
+                      </TouchableOpacity>
+                    )
+                  ) : null}
+                </View>
               </View>
 
               {activeSubTab === 'lokasi' ? (
@@ -795,10 +827,10 @@ export default function HotspotSection({ userRole, isEditMode, onNotify }) {
                 </>
               ) : activeSubTab === 'kejadian' ? (
                 <>
-                  {/* ---- Filtre Tahun/Bulan ---- */}
+                  {/* ---- Filtre Tahun/Bulan + Export PDF ---- */}
                   {currentKejadianDataAll.length > 0 && (
-                    <View style={{ flexDirection: 'row', gap: 16, marginBottom: 16 }}>
-                      <View style={{ flex: 1 }}>
+                    <View style={isMobile ? { gap: 12, marginBottom: 16 } : { flexDirection: 'row', gap: 16, marginBottom: 16, alignItems: 'flex-end' }}>
+                      <View style={isMobile ? {} : { flex: 1 }}>
                         <Text style={{ fontSize: 13, fontWeight: '700', color: PALETTE.textDark, marginBottom: 8 }}>Tahun</Text>
                         <TouchableOpacity
                           onPress={() => setKejadianYearDropdownOpen(true)}
@@ -813,7 +845,7 @@ export default function HotspotSection({ userRole, isEditMode, onNotify }) {
                         </TouchableOpacity>
                       </View>
 
-                      <View style={{ flex: 1, opacity: kejadianFilterYear === null ? 0.5 : 1 }}>
+                      <View style={[isMobile ? {} : { flex: 1 }, { opacity: kejadianFilterYear === null ? 0.5 : 1 }]}>
                         <Text style={{ fontSize: 13, fontWeight: '700', color: PALETTE.textDark, marginBottom: 8 }}>Bulan</Text>
                         <TouchableOpacity
                           disabled={kejadianFilterYear === null}
@@ -828,6 +860,20 @@ export default function HotspotSection({ userRole, isEditMode, onNotify }) {
                           </Text>
                         </TouchableOpacity>
                       </View>
+
+                      <TouchableOpacity
+                        onPress={handleExportKejadianPdf}
+                        disabled={exportingKejadianPdf}
+                        style={[hotspotStyles.pdfExportBtn, isMobile ? { alignSelf: 'stretch' } : { marginLeft: 4 }, exportingKejadianPdf && { opacity: 0.6 }]}
+                        activeOpacity={0.7}
+                      >
+                        {exportingKejadianPdf ? (
+                          <ActivityIndicator size="small" color={PALETTE.orange} />
+                        ) : (
+                          <FileDown size={14} color={PALETTE.orange} />
+                        )}
+                        <Text style={hotspotStyles.pdfExportBtnText}>{exportingKejadianPdf ? 'Menjana PDF...' : 'Muat Turun PDF'}</Text>
+                      </TouchableOpacity>
                     </View>
                   )}
 
@@ -837,10 +883,12 @@ export default function HotspotSection({ userRole, isEditMode, onNotify }) {
                   ) : currentKejadianData.length === 0 ? (
                     <Text style={styles.emptyText}>Tiada rekod untuk kategori ini.</Text>
                   ) : (
-                    <View style={{ borderRadius: 14, borderWidth: 1, borderColor: PALETTE.cardLightBorder || '#e2e8f0', overflow: 'hidden' }}>
-                      {renderKejadianTableHeader(userRole === 'admin' && isEditMode)}
-                      {currentKejadianData.map((item, index) => renderKejadianRow(item, index, userRole === 'admin' && isEditMode))}
-                    </View>
+                    <ScrollView horizontal={isMobile} showsHorizontalScrollIndicator={isMobile}>
+                      <View style={{ borderRadius: 14, borderWidth: 1, borderColor: PALETTE.cardLightBorder || '#e2e8f0', overflow: 'hidden', minWidth: isMobile ? 600 : '100%' }}>
+                        {renderKejadianTableHeader(userRole === 'admin' && isEditMode)}
+                        {currentKejadianData.map((item, index) => renderKejadianRow(item, index, userRole === 'admin' && isEditMode))}
+                      </View>
+                    </ScrollView>
                   )}
                 </>
               ) : (
@@ -1258,8 +1306,17 @@ const hotspotStyles = StyleSheet.create({
   subTabBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 8,
     borderRadius: 8, backgroundColor: PALETTE.cardLight, borderWidth: 1, borderColor: PALETTE.cardLightBorder,
+    flexShrink: 0,
   },
   subTabText: { fontSize: 12, fontWeight: '700' },
+
+  // Export PDF (Rekod)
+  pdfExportBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    paddingHorizontal: 16, paddingVertical: 12, borderRadius: 8,
+    borderWidth: 1, borderColor: PALETTE.orange, backgroundColor: PALETTE.orange + '10',
+  },
+  pdfExportBtnText: { fontSize: 12, fontWeight: '700', color: PALETTE.orange },
 
   // Upload photo kejadian
   photoUploadEmpty: {
