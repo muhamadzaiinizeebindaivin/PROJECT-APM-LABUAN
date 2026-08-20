@@ -20,11 +20,7 @@ export function usePpsCategories() {
   useEffect(() => { fetchPpsCategories(); }, []);
 
   const addPpsCategory = async ({ label, color, icon }) => {
-    if (!label.trim()) {
-      Alert.alert('Ralat', 'Sila masukkan nama kategori.');
-      return false;
-    }
-    const key = label.trim(); // key = valeur stockée dans pps_list.type
+    const key = (label || '').trim() || 'Tanpa Nama'; // key = valeur stockée dans pps_list.type
     const { error } = await supabaseSandbox.from('pps_categories').insert([{
       key,
       label: key,
@@ -32,6 +28,22 @@ export function usePpsCategories() {
       icon: icon || 'Building',
       display_order: ppsCategories.length + 1,
     }]);
+    if (error) {
+      Platform.OS === 'web' ? alert('Ralat: ' + error.message) : Alert.alert('Ralat', error.message);
+      return false;
+    }
+    await fetchPpsCategories();
+    return true;
+  };
+
+  const updatePpsCategory = async (id, { label, color, icon }) => {
+    const key = (label || '').trim() || 'Tanpa Nama';
+    const { error } = await supabaseSandbox.from('pps_categories').update({
+      key,
+      label: key,
+      color,
+      icon: icon || 'Building',
+    }).eq('id', id);
     if (error) {
       Platform.OS === 'web' ? alert('Ralat: ' + error.message) : Alert.alert('Ralat', error.message);
       return false;
@@ -64,5 +76,5 @@ export function usePpsCategories() {
     return true;
   };
 
-  return { ppsCategories, loadingPpsCategories, addPpsCategory, deletePpsCategory };
+  return { ppsCategories, loadingPpsCategories, addPpsCategory, updatePpsCategory, deletePpsCategory };
 }

@@ -157,7 +157,7 @@ const SekretariatScreen = ({ theme, userRole }) => {
 
           {activeTab === 'JPBD' && <JpbdSection userRole={userRole} isEditMode={isEditMode} />}
           {activeTab === 'HOTSPOT' && <HotspotSection userRole={userRole} isEditMode={isEditMode} onNotify={showNotification} />}
-          {activeTab === 'PPS' && <PpsSection userRole={userRole} isEditMode={isEditMode} />}
+          {activeTab === 'PPS' && <PpsSection userRole={userRole} isEditMode={isEditMode} onNotify={showNotification} />}
 
           <View style={styles.sectionDivider} />
 

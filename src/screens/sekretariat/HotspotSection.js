@@ -788,21 +788,6 @@ export default function HotspotSection({ userRole, isEditMode, onNotify }) {
                   </TouchableOpacity>
                 </ScrollView>
 
-                <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
-                  {userRole === 'admin' && isEditMode && activeSubTab !== 'analisis' ? (
-                    activeSubTab === 'lokasi' ? (
-                      <TouchableOpacity style={styles.addButton} onPress={() => openAddModal(currentCat.key)}>
-                        <Plus size={16} color={PALETTE.white} />
-                        <Text style={styles.addButtonText}>Tambah</Text>
-                      </TouchableOpacity>
-                    ) : (
-                      <TouchableOpacity style={styles.addButton} onPress={() => openAddKejadianModal(currentCat.key, currentCat.label)}>
-                        <Plus size={16} color={PALETTE.white} />
-                        <Text style={styles.addButtonText}>Tambah</Text>
-                      </TouchableOpacity>
-                    )
-                  ) : null}
-                </View>
               </View>
 
               {activeSubTab === 'lokasi' ? (
@@ -817,6 +802,13 @@ export default function HotspotSection({ userRole, isEditMode, onNotify }) {
                       if (url) await updateCategoryPhoto(currentCat.id, url);
                     }}
                   />
+
+                  {userRole === 'admin' && isEditMode && (
+                    <TouchableOpacity style={[styles.addButton, { alignSelf: 'flex-end', marginBottom: 12 }]} onPress={() => openAddModal(currentCat.key)}>
+                      <Plus size={16} color={PALETTE.white} />
+                      <Text style={styles.addButtonText}>Tambah</Text>
+                    </TouchableOpacity>
+                  )}
 
                   {/* ---- Liste ---- */}
                   {currentData.length === 0 ? (
@@ -874,6 +866,20 @@ export default function HotspotSection({ userRole, isEditMode, onNotify }) {
                         )}
                         <Text style={hotspotStyles.pdfExportBtnText}>{exportingKejadianPdf ? 'Menjana PDF...' : 'Muat Turun PDF'}</Text>
                       </TouchableOpacity>
+
+                      {userRole === 'admin' && isEditMode && (
+                        <TouchableOpacity
+                          style={[
+                            styles.addButton,
+                            { paddingVertical: 14, paddingHorizontal: 18, justifyContent: 'center' },
+                            isMobile ? { alignSelf: 'stretch' } : { marginLeft: 4 },
+                          ]}
+                          onPress={() => openAddKejadianModal(currentCat.key, currentCat.label)}
+                        >
+                          <Plus size={16} color={PALETTE.white} />
+                          <Text style={styles.addButtonText}>Tambah</Text>
+                        </TouchableOpacity>
+                      )}
                     </View>
                   )}
 
@@ -1313,10 +1319,10 @@ const hotspotStyles = StyleSheet.create({
   // Export PDF (Rekod)
   pdfExportBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-    paddingHorizontal: 16, paddingVertical: 12, borderRadius: 8,
+    paddingHorizontal: 18, paddingVertical: 14, borderRadius: 8,
     borderWidth: 1, borderColor: PALETTE.orange, backgroundColor: PALETTE.orange + '10',
   },
-  pdfExportBtnText: { fontSize: 12, fontWeight: '700', color: PALETTE.orange },
+  pdfExportBtnText: { fontSize: 13, fontWeight: '700', color: PALETTE.orange },
 
   // Upload photo kejadian
   photoUploadEmpty: {

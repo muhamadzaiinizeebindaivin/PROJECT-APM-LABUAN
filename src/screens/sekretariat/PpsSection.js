@@ -1,6 +1,6 @@
 // src/screens/sekretariat/PpsSection.js
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, TextInput, Modal, ActivityIndicator, StyleSheet, Platform, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, TextInput, Modal, ActivityIndicator, StyleSheet, Platform } from 'react-native';
 import {
   Home, Landmark, School, Building, AlertCircle, Plus, Edit, Trash2, X, ShieldCheck,
   Building2, Warehouse, Tent, Church, Hospital, Hotel, Store, MapPin,
@@ -30,17 +30,19 @@ const ICONS = {
 const resolveIcon = (cat) => ICONS[cat?.icon] || Building;
 const COLOR_CHOICES = ['#EA580C', '#3B82F6', '#16A34A', '#9333EA', '#DC2626', '#0891B2', '#d97706'];
 
-export default function PpsSection({ userRole, isEditMode }) {
+export default function PpsSection({ userRole, isEditMode, onNotify }) {
   const [selectedType, setSelectedType] = useState('Dewan');
+  const canEditPps = userRole === 'admin' && isEditMode;
   const {
     ppsList, ppsStats, loadingPPS,
     modalPpsVisible, setModalPpsVisible,
     formModePps, formPps, setFormPps,
     openAddModal, openEditModal,
-    handleSavePPS, confirmDeletePPS,
-  } = usePpsList();
+    handleSavePPS,
+    pendingDeletePps, requestDeletePps, cancelDeletePps, executeDeletePps,
+  } = usePpsList(onNotify);
 
-  const { ppsCategories, addPpsCategory, deletePpsCategory } = usePpsCategories();
+  const { ppsCategories, addPpsCategory, updatePpsCategory, deletePpsCategory } = usePpsCategories();
 
   const typeOf = (pps) => (ppsCategories.some((t) => t.key === pps.type) ? pps.type : 'Lain-Lain');
   const currentType = ppsCategories.find((t) => t.key === selectedType) || null;
@@ -55,31 +57,54 @@ export default function PpsSection({ userRole, isEditMode }) {
     setFormPps((f) => ({ ...f, type: selectedType }));
   };
 
-  // ---- Modale nouvelle catégorie ----
+  // ---- Modale nouvelle/kemaskini catégorie ----
   const [modalCatVisible, setModalCatVisible] = useState(false);
   const [formCat, setFormCat] = useState({ label: '', color: COLOR_CHOICES[0], icon: 'Building' });
+  const [editingCatId, setEditingCatId] = useState(null); // null = ajout, sinon = modification
+
+  const openEditCategoryModal = (cat) => {
+    setEditingCatId(cat.id);
+    setFormCat({ label: cat.label || cat.key, color: cat.color, icon: cat.icon || 'Building' });
+    setModalCatVisible(true);
+  };
 
   const handleSaveCategory = async () => {
-    const ok = await addPpsCategory(formCat);
+    const ok = editingCatId
+      ? await updatePpsCategory(editingCatId, formCat)
+      : await addPpsCategory(formCat);
     if (ok) {
+      onNotify?.('success', editingCatId ? 'Kategori PPS dikemaskini.' : 'Kategori PPS ditambah.');
       setModalCatVisible(false);
+      setEditingCatId(null);
       setFormCat({ label: '', color: COLOR_CHOICES[0], icon: 'Building' });
+    } else {
+      onNotify?.('error', editingCatId ? 'Gagal mengemaskini kategori.' : 'Gagal menambah kategori.');
     }
   };
 
-  const handleDeleteCategory = async (cat) => {
-    const doDelete = async () => {
-      const ok = await deletePpsCategory(cat);
-      if (ok && selectedType === cat.key) setSelectedType('Dewan');
-    };
-    if (Platform.OS === 'web') {
-      if (window.confirm(`Padam kategori "${cat.label}"?`)) doDelete();
+  // ---- Confirmation de suppression de catégorie (popup stylé) ----
+  const [pendingDeleteCategory, setPendingDeleteCategory] = useState(null);
+
+  // Garde la dernière valeur affichée pendant l'animation de fermeture (évite le texte qui change juste avant que le popup disparaisse)
+  const displayPendingDeletePpsRef = React.useRef(null);
+  if (pendingDeletePps) displayPendingDeletePpsRef.current = pendingDeletePps;
+  const displayPendingDeleteCategoryRef = React.useRef(null);
+  if (pendingDeleteCategory) displayPendingDeleteCategoryRef.current = pendingDeleteCategory;
+
+  const requestDeleteCategory = (cat) => setPendingDeleteCategory(cat);
+  const cancelDeleteCategory = () => setPendingDeleteCategory(null);
+
+  const executeDeleteCategory = async () => {
+    if (!pendingDeleteCategory) return;
+    const cat = pendingDeleteCategory;
+    const ok = await deletePpsCategory(cat);
+    if (ok) {
+      onNotify?.('success', 'Kategori PPS dipadam.');
+      if (selectedType === cat.key) setSelectedType('Dewan');
     } else {
-      Alert.alert('Pengesahan Padam', `Padam kategori "${cat.label}"?`, [
-        { text: 'Batal', style: 'cancel' },
-        { text: 'Padam', style: 'destructive', onPress: doDelete },
-      ]);
+      onNotify?.('error', 'Gagal memadam kategori.');
     }
+    setPendingDeleteCategory(null);
   };
 
   return (
@@ -135,13 +160,29 @@ export default function PpsSection({ userRole, isEditMode }) {
                   <Text style={[ppsStyles.pillCount, { color: isSelected ? PALETTE.white : PALETTE.textMutedDark }]}>
                     {count} PPS
                   </Text>
+                  {userRole === 'admin' && isEditMode ? (
+                    <View style={{ position: 'absolute', top: 8, right: 8, flexDirection: 'row', gap: 6 }}>
+                      <TouchableOpacity
+                        onPress={(e) => { e.stopPropagation?.(); openEditCategoryModal(t); }}
+                        style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.25)', alignItems: 'center', justifyContent: 'center' }}
+                      >
+                        <Edit size={12} color={isSelected ? PALETTE.white : t.color} />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={(e) => { e.stopPropagation?.(); requestDeleteCategory(t); }}
+                        style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: 'rgba(220,38,38,0.15)', alignItems: 'center', justifyContent: 'center' }}
+                      >
+                        <Trash2 size={12} color="#dc2626" />
+                      </TouchableOpacity>
+                    </View>
+                  ) : null}
                 </TouchableOpacity>
               );
             })}
 
             {/* Pill "ajouter une catégorie" */}
             {userRole === 'admin' && isEditMode ? (
-              <TouchableOpacity style={ppsStyles.pillAdd} onPress={() => setModalCatVisible(true)} activeOpacity={0.8}>
+              <TouchableOpacity style={ppsStyles.pillAdd} onPress={() => { setEditingCatId(null); setFormCat({ label: '', color: COLOR_CHOICES[0], icon: 'Building' }); setModalCatVisible(true); }} activeOpacity={0.8}>
                 <Plus size={22} color={PALETTE.orange} />
                 <Text style={ppsStyles.pillAddText}>Kategori Baru</Text>
               </TouchableOpacity>
@@ -156,7 +197,7 @@ export default function PpsSection({ userRole, isEditMode }) {
               <Text style={[ppsStyles.catBannerCount, { color: currentColor }]}>{currentData.length} PPS · {currentCapacity} pax</Text>
               {userRole === 'admin' && isEditMode ? (
                 <HoverTip label="Padam kategori ini">
-                  <TouchableOpacity onPress={() => handleDeleteCategory(currentType)} style={ppsStyles.catDeleteBtn}>
+                  <TouchableOpacity onPress={() => requestDeleteCategory(currentType)} style={ppsStyles.catDeleteBtn}>
                     <Trash2 size={15} color={PALETTE.danger} />
                   </TouchableOpacity>
                 </HoverTip>
@@ -177,7 +218,12 @@ export default function PpsSection({ userRole, isEditMode }) {
             <Text style={styles.emptyText}>Tiada PPS untuk kategori ini.</Text>
           ) : (
             currentData.map((pps) => (
-              <View key={pps.id} style={ppsStyles.ppsCard}>
+              <TouchableOpacity
+                key={pps.id}
+                activeOpacity={0.7}
+                onPress={() => openEditModal(pps)}
+                style={ppsStyles.ppsCard}
+              >
                 <View style={ppsStyles.ppsHeader}>
                   <View style={[ppsStyles.ppsIconBox, { backgroundColor: pps.status === 'OK' ? currentColor : PALETTE.danger }]}>
                     <CurrentIcon size={18} color={PALETTE.white} />
@@ -200,12 +246,12 @@ export default function PpsSection({ userRole, isEditMode }) {
                   {userRole === 'admin' && isEditMode ? (
                     <View style={ppsStyles.itemActions}>
                       <HoverTip label="Kemaskini PPS ini">
-                        <TouchableOpacity onPress={() => openEditModal(pps)} style={[ppsStyles.itemActionBtn, { backgroundColor: PALETTE.orange + '18' }]}>
+                        <TouchableOpacity onPress={(e) => { e.stopPropagation?.(); openEditModal(pps); }} style={[ppsStyles.itemActionBtn, { backgroundColor: PALETTE.orange + '18' }]}>
                           <Edit size={15} color={PALETTE.orange} />
                         </TouchableOpacity>
                       </HoverTip>
                       <HoverTip label="Padam PPS ini">
-                        <TouchableOpacity onPress={() => confirmDeletePPS(pps.id)} style={[ppsStyles.itemActionBtn, { backgroundColor: PALETTE.danger + '18' }]}>
+                        <TouchableOpacity onPress={(e) => { e.stopPropagation?.(); requestDeletePps(pps); }} style={[ppsStyles.itemActionBtn, { backgroundColor: PALETTE.danger + '18' }]}>
                           <Trash2 size={15} color={PALETTE.danger} />
                         </TouchableOpacity>
                       </HoverTip>
@@ -219,7 +265,7 @@ export default function PpsSection({ userRole, isEditMode }) {
                     <Text style={ppsStyles.alertText}>{pps.status}</Text>
                   </View>
                 ) : null}
-              </View>
+              </TouchableOpacity>
             ))
           )}
         </>
@@ -229,39 +275,49 @@ export default function PpsSection({ userRole, isEditMode }) {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{formModePps === 'add' ? 'Tambah PPS' : 'Kemaskini PPS'}</Text>
+              <Text style={styles.modalTitle}>{!canEditPps ? 'Butiran PPS' : (formModePps === 'add' ? 'Tambah PPS' : 'Kemaskini PPS')}</Text>
               <TouchableOpacity onPress={() => setModalPpsVisible(false)}><X size={24} color={PALETTE.textMutedDark} /></TouchableOpacity>
             </View>
             <ScrollView contentContainerStyle={styles.modalForm}>
-              <Text style={styles.inputLabel}>Nama Pusat Pemindahan (PPS) *</Text>
-              <TextInput style={styles.input} placeholder="Cth: Dewan Serbaguna Perbadanan" value={formPps.name} onChangeText={(t) => setFormPps({ ...formPps, name: t })} />
+              <Text style={styles.inputLabel}>Nama Pusat Pemindahan (PPS)</Text>
+              <TextInput style={[styles.input, !canEditPps && { color: PALETTE.textMutedDark, outlineStyle: 'none' }]} placeholder="Cth: Dewan Serbaguna Perbadanan" value={formPps.name} onChangeText={(t) => setFormPps({ ...formPps, name: t })} editable={canEditPps} pointerEvents={canEditPps ? 'auto' : 'none'} />
               <View style={styles.row}>
                 <View style={styles.halfCol}>
                   <Text style={styles.inputLabel}>Zon (Kawasan)</Text>
-                  <TextInput style={styles.input} placeholder="Cth: 1" value={formPps.zone} onChangeText={(t) => setFormPps({ ...formPps, zone: t })} />
+                  <TextInput style={[styles.input, !canEditPps && { color: PALETTE.textMutedDark, outlineStyle: 'none' }]} placeholder="Cth: 1" value={formPps.zone} onChangeText={(t) => setFormPps({ ...formPps, zone: t })} editable={canEditPps} pointerEvents={canEditPps ? 'auto' : 'none'} />
                 </View>
                 <View style={styles.halfCol}>
-                  <Text style={styles.inputLabel}>Kapasiti (Pax) *</Text>
-                  <TextInput style={styles.input} placeholder="Cth: 500" keyboardType="number-pad" value={formPps.capacity} onChangeText={(t) => setFormPps({ ...formPps, capacity: t })} />
+                  <Text style={styles.inputLabel}>Kapasiti (Pax)</Text>
+                  <TextInput style={[styles.input, !canEditPps && { color: PALETTE.textMutedDark, outlineStyle: 'none' }]} placeholder="Cth: 500" keyboardType="number-pad" value={formPps.capacity} onChangeText={(t) => setFormPps({ ...formPps, capacity: t })} editable={canEditPps} pointerEvents={canEditPps ? 'auto' : 'none'} />
                 </View>
               </View>
               <Text style={styles.inputLabel}>Kategori PPS</Text>
               <View style={styles.categoryWrap}>
-                {ppsCategories.map(cat => (
-                  <TouchableOpacity
-                    key={cat.id}
-                    style={[styles.categoryBtn, formPps.type === cat.key ? styles.categoryBtnActive : null]}
-                    onPress={() => setFormPps({ ...formPps, type: cat.key })}
-                  >
-                    <Text style={[styles.categoryBtnText, formPps.type === cat.key ? styles.categoryBtnTextActive : null]}>{cat.label}</Text>
-                  </TouchableOpacity>
-                ))}
+                {canEditPps ? (
+                  ppsCategories.map(cat => (
+                    <TouchableOpacity
+                      key={cat.id}
+                      style={[styles.categoryBtn, formPps.type === cat.key ? styles.categoryBtnActive : null]}
+                      onPress={() => setFormPps({ ...formPps, type: cat.key })}
+                    >
+                      <Text style={[styles.categoryBtnText, formPps.type === cat.key ? styles.categoryBtnTextActive : null]}>{cat.label}</Text>
+                    </TouchableOpacity>
+                  ))
+                ) : (
+                  <View style={[styles.categoryBtn, styles.categoryBtnActive]}>
+                    <Text style={[styles.categoryBtnText, styles.categoryBtnTextActive]}>
+                      {ppsCategories.find(c => c.key === formPps.type)?.label || formPps.type}
+                    </Text>
+                  </View>
+                )}
               </View>
               <Text style={styles.inputLabel}>Status Kesediaan</Text>
-              <TextInput style={[styles.input, { height: 60, textAlignVertical: 'top' }]} placeholder="OK (Atau nyatakan kerosakan)" multiline value={formPps.status} onChangeText={(t) => setFormPps({ ...formPps, status: t })} />
-              <TouchableOpacity style={styles.saveButton} onPress={handleSavePPS}>
-                {loadingPPS ? <ActivityIndicator color={PALETTE.white} /> : <Text style={styles.saveButtonText}>Simpan PPS</Text>}
-              </TouchableOpacity>
+              <TextInput style={[styles.input, { height: 60, textAlignVertical: 'top' }, !canEditPps && { color: PALETTE.textMutedDark, outlineStyle: 'none' }]} placeholder="OK (Atau nyatakan kerosakan)" multiline value={formPps.status} onChangeText={(t) => setFormPps({ ...formPps, status: t })} editable={canEditPps} pointerEvents={canEditPps ? 'auto' : 'none'} />
+              {canEditPps && (
+                <TouchableOpacity style={styles.saveButton} onPress={handleSavePPS}>
+                  {loadingPPS ? <ActivityIndicator color={PALETTE.white} /> : <Text style={styles.saveButtonText}>Simpan PPS</Text>}
+                </TouchableOpacity>
+              )}
               <View style={{ height: 20 }} />
             </ScrollView>
           </View>
@@ -273,11 +329,11 @@ export default function PpsSection({ userRole, isEditMode }) {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Tambah Kategori PPS</Text>
+              <Text style={styles.modalTitle}>{editingCatId ? 'Kemaskini Kategori PPS' : 'Tambah Kategori PPS'}</Text>
               <TouchableOpacity onPress={() => setModalCatVisible(false)}><X size={24} color={PALETTE.textMutedDark} /></TouchableOpacity>
             </View>
             <ScrollView contentContainerStyle={styles.modalForm}>
-              <Text style={styles.inputLabel}>Nama Kategori *</Text>
+              <Text style={styles.inputLabel}>Nama Kategori</Text>
               <TextInput style={styles.input} placeholder="Cth: Masjid/Surau" value={formCat.label} onChangeText={(t) => setFormCat({ ...formCat, label: t })} />
               <Text style={styles.inputLabel}>Ikon</Text>
               <View style={ppsStyles.iconGrid}>
@@ -308,13 +364,70 @@ export default function PpsSection({ userRole, isEditMode }) {
                 ))}
               </View>
               <TouchableOpacity style={styles.saveButton} onPress={handleSaveCategory}>
-                <Text style={styles.saveButtonText}>Simpan Kategori</Text>
+                <Text style={styles.saveButtonText}>{editingCatId ? 'Kemaskini Kategori' : 'Simpan Kategori'}</Text>
               </TouchableOpacity>
               <View style={{ height: 20 }} />
             </ScrollView>
           </View>
         </View>
       </Modal>
+
+      {/* ---- Popup confirmation : padam PPS ---- */}
+      <Modal visible={!!pendingDeletePps} transparent animationType="fade" onRequestClose={cancelDeletePps}>
+        <View style={ppsStyles.confirmOverlay}>
+          <View style={ppsStyles.confirmBox}>
+            <View style={ppsStyles.confirmBanner}>
+              <View style={ppsStyles.confirmIconCircle}>
+                <AlertCircle size={26} color="#ef4444" />
+              </View>
+              <Text style={ppsStyles.confirmTitle}>Padam PPS?</Text>
+              <Text style={ppsStyles.confirmSubtitle}>
+                {displayPendingDeletePpsRef.current ? `"${displayPendingDeletePpsRef.current.name}" akan dipadam secara kekal.` : ''}
+              </Text>
+            </View>
+            <View style={ppsStyles.confirmActions}>
+              <TouchableOpacity style={ppsStyles.confirmCancelBtn} onPress={cancelDeletePps}>
+                <Text style={ppsStyles.confirmCancelText}>Batal</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={ppsStyles.confirmConfirmBtn} onPress={executeDeletePps}>
+                {loadingPPS ? <ActivityIndicator color="#fff" /> : (
+                  <>
+                    <Trash2 size={16} color="#fff" />
+                    <Text style={ppsStyles.confirmConfirmText}>Padam</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ---- Popup confirmation : padam kategori ---- */}
+      <Modal visible={!!pendingDeleteCategory} transparent animationType="fade" onRequestClose={cancelDeleteCategory}>
+        <View style={ppsStyles.confirmOverlay}>
+          <View style={ppsStyles.confirmBox}>
+            <View style={ppsStyles.confirmBanner}>
+              <View style={ppsStyles.confirmIconCircle}>
+                <AlertCircle size={26} color="#ef4444" />
+              </View>
+              <Text style={ppsStyles.confirmTitle}>Padam Kategori?</Text>
+              <Text style={ppsStyles.confirmSubtitle}>
+                {displayPendingDeleteCategoryRef.current ? `Kategori "${displayPendingDeleteCategoryRef.current.label}" akan dipadam secara kekal.` : ''}
+              </Text>
+            </View>
+            <View style={ppsStyles.confirmActions}>
+              <TouchableOpacity style={ppsStyles.confirmCancelBtn} onPress={cancelDeleteCategory}>
+                <Text style={ppsStyles.confirmCancelText}>Batal</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={ppsStyles.confirmConfirmBtn} onPress={executeDeleteCategory}>
+                <Trash2 size={16} color="#fff" />
+                <Text style={ppsStyles.confirmConfirmText}>Padam</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
     </View>
   );
 }
@@ -343,6 +456,7 @@ const ppsStyles = StyleSheet.create({
   pill: {
     width: 160, alignItems: 'center', paddingVertical: 14, paddingHorizontal: 10,
     borderRadius: 12, backgroundColor: PALETTE.cardLight, borderWidth: 1, gap: 4,
+    position: 'relative',
   },
   pillLabel: { fontSize: 12, fontWeight: '800', textAlign: 'center' },
   pillCount: { fontSize: 11, fontWeight: '600' },
@@ -390,4 +504,29 @@ const ppsStyles = StyleSheet.create({
   itemActionBtn: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
   alertBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: PALETTE.dangerSoft, padding: 10, gap: 8, borderTopWidth: 1, borderTopColor: PALETTE.cardLightBorder },
   alertText: { fontSize: 11, color: PALETTE.danger, fontWeight: '700', flex: 1 },
+
+  // Popup confirmation suppression
+  confirmOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 24 },
+  confirmBox: {
+    width: '100%', maxWidth: 400, borderRadius: 24, overflow: 'hidden',
+    shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 20, elevation: 20,
+  },
+  confirmBanner: { backgroundColor: '#0c0c0e', padding: 24, alignItems: 'center' },
+  confirmIconCircle: {
+    width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    alignItems: 'center', justifyContent: 'center', marginBottom: 14,
+  },
+  confirmTitle: { fontSize: 18, fontWeight: '900', color: '#fff' },
+  confirmSubtitle: { fontSize: 13, color: '#94a3b8', marginTop: 6, textAlign: 'center' },
+  confirmActions: { flexDirection: 'row', gap: 10, padding: 20, backgroundColor: '#fff' },
+  confirmCancelBtn: {
+    flex: 1, height: 48, borderRadius: 12, borderWidth: 1.5, borderColor: '#e2e8f0',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  confirmCancelText: { color: '#64748b', fontWeight: '800', fontSize: 14 },
+  confirmConfirmBtn: {
+    flex: 1, height: 48, borderRadius: 12, backgroundColor: '#ef4444',
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+  },
+  confirmConfirmText: { color: '#fff', fontWeight: '800', fontSize: 14 },
 });

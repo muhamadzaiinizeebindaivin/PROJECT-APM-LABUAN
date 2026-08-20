@@ -1,6 +1,5 @@
 // src/hooks/usePpsList.js
 import { useState, useEffect } from 'react';
-import { Alert, Platform } from 'react-native';
 import { supabaseSandbox } from '../supabaseSandboxClient';
 
 /**
@@ -8,8 +7,11 @@ import { supabaseSandbox } from '../supabaseSandboxClient';
  * création, modification, suppression, et calcul des statistiques
  * agrégées par type. Extrait de SekretariatScreen.js.
  * Schéma sandbox uniquement — ne touche jamais public.
+ * onNotify(type, message) est appelé pour les toasts de succès/erreur ;
+ * la confirmation de suppression est exposée via un état (pendingDeletePps)
+ * pour être rendue en popup stylé côté écran, plus de Alert.alert/window.confirm.
  */
-export function usePpsList() {
+export function usePpsList(onNotify) {
   const [ppsList, setPpsList] = useState([]);
   const [ppsStats, setPpsStats] = useState([]);
   const [loadingPPS, setLoadingPPS] = useState(true);
@@ -93,10 +95,6 @@ export function usePpsList() {
   };
 
   const handleSavePPS = async () => {
-    if (!formPps.name || !formPps.capacity) {
-      return Alert.alert('Ralat', 'Nama PPS dan Kapasiti wajib diisi.');
-    }
-
     setLoadingPPS(true);
     const payload = {
       name: formPps.name,
@@ -108,36 +106,35 @@ export function usePpsList() {
 
     if (formModePps === 'add') {
       const { error } = await supabaseSandbox.from('pps_list').insert([payload]);
-      if (error) Alert.alert('Ralat', error.message);
-      else { Alert.alert('Berjaya', 'PPS ditambah.'); setModalPpsVisible(false); fetchPPS(); }
+      if (error) onNotify?.('error', error.message);
+      else { onNotify?.('success', 'PPS ditambah.'); setModalPpsVisible(false); fetchPPS(); }
     } else {
       const { error } = await supabaseSandbox.from('pps_list').update(payload).eq('id', editIdPps);
-      if (error) Alert.alert('Ralat', error.message);
-      else { Alert.alert('Berjaya', 'PPS dikemaskini.'); setModalPpsVisible(false); fetchPPS(); }
+      if (error) onNotify?.('error', error.message);
+      else { onNotify?.('success', 'PPS dikemaskini.'); setModalPpsVisible(false); fetchPPS(); }
     }
     setLoadingPPS(false);
   };
 
-  const confirmDeletePPS = (id) => {
-    const executeDelete = async () => {
-      setLoadingPPS(true);
-      const { error } = await supabaseSandbox.from('pps_list').delete().eq('id', id);
-      if (error) {
-        Platform.OS === 'web' ? alert('Ralat: ' + error.message) : Alert.alert('Ralat', error.message);
-      } else {
-        fetchPPS();
-      }
-      setLoadingPPS(false);
-    };
+  // ---- Confirmation de suppression (popup stylé côté écran, plus de Alert.alert/window.confirm) ----
+  const [pendingDeletePps, setPendingDeletePps] = useState(null);
 
-    if (Platform.OS === 'web') {
-      if (window.confirm('Pengesahan: Adakah anda pasti mahu memadam PPS ini?')) executeDelete();
+  const requestDeletePps = (pps) => setPendingDeletePps(pps);
+  const cancelDeletePps = () => setPendingDeletePps(null);
+
+  const executeDeletePps = async () => {
+    if (!pendingDeletePps) return;
+    const id = pendingDeletePps.id;
+    setLoadingPPS(true);
+    const { error } = await supabaseSandbox.from('pps_list').delete().eq('id', id);
+    if (error) {
+      onNotify?.('error', error.message);
     } else {
-      Alert.alert('Pengesahan Padam', 'Adakah anda pasti mahu memadam PPS ini?', [
-        { text: 'Batal', style: 'cancel' },
-        { text: 'Padam', style: 'destructive', onPress: executeDelete },
-      ]);
+      onNotify?.('success', 'PPS dipadam.');
+      fetchPPS();
     }
+    setLoadingPPS(false);
+    setPendingDeletePps(null);
   };
 
   return {
@@ -145,6 +142,7 @@ export function usePpsList() {
     modalPpsVisible, setModalPpsVisible,
     formModePps, formPps, setFormPps,
     openAddModal, openEditModal,
-    handleSavePPS, confirmDeletePPS,
+    handleSavePPS,
+    pendingDeletePps, requestDeletePps, cancelDeletePps, executeDeletePps,
   };
 }
