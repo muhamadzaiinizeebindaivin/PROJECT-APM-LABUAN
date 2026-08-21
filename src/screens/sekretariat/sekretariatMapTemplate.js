@@ -156,6 +156,27 @@ export function buildSekretariatMapHtml({ theme, userRole }) {
 
           var agencyMarkers = {};
           var bencanaMarkers = {};
+          var markerAnimations = {}; // requestAnimationFrame id per agency, so a new GPS ping can smoothly redirect an in-progress glide
+
+          function animateMarkerTo(id, marker, targetLat, targetLng, duration) {
+            if (markerAnimations[id]) cancelAnimationFrame(markerAnimations[id]);
+            var start = marker.getLatLng();
+            var startTime = performance.now();
+            function step(now) {
+              var t = Math.min((now - startTime) / duration, 1);
+              var eased = 1 - Math.pow(1 - t, 3); // ease-out: fast start, smooth settle
+              marker.setLatLng([
+                start.lat + (targetLat - start.lat) * eased,
+                start.lng + (targetLng - start.lng) * eased
+              ]);
+              if (t < 1) {
+                markerAnimations[id] = requestAnimationFrame(step);
+              } else {
+                delete markerAnimations[id];
+              }
+            }
+            markerAnimations[id] = requestAnimationFrame(step);
+          }
 
           window.parent.postMessage(JSON.stringify({ type: 'MAP_READY' }), '*');
 
@@ -212,7 +233,7 @@ export function buildSekretariatMapHtml({ theme, userRole }) {
                 if (!isFinite(lat) || !isFinite(lng)) return;
                 a.lat = lat; a.lng = lng;
                 if (agencyMarkers[a.id]) {
-                  agencyMarkers[a.id].setLatLng([a.lat, a.lng]);
+                  animateMarkerTo(a.id, agencyMarkers[a.id], a.lat, a.lng, 5000);
                   agencyMarkers[a.id].setIcon(createAgencyIcon(a.color, a.logo));
                   agencyMarkers[a.id].setPopupContent(buildAgencyPopup(a));
                   agencyMarkers[a.id].setTooltipContent(a.agency);
