@@ -88,6 +88,8 @@ export default function PertolonganCemasTab({ theme, userRole, isEditMode }) {
   const [statusModalId, setStatusModalId] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterYear, setFilterYear] = useState(new Date().getFullYear());
+  const [currentPage, setCurrentPage] = useState(1);
+  const EVENTS_PER_PAGE = 5;
   
 
   // photos retirées
@@ -182,12 +184,19 @@ export default function PertolonganCemasTab({ theme, userRole, isEditMode }) {
 
   const availableYears = [...new Set(events.map(e => new Date(e.tarikh).getFullYear()))].sort((a, b) => b - a);
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterStatus, filterYear, searchQuery]);
+
   const filteredEvents = events.filter(e => {
     if (new Date(e.tarikh).getFullYear() !== filterYear) return false;
     if (filterStatus !== 'semua' && e.status !== filterStatus) return false;
     if (searchQuery.trim() && !(e.nama_acara + e.lokasi).toLowerCase().includes(searchQuery.trim().toLowerCase())) return false;
     return true;
   });
+
+  const totalPages = Math.max(1, Math.ceil(filteredEvents.length / EVENTS_PER_PAGE));
+  const paginatedEvents = filteredEvents.slice((currentPage - 1) * EVENTS_PER_PAGE, currentPage * EVENTS_PER_PAGE);
 
   const inputStyle = [formStyles.inputField, { backgroundColor: theme.card, color: theme.text, borderColor: theme.border, marginBottom: 0 }];
   const labelStyle = { fontSize: 12, fontWeight: '700', color: theme.textSecondary, marginBottom: 4, marginTop: 12 };
@@ -262,7 +271,7 @@ export default function PertolonganCemasTab({ theme, userRole, isEditMode }) {
         ) : filteredEvents.length === 0 ? (
           <Text style={{ color: theme.textSecondary, textAlign: 'center', marginVertical: 20 }}>Tiada acara ditemui.</Text>
         ) : (
-          filteredEvents.map(event => {
+          paginatedEvents.map(event => {
             const sc = STATUS_COLORS[event.status] || STATUS_COLORS.aktif;
             return (
               <View key={event.id} style={{
@@ -316,6 +325,28 @@ export default function PertolonganCemasTab({ theme, userRole, isEditMode }) {
                 </View>
             );
           })
+        )}
+
+        {filteredEvents.length > 0 && totalPages > 1 && (
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 16, marginTop: 8, marginBottom: 20 }}>
+            <TouchableOpacity
+              onPress={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, backgroundColor: currentPage === 1 ? '#f1f5f9' : '#1E3A8A' }}
+            >
+              <Text style={{ fontSize: 12, fontWeight: '700', color: currentPage === 1 ? '#94a3b8' : '#fff' }}>Sebelum</Text>
+            </TouchableOpacity>
+            <Text style={{ fontSize: 12, fontWeight: '700', color: theme.textSecondary }}>
+              Muka {currentPage} daripada {totalPages}
+            </Text>
+            <TouchableOpacity
+              onPress={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, backgroundColor: currentPage === totalPages ? '#f1f5f9' : '#1E3A8A' }}
+            >
+              <Text style={{ fontSize: 12, fontWeight: '700', color: currentPage === totalPages ? '#94a3b8' : '#fff' }}>Seterus</Text>
+            </TouchableOpacity>
+          </View>
         )}
 
       </ScrollView>
