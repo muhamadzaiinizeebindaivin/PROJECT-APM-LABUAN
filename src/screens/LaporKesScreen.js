@@ -1,7 +1,7 @@
 // src/screens/LaporKesScreen.js
 import React, { useState, useEffect, useRef, useMemo, createElement } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, TextInput, FlatList, ActivityIndicator, Alert, Image, Platform, ScrollView, Modal, useWindowDimensions } from 'react-native';
-import { Search, ArrowLeft, Send, CheckCircle2, MapPin, FilePlus, ChevronRight, AlertCircle, Trash2, Eye, EyeOff, Lock, AlertTriangle, XCircle, Maximize2, X } from 'lucide-react-native';
+import { Search, ArrowLeft, Send, CheckCircle2, MapPin, FilePlus, ChevronRight, AlertCircle, Trash2, Eye, EyeOff, Lock, AlertTriangle, XCircle } from 'lucide-react-native';
 import { useCalamityPoints } from '../hooks/useCalamityPoints';
 import { CALAMITY_CATEGORIES, getCalamityLogoUrl } from '../constants/operasiConstants';
 import { supabaseSandbox } from '../supabaseSandboxClient';
@@ -184,7 +184,6 @@ const buildPinpointMapHtml = (lat, lng, hasMarker) => `
 function PinpointMap({ latitude, longitude, onPick }) {
   const { width: screenWidth } = useWindowDimensions();
   const isMobile = screenWidth < 768;
-  const [pseudoFullscreen, setPseudoFullscreen] = useState(false);
   const iframeRef = useRef(null);
 
   useEffect(() => {
@@ -205,64 +204,22 @@ function PinpointMap({ latitude, longitude, onPick }) {
     );
   }
 
-  // Reconstruit le HTML de la carte à chaque bascule inline/plein écran —
-  // capture la DERNIÈRE position connue à cet instant précis — mais pas à
-  // chaque déplacement du marqueur (sinon l'iframe actif se rechargerait
-  // en plein glissement). C'est ce qui empêche le marqueur de disparaître
-  // en changeant de mode : chaque nouvelle iframe démarre là où le
-  // marqueur a été laissé, au lieu de toujours repartir de la position
-  // capturée au tout premier montage.
   const mapHtml = useMemo(
     () => buildPinpointMapHtml(latitude ?? DEFAULT_LAT, longitude ?? DEFAULT_LNG, !!(latitude && longitude)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [pseudoFullscreen]
+    []
   );
 
   return (
     <View style={{ flex: 1 }}>
-      {!pseudoFullscreen && createElement('iframe', {
+      {createElement('iframe', {
         key: 'pinpoint-map',
         ref: iframeRef,
         srcDoc: mapHtml,
         style: { width: '100%', height: '100%', border: 'none', borderRadius: 12 },
         title: 'Tandakan Lokasi',
         scrolling: 'no',
-        allowFullScreen: true,
-        allow: 'fullscreen',
       })}
-
-      <TouchableOpacity
-        style={{
-          position: 'absolute', top: 10, right: 10, zIndex: 10,
-          width: 34, height: 34, borderRadius: 10, backgroundColor: '#fff',
-          justifyContent: 'center', alignItems: 'center',
-          shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 6, elevation: 3,
-        }}
-        onPress={() => {
-          if (isMobile) setPseudoFullscreen(true);
-          else iframeRef.current?.requestFullscreen?.();
-        }}
-      >
-        <Maximize2 size={16} color={PALETTE.orange} />
-      </TouchableOpacity>
-
-      <Modal visible={pseudoFullscreen} animationType="fade" onRequestClose={() => setPseudoFullscreen(false)}>
-        <View style={{ flex: 1, backgroundColor: '#000' }}>
-          {pseudoFullscreen && createElement('iframe', {
-            key: 'pinpoint-map-fullscreen',
-            srcDoc: mapHtml,
-            style: { width: '100%', height: '100%', border: 'none' },
-            title: 'Tandakan Lokasi',
-            scrolling: 'no',
-          })}
-          <TouchableOpacity
-            onPress={() => setPseudoFullscreen(false)}
-            style={{ position: 'absolute', top: 12, right: 12, zIndex: 10000, width: 36, height: 36, borderRadius: 10, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 6, elevation: 4 }}
-          >
-            <X size={18} color={PALETTE.orange} />
-          </TouchableOpacity>
-        </View>
-      </Modal>
     </View>
   );
 }
