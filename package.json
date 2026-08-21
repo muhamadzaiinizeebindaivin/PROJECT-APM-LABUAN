@@ -60,7 +60,7 @@
   },
   "lavamoat": {
     "allowScripts": {
-      "jspdf>core-js#3.49.0": false
+      "jspdf>core-js#3.49.0": true
     }
   }
 }

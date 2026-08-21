@@ -54,6 +54,8 @@ export default function LiveMapTab({ theme, userRole, isEditMode, onNotify }) {
   const isMobile = screenWidth < 768;
   const [loading, setLoading] = useState(true);
   const iframeRef = useRef(null);
+  const mapContainerRef = useRef(null);
+  const [realFullscreen, setRealFullscreen] = useState(false);
 
   const { calamityPoints, saveCalamity, deleteCalamity, resolveCalamity } = useCalamityPoints();
   const [resolveModalVisible, setResolveModalVisible] = useState(false);
@@ -133,6 +135,7 @@ export default function LiveMapTab({ theme, userRole, isEditMode, onNotify }) {
     if (Platform.OS !== 'web') return undefined;
     const handleFullscreenChange = () => {
       const active = !!document.fullscreenElement;
+      setRealFullscreen(active);
       iframeRef.current?.contentWindow?.postMessage(JSON.stringify({ type: 'FULLSCREEN_STATE', active }), '*');
     };
     document.addEventListener('fullscreenchange', handleFullscreenChange);
@@ -230,7 +233,20 @@ export default function LiveMapTab({ theme, userRole, isEditMode, onNotify }) {
     }
   };
 
-  const handleIframeLoad = () => setLoading(false);
+  const handleIframeLoad = () => {
+    setLoading(false);
+    sendCalamities();
+    if (iframeRef?.current?.contentWindow) {
+      const canDelete = userRole === 'admin' || userRole === 'operasi';
+      iframeRef.current.contentWindow.postMessage(JSON.stringify({
+        type: 'UPDATE_PERMISSIONS', canDelete, canManage: canDelete,
+      }), '*');
+      if (vehiclesRef.current.length > 0) {
+        const payload = vehiclesRef.current.map(v => ({ ...v, name: v.model, status: v.tracking_status }));
+        iframeRef.current.contentWindow.postMessage(JSON.stringify({ type: 'INIT_VEHICLES', payload }), '*');
+      }
+    }
+  };
 
   const mapHtml = useMemo(() => buildOperasiMapHtml({ theme }), [theme]);
 
@@ -539,16 +555,20 @@ export default function LiveMapTab({ theme, userRole, isEditMode, onNotify }) {
       <ViewContainerWrapper {...viewContainerWrapperProps}>
         {!showMobileFullscreenHistory && (
         <View style={[{ flex: 1, position: 'relative' }, isMobile && { flex: undefined, minHeight: 420 }]}>
-          <View style={styles.mapContainer}>
-            {!pseudoFullscreen && (Platform.OS === 'web' ? (
+          <View
+            ref={mapContainerRef}
+            style={[
+              styles.mapContainer,
+              pseudoFullscreen && { position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 999999, backgroundColor: '#000' },
+            ]}
+          >
+            {Platform.OS === 'web' ? (
               createElement('iframe', {
                 ref: iframeRef,
                 srcDoc: mapHtml,
                 style: { width: '100%', height: '100%', border: 'none' },
                 title: 'Leaflet Map',
                 onLoad: handleIframeLoad,
-                allowFullScreen: true,
-                allow: 'fullscreen',
               })
             ) : (
               <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.card }}>
@@ -557,34 +577,22 @@ export default function LiveMapTab({ theme, userRole, isEditMode, onNotify }) {
                   Live Map memerlukan 'react-native-webview' pada peranti mudah alih.
                 </Text>
               </View>
-            ))}
+            )}
             {loading && Platform.OS === 'web' && (
               <View style={[styles.loader, { backgroundColor: theme.background }]}><ActivityIndicator size="large" color="#f97316" /></View>
             )}
-          </View>
-
-          <Modal visible={pseudoFullscreen} animationType="fade" onRequestClose={() => setPseudoFullscreen(false)}>
-            <View style={{ flex: 1, backgroundColor: '#000' }}>
-              {Platform.OS === 'web' && pseudoFullscreen ? (
-                createElement('iframe', {
-                  ref: iframeRef,
-                  srcDoc: mapHtml,
-                  style: { width: '100%', height: '100%', border: 'none' },
-                  title: 'Leaflet Map',
-                  onLoad: handleIframeLoad,
-                })
-              ) : null}
-              {loading && (
-                <View style={[styles.loader, { backgroundColor: theme.background }]}><ActivityIndicator size="large" color="#f97316" /></View>
-              )}
+            {(realFullscreen || pseudoFullscreen) && (
               <TouchableOpacity
-                onPress={() => setPseudoFullscreen(false)}
-                style={{ position: 'absolute', top: 12, right: 12, zIndex: 10000, width: 36, height: 36, borderRadius: 10, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 6, elevation: 4 }}
+                onPress={() => {
+                  if (document.fullscreenElement) document.exitFullscreen();
+                  setPseudoFullscreen(false);
+                }}
+                style={{ position: 'absolute', top: 12, right: 12, zIndex: 1000000, width: 36, height: 36, borderRadius: 10, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 6, elevation: 4 }}
               >
                 <X size={18} color="#1E3A8A" />
               </TouchableOpacity>
-            </View>
-          </Modal>
+            )}
+          </View>
 
           <View style={[styles.headerCard, { backgroundColor: theme.card }, isMobile && { padding: 10, gap: 8, minWidth: 0, borderRadius: 12 }]}>
             <View style={[styles.iconCircle, isMobile && { width: 30, height: 30, borderRadius: 9 }]}>
@@ -671,11 +679,11 @@ export default function LiveMapTab({ theme, userRole, isEditMode, onNotify }) {
                       : { right: canAddCalamity ? 164 : 64 },
                   ]}
                   onPress={() => {
-                    if (isMobile) {
-                      setLoading(true);
-                      setPseudoFullscreen(true);
+                    const el = mapContainerRef.current;
+                    if (el?.requestFullscreen) {
+                      el.requestFullscreen().catch(() => setPseudoFullscreen(true));
                     } else {
-                      iframeRef.current?.requestFullscreen?.();
+                      setPseudoFullscreen(true);
                     }
                   }}
                   {...(Platform.OS === 'web' ? {
