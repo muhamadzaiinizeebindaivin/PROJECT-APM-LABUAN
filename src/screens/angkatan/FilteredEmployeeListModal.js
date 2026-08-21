@@ -65,7 +65,7 @@ export default function FilteredEmployeeListModal({
       tempoh_baki_aktif_kad_hari: { fromKey: 'tarikh_tamat_kad', build: (ref) => `${ref}-${todayCellRef}` },
       tempoh_baki_aktif_insuran_hari: { fromKey: 'tarikh_tamat_insuran', build: (ref) => `${ref}-${todayCellRef}` },
       tempoh_baki_caruman_perkeso_hari: { fromKey: 'tarikh_tamat_perkeso', build: (ref) => `${ref}-${todayCellRef}` },
-      tempoh_berkhidmat: { fromKey: 'tarikh_menyertai_apm', build: (ref) => `(${todayCellRef}-${ref})/365.25` },
+      tempoh_berkhidmat: { fromKey: 'tarikh_menyertai_apm', build: (ref) => `DATEDIF(${ref},${todayCellRef},"y")&" TAHUN "&DATEDIF(${ref},${todayCellRef},"ym")&" BULAN"` },
     };
 
     // Titre — fusionné, à gauche, en gras (couleur explicite : "automatic" peut
@@ -127,11 +127,24 @@ export default function FilteredEmployeeListModal({
           // Valeur mise en cache (calculée côté JS) affichée avant qu'Excel ne
           // recalcule la formule lui-même à l'ouverture du fichier.
           const today = new Date();
-          const cached = f.key === 'tempoh_berkhidmat'
-            ? (today.getTime() - fromDate.getTime()) / 86400000 / 365.25
-            : Math.round((fromDate.getTime() - today.getTime()) / 86400000);
-          cell.value = { formula: build(fromCell.address), result: Math.round(cached * 100) / 100 };
-          if (f.key === 'tempoh_berkhidmat') cell.numFmt = '0.00';
+          if (f.key === 'tempoh_berkhidmat') {
+            let years = today.getUTCFullYear() - fromDate.getUTCFullYear();
+            let months = today.getUTCMonth() - fromDate.getUTCMonth();
+            if (today.getUTCDate() < fromDate.getUTCDate()) months -= 1;
+            if (months < 0) { years -= 1; months += 12; }
+            cell.value = { formula: build(fromCell.address), result: `${years} TAHUN ${months} BULAN` };
+            return;
+          }
+          const cached = Math.round((fromDate.getTime() - today.getTime()) / 86400000);
+          cell.value = { formula: build(fromCell.address), result: cached };
+          if (cached < 0) {
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF000000' } };
+            cell.font = { color: { argb: 'FFFFFFFF' } };
+          } else if (cached < 30) {
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDC2626' } };
+          } else if (cached < 90) {
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFACC15' } };
+          }
           return;
         }
 
