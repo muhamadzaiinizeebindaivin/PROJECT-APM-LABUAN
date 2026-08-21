@@ -1,7 +1,7 @@
 // src/screens/DriverScreen.js
 import React, { useState, useEffect, useRef, useMemo, createElement } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, SectionList, TextInput, Platform, ScrollView, Modal, useWindowDimensions } from 'react-native';
-import { Navigation, StopCircle, ArrowLeft, Search, MapPin, Eye, EyeOff, Lock, Maximize2, X } from 'lucide-react-native';
+import { Navigation, StopCircle, ArrowLeft, Search, MapPin, Eye, EyeOff, Lock, X } from 'lucide-react-native';
 
 import { getVehicleIcon } from '../utils/vehicleIcons';
 import { useAvailableVehicles } from '../hooks/useAvailableVehicles';
@@ -181,42 +181,12 @@ export default function DriverScreen({ onLogout }) {
   const { calamityPoints } = useCalamityPoints();
   const mapIframeRef = useRef(null);
   const [mapLoading, setMapLoading] = useState(true);
-  const [fullscreenBtnHovered, setFullscreenBtnHovered] = useState(false);
-  // iOS n'implémente jamais la Fullscreen API pour une iframe (seulement
-  // <video>) — requestFullscreen() n'y fait rien silencieusement. On simule
-  // alors le plein écran en CSS sur cette plateforme uniquement.
-  const isIOS = Platform.OS === 'web' && typeof navigator !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent);
-  const [pseudoFullscreen, setPseudoFullscreen] = useState(false);
   const [confirmStopVisible, setConfirmStopVisible] = useState(false);
   // Source unique de vérité pour "le suivi est réellement actif" — utilisée
   // à la fois par le bouton et par l'effet qui envoie le marqueur à la
   // carte, pour qu'il soit impossible que l'un affiche "TAMAT SYIF" sans
   // que l'autre montre le véhicule (ou l'inverse).
   const hasValidLocation = !!(location && location.latitude != null && location.longitude != null);
-
-  useEffect(() => {
-    if (Platform.OS !== 'web') return undefined;
-    const handleFullscreenChange = () => {
-      const active = !!document.fullscreenElement;
-      mapIframeRef.current?.contentWindow?.postMessage(JSON.stringify({ type: 'FULLSCREEN_STATE', active }), '*');
-    };
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
-    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
-  }, []);
-
-  useEffect(() => {
-    if (Platform.OS !== 'web') return undefined;
-    const handleMapMessage = (event) => {
-      if (event.source !== mapIframeRef.current?.contentWindow) return;
-      let data;
-      try { data = JSON.parse(event.data); } catch (e) { return; }
-      if (data?.type === 'EXIT_FULLSCREEN_REQUEST') {
-        if (document.exitFullscreen) document.exitFullscreen();
-      }
-    };
-    window.addEventListener('message', handleMapMessage);
-    return () => window.removeEventListener('message', handleMapMessage);
-  }, []);
 
   const mapHtml = useMemo(() => buildOperasiMapHtml({ theme: { background: PALETTE.softOrangeBg } }), []);
 
@@ -700,15 +670,13 @@ export default function DriverScreen({ onLogout }) {
           borderWidth: 2, borderColor: 'rgba(249, 115, 22, 0.45)',
           shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.12, shadowRadius: 14, elevation: 3,
         }}>
-          {!pseudoFullscreen && (Platform.OS === 'web' ? (
+          {Platform.OS === 'web' ? (
             createElement('iframe', {
               ref: mapIframeRef,
               srcDoc: mapHtml,
               style: { width: '100%', height: '100%', border: 'none' },
               title: 'Peta Kedudukan',
               onLoad: handleMapLoad,
-              allowFullScreen: true,
-              allow: 'fullscreen',
             })
           ) : (
             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: PALETTE.cardLight }}>
@@ -716,65 +684,13 @@ export default function DriverScreen({ onLogout }) {
                 Peta memerlukan 'react-native-webview' pada peranti mudah alih.
               </Text>
             </View>
-          ))}
+          )}
           {mapLoading && Platform.OS === 'web' && (
             <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center', backgroundColor: PALETTE.softOrangeBg }}>
               <ActivityIndicator size="large" color={PALETTE.orange} />
             </View>
           )}
-          {Platform.OS === 'web' && !mapLoading && (
-            <TouchableOpacity
-              style={{
-                position: 'absolute', top: 12, right: 12, zIndex: 10,
-                width: 36, height: 36, borderRadius: 10, backgroundColor: '#fff',
-                justifyContent: 'center', alignItems: 'center',
-                shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 6, elevation: 3,
-              }}
-              onPress={() => {
-                if (isMobile) {
-                  setMapLoading(true);
-                  setPseudoFullscreen(true);
-                } else {
-                  mapIframeRef.current?.requestFullscreen?.();
-                }
-              }}
-              onMouseEnter={() => setFullscreenBtnHovered(true)}
-              onMouseLeave={() => setFullscreenBtnHovered(false)}
-            >
-              <Maximize2 size={16} color={PALETTE.orange} />
-              {fullscreenBtnHovered && (
-                <View style={{ position: 'absolute', top: 42, right: 0, backgroundColor: '#0f172a', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}>
-                  <Text style={{ color: '#fff', fontSize: 10, fontWeight: '700' }}>Skrin Penuh</Text>
-                </View>
-              )}
-            </TouchableOpacity>
-          )}
         </View>
-
-        <Modal visible={pseudoFullscreen} animationType="fade" onRequestClose={() => setPseudoFullscreen(false)}>
-          <View style={{ flex: 1, backgroundColor: '#000' }}>
-            {Platform.OS === 'web' && pseudoFullscreen ? (
-              createElement('iframe', {
-                ref: mapIframeRef,
-                srcDoc: mapHtml,
-                style: { width: '100%', height: '100%', border: 'none' },
-                title: 'Peta Kedudukan',
-                onLoad: handleMapLoad,
-              })
-            ) : null}
-            {mapLoading && (
-              <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center', backgroundColor: PALETTE.softOrangeBg }}>
-                <ActivityIndicator size="large" color={PALETTE.orange} />
-              </View>
-            )}
-            <TouchableOpacity
-              onPress={() => setPseudoFullscreen(false)}
-              style={{ position: 'absolute', top: 12, right: 12, zIndex: 10000, width: 36, height: 36, borderRadius: 10, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 6, elevation: 4 }}
-            >
-              <X size={18} color={PALETTE.orange} />
-            </TouchableOpacity>
-          </View>
-        </Modal>
 
       </View>
       </ScrollView>

@@ -1,7 +1,7 @@
 // src/screens/sekretariat/PetaTab.js
 import React, { useState, useEffect, useRef, createElement } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Platform, Modal, TextInput, ActivityIndicator, Alert, Image, useWindowDimensions } from 'react-native';
-import { Map, History, ClipboardList, AlertTriangle, X, Plus, Download, Trash2, Maximize2, MapPin, ChevronLeft, PlusCircle, Check, Droplets, Waves, Mountain, Flame, Wind, CloudRain, Zap, Siren, Search } from 'lucide-react-native';
+import { Map, History, ClipboardList, AlertTriangle, X, Plus, Download, Trash2, MapPin, ChevronLeft, PlusCircle, Check, Droplets, Waves, Mountain, Flame, Wind, CloudRain, Zap, Siren, Search } from 'lucide-react-native';
 
 const CATEGORY_ICON_OPTIONS = [
   { key: 'MapPin', Icon: MapPin },
@@ -301,24 +301,8 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
   agencyNames.forEach((a) => { if (a.logo_url) agencyLogoMap[a.agency] = a.logo_url; });
   const getAgencyLogo = (agencyName) => agencyLogoMap[agencyName] || null;
 
-  const [fullscreenBtnHovered, setFullscreenBtnHovered] = useState(false);
-  // Voir la même note dans LiveMapTab.js : iOS n'a jamais la vraie
-  // Fullscreen API pour une iframe, donc on la simule en CSS sur cette
-  // plateforme uniquement.
-  const isIOS = Platform.OS === 'web' && typeof navigator !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent);
-  const [pseudoFullscreen, setPseudoFullscreen] = useState(false);
   const [confirmStopVisible, setConfirmStopVisible] = useState(false);
   const petaMapHtml = buildSekretariatMapHtml({ theme, userRole });
-
-  useEffect(() => {
-    if (Platform.OS !== 'web') return;
-    const handleFullscreenChange = () => {
-      const active = !!document.fullscreenElement;
-      petaIframeRef.current?.contentWindow?.postMessage(JSON.stringify({ type: 'FULLSCREEN_STATE', active }), '*');
-    };
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
-    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
-  }, []);
 
   const handlePetaIframeLoad = () => {
     setPetaIframeLoading(false);
@@ -372,9 +356,7 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
       if (event.source !== petaIframeRef.current?.contentWindow) return;
       try {
         const data = JSON.parse(event.data);
-        if (data.type === 'EXIT_FULLSCREEN_REQUEST') {
-          if (document.exitFullscreen) document.exitFullscreen();
-        } else if (data.type === 'MAP_CLICKED' && isPlacingBencana) {
+        if (data.type === 'MAP_CLICKED' && isPlacingBencana) {
           setPendingBencanaPlacement({ lat: data.lat, lng: data.lng });
           setBencanaModalVisible(true);
           setIsPlacingBencana(false);
@@ -864,15 +846,13 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
       {!showMobilePanelFullscreen && (
       <View style={[styles.petaMapHalf, isMobile && styles.petaMapHalfMobile]}>
         <View style={styles.petaMapContainer}>
-          {!pseudoFullscreen && (Platform.OS === 'web' ? (
+          {Platform.OS === 'web' ? (
             createElement('iframe', {
               ref: petaIframeRef,
               srcDoc: petaMapHtml,
               style: { width: '100%', height: '100%', border: 'none' },
               title: 'Peta Agensi',
               onLoad: handlePetaIframeLoad,
-              allowFullScreen: true,
-              allow: 'fullscreen',
             })
           ) : (
             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme?.card || PALETTE.cardLight }}>
@@ -881,38 +861,13 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
                 Peta memerlukan 'react-native-webview' pada peranti mudah alih.
               </Text>
             </View>
-          ))}
+          )}
           {petaIframeLoading && Platform.OS === 'web' && (
             <View style={[styles.loader, { backgroundColor: theme?.background || PALETTE.softOrangeBg }]}>
               <ActivityIndicator size="large" color={PALETTE.orange} />
             </View>
           )}
         </View>
-
-        <Modal visible={pseudoFullscreen} animationType="fade" onRequestClose={() => setPseudoFullscreen(false)}>
-          <View style={{ flex: 1, backgroundColor: '#000' }}>
-            {Platform.OS === 'web' && pseudoFullscreen ? (
-              createElement('iframe', {
-                ref: petaIframeRef,
-                srcDoc: petaMapHtml,
-                style: { width: '100%', height: '100%', border: 'none' },
-                title: 'Peta Agensi',
-                onLoad: handlePetaIframeLoad,
-              })
-            ) : null}
-            {petaIframeLoading && (
-              <View style={[styles.loader, { backgroundColor: theme?.background || PALETTE.softOrangeBg }]}>
-                <ActivityIndicator size="large" color={PALETTE.orange} />
-              </View>
-            )}
-            <TouchableOpacity
-              onPress={() => setPseudoFullscreen(false)}
-              style={{ position: 'absolute', top: 12, right: 12, zIndex: 10000, width: 36, height: 36, borderRadius: 10, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 6, elevation: 4 }}
-            >
-              <X size={18} color={PALETTE.orange} />
-            </TouchableOpacity>
-          </View>
-        </Modal>
 
         <View style={[styles.petaHeaderCard, isMobile && { padding: 10, gap: 8, minWidth: 0, borderRadius: 12 }]}>
           <View style={[styles.petaIconCircle, isMobile && { width: 30, height: 30, borderRadius: 9 }]}>
@@ -1046,28 +1001,7 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
             )}
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.historyToggleBtn, fullscreenBtnHovered && { zIndex: 100, elevation: 100 }]}
-            onPress={() => {
-              if (isMobile) {
-                setPetaIframeLoading(true);
-                setPseudoFullscreen(true);
-              } else {
-                petaIframeRef.current?.requestFullscreen?.();
-              }
-            }}
-            {...(Platform.OS === 'web' ? {
-              onMouseEnter: () => setFullscreenBtnHovered(true),
-              onMouseLeave: () => setFullscreenBtnHovered(false),
-            } : {})}
-          >
-            <Maximize2 size={18} color={PALETTE.orange} />
-            {fullscreenBtnHovered && (
-              <View style={styles.historyTooltip}>
-                <Text style={styles.historyTooltipText}>Skrin Penuh</Text>
-              </View>
-            )}
-          </TouchableOpacity>
+
         </View>
         {isPlacingBencana && (
           <View

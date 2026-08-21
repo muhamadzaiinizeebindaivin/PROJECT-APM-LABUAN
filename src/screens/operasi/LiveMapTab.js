@@ -1,7 +1,7 @@
 // src/screens/operasi/LiveMapTab.js
 import React, { useState, useRef, useEffect, useMemo, createElement } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Platform, ActivityIndicator, Modal, TextInput, KeyboardAvoidingView, useWindowDimensions } from 'react-native';
-import { ShieldAlert, MapIcon, History, ClipboardList, Download, Route, X , Trash2, AlertTriangle, Maximize2, MapPin} from 'lucide-react-native';
+import { ShieldAlert, MapIcon, History, ClipboardList, Download, Route, X , Trash2, AlertTriangle, MapPin} from 'lucide-react-native';
 import { getVehicleIcon } from '../../utils/vehicleIcons';
 import { PALETTE } from '../../constants/palette';
 import { useVehicles } from '../../hooks/useVehicles';
@@ -112,14 +112,6 @@ export default function LiveMapTab({ theme, userRole, isEditMode, onNotify }) {
   const [sidePanel, setSidePanel] = useState('none'); // 'none' | 'history' | 'summary'
   const [historyBtnHovered, setHistoryBtnHovered] = useState(false);
   const [summaryBtnHovered, setSummaryBtnHovered] = useState(false);
-  const [fullscreenBtnHovered, setFullscreenBtnHovered] = useState(false);
-  // iOS (Safari, et tout navigateur iOS puisqu'ils utilisent tous WebKit)
-  // n'implémente jamais la Fullscreen API pour un élément générique comme
-  // une iframe — seulement pour <video>. requestFullscreen() n'y fait donc
-  // rien, silencieusement. On simule alors le plein écran avec du CSS
-  // (position fixed sur tout le viewport) plutôt que la vraie API.
-  const isIOS = Platform.OS === 'web' && typeof navigator !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent);
-  const [pseudoFullscreen, setPseudoFullscreen] = useState(false);
   const [confirmStopVisible, setConfirmStopVisible] = useState(false);
 
   const [activeCalamityTool, setActiveCalamityTool] = useState(null);
@@ -131,25 +123,11 @@ export default function LiveMapTab({ theme, userRole, isEditMode, onNotify }) {
   const [calamityTooltip, setCalamityTooltip] = useState(null); // { text, top, left }
 
   useEffect(() => {
-    if (Platform.OS !== 'web') return undefined;
-    const handleFullscreenChange = () => {
-      const active = !!document.fullscreenElement;
-      iframeRef.current?.contentWindow?.postMessage(JSON.stringify({ type: 'FULLSCREEN_STATE', active }), '*');
-    };
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
-    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
-  }, []);
-
-  useEffect(() => {
     const handleMapMessage = (event) => {
       if (event.source !== iframeRef.current?.contentWindow) return;
       let data;
       try { data = JSON.parse(event.data); } catch (e) { return; }
-      if (data.type === 'VIEW_CHANGED') {
-        lastMapViewRef.current = { lat: data.lat, lng: data.lng, zoom: data.zoom };
-      } else if (data.type === 'EXIT_FULLSCREEN_REQUEST') {
-        if (document.exitFullscreen) document.exitFullscreen();
-      } else if (data.type === 'REQUEST_CALAMITY_REFRESH') {
+      if (data.type === 'REQUEST_CALAMITY_REFRESH') {
         sendCalamities();
       } else if (data.type === 'MAP_CLICKED' && activeCalamityTool) {
         
@@ -233,23 +211,7 @@ export default function LiveMapTab({ theme, userRole, isEditMode, onNotify }) {
     }
   };
 
-  const handleIframeLoad = () => {
-    setLoading(false);
-    sendCalamities();
-    if (iframeRef?.current?.contentWindow) {
-      const canDelete = userRole === 'admin' || userRole === 'operasi';
-      iframeRef.current.contentWindow.postMessage(JSON.stringify({
-        type: 'UPDATE_PERMISSIONS', canDelete, canManage: canDelete,
-      }), '*');
-      if (vehiclesRef.current.length > 0) {
-        const payload = vehiclesRef.current.map(v => ({ ...v, name: v.model, status: v.tracking_status }));
-        iframeRef.current.contentWindow.postMessage(JSON.stringify({ type: 'INIT_VEHICLES', payload }), '*');
-      }
-      if (lastMapViewRef.current) {
-        iframeRef.current.contentWindow.postMessage(JSON.stringify({ type: 'SET_VIEW', ...lastMapViewRef.current }), '*');
-      }
-    }
-  };
+  const handleIframeLoad = () => setLoading(false);
 
   const mapHtml = useMemo(() => buildOperasiMapHtml({ theme }), [theme]);
 
@@ -559,15 +521,13 @@ export default function LiveMapTab({ theme, userRole, isEditMode, onNotify }) {
         {!showMobileFullscreenHistory && (
         <View style={[{ flex: 1, position: 'relative' }, isMobile && { flex: undefined, minHeight: 420 }]}>
           <View style={styles.mapContainer}>
-            {!pseudoFullscreen && (Platform.OS === 'web' ? (
+            {Platform.OS === 'web' ? (
               createElement('iframe', {
                 ref: iframeRef,
                 srcDoc: mapHtml,
                 style: { width: '100%', height: '100%', border: 'none' },
                 title: 'Leaflet Map',
                 onLoad: handleIframeLoad,
-                allowFullScreen: true,
-                allow: 'fullscreen',
               })
             ) : (
               <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.card }}>
@@ -576,34 +536,11 @@ export default function LiveMapTab({ theme, userRole, isEditMode, onNotify }) {
                   Live Map memerlukan 'react-native-webview' pada peranti mudah alih.
                 </Text>
               </View>
-            ))}
+            )}
             {loading && Platform.OS === 'web' && (
               <View style={[styles.loader, { backgroundColor: theme.background }]}><ActivityIndicator size="large" color="#f97316" /></View>
             )}
           </View>
-
-          <Modal visible={pseudoFullscreen} animationType="fade" onRequestClose={() => setPseudoFullscreen(false)}>
-            <View style={{ flex: 1, backgroundColor: '#000' }}>
-              {Platform.OS === 'web' && pseudoFullscreen ? (
-                createElement('iframe', {
-                  ref: iframeRef,
-                  srcDoc: mapHtml,
-                  style: { width: '100%', height: '100%', border: 'none' },
-                  title: 'Leaflet Map',
-                  onLoad: handleIframeLoad,
-                })
-              ) : null}
-              {loading && (
-                <View style={[styles.loader, { backgroundColor: theme.background }]}><ActivityIndicator size="large" color="#f97316" /></View>
-              )}
-              <TouchableOpacity
-                onPress={() => setPseudoFullscreen(false)}
-                style={{ position: 'absolute', top: 12, right: 12, zIndex: 10000, width: 36, height: 36, borderRadius: 10, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 6, elevation: 4 }}
-              >
-                <X size={18} color="#1E3A8A" />
-              </TouchableOpacity>
-            </View>
-          </Modal>
 
           <View style={[styles.headerCard, { backgroundColor: theme.card }, isMobile && { padding: 10, gap: 8, minWidth: 0, borderRadius: 12 }]}>
             <View style={[styles.iconCircle, isMobile && { width: 30, height: 30, borderRadius: 9 }]}>
@@ -682,33 +619,7 @@ export default function LiveMapTab({ theme, userRole, isEditMode, onNotify }) {
                 </TouchableOpacity>
                 )}
 
-                <TouchableOpacity
-                  style={[
-                    styles.summaryToggleBtn,
-                    isMobile
-                      ? { right: canAddCalamity ? (isMobile ? 88 : 116) : 16, top: 64 }
-                      : { right: canAddCalamity ? 164 : 64 },
-                  ]}
-                  onPress={() => {
-                    if (isMobile) {
-                      setLoading(true);
-                      setPseudoFullscreen(true);
-                    } else {
-                      iframeRef.current?.requestFullscreen?.();
-                    }
-                  }}
-                  {...(Platform.OS === 'web' ? {
-                    onMouseEnter: () => setFullscreenBtnHovered(true),
-                    onMouseLeave: () => setFullscreenBtnHovered(false),
-                  } : {})}
-                >
-                  <Maximize2 size={18} color="#1E3A8A" />
-                  {fullscreenBtnHovered && (
-                    <View style={styles.historyTooltip}>
-                      <Text style={styles.historyTooltipText}>Skrin Penuh</Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
+
               </>
             );
           })()}

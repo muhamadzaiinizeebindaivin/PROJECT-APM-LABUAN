@@ -34,7 +34,7 @@ const watchPositionCompat = (callback, onError) => {
     callback
   );
 };
-import { Navigation, StopCircle, ArrowLeft, Search, Building2, X, Lock, User as UserIcon, Eye, EyeOff, Maximize2 } from 'lucide-react-native';
+import { Navigation, StopCircle, ArrowLeft, Search, Building2, X, Lock, User as UserIcon, Eye, EyeOff } from 'lucide-react-native';
 import { supabaseSandbox as supabase } from '../supabaseSandboxClient';
 import { PALETTE } from '../constants/palette';
 import { buildSekretariatMapHtml } from './sekretariat/sekretariatMapTemplate';
@@ -200,23 +200,7 @@ export default function AgencyTrackingScreen({ onLogout }) {
   const { categories: hotspotCategories } = useHotspotCategories();
   const trackerMapIframeRef = useRef(null);
   const [trackerMapLoading, setTrackerMapLoading] = useState(true);
-  const [fullscreenBtnHovered, setFullscreenBtnHovered] = useState(false);
-  // iOS n'implémente jamais la Fullscreen API pour une iframe (seulement
-  // <video>) — requestFullscreen() n'y fait rien silencieusement. On simule
-  // alors le plein écran en CSS sur cette plateforme uniquement.
-  const isIOS = Platform.OS === 'web' && typeof navigator !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent);
-  const [pseudoFullscreen, setPseudoFullscreen] = useState(false);
   const [confirmStopVisible, setConfirmStopVisible] = useState(false);
-
-  useEffect(() => {
-    if (Platform.OS !== 'web') return undefined;
-    const handleFullscreenChange = () => {
-      const active = !!document.fullscreenElement;
-      trackerMapIframeRef.current?.contentWindow?.postMessage(JSON.stringify({ type: 'FULLSCREEN_STATE', active }), '*');
-    };
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
-    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
-  }, []);
   const [trackerMapReady, setTrackerMapReady] = useState(false);
 
   const agencyLogoMap = useMemo(() => {
@@ -255,9 +239,6 @@ export default function AgencyTrackingScreen({ onLogout }) {
       try {
         const data = JSON.parse(event.data);
         if (data?.type === 'MAP_READY') setTrackerMapReady(true);
-        else if (data?.type === 'EXIT_FULLSCREEN_REQUEST') {
-          if (document.exitFullscreen) document.exitFullscreen();
-        }
       } catch (e) { /* messages non-JSON */ }
     };
     window.addEventListener('message', onMessage);
@@ -767,15 +748,13 @@ export default function AgencyTrackingScreen({ onLogout }) {
           borderWidth: 2, borderColor: 'rgba(249, 115, 22, 0.45)',
           shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.12, shadowRadius: 14, elevation: 3,
         }}>
-          {!pseudoFullscreen && (Platform.OS === 'web' ? (
+          {Platform.OS === 'web' ? (
             createElement('iframe', {
               ref: trackerMapIframeRef,
               srcDoc: trackerMapHtml,
               style: { width: '100%', height: '100%', border: 'none' },
               title: 'Peta Agensi & Bencana',
               onLoad: handleTrackerMapLoad,
-              allowFullScreen: true,
-              allow: 'fullscreen',
             })
           ) : (
             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: PALETTE.cardLight }}>
@@ -783,65 +762,13 @@ export default function AgencyTrackingScreen({ onLogout }) {
                 Peta memerlukan 'react-native-webview' pada peranti mudah alih.
               </Text>
             </View>
-          ))}
+          )}
           {trackerMapLoading && Platform.OS === 'web' && (
             <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center', backgroundColor: PALETTE.softOrangeBg }}>
               <ActivityIndicator size="large" color={PALETTE.orange} />
             </View>
           )}
-          {Platform.OS === 'web' && !trackerMapLoading && (
-            <TouchableOpacity
-              style={{
-                position: 'absolute', top: 12, right: 12, zIndex: 10,
-                width: 36, height: 36, borderRadius: 10, backgroundColor: '#fff',
-                justifyContent: 'center', alignItems: 'center',
-                shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 6, elevation: 3,
-              }}
-              onPress={() => {
-                if (isMobile) {
-                  setTrackerMapLoading(true);
-                  setPseudoFullscreen(true);
-                } else {
-                  trackerMapIframeRef.current?.requestFullscreen?.();
-                }
-              }}
-              onMouseEnter={() => setFullscreenBtnHovered(true)}
-              onMouseLeave={() => setFullscreenBtnHovered(false)}
-            >
-              <Maximize2 size={16} color={PALETTE.orange} />
-              {fullscreenBtnHovered && (
-                <View style={{ position: 'absolute', top: 42, right: 0, backgroundColor: '#0f172a', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}>
-                  <Text style={{ color: '#fff', fontSize: 10, fontWeight: '700' }}>Skrin Penuh</Text>
-                </View>
-              )}
-            </TouchableOpacity>
-          )}
         </View>
-
-        <Modal visible={pseudoFullscreen} animationType="fade" onRequestClose={() => setPseudoFullscreen(false)}>
-          <View style={{ flex: 1, backgroundColor: '#000' }}>
-            {Platform.OS === 'web' && pseudoFullscreen ? (
-              createElement('iframe', {
-                ref: trackerMapIframeRef,
-                srcDoc: trackerMapHtml,
-                style: { width: '100%', height: '100%', border: 'none' },
-                title: 'Peta Agensi & Bencana',
-                onLoad: handleTrackerMapLoad,
-              })
-            ) : null}
-            {trackerMapLoading && (
-              <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center', backgroundColor: PALETTE.softOrangeBg }}>
-                <ActivityIndicator size="large" color={PALETTE.orange} />
-              </View>
-            )}
-            <TouchableOpacity
-              onPress={() => setPseudoFullscreen(false)}
-              style={{ position: 'absolute', top: 12, right: 12, zIndex: 10000, width: 36, height: 36, borderRadius: 10, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 6, elevation: 4 }}
-            >
-              <X size={18} color={PALETTE.orange} />
-            </TouchableOpacity>
-          </View>
-        </Modal>
       </View>
     </ScrollView>
     </View>
