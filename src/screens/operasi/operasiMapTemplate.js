@@ -108,6 +108,11 @@ export function buildOperasiMapHtml({ theme, userRole }) {
             window.parent.postMessage(JSON.stringify({ type: 'MAP_CLICKED', lat: e.latlng.lat, lng: e.latlng.lng }), '*');
           });
 
+          map.on('moveend zoomend', function() {
+            var center = map.getCenter();
+            window.parent.postMessage(JSON.stringify({ type: 'VIEW_CHANGED', lat: center.lat, lng: center.lng, zoom: map.getZoom() }), '*');
+          });
+
           window.requestDeleteCalamity = function(id) {
             window.parent.postMessage(JSON.stringify({ type: 'DELETE_CALAMITY_REQUEST', id: id }), '*');
           };
@@ -317,6 +322,10 @@ export function buildOperasiMapHtml({ theme, userRole }) {
                 marker.openPopup();
               } else if (data.lat && data.lng) {
                 map.setView([data.lat, data.lng], Math.max(map.getZoom(), 16), { animate: true });
+              }
+            } else if (data.type === 'SET_VIEW') {
+              if (typeof data.lat === 'number' && typeof data.lng === 'number' && typeof data.zoom === 'number') {
+                map.setView([data.lat, data.lng], data.zoom, { animate: false });
               }
             } else if (data.type === 'UPDATE_CALAMITIES') {
               var currentCalamityIds = data.payload.map(function(c) { return c.id; });
