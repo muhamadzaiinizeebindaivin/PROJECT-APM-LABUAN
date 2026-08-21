@@ -131,16 +131,19 @@ export function buildOperasiMapHtml({ theme, userRole }) {
 
           var createCalamityIcon = function(color, category, logo) {
             if (logo) {
+              var clipId = 'calamity-clip-' + Math.random().toString(36).slice(2, 10);
               return L.divIcon({
                 className: 'calamity-pin',
-                html: '<div class="pulse-wrap" style="width:48px;height:48px;">' +
-                        '<div class="pulse-ring" style="background:' + color + ';opacity:0.4;"></div>' +
-                        '<div style="width:40px;height:40px;border-radius:8px;background:#fff;border:2px solid ' + color + ';box-shadow:0 2px 5px rgba(0,0,0,0.35);display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;gap:1px;position:relative;">' +
-                          '<img src="' + logo + '" style="width:26px;height:26px;object-fit:contain;"/>' +
-                          '<span style="font-size:7px;font-weight:900;color:' + color + ';font-family:sans-serif;line-height:1;">' + category + '</span>' +
-                        '</div>' +
+                html: '<div class="pulse-wrap" style="width:44px;height:44px;">' +
+                        '<div class="pulse-ring" style="background:' + color + ';opacity:0.4;border-radius:50%;"></div>' +
+                        '<svg width="28" height="36" viewBox="0 0 28 36" style="filter:drop-shadow(0 2px 3px rgba(0,0,0,0.35));position:relative;">' +
+                          '<defs><clipPath id="' + clipId + '"><circle cx="14" cy="13" r="9"/></clipPath></defs>' +
+                          '<path d="M14 0C6.3 0 0 6.3 0 14c0 10.5 14 22 14 22s14-11.5 14-22C28 6.3 21.7 0 14 0z" fill="' + color + '"/>' +
+                          '<circle cx="14" cy="13" r="10" fill="white"/>' +
+                          '<image href="' + logo + '" x="4" y="3" width="20" height="20" clip-path="url(#' + clipId + ')" preserveAspectRatio="xMidYMid slice"/>' +
+                        '</svg>' +
                       '</div>',
-                iconSize: [48, 48], iconAnchor: [24, 48], popupAnchor: [0, -48]
+                iconSize: [44, 44], iconAnchor: [22, 44], popupAnchor: [0, -44]
               });
             }
             return L.divIcon({
@@ -148,7 +151,7 @@ export function buildOperasiMapHtml({ theme, userRole }) {
               html: '<div class="pulse-wrap" style="width:44px;height:44px;">' +
                       '<div class="pulse-ring" style="background:' + color + ';opacity:0.4;border-radius:50%;"></div>' +
                       '<svg width="28" height="36" viewBox="0 0 28 36" style="filter:drop-shadow(0 2px 3px rgba(0,0,0,0.35));position:relative;">' +
-                        '<path d="M14 0C6.3 0 0 6.3 0 14c0 10.5 14 22 14 22s14-11.5 14-22C28 6.3 21.7 0 14 0z" fill="' + color + '" stroke="white" stroke-width="2"/>' +
+                        '<path d="M14 0C6.3 0 0 6.3 0 14c0 10.5 14 22 14 22s14-11.5 14-22C28 6.3 21.7 0 14 0z" fill="' + color + '"/>' +
                         '<text x="14" y="17" text-anchor="middle" font-size="7" font-weight="900" fill="white" font-family="sans-serif">' + category + '</text>' +
                       '</svg>' +
                     '</div>',
