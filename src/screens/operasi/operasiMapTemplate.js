@@ -214,6 +214,27 @@ export function buildOperasiMapHtml({ theme, userRole }) {
 
           var markers = {};
           var vehicleMeta = {}; // remembers icon_key/type/reg per vehicle id across partial realtime updates
+          var markerAnimations = {}; // requestAnimationFrame id per vehicle, so a new GPS ping can smoothly redirect an in-progress glide
+
+          function animateMarkerTo(id, marker, targetLat, targetLng, duration) {
+            if (markerAnimations[id]) cancelAnimationFrame(markerAnimations[id]);
+            var start = marker.getLatLng();
+            var startTime = performance.now();
+            function step(now) {
+              var t = Math.min((now - startTime) / duration, 1);
+              var eased = 1 - Math.pow(1 - t, 3); // ease-out: fast start, smooth settle
+              marker.setLatLng([
+                start.lat + (targetLat - start.lat) * eased,
+                start.lng + (targetLng - start.lng) * eased
+              ]);
+              if (t < 1) {
+                markerAnimations[id] = requestAnimationFrame(step);
+              } else {
+                delete markerAnimations[id];
+              }
+            }
+            markerAnimations[id] = requestAnimationFrame(step);
+          }
           var calamityMarkers = {};
 
           window.addEventListener('message', function(event) {
@@ -252,7 +273,7 @@ export function buildOperasiMapHtml({ theme, userRole }) {
               if (data.status === 'Patrol') {
                 if (data.lat && data.lng) {
                   if (markers[data.id]) {
-                    markers[data.id].setLatLng([data.lat, data.lng]);
+                    animateMarkerTo(data.id, markers[data.id], data.lat, data.lng, 5000);
                     markers[data.id].setIcon(createIcon(data.color, meta.iconKey));
                     markers[data.id].setPopupContent(createPopupContent(data.name, meta.reg, meta.type, data.status, data.id));
                     markers[data.id].setTooltipContent(data.name);
