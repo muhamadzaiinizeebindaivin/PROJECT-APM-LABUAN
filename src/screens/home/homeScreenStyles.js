@@ -1,8 +1,25 @@
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Platform } from 'react-native';
 import { PALETTE } from '../../constants/palette';
 
+const blurFilter = (px) => Platform.select({ web: { filter: `blur(${px}px)` }, default: {} });
+
 export const homeScreenStyles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: PALETTE.softOrangeBg },
+  container: { flex: 1, backgroundColor: PALETTE.softOrangeBg, position: 'relative', overflow: 'hidden' },
+
+  spatialBackdrop: { ...StyleSheet.absoluteFillObject, overflow: 'hidden' },
+  blob: { position: 'absolute', borderRadius: 9999, ...blurFilter(90) },
+  blobBlue: {
+    width: 480, height: 480, top: -160, left: -140,
+    backgroundColor: PALETTE.blue, opacity: 0.22,
+  },
+  blobOrange: {
+    width: 420, height: 420, top: 260, right: -160,
+    backgroundColor: PALETTE.orange, opacity: 0.25,
+  },
+  blobOrangeSmall: {
+    width: 300, height: 300, bottom: -60, left: 60,
+    backgroundColor: PALETTE.orangeDark, opacity: 0.16,
+  },
 
   stickySaveBtn: {
     backgroundColor: PALETTE.orange,
@@ -18,6 +35,10 @@ export const homeScreenStyles = StyleSheet.create({
     borderRadius: 24,
     padding: 24,
     alignItems: 'center',
+    position: 'relative',
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.4)',
     shadowColor: '#0b0c0e',
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.14,

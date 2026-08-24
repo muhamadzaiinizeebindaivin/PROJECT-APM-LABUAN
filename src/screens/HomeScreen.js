@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, Animated, ActivityIndicator } from 'react-native';
+import { View, Text, Animated, ActivityIndicator, StyleSheet } from 'react-native';
 import { CheckCircle2, XCircle } from 'lucide-react-native';
 import AdminEditButton from '../components/AdminEditButton';
 import HomepagePdfCard from './home/HomepagePdfCard';
@@ -11,6 +11,7 @@ import ActiveAlertsBanner from './home/ActiveAlertsBanner';
 import { useHomeData } from '../hooks/useHomeData';
 import { PALETTE } from '../constants/palette';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import { stickyHeaderStyles } from '../styles/stickyHeaderStyles';
 
 export default function HomeScreen({ isAuthFlow, onGuestLogin, onDriverLogin, onAgencyLogin, onLoginPress, navigation, userRole, theme }) {
@@ -88,6 +89,12 @@ export default function HomeScreen({ isAuthFlow, onGuestLogin, onDriverLogin, on
 
   return (
     <View style={styles.container}>
+      <View style={styles.spatialBackdrop} pointerEvents="none">
+        <View style={[styles.blob, styles.blobBlue]} />
+        <View style={[styles.blob, styles.blobOrange]} />
+        <View style={[styles.blob, styles.blobOrangeSmall]} />
+      </View>
+
       {userRole === 'admin' && (
         <View style={stickyHeaderStyles.stickyHeader}>
           {!!dikemaskini && (
@@ -162,12 +169,14 @@ export default function HomeScreen({ isAuthFlow, onGuestLogin, onDriverLogin, on
         )}
 
         <View style={{ paddingHorizontal: 20, marginTop: 16 }}>
-          <LinearGradient
-            colors={['rgba(29, 78, 216, 0.55)', 'rgba(249, 115, 22, 0.55)']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.heroGradient}
-          >
+          <View style={styles.heroGradient}>
+            <BlurView intensity={45} tint="light" style={StyleSheet.absoluteFill} />
+            <LinearGradient
+              colors={['rgba(29, 78, 216, 0.35)', 'rgba(249, 115, 22, 0.35)']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
             <View style={{ width: '100%', maxWidth: 1100 }}>
               <HomepagePdfCard
                 theme={{ card: PALETTE.inkCard, text: PALETTE.white, textSecondary: PALETTE.mutedLight }}
@@ -176,7 +185,7 @@ export default function HomeScreen({ isAuthFlow, onGuestLogin, onDriverLogin, on
                 onHeightChange={() => {}}
               />
             </View>
-          </LinearGradient>
+          </View>
         </View>
 
         {pageData && (

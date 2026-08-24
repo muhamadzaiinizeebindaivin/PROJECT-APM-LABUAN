@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, StyleSheet, Platform } from 'react-native';
+import { BlurView } from 'expo-blur';
 import { Save } from 'lucide-react-native';
 import { PALETTE } from '../../constants/palette';
 import { FONTS } from '../../styles/tacticalTheme';
@@ -24,6 +25,8 @@ export default function HeroSection({ isEditing, pageData, updateField, onSave, 
 
   return (
     <View style={styles.heroCard}>
+      <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFill} />
+      <View style={styles.tint} />
       <View style={styles.glow} />
       <Text style={styles.kicker}>SEDIAOPS</Text>
 
@@ -76,20 +79,27 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     padding: 28,
     borderRadius: 24,
-    backgroundColor: PALETTE.ink,
+    position: 'relative',
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.2,
     shadowRadius: 22,
     elevation: 6,
   },
+  tint: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(11, 12, 14, 0.72)',
+  },
   glow: {
     position: 'absolute',
     width: 260, height: 260, borderRadius: 130,
     backgroundColor: PALETTE.orange,
-    opacity: 0.25,
+    opacity: 0.5,
     top: -110, right: -80,
+    ...Platform.select({ web: { filter: 'blur(50px)' }, default: {} }),
   },
   kicker: {
     color: PALETTE.orange,

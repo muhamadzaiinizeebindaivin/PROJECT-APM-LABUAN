@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, StyleSheet, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
+import { BlurView } from 'expo-blur';
 import { MapPin, Phone, Mail, Building2, Save } from 'lucide-react-native';
 import { PALETTE } from '../../constants/palette';
 import { FONTS } from '../../styles/tacticalTheme';
@@ -41,8 +42,22 @@ function FieldBox({ Icon, label, value, isEditing, onChangeText, multiline, plac
   );
 }
 
+function WidgetCard({ children, hovered, onHoverIn, onHoverOut }) {
+  return (
+    <View
+      style={[styles.widget, hovered && styles.widgetHovered]}
+      {...(Platform.OS === 'web' ? { onMouseEnter: onHoverIn, onMouseLeave: onHoverOut } : {})}
+    >
+      <BlurView intensity={40} tint="light" style={StyleSheet.absoluteFill} />
+      <View style={styles.widgetTint} />
+      {children}
+    </View>
+  );
+}
+
 export default function InfoWidgets({ isEditing, pageData, updateField, onSave, saving, savingSection }) {
   const [formErrors, setFormErrors] = useState({});
+  const [hoveredKey, setHoveredKey] = useState(null);
 
   return (
     <View style={styles.column}>
@@ -62,7 +77,12 @@ export default function InfoWidgets({ isEditing, pageData, updateField, onSave, 
         };
 
         return (
-          <View key={key} style={styles.widget}>
+          <WidgetCard
+            key={key}
+            hovered={hoveredKey === key}
+            onHoverIn={() => setHoveredKey(key)}
+            onHoverOut={() => setHoveredKey(null)}
+          >
             <MapPin size={140} color={accent} style={styles.watermark} />
 
             <View style={styles.headerRow}>
@@ -146,7 +166,7 @@ export default function InfoWidgets({ isEditing, pageData, updateField, onSave, 
                 </TouchableOpacity>
               </>
             )}
-          </View>
+          </WidgetCard>
         );
       })}
     </View>
@@ -159,16 +179,24 @@ const styles = StyleSheet.create({
     padding: 32,
     paddingLeft: 34,
     borderRadius: 24,
-    backgroundColor: PALETTE.cardLight,
     borderWidth: 1,
-    borderColor: PALETTE.cardLightBorder,
+    borderColor: 'rgba(255,255,255,0.5)',
     position: 'relative',
     overflow: 'hidden',
     shadowColor: '#c9825a',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.08,
-    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.1,
+    shadowRadius: 24,
     elevation: 3,
+    ...Platform.select({ web: { transition: 'transform 200ms ease, box-shadow 200ms ease' }, default: {} }),
+  },
+  widgetHovered: {
+    transform: [{ scale: 1.015 }],
+    ...Platform.select({ web: { boxShadow: '0 16px 40px rgba(201, 130, 90, 0.18)' }, default: {} }),
+  },
+  widgetTint: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(255,255,255,0.6)',
   },
   watermark: {
     position: 'absolute',
@@ -196,11 +224,11 @@ const styles = StyleSheet.create({
   fieldBox: {
     flexBasis: '47%',
     flexGrow: 1,
-    backgroundColor: PALETTE.surface,
+    backgroundColor: 'rgba(255,255,255,0.55)',
     borderRadius: 14,
     padding: 14,
     borderWidth: 1,
-    borderColor: PALETTE.cardLightBorder,
+    borderColor: 'rgba(255,255,255,0.7)',
   },
   fieldBoxWide: { flexBasis: '100%' },
 
