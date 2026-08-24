@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, StyleSheet, Platform } from 'react-native';
 import { Save } from 'lucide-react-native';
 import { PALETTE } from '../../constants/palette';
+import { FONTS } from '../../styles/tacticalTheme';
 
 const DEFAULT_TITLE = 'ANGKATAN PERTAHANAN AWAM MALAYSIA (APM) W.P LABUAN';
 const DEFAULT_SUBTITLE = 'Pejabat Pertahanan Awam Daerah Wilayah Persekutuan Labuan.\n"Sedia, Pantas, Berintegriti"';
@@ -10,6 +11,7 @@ export default function HeroSection({ isEditing, pageData, updateField, onSave, 
   const title = pageData?.welcomeTitle ?? DEFAULT_TITLE;
   const subtitle = pageData?.welcomeSubtitle ?? DEFAULT_SUBTITLE;
   const [formError, setFormError] = useState(null);
+  const [focusedField, setFocusedField] = useState(null); // 'title' | 'subtitle' | null
 
   const handleSave = async () => {
     if (!title.trim() || !subtitle.trim()) {
@@ -28,16 +30,20 @@ export default function HeroSection({ isEditing, pageData, updateField, onSave, 
       {isEditing ? (
         <>
           <TextInput
-            style={styles.titleInput}
+            style={[styles.titleInput, focusedField === 'title' && styles.inputFocused]}
             value={title}
             onChangeText={(text) => updateField('welcomeTitle', text)}
+            onFocus={() => setFocusedField('title')}
+            onBlur={() => setFocusedField(null)}
             placeholder="Tajuk utama"
             placeholderTextColor="rgba(255,255,255,0.4)"
           />
           <TextInput
-            style={styles.subtitleInput}
+            style={[styles.subtitleInput, focusedField === 'subtitle' && styles.inputFocused]}
             value={subtitle}
             onChangeText={(text) => updateField('welcomeSubtitle', text)}
+            onFocus={() => setFocusedField('subtitle')}
+            onBlur={() => setFocusedField(null)}
             multiline
             placeholder="Sari kata"
             placeholderTextColor="rgba(255,255,255,0.4)"
@@ -87,36 +93,41 @@ const styles = StyleSheet.create({
   },
   kicker: {
     color: PALETTE.orange,
+    fontFamily: FONTS.displayBold,
     fontSize: 12,
-    fontWeight: '800',
     letterSpacing: 1.5,
     marginBottom: 12,
   },
   title: {
+    fontFamily: FONTS.displayBold,
     fontSize: 22,
-    fontWeight: '900',
     color: PALETTE.white,
     letterSpacing: -0.3,
     lineHeight: 28,
     marginBottom: 12,
   },
-  subtitle: { fontSize: 14, color: PALETTE.mutedLight, lineHeight: 21, fontWeight: '500' },
+  subtitle: { fontFamily: FONTS.body, fontSize: 14, color: PALETTE.mutedLight, lineHeight: 21 },
 
   titleInput: {
-    fontSize: 20, fontWeight: '900', color: '#fff', letterSpacing: -0.3,
+    fontFamily: FONTS.displayBold, fontSize: 18, color: '#fff', letterSpacing: -0.3,
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', borderRadius: 10,
     padding: 10, marginBottom: 10, backgroundColor: 'rgba(255,255,255,0.06)',
   },
   subtitleInput: {
-    fontSize: 14, color: '#fff', lineHeight: 20,
+    fontFamily: FONTS.body, fontSize: 14, color: '#fff', lineHeight: 20,
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', borderRadius: 10,
     padding: 10, minHeight: 60, textAlignVertical: 'top',
     backgroundColor: 'rgba(255,255,255,0.06)',
   },
+  inputFocused: {
+    borderColor: PALETTE.orange,
+    ...Platform.select({ web: { boxShadow: `0 0 0 3px ${PALETTE.orangeGlow}` }, default: {} }),
+  },
   saveBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
     marginTop: 12, backgroundColor: PALETTE.orange, paddingVertical: 10, borderRadius: 10,
+    ...Platform.select({ web: { cursor: 'pointer' }, default: {} }),
   },
-  saveBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
-  formError: { fontSize: 12, color: '#fca5a5', textAlign: 'center', marginTop: 12 },
+  saveBtnText: { color: '#fff', fontFamily: FONTS.bodyMedium, fontSize: 13 },
+  formError: { fontFamily: FONTS.body, fontSize: 12, color: '#fca5a5', textAlign: 'center', marginTop: 12 },
 });

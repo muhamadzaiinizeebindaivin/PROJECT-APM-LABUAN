@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, StyleSheet, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
 import { MapPin, Phone, Mail, Building2, Save } from 'lucide-react-native';
 import { PALETTE } from '../../constants/palette';
+import { FONTS } from '../../styles/tacticalTheme';
 
 const WIDGETS = [
   { key: 'addressPejabat', label: 'ALAMAT PEJABAT APM LABUAN', accent: PALETTE.orange, accentSoft: 'rgba(249, 115, 22, 0.10)' },
@@ -9,6 +10,7 @@ const WIDGETS = [
 ];
 
 function FieldBox({ Icon, label, value, isEditing, onChangeText, multiline, placeholder, accent, wide }) {
+  const [focused, setFocused] = useState(false);
   return (
     <View style={[styles.fieldBox, wide && styles.fieldBoxWide]}>
       <View style={styles.fieldBoxHeader}>
@@ -19,9 +21,15 @@ function FieldBox({ Icon, label, value, isEditing, onChangeText, multiline, plac
       </View>
       {isEditing ? (
         <TextInput
-          style={[styles.input, multiline && styles.inputMultiline]}
+          style={[
+            styles.input,
+            multiline && styles.inputMultiline,
+            focused && [styles.inputFocused, { borderColor: accent }],
+          ]}
           value={value}
           onChangeText={onChangeText}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
           multiline={multiline}
           placeholder={placeholder}
           placeholderTextColor={PALETTE.textMutedDark}
@@ -148,8 +156,8 @@ export default function InfoWidgets({ isEditing, pageData, updateField, onSave, 
 const styles = StyleSheet.create({
   column: { flexDirection: 'column', gap: 18 },
   widget: {
-    padding: 28,
-    paddingLeft: 30,
+    padding: 32,
+    paddingLeft: 34,
     borderRadius: 24,
     backgroundColor: PALETTE.cardLight,
     borderWidth: 1,
@@ -175,8 +183,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center',
   },
   label: {
+    fontFamily: FONTS.displayBold,
     fontSize: 14,
-    fontWeight: '800',
     letterSpacing: 0.5,
     flex: 1,
     flexShrink: 1,
@@ -202,16 +210,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center',
   },
   fieldLabel: {
-    fontSize: 11,
-    fontWeight: '700',
+    fontFamily: FONTS.bodyMedium,
+    fontSize: 12,
     color: PALETTE.textMutedDark,
     textTransform: 'uppercase',
     letterSpacing: 0.3,
   },
   fieldValue: {
+    fontFamily: FONTS.body,
     fontSize: 15,
     color: PALETTE.textDark,
-    lineHeight: 21,
+    lineHeight: 22,
   },
   input: {
     borderWidth: 1,
@@ -220,14 +229,19 @@ const styles = StyleSheet.create({
     padding: 10,
     backgroundColor: '#fafafa',
     color: PALETTE.textDark,
+    fontFamily: FONTS.body,
     fontSize: 14,
   },
   inputMultiline: { minHeight: 56, textAlignVertical: 'top' },
+  inputFocused: {
+    ...Platform.select({ web: { boxShadow: '0 0 0 3px rgba(249, 115, 22, 0.18)' }, default: {} }),
+  },
 
   saveBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
     marginTop: 16, paddingVertical: 13, borderRadius: 12,
+    ...Platform.select({ web: { cursor: 'pointer' }, default: {} }),
   },
-  saveBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
-  formError: { fontSize: 12, color: '#dc2626', textAlign: 'center', marginTop: 14 },
+  saveBtnText: { color: '#fff', fontFamily: FONTS.bodyMedium, fontSize: 14 },
+  formError: { fontFamily: FONTS.body, fontSize: 12, color: '#dc2626', textAlign: 'center', marginTop: 14 },
 });

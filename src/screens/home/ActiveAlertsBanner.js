@@ -4,6 +4,7 @@ import { AlertTriangle } from 'lucide-react-native';
 import { useBencanaPoints } from '../../hooks/useBencanaPoints';
 import { useCalamityPoints } from '../../hooks/useCalamityPoints';
 import { PALETTE } from '../../constants/palette';
+import { FONTS } from '../../styles/tacticalTheme';
 
 const SPEED = 70; // px/s
 
@@ -110,7 +111,7 @@ const styles = StyleSheet.create({
   tickerText: {
     alignSelf: 'flex-start',
     flexShrink: 0,
-    fontWeight: '700',
+    fontFamily: FONTS.bodyMedium,
     fontSize: 14,
     whiteSpace: 'nowrap',
   },

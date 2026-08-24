@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, createElement } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Platform, Modal } from 'react-native';
 import { PALETTE } from '../../constants/palette';
+import { FONTS } from '../../styles/tacticalTheme';
 import { FileText, Upload, X, Check, Maximize2 } from 'lucide-react-native';
 import { supabaseSandbox as supabase } from '../../supabaseSandboxClient';
 const PDFJS_VERSION = '3.11.174';
@@ -769,11 +770,13 @@ const styles = StyleSheet.create({
     position: 'absolute', top: 12, right: 12, zIndex: 6,
     flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#22c55e',
     paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6,
+    ...Platform.select({ web: { cursor: 'pointer' }, default: {} }),
   },
   fullscreenBtn: {
     position: 'absolute', top: 12, right: 12, zIndex: 6,
     width: 26, height: 26, borderRadius: 6, backgroundColor: 'rgba(0,0,0,0.55)',
     alignItems: 'center', justifyContent: 'center',
+    ...Platform.select({ web: { cursor: 'pointer' }, default: {} }),
   },
   fullscreenBtnShifted: { right: 110 },
   fullscreenOverlay: { flex: 1, backgroundColor: 'rgba(11, 12, 14, 0.95)', justifyContent: 'center', alignItems: 'center', padding: 20 },
@@ -787,10 +790,11 @@ const styles = StyleSheet.create({
   uploadBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#22c55e',
     paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6,
+    ...Platform.select({ web: { cursor: 'pointer' }, default: {} }),
   },
-  uploadBtnText: { color: '#fff', fontSize: 12, fontWeight: '700' },
+  uploadBtnText: { color: '#fff', fontFamily: FONTS.bodyMedium, fontSize: 12 },
 
-  errorText: { color: '#dc2626', fontSize: 11, fontWeight: '600', paddingHorizontal: 20, paddingTop: 12 },
+  errorText: { color: '#dc2626', fontFamily: FONTS.bodyMedium, fontSize: 11, paddingHorizontal: 20, paddingTop: 12 },
 
   pageContainer: { width: '100%', minHeight: 200, backgroundColor: PALETTE.cardLight, position: 'relative' },
   pageLoader: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center', zIndex: 2, backgroundColor: PALETTE.cardLight },
@@ -799,7 +803,7 @@ const styles = StyleSheet.create({
     width: '100%', aspectRatio: 16 / 9, backgroundColor: '#f8fafc',
     justifyContent: 'center', alignItems: 'center', gap: 10,
   },
-  emptyText: { fontSize: 12, color: '#94a3b8', textAlign: 'center', paddingHorizontal: 30, fontWeight: '500' },
+  emptyText: { fontFamily: FONTS.body, fontSize: 13, color: '#94a3b8', textAlign: 'center', paddingHorizontal: 30 },
 
   // ── Modal d'aperçu ──
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 20 },
@@ -810,19 +814,23 @@ const styles = StyleSheet.create({
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#f1f5f9', gap: 10,
   },
-  modalTitle: { fontSize: 14, fontWeight: '800', color: '#0f172a', flex: 1 },
+  modalTitle: { fontFamily: FONTS.displayBold, fontSize: 14, color: '#0f172a', flex: 1 },
   modalPagesWrap: { maxHeight: 500, overflowY: 'auto', backgroundColor: '#f8fafc', position: 'relative' },
   modalFooter: {
     flexDirection: 'row', justifyContent: 'flex-end', gap: 10,
     paddingHorizontal: 16, paddingVertical: 14, borderTopWidth: 1, borderTopColor: '#f1f5f9',
   },
-  modalCancelBtn: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8, backgroundColor: '#f1f5f9' },
-  modalCancelText: { fontSize: 13, fontWeight: '700', color: '#64748b' },
+  modalCancelBtn: {
+    paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8, backgroundColor: '#f1f5f9',
+    ...Platform.select({ web: { cursor: 'pointer' }, default: {} }),
+  },
+  modalCancelText: { fontFamily: FONTS.bodyMedium, fontSize: 13, color: '#64748b' },
   modalConfirmBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8, backgroundColor: '#22c55e',
+    ...Platform.select({ web: { cursor: 'pointer' }, default: {} }),
   },
-  modalConfirmText: { fontSize: 13, fontWeight: '700', color: '#fff' },
+  modalConfirmText: { fontFamily: FONTS.bodyMedium, fontSize: 13, color: '#fff' },
 
   confirmOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 24 },
   confirmBox: {
@@ -834,17 +842,19 @@ const styles = StyleSheet.create({
     width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(249, 115, 22, 0.15)',
     alignItems: 'center', justifyContent: 'center', marginBottom: 14,
   },
-  confirmTitle: { fontSize: 18, fontWeight: '900', color: '#fff' },
-  confirmSubtitle: { fontSize: 13, color: '#94a3b8', marginTop: 6, textAlign: 'center' },
+  confirmTitle: { fontFamily: FONTS.displayBold, fontSize: 18, color: '#fff' },
+  confirmSubtitle: { fontFamily: FONTS.body, fontSize: 13, color: '#94a3b8', marginTop: 6, textAlign: 'center' },
   confirmActions: { flexDirection: 'row', gap: 10, padding: 20, backgroundColor: '#fff' },
   confirmCancelBtn: {
     flex: 1, height: 48, borderRadius: 12, borderWidth: 1.5, borderColor: '#e2e8f0',
     alignItems: 'center', justifyContent: 'center',
+    ...Platform.select({ web: { cursor: 'pointer' }, default: {} }),
   },
-  confirmCancelText: { color: '#64748b', fontWeight: '800', fontSize: 14 },
+  confirmCancelText: { color: '#64748b', fontFamily: FONTS.bodyMedium, fontSize: 14 },
   confirmConfirmBtn: {
     flex: 1, height: 48, borderRadius: 12, backgroundColor: PALETTE.orange,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    ...Platform.select({ web: { cursor: 'pointer' }, default: {} }),
   },
-  confirmConfirmText: { color: '#fff', fontWeight: '800', fontSize: 14 },
+  confirmConfirmText: { color: '#fff', fontFamily: FONTS.bodyMedium, fontSize: 14 },
 });
