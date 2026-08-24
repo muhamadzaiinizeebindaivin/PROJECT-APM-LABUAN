@@ -72,6 +72,11 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     backgroundColor: PALETTE.ink,
     overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.2,
+    shadowRadius: 22,
+    elevation: 6,
   },
   glow: {
     position: 'absolute',

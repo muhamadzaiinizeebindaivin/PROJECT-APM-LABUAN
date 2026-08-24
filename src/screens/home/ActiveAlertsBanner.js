@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, Animated } from 'react-native';
+import { View, Text, Animated, StyleSheet } from 'react-native';
+import { AlertTriangle } from 'lucide-react-native';
 import { useBencanaPoints } from '../../hooks/useBencanaPoints';
 import { useCalamityPoints } from '../../hooks/useCalamityPoints';
 import { PALETTE } from '../../constants/palette';
@@ -67,62 +68,50 @@ export default function ActiveAlertsBanner() {
   });
 
   return (
-    <View
-      style={{
-        borderBottomWidth: 3,
-        borderBottomColor: '#fdba74',
-      }}
-    >
-      <Animated.View
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: bgColor,
-        }}
-      />
+    <View style={styles.wrapper}>
+      <Animated.View style={[styles.fill, { backgroundColor: bgColor }]} />
 
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          paddingHorizontal: 14,
-          paddingVertical: 8,
-          gap: 8,
-        }}
-      >
-        
+      <View style={styles.row}>
+        <Animated.View style={[styles.iconWrap, { opacity: pulseAnim }]}>
+          <AlertTriangle size={16} color="#dc2626" />
+        </Animated.View>
 
-      <View
-        style={{ flex: 1, overflow: 'hidden' }}
-        onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
-      >
-        <Animated.Text
-          onLayout={(e) => setTextWidth(e.nativeEvent.layout.width)}
-          style={{
-            alignSelf: 'flex-start',
-            flexShrink: 0,
-            fontWeight: '700',
-            fontSize: 14,
-            whiteSpace: 'nowrap',
-            transform: [{ translateX }],
-          }}
+        <View
+          style={styles.textViewport}
+          onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
         >
-          {items.map((item, idx) => (
-            <Text
-              key={idx}
-              style={{ color: item.type === 'bencana' ? '#dc2626' : PALETTE.orange }}
-            >
-              {item.type === 'bencana' ? 'BENCANA: ' : 'KECEMASAN: '}
-              {item.category}
-              {idx < items.length - 1 ? '   •   ' : ''}
-            </Text>
-          ))}
-        </Animated.Text>
-      </View>
+          <Animated.Text
+            onLayout={(e) => setTextWidth(e.nativeEvent.layout.width)}
+            style={[styles.tickerText, { transform: [{ translateX }] }]}
+          >
+            {items.map((item, idx) => (
+              <Text
+                key={idx}
+                style={{ color: item.type === 'bencana' ? '#dc2626' : PALETTE.orange }}
+              >
+                {item.type === 'bencana' ? 'BENCANA: ' : 'KECEMASAN: '}
+                {item.category}
+                {idx < items.length - 1 ? '   •   ' : ''}
+              </Text>
+            ))}
+          </Animated.Text>
+        </View>
       </View>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  wrapper: { borderBottomWidth: 3, borderBottomColor: '#fdba74' },
+  fill: StyleSheet.absoluteFillObject,
+  row: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 8, gap: 10 },
+  iconWrap: { flexShrink: 0 },
+  textViewport: { flex: 1, overflow: 'hidden' },
+  tickerText: {
+    alignSelf: 'flex-start',
+    flexShrink: 0,
+    fontWeight: '700',
+    fontSize: 14,
+    whiteSpace: 'nowrap',
+  },
+});

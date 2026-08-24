@@ -14,6 +14,17 @@ export const homeScreenStyles = StyleSheet.create({
 
   scrollContent: { paddingTop: 12, paddingBottom: 16 },
 
+  heroGradient: {
+    borderRadius: 24,
+    padding: 24,
+    alignItems: 'center',
+    shadowColor: '#0b0c0e',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.14,
+    shadowRadius: 22,
+    elevation: 6,
+  },
+
   mainRow: {
     flexDirection: 'row',
     paddingLeft: 20,

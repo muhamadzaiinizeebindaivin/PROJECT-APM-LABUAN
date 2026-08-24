@@ -4,6 +4,7 @@ import { CheckCircle2, XCircle } from 'lucide-react-native';
 import AdminEditButton from '../components/AdminEditButton';
 import HomepagePdfCard from './home/HomepagePdfCard';
 import AuthGate from './home/AuthGate';
+import HeroSection from './home/HeroSection';
 import InfoWidgets from './home/InfoWidgets';
 import { homeScreenStyles as styles } from './home/homeScreenStyles';
 import ActiveAlertsBanner from './home/ActiveAlertsBanner';
@@ -149,12 +150,23 @@ export default function HomeScreen({ isAuthFlow, onGuestLogin, onDriverLogin, on
         showsVerticalScrollIndicator={false}
         scrollEventThrottle={16}
       >
+        {pageData && (
+          <HeroSection
+            isEditing={isEditing}
+            pageData={pageData}
+            updateField={updateField}
+            onSave={onSave}
+            saving={saving}
+            isSavingThis={savingSection === 'hero'}
+          />
+        )}
+
         <View style={{ paddingHorizontal: 20, marginTop: 16 }}>
           <LinearGradient
             colors={['rgba(29, 78, 216, 0.55)', 'rgba(249, 115, 22, 0.55)']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
-            style={{ borderRadius: 20, padding: 24, alignItems: 'center' }}
+            style={styles.heroGradient}
           >
             <View style={{ width: '100%', maxWidth: 1100 }}>
               <HomepagePdfCard
