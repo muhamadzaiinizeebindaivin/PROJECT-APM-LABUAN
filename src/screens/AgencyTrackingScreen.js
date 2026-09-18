@@ -40,12 +40,15 @@ import { PALETTE } from '../constants/palette';
 import { buildSekretariatMapHtml } from './sekretariat/sekretariatMapTemplate';
 import { useOnlineAgencies } from '../hooks/useOnlineAgencies';
 import { useOnlinePemantauan } from '../hooks/useOnlinePemantauan';
-import { Asset } from 'expo-asset';
-import pemantauanTrackerIconAsset from '../../assets/pemantauan-tracker-icon.png';
-
-const PEMANTAUAN_TRACKER_ICON_URL = Asset.fromModule(pemantauanTrackerIconAsset).uri;
+import { usePemantauanPoints } from '../hooks/usePemantauanPoints';
 import { useBencanaPoints } from '../hooks/useBencanaPoints';
 import { useHotspotCategories } from '../hooks/useHotspotCategories';
+import { Asset } from 'expo-asset';
+import pemantauanTrackerIconAsset from '../../assets/pemantauan-tracker-icon.png';
+import pemantauanIconAsset from '../../assets/pemantauan-icon.png';
+
+const PEMANTAUAN_TRACKER_ICON_URL = Asset.fromModule(pemantauanTrackerIconAsset).uri;
+const PEMANTAUAN_ICON_URL = Asset.fromModule(pemantauanIconAsset).uri;
 
 const STORAGE_KEY = 'apm_agency_session';
 
@@ -203,6 +206,7 @@ export default function AgencyTrackingScreen({ onLogout }) {
 
   const { onlineAgencies } = useOnlineAgencies();
   const { onlinePemantauan } = useOnlinePemantauan();
+  const { pemantauanPoints } = usePemantauanPoints();
   const { bencanaPoints } = useBencanaPoints();
   const { categories: hotspotCategories } = useHotspotCategories();
   const trackerMapIframeRef = useRef(null);
@@ -235,7 +239,7 @@ export default function AgencyTrackingScreen({ onLogout }) {
     return map;
   }, [agencies]);
 
-  const trackerMapHtml = useMemo(() => buildSekretariatMapHtml({ theme: { background: PALETTE.softOrangeBg } }), []);
+  const trackerMapHtml = useMemo(() => buildSekretariatMapHtml({ theme: { background: PALETTE.softOrangeBg }, pemantauanIconUrl: PEMANTAUAN_ICON_URL }), []);
   // srcDoc (au lieu d'un data: URI) : les iframes data: reçoivent une origine
   // opaque/cross-origin, et Chrome refuse la Fullscreen API dans ce contexte
   // même avec l'attribut allow="fullscreen" — srcDoc n'a pas ce problème.
@@ -302,6 +306,23 @@ export default function AgencyTrackingScreen({ onLogout }) {
       trackerMapIframeRef.current.contentWindow.postMessage(JSON.stringify({ type: 'UPDATE_BENCANA', payload }), '*');
     }
   }, [bencanaPoints, hotspotCategories, trackerMapReady]);
+
+  useEffect(() => {
+    if (trackerMapReady && trackerMapIframeRef?.current?.contentWindow) {
+      const payload = pemantauanPoints
+        .filter(p => p.status !== 'resolved' && p.latitude != null && p.longitude != null)
+        .map(p => ({
+          id: p.id,
+          lokasi: p.lokasi || '',
+          jumlah_rumah_terjejas: p.jumlah_rumah_terjejas ?? 0,
+          pps: p.pps || '',
+          agensi_di_lapangan: p.agensi_di_lapangan || '',
+          bacaan_air: p.bacaan_air || '',
+          lat: p.latitude, lng: p.longitude, created_at: p.created_at,
+        }));
+      trackerMapIframeRef.current.contentWindow.postMessage(JSON.stringify({ type: 'UPDATE_PEMANTAUAN_POINTS', payload }), '*');
+    }
+  }, [pemantauanPoints, trackerMapReady]);
 
   const handleTrackerMapLoad = () => setTrackerMapLoading(false);
 
@@ -620,7 +641,8 @@ export default function AgencyTrackingScreen({ onLogout }) {
           onPress={() => setIsPemantauan(true)}
           activeOpacity={0.7}
         >
-          <Text style={styles.pemantauanButtonText}>Pemantauan</Text>
+          <Eye size={18} color="#fff" />
+          <Text style={styles.pemantauanButtonText}>Pemantauan Titik Banjir</Text>
         </TouchableOpacity>
 
         {loadingAgencies ? (
@@ -829,10 +851,12 @@ const styles = StyleSheet.create({
   pemantauanButton: {
     width: '100%',
     height: 48,
-    borderRadius: 12,
-    backgroundColor: PALETTE.orange,
+    borderRadius: 14,
+    backgroundColor: '#fb923c',
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 8,
     marginBottom: 15,
   },
   pemantauanButtonText: {
