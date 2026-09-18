@@ -18,8 +18,9 @@ export function useBencanaPoints() {
 
   useEffect(() => {
     fetchBencanaPoints();
+    const channelName = `sekretariat_bencana_points_changes_${Math.random().toString(36).slice(2)}`;
     const subscription = supabaseSandbox
-      .channel('sekretariat_bencana_points_changes')
+      .channel(channelName)
       .on('postgres_changes', { event: '*', schema: 'sandbox', table: 'sekretariat_bencana_points' }, () => {
         fetchBencanaPoints();
       })

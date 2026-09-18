@@ -27,7 +27,7 @@ export function useSiteVisitorStats() {
     fetchTotal();
 
     const visitsSubscription = supabaseSandbox
-      .channel('site_visits_changes')
+      .channel(`site_visits_changes_${Math.random().toString(36).slice(2)}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'sandbox', table: 'site_visits' }, () => {
         fetchTotal();
       })

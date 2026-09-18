@@ -184,7 +184,7 @@ export default function LoginModal({ visible, onClose, isMobile, handleLogin, on
                 style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#fff7ed', borderWidth: 1.5, borderColor: PALETTE.orange, borderRadius: 12, height: 48 }}
               >
                 {!isMobile && <Building2 size={16} color={PALETTE.orange} />}
-                <Text style={{ color: PALETTE.orange, fontWeight: '800', fontSize: 12 }}>Agensi</Text>
+                <Text style={{ color: PALETTE.orange, fontWeight: '800', fontSize: 12 }}>Bencana</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => { handleLogin('operasi_lapor'); onClose(); }}

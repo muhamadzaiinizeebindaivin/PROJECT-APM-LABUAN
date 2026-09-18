@@ -42,7 +42,7 @@ export function useHotspots(onNotify) {
   useEffect(() => {
     fetchHotspots();
     const subscription = supabaseSandbox
-      .channel('hotspots_changes')
+      .channel(`hotspots_changes_${Math.random().toString(36).slice(2)}`)
       .on('postgres_changes', { event: '*', schema: 'sandbox', table: 'hotspots' }, () => {
         fetchHotspots();
       })

@@ -30,7 +30,7 @@ export function useSekretariatMeta() {
     fetchMeta();
 
     // S'abonne aux changements de chaque table pour rafraîchir automatiquement
-    const channel = supabaseSandbox.channel('sekretariat_meta_changes');
+    const channel = supabaseSandbox.channel(`sekretariat_meta_changes_${Math.random().toString(36).slice(2)}`);
     TABLES.forEach(({ table, filterCol, filterVal }) => {
       channel.on(
         'postgres_changes',

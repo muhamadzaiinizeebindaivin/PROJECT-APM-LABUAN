@@ -30,4 +30,7 @@ export const PALETTE = {
   successSoft: '#dcfce7',
   danger: '#ef4444',
   dangerSoft: 'rgba(220, 38, 38, 0.10)',
+
+  yellow: '#eab308',
+  yellowDark: '#a16207',
 };

@@ -28,7 +28,7 @@ export function useVehicles(onUpdate) {
     fetchVehicles();
 
     const subscription = supabaseSandbox
-      .channel('vehicles_channel_web')
+      .channel(`vehicles_channel_web_${Math.random().toString(36).slice(2)}`)
       .on('postgres_changes', { event: 'UPDATE', schema: 'sandbox', table: 'logistik' }, (payload) => {
         const updatedVehicle = payload.new;
 

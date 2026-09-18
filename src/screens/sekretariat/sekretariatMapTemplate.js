@@ -12,7 +12,7 @@
  *    markers, but with a fixed color (no fixed category palette — the
  *    category is free text typed by the admin).
  */
-export function buildSekretariatMapHtml({ theme, userRole }) {
+export function buildSekretariatMapHtml({ theme, userRole, pemantauanIconUrl }) {
   return `
     <!DOCTYPE html>
     <html style="height: 100%; margin: 0;">
@@ -84,14 +84,34 @@ export function buildSekretariatMapHtml({ theme, userRole }) {
             window.parent.postMessage(JSON.stringify({ type: 'DELETE_AGENCY_TRACKER_REQUEST', id: id }), '*');
           };
 
+          window.requestDeletePemantauanPoint = function(id) {
+            window.parent.postMessage(JSON.stringify({ type: 'DELETE_PEMANTAUAN_POINT_REQUEST', id: id }), '*');
+          };
+
+          window.requestEditPemantauanPoint = function(id) {
+            window.parent.postMessage(JSON.stringify({ type: 'EDIT_PEMANTAUAN_POINT_REQUEST', id: id }), '*');
+          };
+
+          window.requestResolvePemantauanPoint = function(id) {
+            window.parent.postMessage(JSON.stringify({ type: 'RESOLVE_PEMANTAUAN_POINT_REQUEST', id: id }), '*');
+          };
+
           // Agences en ligne : plus de regroupement — chaque marker est mis à
           // jour sur place (setLatLng) au lieu d'être retiré et recréé.
           var agencyCluster = L.layerGroup().addTo(map);
 
           // Bencana : plus de regroupement — chaque point s'affiche individuellement
           var bencanaCluster = L.layerGroup().addTo(map);
+          var pemantauanCluster = L.layerGroup().addTo(map);
+          var PEMANTAUAN_ICON = ${JSON.stringify(pemantauanIconUrl || '')};
 
-          var createAgencyIcon = (color, logo) => {
+          // Chemins SVG (style Lucide) pour une petite icône optionnelle au
+          // centre d'un pin d'agence/Pemantauan sans logo.
+          var AGENCY_ICON_PATHS = {
+            Eye: '<path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/>'
+          };
+
+          var createAgencyIcon = (color, logo, noOutline, iconKey) => {
             if (logo) {
               return L.divIcon({
                 className: 'custom-pin',
@@ -101,11 +121,15 @@ export function buildSekretariatMapHtml({ theme, userRole }) {
                 iconSize: [36, 36], iconAnchor: [18, 18], popupAnchor: [0, -20]
               });
             }
+            var strokeAttr = noOutline ? '' : 'stroke="white" stroke-width="2"';
+            var innerMark = (iconKey && AGENCY_ICON_PATHS[iconKey])
+              ? '<g transform="translate(7.5,7.5) scale(0.46)" fill="none" stroke="white" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">' + AGENCY_ICON_PATHS[iconKey] + '</g>'
+              : '<circle cx="13" cy="13" r="5" fill="white" fill-opacity="0.9"/>';
             return L.divIcon({
               className: 'custom-pin',
               html: '<svg width="26" height="34" viewBox="0 0 26 34" style="opacity:1;filter: drop-shadow(0 2px 3px rgba(0,0,0,0.35));">' +
-                      '<path d="M13 0C5.8 0 0 5.8 0 13c0 9.5 13 21 13 21s13-11.5 13-21C26 5.8 20.2 0 13 0z" fill="' + color + '" fill-opacity="0.72" stroke="white" stroke-width="2"/>' +
-                      '<circle cx="13" cy="13" r="5" fill="white" fill-opacity="0.9"/>' +
+                      '<path d="M13 0C5.8 0 0 5.8 0 13c0 9.5 13 21 13 21s13-11.5 13-21C26 5.8 20.2 0 13 0z" fill="' + color + '" fill-opacity="0.72" ' + strokeAttr + '/>' +
+                      innerMark +
                     '</svg>',
               iconSize: [26, 34], iconAnchor: [13, 34], popupAnchor: [0, -30]
             });
@@ -156,6 +180,7 @@ export function buildSekretariatMapHtml({ theme, userRole }) {
 
           var agencyMarkers = {};
           var bencanaMarkers = {};
+          var pemantauanPointMarkers = {};
           var markerAnimations = {}; // requestAnimationFrame id per agency, so a new GPS ping can smoothly redirect an in-progress glide
 
           function animateMarkerTo(id, marker, targetLat, targetLng, duration) {
@@ -234,11 +259,11 @@ export function buildSekretariatMapHtml({ theme, userRole }) {
                 a.lat = lat; a.lng = lng;
                 if (agencyMarkers[a.id]) {
                   animateMarkerTo(a.id, agencyMarkers[a.id], a.lat, a.lng, 5000);
-                  agencyMarkers[a.id].setIcon(createAgencyIcon(a.color, a.logo));
+                  agencyMarkers[a.id].setIcon(createAgencyIcon(a.color, a.logo, a.noOutline, a.icon));
                   agencyMarkers[a.id].setPopupContent(buildAgencyPopup(a));
                   agencyMarkers[a.id].setTooltipContent(a.agency);
                 } else {
-                  agencyMarkers[a.id] = L.marker([a.lat, a.lng], { icon: createAgencyIcon(a.color, a.logo) })
+                  agencyMarkers[a.id] = L.marker([a.lat, a.lng], { icon: createAgencyIcon(a.color, a.logo, a.noOutline, a.icon) })
                     .bindPopup(buildAgencyPopup(a))
                     .bindTooltip(a.agency, { direction: 'top', offset: [0, -20], className: 'agency-name-tooltip' });
                   agencyCluster.addLayer(agencyMarkers[a.id]);
@@ -362,6 +387,123 @@ export function buildSekretariatMapHtml({ theme, userRole }) {
                   bencanaMarkers[b.id].setPopupContent(popupDiv);
                   bencanaMarkers[b.id].setIcon(createBencanaIcon(b.icon, b.color));
                   bencanaMarkers[b.id].setLatLng([b.lat, b.lng]);
+                }
+              });
+            } else if (data.type === 'UPDATE_PEMANTAUAN_POINTS') {
+              var currentPemantauanIds = data.payload.map(function(p) { return p.id; });
+              Object.keys(pemantauanPointMarkers).forEach(function(id) {
+                if (currentPemantauanIds.indexOf(id) === -1) {
+                  pemantauanCluster.removeLayer(pemantauanPointMarkers[id]);
+                  delete pemantauanPointMarkers[id];
+                }
+              });
+
+              var buildPemantauanPopup = function(p) {
+                var popupDiv = document.createElement('div');
+                popupDiv.className = 'custom-popup';
+
+                var strongEl = document.createElement('strong');
+                strongEl.textContent = 'Titik Pemantauan';
+                popupDiv.appendChild(strongEl);
+
+                var lokasiEl = document.createElement('span');
+                lokasiEl.className = 'sub';
+                lokasiEl.textContent = 'Lokasi: ' + (p.lokasi || '-');
+                popupDiv.appendChild(lokasiEl);
+
+                var rumahEl = document.createElement('span');
+                rumahEl.className = 'sub';
+                rumahEl.textContent = 'Jumlah Rumah Terjejas: ' + (p.jumlah_rumah_terjejas != null ? p.jumlah_rumah_terjejas : 0);
+                popupDiv.appendChild(rumahEl);
+
+                var ppsEl = document.createElement('span');
+                ppsEl.className = 'sub';
+                ppsEl.textContent = 'PPS: ' + (p.pps || 'TIADA');
+                popupDiv.appendChild(ppsEl);
+
+                var agensiEl = document.createElement('span');
+                agensiEl.className = 'sub';
+                agensiEl.textContent = 'Agensi di Lapangan: ' + (p.agensi_di_lapangan || '-');
+                popupDiv.appendChild(agensiEl);
+
+                var airEl = document.createElement('span');
+                airEl.className = 'sub';
+                airEl.textContent = 'Bacaan Air: ' + (p.bacaan_air || '-');
+                popupDiv.appendChild(airEl);
+
+                if (p.created_at) {
+                  var timeEl = document.createElement('span');
+                  timeEl.className = 'bencana-time';
+                  timeEl.textContent = formatTimeAgo(p.created_at);
+                  popupDiv.appendChild(timeEl);
+                }
+
+                if (canDeleteBencana) {
+                  var editBtnEl = document.createElement('button');
+                  editBtnEl.textContent = 'Kemaskini';
+                  editBtnEl.style.marginTop = '6px';
+                  editBtnEl.style.backgroundColor = '#f97316';
+                  editBtnEl.style.color = 'white';
+                  editBtnEl.style.border = 'none';
+                  editBtnEl.style.padding = '4px 10px';
+                  editBtnEl.style.borderRadius = '6px';
+                  editBtnEl.style.fontSize = '11px';
+                  editBtnEl.style.fontWeight = '700';
+                  editBtnEl.style.cursor = 'pointer';
+                  editBtnEl.style.width = '100%';
+                  editBtnEl.addEventListener('click', function() {
+                    window.requestEditPemantauanPoint(p.id);
+                  });
+                  popupDiv.appendChild(editBtnEl);
+
+                  var resolveBtnEl = document.createElement('button');
+                  resolveBtnEl.textContent = 'Selesai';
+                  resolveBtnEl.style.marginTop = '6px';
+                  resolveBtnEl.style.backgroundColor = '#22c55e';
+                  resolveBtnEl.style.color = 'white';
+                  resolveBtnEl.style.border = 'none';
+                  resolveBtnEl.style.padding = '4px 10px';
+                  resolveBtnEl.style.borderRadius = '6px';
+                  resolveBtnEl.style.fontSize = '11px';
+                  resolveBtnEl.style.fontWeight = '700';
+                  resolveBtnEl.style.cursor = 'pointer';
+                  resolveBtnEl.style.width = '100%';
+                  resolveBtnEl.addEventListener('click', function() {
+                    window.requestResolvePemantauanPoint(p.id);
+                  });
+                  popupDiv.appendChild(resolveBtnEl);
+
+                  var delBtnEl = document.createElement('button');
+                  delBtnEl.textContent = 'Padam Titik';
+                  delBtnEl.style.marginTop = '6px';
+                  delBtnEl.style.backgroundColor = '#ef4444';
+                  delBtnEl.style.color = 'white';
+                  delBtnEl.style.border = 'none';
+                  delBtnEl.style.padding = '4px 10px';
+                  delBtnEl.style.borderRadius = '6px';
+                  delBtnEl.style.fontSize = '11px';
+                  delBtnEl.style.fontWeight = '700';
+                  delBtnEl.style.cursor = 'pointer';
+                  delBtnEl.style.width = '100%';
+                  delBtnEl.addEventListener('click', function() {
+                    window.requestDeletePemantauanPoint(p.id);
+                  });
+                  popupDiv.appendChild(delBtnEl);
+                }
+
+                return popupDiv;
+              };
+
+              data.payload.forEach(function(p) {
+                var popupDiv = buildPemantauanPopup(p);
+                if (!pemantauanPointMarkers[p.id]) {
+                  pemantauanPointMarkers[p.id] = L.marker([p.lat, p.lng], { icon: createAgencyIcon('#eab308', PEMANTAUAN_ICON) })
+                    .bindPopup(popupDiv);
+                  pemantauanCluster.addLayer(pemantauanPointMarkers[p.id]);
+                } else {
+                  pemantauanPointMarkers[p.id].setPopupContent(popupDiv);
+                  pemantauanPointMarkers[p.id].setIcon(createAgencyIcon('#eab304', PEMANTAUAN_ICON));
+                  pemantauanPointMarkers[p.id].setLatLng([p.lat, p.lng]);
                 }
               });
             }

@@ -31,7 +31,7 @@ export function useJpbdDirectory() {
   useEffect(() => {
     fetchJPBD();
     const subscription = supabaseSandbox
-      .channel('jpbd_directory_changes')
+      .channel(`jpbd_directory_changes_${Math.random().toString(36).slice(2)}`)
       .on('postgres_changes', { event: '*', schema: 'sandbox', table: 'jpbd_directory' }, () => {
         fetchJPBD();
       })

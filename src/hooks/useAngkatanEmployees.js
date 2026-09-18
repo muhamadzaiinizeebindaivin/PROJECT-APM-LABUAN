@@ -448,7 +448,7 @@ export function useAngkatanEmployees() {
   // depuis un autre onglet/session sans attendre un refresh manuel.
   useEffect(() => {
     const subscription = supabaseSandbox
-      .channel('angkatan_categories_changes')
+      .channel(`angkatan_categories_changes_${Math.random().toString(36).slice(2)}`)
       .on('postgres_changes', { event: '*', schema: 'sandbox', table: 'angkatan_categories' }, () => {
         fetchEmployees();
       })

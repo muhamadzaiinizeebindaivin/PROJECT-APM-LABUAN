@@ -30,7 +30,7 @@ export function useOperasiMeta() {
   useEffect(() => {
     fetchMeta();
 
-    const channel = supabaseSandbox.channel('operasi_meta_changes');
+    const channel = supabaseSandbox.channel(`operasi_meta_changes_${Math.random().toString(36).slice(2)}`);
     TABLES.forEach(({ table, filterCol, filterVal }) => {
       channel.on(
         'postgres_changes',

@@ -6,8 +6,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
 
-console.log('[supabaseSandboxClient] URL:', supabaseUrl);
-console.log('[supabaseSandboxClient] KEY présente:', !!supabaseKey, supabaseKey ? `(${supabaseKey.length} caractères)` : '');
+
 
 export const supabaseSandbox = createClient(supabaseUrl, supabaseKey, {
   db: { schema: 'sandbox' },

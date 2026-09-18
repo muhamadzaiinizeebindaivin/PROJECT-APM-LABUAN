@@ -108,7 +108,7 @@ export default function PertolonganCemasTab({ theme, userRole, isEditMode }) {
   useEffect(() => {
     fetchEvents();
     const sub1 = supabaseSandbox
-      .channel('pertolongan_cemas_changes')
+      .channel(`pertolongan_cemas_changes_${Math.random().toString(36).slice(2)}`)
       .on('postgres_changes', { event: '*', schema: 'sandbox', table: 'pertolongan_cemas' }, fetchEvents)
       .subscribe();
     return () => { supabaseSandbox.removeChannel(sub1); };

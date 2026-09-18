@@ -16,18 +16,25 @@ const CATEGORY_ICON_OPTIONS = [
 ];
 import { supabaseSandbox } from '../../supabaseSandboxClient';
 import { buildSekretariatMapHtml } from './sekretariatMapTemplate';
+import { Asset } from 'expo-asset';
+import pemantauanIconAsset from '../../../assets/pemantauan-icon.png';
+import pemantauanTrackerIconAsset from '../../../assets/pemantauan-tracker-icon.png';
 import { useOnlineAgencies } from '../../hooks/useOnlineAgencies';
+import { useOnlinePemantauan } from '../../hooks/useOnlinePemantauan';
 import { useBencanaPoints } from '../../hooks/useBencanaPoints';
 import { useHotspotKejadian } from '../../hooks/useHotspotKejadian';
 import { useHotspots } from '../../hooks/useHotspots';
 import { useHotspotCategories } from '../../hooks/useHotspotCategories';
 import { useAgencyTrackingHistory } from '../../hooks/useAgencyTrackingHistory';
+import { usePemantauanPoints } from '../../hooks/usePemantauanPoints';
 import ModalSelectField from '../../components/ModalSelectField';
 import FullscreenViewer from '../../components/FullscreenViewer';
-import { generateAgencyHistoryPdf, generateKejadianPdf } from '../../utils/agencyReportsPdf';
+import { generateAgencyHistoryPdf, generateKejadianPdf, generatePemantauanPdf } from '../../utils/agencyReportsPdf';
 import { appStyles as sekretariatStyles } from '../../styles/appStyles';
 import { petaStyles as styles } from './petaStyles';
 import { PALETTE } from '../../constants/palette';
+
+const PEMANTAUAN_TRACKER_ICON_URL = Asset.fromModule(pemantauanTrackerIconAsset).uri;
 
 const BULAN_MS = ['Januari', 'Februari', 'Mac', 'April', 'Mei', 'Jun', 'Julai', 'Ogos', 'September', 'Oktober', 'November', 'Disember'];
 const BULAN_OPTIONS = ['Semua Bulan', ...BULAN_MS];
@@ -67,6 +74,7 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
   const { onlineAgencies } = useOnlineAgencies();
   const onlineAgenciesRef = useRef([]);
   onlineAgenciesRef.current = onlineAgencies;
+  const { onlinePemantauan } = useOnlinePemantauan();
   const { bencanaPoints, saveBencana, completeBencana, updateBencana, deleteBencana } = useBencanaPoints();
   const { kejadianList } = useHotspotKejadian();
   const [editingBencana, setEditingBencana] = useState(null);
@@ -94,6 +102,9 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
   };
   const { hotspotList } = useHotspots(onNotify);
   const { categories: hotspotCategories } = useHotspotCategories(onNotify);
+  const { pemantauanPoints, savePemantauanPoint, updatePemantauanPoint, completePemantauanPoint, deletePemantauanPoint } = usePemantauanPoints();
+  const pemantauanPointsRef = useRef([]);
+  pemantauanPointsRef.current = pemantauanPoints;
 
   // Étape du flux "Tambah Titik Bencana" : null (fermé) → 'choice' (choix
   // initial) → soit 'existingList' (cartes de hotspots, clic = plot direct),
@@ -206,7 +217,7 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
     };
     fetchAgencyNames();
     const subscription = supabaseSandbox
-      .channel('peta_jpbd_directory_changes')
+      .channel(`peta_jpbd_directory_changes_${Math.random().toString(36).slice(2)}`)
       .on('postgres_changes', { event: '*', schema: 'sandbox', table: 'jpbd_directory' }, () => {
         fetchAgencyNames();
       })
@@ -235,6 +246,62 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
   const [pendingBencanaPlacement, setPendingBencanaPlacement] = useState(null);
   const [bencanaCategory, setBencanaCategory] = useState('');
   const [bencanaDescription, setBencanaDescription] = useState('');
+
+  const [isPlacingPemantauanPoint, setIsPlacingPemantauanPoint] = useState(false);
+  const [pendingPemantauanPlacement, setPendingPemantauanPlacement] = useState(null);
+  const [pemantauanPointModalVisible, setPemantauanPointModalVisible] = useState(false);
+  const [pemantauanLokasi, setPemantauanLokasi] = useState('');
+  const [pemantauanJumlahRumah, setPemantauanJumlahRumah] = useState('');
+  const [pemantauanPps, setPemantauanPps] = useState('');
+  const [pemantauanAgensi, setPemantauanAgensi] = useState('');
+  const [pemantauanBacaanAir, setPemantauanBacaanAir] = useState('');
+  const [savingPemantauanPoint, setSavingPemantauanPoint] = useState(false);
+  const [pemantauanFormMode, setPemantauanFormMode] = useState('create'); // 'create' | 'edit' | 'complete'
+  const [editingPemantauanId, setEditingPemantauanId] = useState(null);
+
+  const resetPemantauanPointForm = () => {
+    setPemantauanPointModalVisible(false);
+    setIsPlacingPemantauanPoint(false);
+    setPendingPemantauanPlacement(null);
+    // Le mode/les champs ne sont réinitialisés qu'après la fin de l'animation
+    // de fermeture (fade) du Modal, sinon le titre change visiblement à
+    // l'écran juste avant que le modal ne disparaisse complètement.
+    setTimeout(() => {
+      setPemantauanFormMode('create');
+      setEditingPemantauanId(null);
+      setPemantauanLokasi('');
+      setPemantauanJumlahRumah('');
+      setPemantauanPps('');
+      setPemantauanAgensi('');
+      setPemantauanBacaanAir('');
+    }, 300);
+  };
+
+  const openEditPemantauanPoint = (id) => {
+    const point = pemantauanPointsRef.current.find((p) => p.id === id);
+    if (!point) return;
+    setPemantauanFormMode('edit');
+    setEditingPemantauanId(id);
+    setPemantauanLokasi(point.lokasi || '');
+    setPemantauanJumlahRumah(point.jumlah_rumah_terjejas != null ? String(point.jumlah_rumah_terjejas) : '');
+    setPemantauanPps(point.pps || '');
+    setPemantauanAgensi(point.agensi_di_lapangan || '');
+    setPemantauanBacaanAir(point.bacaan_air || '');
+    setPemantauanPointModalVisible(true);
+  };
+
+  const openCompletePemantauanPoint = (id) => {
+    const point = pemantauanPointsRef.current.find((p) => p.id === id);
+    if (!point) return;
+    setPemantauanFormMode('complete');
+    setEditingPemantauanId(id);
+    setPemantauanLokasi(point.lokasi || '');
+    setPemantauanJumlahRumah(point.jumlah_rumah_terjejas != null ? String(point.jumlah_rumah_terjejas) : '');
+    setPemantauanPps(point.pps || '');
+    setPemantauanAgensi(point.agensi_di_lapangan || '');
+    setPemantauanBacaanAir(point.bacaan_air || '');
+    setPemantauanPointModalVisible(true);
+  };
   const [bencanaModalVisible, setBencanaModalVisible] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null); // { type: 'bencana' | 'history' | 'agency', id, label }
   const displayDeleteTargetRef = useRef(null);
@@ -242,9 +309,10 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
   const [deletingTarget, setDeletingTarget] = useState(false);
 
   // --- Panneau latéral ---
-  const [sidePanel, setSidePanel] = useState('none'); // 'none' | 'history' | 'summary'
+  const [sidePanel, setSidePanel] = useState('none'); // 'none' | 'history' | 'summary' | 'pemantauanSummary'
   const [historyBtnHovered, setHistoryBtnHovered] = useState(false);
   const [summaryBtnHovered, setSummaryBtnHovered] = useState(false);
+  const [pemantauanSummaryBtnHovered, setPemantauanSummaryBtnHovered] = useState(false);
   const [addBencanaBtnHovered, setAddBencanaBtnHovered] = useState(false);
 
   const [historyYear, setHistoryYear] = useState(now.getFullYear());
@@ -259,11 +327,19 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
   const [summaryMonthOpen, setSummaryMonthOpen] = useState(false);
   const [summaryPage, setSummaryPage] = useState(0);
 
+  const [pemantauanSummaryYear, setPemantauanSummaryYear] = useState(now.getFullYear());
+  const [pemantauanSummaryMonth, setPemantauanSummaryMonth] = useState(now.getMonth());
+  const [pemantauanSummaryYearOpen, setPemantauanSummaryYearOpen] = useState(false);
+  const [pemantauanSummaryMonthOpen, setPemantauanSummaryMonthOpen] = useState(false);
+  const [pemantauanSummaryPage, setPemantauanSummaryPage] = useState(0);
+
   const [exportingHistoryPdf, setExportingHistoryPdf] = useState(false);
   const [exportingSummaryPdf, setExportingSummaryPdf] = useState(false);
+  const [exportingPemantauanSummaryPdf, setExportingPemantauanSummaryPdf] = useState(false);
 
   const [searchHistoryQuery, setSearchHistoryQuery] = useState('');
   const [searchSummaryQuery, setSearchSummaryQuery] = useState('');
+  const [searchPemantauanSummaryQuery, setSearchPemantauanSummaryQuery] = useState('');
 
   const historyPeriodLabel = historyMonth === null
     ? `Tahun ${historyYear}`
@@ -272,6 +348,10 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
   const summaryPeriodLabel = summaryMonth === null
     ? `Tahun ${summaryYear}`
     : `${BULAN_MS[summaryMonth]} ${summaryYear}`;
+
+  const pemantauanSummaryPeriodLabel = pemantauanSummaryMonth === null
+    ? `Tahun ${pemantauanSummaryYear}`
+    : `${BULAN_MS[pemantauanSummaryMonth]} ${pemantauanSummaryYear}`;
 
   const handleExportHistoryPdf = async () => {
     setExportingHistoryPdf(true);
@@ -295,6 +375,17 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
     }
   };
 
+  const handleExportPemantauanSummaryPdf = async () => {
+    setExportingPemantauanSummaryPdf(true);
+    try {
+      await generatePemantauanPdf({ rows: filteredPemantauanSummary, periodLabel: pemantauanSummaryPeriodLabel });
+    } catch (e) {
+      console.error('Gagal menjana PDF:', e);
+    } finally {
+      setExportingPemantauanSummaryPdf(false);
+    }
+  };
+
   const agencyColorMap = buildAgencyColorMap(agencyNames);
   const getAgencyColorFromMap = (agencyName) => agencyColorMap[agencyName] || PALETTE.textMutedDark;
   const agencyLogoMap = {};
@@ -302,7 +393,7 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
   const getAgencyLogo = (agencyName) => agencyLogoMap[agencyName] || null;
 
   const [confirmStopVisible, setConfirmStopVisible] = useState(false);
-  const petaMapHtml = buildSekretariatMapHtml({ theme, userRole });
+  const petaMapHtml = buildSekretariatMapHtml({ theme, userRole, pemantauanIconUrl: Asset.fromModule(pemantauanIconAsset).uri });
 
   const handlePetaIframeLoad = () => {
     setPetaIframeLoading(false);
@@ -310,7 +401,7 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
 
   useEffect(() => {
     if (mapReady && petaIframeRef?.current?.contentWindow) {
-      const payload = onlineAgencies.map(a => ({
+      const agencyPayload = onlineAgencies.map(a => ({
         id: a.id,
         name: a.member_name,
         agency: a.jpbd_directory?.agency || '',
@@ -320,10 +411,21 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
         logo: getAgencyLogo(a.jpbd_directory?.agency || ''),
         updated: a.last_updated ? new Date(a.last_updated).toLocaleTimeString() : ''
       }));
+      const pemantauanPayload = onlinePemantauan.map(p => ({
+        id: p.id,
+        name: p.member_name,
+        agency: 'Pemantauan',
+        lat: p.latitude,
+        lng: p.longitude,
+        color: PALETTE.yellow,
+        logo: PEMANTAUAN_TRACKER_ICON_URL,
+        updated: p.last_updated ? new Date(p.last_updated).toLocaleTimeString() : ''
+      }));
+      const payload = [...agencyPayload, ...pemantauanPayload];
       petaIframeRef.current.contentWindow.postMessage(JSON.stringify({ type: 'UPDATE_AGENCIES', payload }), '*');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [onlineAgencies, agencyNames, mapReady]);
+  }, [onlineAgencies, onlinePemantauan, agencyNames, mapReady]);
 
   useEffect(() => {
     if (mapReady && petaIframeRef?.current?.contentWindow) {
@@ -348,6 +450,23 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
   }, [bencanaPoints, hotspotCategories, mapReady]);
 
   useEffect(() => {
+    if (mapReady && petaIframeRef?.current?.contentWindow) {
+      const payload = pemantauanPoints
+        .filter(p => p.status !== 'resolved' && p.latitude != null && p.longitude != null)
+        .map(p => ({
+          id: p.id,
+          lokasi: p.lokasi || '',
+          jumlah_rumah_terjejas: p.jumlah_rumah_terjejas ?? 0,
+          pps: p.pps || '',
+          agensi_di_lapangan: p.agensi_di_lapangan || '',
+          bacaan_air: p.bacaan_air || '',
+          lat: p.latitude, lng: p.longitude, created_at: p.created_at,
+        }));
+      petaIframeRef.current.contentWindow.postMessage(JSON.stringify({ type: 'UPDATE_PEMANTAUAN_POINTS', payload }), '*');
+    }
+  }, [pemantauanPoints, mapReady]);
+
+  useEffect(() => {
     // La carte tourne dans une <iframe> web (voir plus bas) : `window` n'existe
     // pas sur mobile natif, donc on ne branche ce listener que sur le web.
     if (Platform.OS !== 'web') return undefined;
@@ -360,6 +479,10 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
           setPendingBencanaPlacement({ lat: data.lat, lng: data.lng });
           setBencanaModalVisible(true);
           setIsPlacingBencana(false);
+        } else if (data.type === 'MAP_CLICKED' && isPlacingPemantauanPoint) {
+          setPendingPemantauanPlacement({ lat: data.lat, lng: data.lng });
+          setPemantauanPointModalVisible(true);
+          setIsPlacingPemantauanPoint(false);
         } else if (data.type === 'DELETE_BENCANA_REQUEST') {
           const point = bencanaPointsRef.current.find((b) => b.id === data.id);
           handleDeleteBencanaSummary(data.id, point?.category || 'Titik Bencana');
@@ -367,6 +490,12 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
           openCompleteBencana(data.id);
         } else if (data.type === 'EDIT_BENCANA_REQUEST') {
           openEditBencana(data.id);
+        } else if (data.type === 'DELETE_PEMANTAUAN_POINT_REQUEST') {
+          setDeleteTarget({ type: 'pemantauan', id: data.id, label: 'Titik Pemantauan' });
+        } else if (data.type === 'EDIT_PEMANTAUAN_POINT_REQUEST') {
+          openEditPemantauanPoint(data.id);
+        } else if (data.type === 'RESOLVE_PEMANTAUAN_POINT_REQUEST') {
+          openCompletePemantauanPoint(data.id);
         } else if (data.type === 'DELETE_AGENCY_TRACKER_REQUEST') {
           const agency = onlineAgenciesRef.current.find(a => a.id === data.id);
           const label = [agency?.jpbd_directory?.agency, agency?.member_name].map(s => s?.trim()).find(s => s) || '-';
@@ -377,7 +506,7 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
     window.addEventListener('message', handleMapMessage);
     return () => window.removeEventListener('message', handleMapMessage);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isPlacingBencana]);
+  }, [isPlacingBencana, isPlacingPemantauanPoint]);
 
   const showBencanaError = (msg) => {
     if (Platform.OS === 'web') window.alert(msg);
@@ -422,6 +551,28 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
     if (!error) resetBencanaForm();
   };
 
+  const handleSavePemantauanPoint = async () => {
+    setSavingPemantauanPoint(true);
+    const fields = {
+      lokasi: pemantauanLokasi,
+      jumlah_rumah_terjejas: pemantauanJumlahRumah,
+      pps: pemantauanPps,
+      agensi_di_lapangan: pemantauanAgensi,
+      bacaan_air: pemantauanBacaanAir,
+    };
+    let result;
+    if (pemantauanFormMode === 'edit') {
+      result = await updatePemantauanPoint(editingPemantauanId, fields);
+    } else if (pemantauanFormMode === 'complete') {
+      result = await completePemantauanPoint(editingPemantauanId, fields);
+    } else {
+      if (!pendingPemantauanPlacement) { setSavingPemantauanPoint(false); return; }
+      result = await savePemantauanPoint({ ...fields, latitude: pendingPemantauanPlacement.lat, longitude: pendingPemantauanPlacement.lng });
+    }
+    setSavingPemantauanPoint(false);
+    if (!result.error) resetPemantauanPointForm();
+  };
+
   const handleDeleteBencanaSummary = (id, label) => {
     setDeleteTarget({ type: 'bencana', id, label });
   };
@@ -443,6 +594,8 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
       result = await deleteBencana(deleteTarget.id, { skipConfirm: true });
     } else if (deleteTarget.type === 'history') {
       result = await deleteTrackingHistory(deleteTarget.id, { skipConfirm: true });
+    } else if (deleteTarget.type === 'pemantauan') {
+      result = await deletePemantauanPoint(deleteTarget.id, { skipConfirm: true });
     } else {
       const { error } = await supabaseSandbox.from('agency_trackers').delete().eq('id', deleteTarget.id);
       result = { error };
@@ -456,6 +609,7 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
       bencana: ['Rekod bencana berjaya dipadam.', 'Gagal memadam rekod bencana.'],
       history: ['Rekod patrol agensi berjaya dipadam.', 'Gagal memadam rekod patrol agensi.'],
       agency: ['Agensi berjaya diputuskan daripada peta.', 'Gagal memutuskan agensi.'],
+      pemantauan: ['Titik pemantauan berjaya dipadam.', 'Gagal memadam titik pemantauan.'],
     };
     const [successMsg, errorMsg] = messages[type];
     onNotify?.(!result?.error ? 'success' : 'error', !result?.error ? successMsg : errorMsg);
@@ -528,6 +682,34 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
   }, [filteredBencanaSummary, summaryPage]);
 
   useEffect(() => { setSummaryPage(0); }, [summaryYear, summaryMonth]);
+
+  // --- Filtre/pagination : Ringkasan Pemantauan ---
+  const availablePemantauanSummaryYears = React.useMemo(() => {
+    const years = new Set(pemantauanPoints.map(p => new Date(p.created_at).getFullYear()));
+    years.add(now.getFullYear());
+    return Array.from(years).sort((a, b) => b - a).map(String);
+  }, [pemantauanPoints]);
+
+  const filteredPemantauanSummary = React.useMemo(() => {
+    const q = searchPemantauanSummaryQuery.trim().toLowerCase();
+    return pemantauanPoints
+      .filter(p => {
+        const d = new Date(p.created_at);
+        if (d.getFullYear() !== pemantauanSummaryYear) return false;
+        if (pemantauanSummaryMonth !== null && d.getMonth() !== pemantauanSummaryMonth) return false;
+        if (q && !(p.lokasi || '').toLowerCase().includes(q)) return false;
+        return true;
+      })
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  }, [pemantauanPoints, pemantauanSummaryYear, pemantauanSummaryMonth, searchPemantauanSummaryQuery]);
+
+  const pemantauanSummaryTotalPages = Math.max(1, Math.ceil(filteredPemantauanSummary.length / PAGE_SIZE));
+  const pagedPemantauanSummary = React.useMemo(() => {
+    const start = pemantauanSummaryPage * PAGE_SIZE;
+    return filteredPemantauanSummary.slice(start, start + PAGE_SIZE);
+  }, [filteredPemantauanSummary, pemantauanSummaryPage]);
+
+  useEffect(() => { setPemantauanSummaryPage(0); }, [pemantauanSummaryYear, pemantauanSummaryMonth]);
 
   const renderHistoryTable = (large = false) => (
     <>
@@ -833,6 +1015,163 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
     </>
   );
 
+  const renderPemantauanSummaryContent = (large = false) => (
+    <>
+      <View style={styles.historyFilterRow}>
+        <View style={{ flex: 1 }}>
+          <ModalSelectField
+            theme={theme}
+            label="Tahun"
+            value={String(pemantauanSummaryYear)}
+            placeholder="Tahun"
+            options={availablePemantauanSummaryYears}
+            isOpen={pemantauanSummaryYearOpen}
+            onToggle={() => { setPemantauanSummaryYearOpen(!pemantauanSummaryYearOpen); setPemantauanSummaryMonthOpen(false); }}
+            onSelect={(opt) => { setPemantauanSummaryYear(Number(opt)); setPemantauanSummaryYearOpen(false); }}
+            stackIndex={2000}
+          />
+        </View>
+        <View style={{ flex: 1 }}>
+          <ModalSelectField
+            theme={theme}
+            label="Bulan"
+            value={pemantauanSummaryMonth === null ? 'Semua Bulan' : BULAN_MS[pemantauanSummaryMonth]}
+            placeholder="Bulan"
+            options={BULAN_OPTIONS}
+            isOpen={pemantauanSummaryMonthOpen}
+            onToggle={() => { setPemantauanSummaryMonthOpen(!pemantauanSummaryMonthOpen); setPemantauanSummaryYearOpen(false); }}
+            onSelect={(opt) => { setPemantauanSummaryMonth(opt === 'Semua Bulan' ? null : BULAN_MS.indexOf(opt)); setPemantauanSummaryMonthOpen(false); }}
+            stackIndex={1000}
+          />
+        </View>
+      </View>
+
+      <View style={{ paddingHorizontal: 16, marginBottom: 16 }}>
+        <View style={{ position: 'relative', justifyContent: 'center' }}>
+          <Search size={16} color={PALETTE.textMutedDark} style={{ position: 'absolute', left: 12, zIndex: 1 }} />
+          <TextInput
+            style={[sekretariatStyles.input, { paddingLeft: 38 }]}
+            placeholder="Cari lokasi pemantauan..."
+            placeholderTextColor={PALETTE.textMutedDark}
+            value={searchPemantauanSummaryQuery}
+            onChangeText={setSearchPemantauanSummaryQuery}
+          />
+        </View>
+      </View>
+
+      {pagedPemantauanSummary.length === 0 ? (
+        <Text style={styles.emptyText}>Tiada rekod pemantauan untuk tempoh ini.</Text>
+      ) : (
+        <>
+          {!isMobile ? (
+          <View style={[styles.calamityTableWrapper, { borderRadius: 14, borderWidth: 1, borderColor: PALETTE.cardLightBorder || '#e2e8f0', overflow: 'hidden' }]}>
+            <View style={[styles.calamityTableHeaderRow, { backgroundColor: '#1e3a8a' }]}>
+              <View style={[{ flex: 2 }, styles.calamityHeaderCellBox]}>
+                <Text style={[styles.calamityTableHeaderCell, { color: '#fff', fontWeight: '800' }, large && { fontSize: 16 }]}>Lokasi</Text>
+              </View>
+              <View style={[{ flex: 1 }, styles.calamityHeaderCellBox]}>
+                <Text style={[styles.calamityTableHeaderCell, { color: '#fff', fontWeight: '800' }, large && { fontSize: 16 }]}>Rumah</Text>
+              </View>
+              <View style={[{ flex: 1 }, styles.calamityHeaderCellBox]}>
+                <Text style={[styles.calamityTableHeaderCell, { color: '#fff', fontWeight: '800' }, large && { fontSize: 16 }]}>Bacaan Air</Text>
+              </View>
+              <View style={[{ flex: 1.2 }, styles.calamityHeaderCellBox]}>
+                <Text style={[styles.calamityTableHeaderCell, { color: '#fff', fontWeight: '800' }, large && { fontSize: 16 }]}>Tarikh</Text>
+              </View>
+              <View style={[{ flex: 1 }, styles.calamityHeaderCellBox]}>
+                <Text style={[styles.calamityTableHeaderCell, { color: '#fff', fontWeight: '800' }, large && { fontSize: 16 }]}>Status</Text>
+              </View>
+              {isEditMode && (userRole === 'sekretariat' || userRole === 'admin') && (
+                <View style={[{ width: 50 }, styles.calamityHeaderCellBox]}>
+                  <Text style={[styles.calamityTableHeaderCell, { color: '#fff', fontWeight: '800' }, large && { fontSize: 16 }]}></Text>
+                </View>
+              )}
+            </View>
+            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 380 }}>
+              {pagedPemantauanSummary.map((p, index) => (
+                <View key={p.id} style={[styles.calamityTableRow, { backgroundColor: index % 2 === 1 ? (PALETTE.surface || '#f8fafc') : '#fff', borderTopWidth: 1, borderTopColor: PALETTE.cardLightBorder || '#e2e8f0' }]}>
+                  <Text style={[styles.calamityTableCell, { flex: 2 }, large && { fontSize: 16 }]} numberOfLines={1}>
+                    {p.lokasi || '-'}
+                  </Text>
+                  <Text style={[styles.calamityTableCell, { flex: 1, textAlign: 'center' }, large && { fontSize: 16 }]}>
+                    {p.jumlah_rumah_terjejas ?? 0}
+                  </Text>
+                  <Text style={[styles.calamityTableCell, { flex: 1, textAlign: 'center' }, large && { fontSize: 16 }]}>
+                    {p.bacaan_air || '-'}
+                  </Text>
+                  <Text style={[styles.calamityTableCell, { flex: 1.2 }, large && { fontSize: 16 }]}>
+                    {new Date(p.created_at).toLocaleDateString('ms-MY')}
+                  </Text>
+                  <Text style={[styles.calamityTableCell, { flex: 1 }, p.status !== 'resolved' && { fontStyle: 'italic', color: PALETTE.orangeDark }, large && { fontSize: 16 }]}>
+                    {p.status === 'resolved' ? 'Selesai' : 'Aktif'}
+                  </Text>
+                  {isEditMode && (userRole === 'sekretariat' || userRole === 'admin') && (
+                    <View style={{ width: 50, alignItems: 'center', justifyContent: 'center' }}>
+                      <TouchableOpacity
+                        onPress={() => setDeleteTarget({ type: 'pemantauan', id: p.id, label: p.lokasi || 'Titik Pemantauan' })}
+                        style={{ width: 26, height: 26, borderRadius: 7, backgroundColor: 'rgba(220, 38, 38, 0.10)', alignItems: 'center', justifyContent: 'center' }}
+                      >
+                        <Trash2 size={13} color={PALETTE.danger || '#dc2626'} />
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+          ) : (
+          <View>
+            {pagedPemantauanSummary.map((p) => (
+              <View key={p.id} style={styles.historyCardMobile}>
+                <View style={styles.historyCardMobileTopRow}>
+                  <Text style={[styles.tableCellAgency, { flex: 1 }]} numberOfLines={1}>{p.lokasi || '-'}</Text>
+                  {isEditMode && (userRole === 'sekretariat' || userRole === 'admin') && (
+                    <TouchableOpacity
+                      onPress={() => setDeleteTarget({ type: 'pemantauan', id: p.id, label: p.lokasi || 'Titik Pemantauan' })}
+                      style={{ width: 26, height: 26, borderRadius: 7, backgroundColor: 'rgba(220, 38, 38, 0.10)', alignItems: 'center', justifyContent: 'center' }}
+                    >
+                      <Trash2 size={13} color={PALETTE.danger || '#dc2626'} />
+                    </TouchableOpacity>
+                  )}
+                </View>
+                <View style={styles.historyCardMobileStatsRow}>
+                  <Text style={styles.historyCardMobileStat}>Rumah: {p.jumlah_rumah_terjejas ?? 0}</Text>
+                  <Text style={styles.historyCardMobileStatDivider}>·</Text>
+                  <Text style={styles.historyCardMobileStat}>{new Date(p.created_at).toLocaleDateString('ms-MY')}</Text>
+                  <Text style={styles.historyCardMobileStatDivider}>·</Text>
+                  <Text style={[styles.historyCardMobileStat, p.status !== 'resolved' && { fontStyle: 'italic', color: PALETTE.orangeDark }]}>
+                    {p.status === 'resolved' ? 'Selesai' : 'Aktif'}
+                  </Text>
+                </View>
+              </View>
+            ))}
+          </View>
+          )}
+
+          <View style={styles.paginationRow}>
+            <Text style={styles.pageIndicator}>{pemantauanSummaryPage + 1} / {pemantauanSummaryTotalPages}</Text>
+            <View style={styles.pageArrowRow}>
+              <TouchableOpacity
+                onPress={() => setPemantauanSummaryPage(p => Math.max(0, p - 1))}
+                disabled={pemantauanSummaryPage === 0}
+                style={[styles.pageBtn, pemantauanSummaryPage === 0 && styles.pageBtnDisabled]}
+              >
+                <Text style={[styles.pageBtnText, pemantauanSummaryPage === 0 && styles.pageBtnTextDisabled]}>←</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setPemantauanSummaryPage(p => Math.min(pemantauanSummaryTotalPages - 1, p + 1))}
+                disabled={pemantauanSummaryPage >= pemantauanSummaryTotalPages - 1}
+                style={[styles.pageBtn, pemantauanSummaryPage >= pemantauanSummaryTotalPages - 1 && styles.pageBtnDisabled]}
+              >
+                <Text style={[styles.pageBtnText, pemantauanSummaryPage >= pemantauanSummaryTotalPages - 1 && styles.pageBtnTextDisabled]}>→</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </>
+      )}
+    </>
+  );
+
   const showMobilePanelFullscreen = isMobile && sidePanel !== 'none';
   const PetaContainerWrapper = isMobile && !showMobilePanelFullscreen ? ScrollView : View;
   const petaContainerWrapperProps = showMobilePanelFullscreen
@@ -986,6 +1325,22 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
           </TouchableOpacity>
 
           <TouchableOpacity
+            style={[styles.summaryToggleBtn, pemantauanSummaryBtnHovered && { zIndex: 100, elevation: 100 }]}
+            onPress={() => setSidePanel(sidePanel === 'pemantauanSummary' ? 'none' : 'pemantauanSummary')}
+            {...(Platform.OS === 'web' ? {
+              onMouseEnter: () => setPemantauanSummaryBtnHovered(true),
+              onMouseLeave: () => setPemantauanSummaryBtnHovered(false),
+            } : {})}
+          >
+            <Droplets size={18} color={PALETTE.orange} />
+            {pemantauanSummaryBtnHovered && (
+              <View style={styles.historyTooltip}>
+                <Text style={styles.historyTooltipText}>Ringkasan Pemantauan</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
             style={[styles.historyToggleBtn, historyBtnHovered && { zIndex: 100, elevation: 100 }]}
             onPress={() => setSidePanel(sidePanel === 'history' ? 'none' : 'history')}
             {...(Platform.OS === 'web' ? {
@@ -1019,6 +1374,26 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
               }}
             >
               <MapPin size={16} color={PALETTE.orange} />
+              <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>Klik pada peta untuk letak titik</Text>
+            </View>
+          </View>
+        )}
+        {isPlacingPemantauanPoint && (
+          <View
+            style={{
+              position: 'absolute', top: 16, left: 0, right: 0,
+              alignItems: 'center', zIndex: 500, pointerEvents: 'none',
+            }}
+          >
+            <View
+              style={{
+                flexDirection: 'row', alignItems: 'center', gap: 8,
+                backgroundColor: 'rgba(15, 23, 42, 0.9)', borderRadius: 999,
+                paddingHorizontal: 16, paddingVertical: 10,
+                shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 6,
+              }}
+            >
+              <Droplets size={16} color={PALETTE.blue} />
               <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>Klik pada peta untuk letak titik</Text>
             </View>
           </View>
@@ -1094,6 +1469,40 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
         </View>
       )}
 
+      {sidePanel === 'pemantauanSummary' && (
+        <View style={[styles.petaHistoryHalf, isMobile && styles.petaHistoryHalfMobile]}>
+          <View style={[styles.petaHistoryHeader, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}>
+            <Text style={styles.petaHistoryTitle}>Ringkasan Pemantauan</Text>
+            <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+              <FullscreenViewer title="Ringkasan Pemantauan">
+                {renderPemantauanSummaryContent(true)}
+              </FullscreenViewer>
+              <TouchableOpacity
+                onPress={handleExportPemantauanSummaryPdf}
+                disabled={exportingPemantauanSummaryPdf}
+                style={[sekretariatStyles.pdfExportBtn, exportingPemantauanSummaryPdf && sekretariatStyles.pdfExportBtnDisabled]}
+              >
+                {exportingPemantauanSummaryPdf ? (
+                  <ActivityIndicator size="small" color={PALETTE.white} />
+                ) : (
+                  <>
+                    <Download size={14} color={PALETTE.white} />
+                    <Text style={sekretariatStyles.pdfExportBtnText}>PDF</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setSidePanel('none')} style={styles.panelCloseBtn}>
+                <X size={16} color={PALETTE.textMutedDark} />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+            {renderPemantauanSummaryContent()}
+          </ScrollView>
+        </View>
+      )}
+
       {/* Étape 1 — choix initial, dès le clic sur "+" */}
       <Modal visible={bencanaFlowStep === 'choice'} transparent={true} animationType="fade">
         <View style={sekretariatStyles.modalOverlay}>
@@ -1134,6 +1543,22 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontSize: 14, fontWeight: '800', color: PALETTE.textDark }}>Hotspot Baharu</Text>
                   <Text style={{ fontSize: 12, color: PALETTE.textMutedDark, marginTop: 2 }}>Tandakan lokasi sendiri pada peta</Text>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => { setBencanaFlowStep(null); setIsPlacingPemantauanPoint(true); }}
+                style={{
+                  flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16,
+                  borderRadius: 14, borderWidth: 1.5, borderColor: PALETTE.cardLightBorder || '#e2e8f0', backgroundColor: '#fff',
+                }}
+              >
+                <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: PALETTE.surface || '#f1f5f9', alignItems: 'center', justifyContent: 'center' }}>
+                  <Droplets size={20} color={PALETTE.blue} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 14, fontWeight: '800', color: PALETTE.textDark }}>Tambah Titik Pemantauan</Text>
+                  <Text style={{ fontSize: 12, color: PALETTE.textMutedDark, marginTop: 2 }}>Laporan awal pemantauan hotspot banjir</Text>
                 </View>
               </TouchableOpacity>
             </View>
@@ -1389,6 +1814,72 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
         </View>
       </Modal>
 
+      {/* Titik Pemantauan — Laporan Awal Pemantauan Hotspot Banjir */}
+      <Modal visible={pemantauanPointModalVisible} transparent={true} animationType="fade">
+        <View style={sekretariatStyles.modalOverlay}>
+          <View style={[sekretariatStyles.modalContainer, { maxWidth: 640, width: '100%' }]}>
+            <View style={sekretariatStyles.modalHeader}>
+              <Text style={sekretariatStyles.modalTitle}>
+                {pemantauanFormMode === 'edit' ? 'Kemaskini Titik Pemantauan' : pemantauanFormMode === 'complete' ? 'Selesaikan Titik Pemantauan' : 'Titik Pemantauan'}
+              </Text>
+              <TouchableOpacity onPress={resetPemantauanPointForm}>
+                <X size={24} color={PALETTE.textMutedDark} />
+              </TouchableOpacity>
+            </View>
+            <View style={sekretariatStyles.modalForm}>
+              <Text style={sekretariatStyles.inputLabel}>Lokasi</Text>
+              <TextInput
+                style={sekretariatStyles.input}
+                placeholder="Cth: Simpang Bunga Ros, Kg Sungai Miri"
+                placeholderTextColor={PALETTE.textMutedDark}
+                value={pemantauanLokasi}
+                onChangeText={setPemantauanLokasi}
+              />
+              <Text style={sekretariatStyles.inputLabel}>Jumlah Rumah Terjejas</Text>
+              <TextInput
+                style={sekretariatStyles.input}
+                placeholder="0"
+                placeholderTextColor={PALETTE.textMutedDark}
+                keyboardType="numeric"
+                value={pemantauanJumlahRumah}
+                onChangeText={(t) => setPemantauanJumlahRumah(t.replace(/[^0-9]/g, ''))}
+              />
+              <Text style={sekretariatStyles.inputLabel}>PPS</Text>
+              <TextInput
+                style={sekretariatStyles.input}
+                placeholder="Cth: TIADA"
+                placeholderTextColor={PALETTE.textMutedDark}
+                value={pemantauanPps}
+                onChangeText={setPemantauanPps}
+              />
+              <Text style={sekretariatStyles.inputLabel}>Agensi di Lapangan</Text>
+              <TextInput
+                style={sekretariatStyles.input}
+                placeholder="Cth: APM"
+                placeholderTextColor={PALETTE.textMutedDark}
+                value={pemantauanAgensi}
+                onChangeText={setPemantauanAgensi}
+              />
+              <Text style={sekretariatStyles.inputLabel}>Bacaan Air</Text>
+              <TextInput
+                style={sekretariatStyles.input}
+                placeholder="Cth: 1.5m"
+                placeholderTextColor={PALETTE.textMutedDark}
+                value={pemantauanBacaanAir}
+                onChangeText={setPemantauanBacaanAir}
+              />
+              <TouchableOpacity style={sekretariatStyles.saveButton} onPress={handleSavePemantauanPoint} disabled={savingPemantauanPoint}>
+                {savingPemantauanPoint ? <ActivityIndicator size="small" color="#fff" /> : (
+                  <Text style={sekretariatStyles.saveButtonText}>
+                    {pemantauanFormMode === 'edit' ? 'Simpan Perubahan' : pemantauanFormMode === 'complete' ? 'Simpan & Tandakan Selesai' : 'Selesai'}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       {/* Modal confirmation padam (Ringkasan Bencana / Sejarah Patrol Agensi), même style que Peta Kecemasan */}
       <Modal visible={!!deleteTarget} transparent animationType="fade">
         <View style={sekretariatStyles.modalOverlay}>
@@ -1402,7 +1893,7 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
                 <AlertTriangle size={26} color="#ef4444" />
               </View>
               <Text style={{ color: '#fff', fontSize: 17, fontWeight: '800', marginBottom: 8 }}>
-                {displayDeleteTargetRef.current?.type === 'bencana' ? 'Padam Rekod Bencana' : displayDeleteTargetRef.current?.type === 'agency' ? 'Putuskan Agensi' : 'Padam Rekod Patrol Agensi'}
+                {displayDeleteTargetRef.current?.type === 'bencana' ? 'Padam Rekod Bencana' : displayDeleteTargetRef.current?.type === 'agency' ? 'Putuskan Agensi' : displayDeleteTargetRef.current?.type === 'pemantauan' ? 'Padam Titik Pemantauan' : 'Padam Rekod Patrol Agensi'}
               </Text>
               <Text style={{ color: '#93c5fd', fontSize: 13, textAlign: 'center', lineHeight: 18 }}>
                 {displayDeleteTargetRef.current?.type === 'agency'

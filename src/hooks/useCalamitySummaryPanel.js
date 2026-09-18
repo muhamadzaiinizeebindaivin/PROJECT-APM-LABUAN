@@ -43,7 +43,7 @@ export function useCalamitySummaryPanel(calamityPoints) {
     refreshHistoriqueYears();
 
     const sub = supabaseSandbox
-      .channel('historique_years_changes')
+      .channel(`historique_years_changes_${Math.random().toString(36).slice(2)}`)
       .on('postgres_changes', { event: '*', schema: 'sandbox', table: 'ng999_historique' }, refreshHistoriqueYears)
       .subscribe();
     return () => supabaseSandbox.removeChannel(sub);
@@ -92,7 +92,7 @@ export function useCalamitySummaryPanel(calamityPoints) {
     fetchAllRows();
 
     const sub = supabaseSandbox
-      .channel(`summary_panel_${summaryYear}`)
+      .channel(`summary_panel_${summaryYear}_${Math.random().toString(36).slice(2)}`)
       .on('postgres_changes', { event: '*', schema: 'sandbox', table: 'laporan_ng999' }, fetchAllRows)
       .on('postgres_changes', { event: '*', schema: 'sandbox', table: 'ng999_historique' }, fetchAllRows)
       .subscribe();

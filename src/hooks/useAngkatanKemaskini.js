@@ -48,7 +48,7 @@ export function useAngkatanKemaskini() {
   useEffect(() => {
     fetchPending();
     const subscription = supabaseSandbox
-      .channel('angkatan_kemaskini_changes')
+      .channel(`angkatan_kemaskini_changes_${Math.random().toString(36).slice(2)}`)
       .on('postgres_changes', { event: '*', schema: 'sandbox', table: 'angkatan_kemaskini' }, () => {
         fetchPending();
       })

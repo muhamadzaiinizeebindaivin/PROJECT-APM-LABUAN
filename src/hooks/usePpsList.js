@@ -72,7 +72,7 @@ export function usePpsList(onNotify) {
   useEffect(() => {
     fetchPPS();
     const subscription = supabaseSandbox
-      .channel('pps_changes')
+      .channel(`pps_changes_${Math.random().toString(36).slice(2)}`)
       .on('postgres_changes', { event: '*', schema: 'sandbox', table: 'pps_list' }, () => {
         fetchPPS();
       })

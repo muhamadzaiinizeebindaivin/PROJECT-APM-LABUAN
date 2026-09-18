@@ -19,7 +19,7 @@ export function useCalamityPoints() {
   useEffect(() => {
     fetchCalamityPoints();
     const sub = supabaseSandbox
-      .channel('operasi_calamity_changes')
+      .channel(`operasi_calamity_changes_${Math.random().toString(36).slice(2)}`)
       .on('postgres_changes', { event: '*', schema: 'sandbox', table: 'laporan_ng999' }, fetchCalamityPoints)
       .subscribe();
     return () => supabaseSandbox.removeChannel(sub);

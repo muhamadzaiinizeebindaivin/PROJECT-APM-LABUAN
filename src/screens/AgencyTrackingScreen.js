@@ -39,6 +39,11 @@ import { supabaseSandbox as supabase } from '../supabaseSandboxClient';
 import { PALETTE } from '../constants/palette';
 import { buildSekretariatMapHtml } from './sekretariat/sekretariatMapTemplate';
 import { useOnlineAgencies } from '../hooks/useOnlineAgencies';
+import { useOnlinePemantauan } from '../hooks/useOnlinePemantauan';
+import { Asset } from 'expo-asset';
+import pemantauanTrackerIconAsset from '../../assets/pemantauan-tracker-icon.png';
+
+const PEMANTAUAN_TRACKER_ICON_URL = Asset.fromModule(pemantauanTrackerIconAsset).uri;
 import { useBencanaPoints } from '../hooks/useBencanaPoints';
 import { useHotspotCategories } from '../hooks/useHotspotCategories';
 
@@ -172,6 +177,7 @@ export default function AgencyTrackingScreen({ onLogout }) {
   const [loadingAgencies, setLoadingAgencies] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedAgency, setSelectedAgency] = useState(null);
+  const [isPemantauan, setIsPemantauan] = useState(false);
   const lastSelectedAgencyRef = useRef(null);
   if (selectedAgency) lastSelectedAgencyRef.current = selectedAgency;
 
@@ -196,6 +202,7 @@ export default function AgencyTrackingScreen({ onLogout }) {
   const wasTrackingRef = useRef(false);
 
   const { onlineAgencies } = useOnlineAgencies();
+  const { onlinePemantauan } = useOnlinePemantauan();
   const { bencanaPoints } = useBencanaPoints();
   const { categories: hotspotCategories } = useHotspotCategories();
   const trackerMapIframeRef = useRef(null);
@@ -247,7 +254,7 @@ export default function AgencyTrackingScreen({ onLogout }) {
 
   useEffect(() => {
     if (trackerMapReady && trackerMapIframeRef?.current?.contentWindow) {
-      const payload = onlineAgencies
+      const agencyPayload = onlineAgencies
         .map((a) => ({
           id: a.id,
           name: a.member_name,
@@ -258,9 +265,21 @@ export default function AgencyTrackingScreen({ onLogout }) {
           logo: agencyLogoMap[a.jpbd_directory?.agency || ''] || null,
           updated: a.last_updated ? new Date(a.last_updated).toLocaleTimeString() : '',
         }));
+      const pemantauanPayload = onlinePemantauan
+        .map((p) => ({
+          id: p.id,
+          name: p.member_name,
+          agency: 'Pemantauan',
+          lat: p.latitude,
+          lng: p.longitude,
+          color: PALETTE.yellow,
+          logo: PEMANTAUAN_TRACKER_ICON_URL,
+          updated: p.last_updated ? new Date(p.last_updated).toLocaleTimeString() : '',
+        }));
+      const payload = [...agencyPayload, ...pemantauanPayload];
       trackerMapIframeRef.current.contentWindow.postMessage(JSON.stringify({ type: 'UPDATE_AGENCIES', payload }), '*');
     }
-  }, [onlineAgencies, trackerId, agencyLogoMap, agencyColorMap, trackerMapReady]);
+  }, [onlineAgencies, onlinePemantauan, trackerId, agencyLogoMap, agencyColorMap, trackerMapReady]);
 
   useEffect(() => {
     if (trackerMapReady && trackerMapIframeRef?.current?.contentWindow) {
@@ -305,9 +324,9 @@ export default function AgencyTrackingScreen({ onLogout }) {
   useEffect(() => {
     const restore = async () => {
       const saved = loadSession();
-      if (saved?.trackerId && saved?.selectedAgency && saved?.memberName) {
+      if (saved?.trackerId && saved?.memberName && (saved?.selectedAgency || saved?.isPemantauan)) {
         // Vérifie que la session Supabase Auth anonyme est toujours valide — sans ça, les
-        // update() vers agency_trackers échoueraient silencieusement côté RLS (has_role()),
+        // update() vers agency_trackers/pemantauan_trackers échoueraient silencieusement côté RLS (has_role()),
         // alors que l'écran affiche à tort un tracker actif.
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) {
@@ -318,13 +337,14 @@ export default function AgencyTrackingScreen({ onLogout }) {
 
         // Vérifie que le tracker existe toujours en base
         const { data } = await supabase
-          .from('agency_trackers')
+          .from(saved.isPemantauan ? 'pemantauan_trackers' : 'agency_trackers')
           .select('id, tracking_status')
           .eq('id', saved.trackerId)
           .maybeSingle();
 
         if (data) {
-          setSelectedAgency(saved.selectedAgency);
+          setSelectedAgency(saved.selectedAgency || null);
+          setIsPemantauan(!!saved.isPemantauan);
           setMemberName(saved.memberName);
           setTrackerId(saved.trackerId);
           setIsTracking(data.tracking_status === 'Online');
@@ -357,11 +377,16 @@ export default function AgencyTrackingScreen({ onLogout }) {
       return;
     }
 
-    const { data: trackerId, error } = await supabase.rpc('join_agency', {
-      p_agency_id: selectedAgency.id,
-      p_code: accessCode.trim(),
-      p_member_name: memberName.trim(),
-    });
+    const { data: trackerId, error } = isPemantauan
+      ? await supabase.rpc('join_pemantauan', {
+          p_code: accessCode.trim(),
+          p_member_name: memberName.trim(),
+        })
+      : await supabase.rpc('join_agency', {
+          p_agency_id: selectedAgency.id,
+          p_code: accessCode.trim(),
+          p_member_name: memberName.trim(),
+        });
 
     if (error) {
       setJoinError(error.message?.includes('Invalid access code') ? 'Kod akses tidak sah.' : 'Gagal mendaftar. Sila cuba lagi.');
@@ -370,12 +395,13 @@ export default function AgencyTrackingScreen({ onLogout }) {
     }
 
     setTrackerId(trackerId);
-    saveSession({ selectedAgency, memberName: memberName.trim(), trackerId });
+    saveSession({ selectedAgency, isPemantauan, memberName: memberName.trim(), trackerId });
     setJoining(false);
   };
 
   const closeJoinModal = () => {
     setSelectedAgency(null);
+    setIsPemantauan(false);
     setMemberName('');
     setAccessCode('');
     setJoinError(null);
@@ -384,6 +410,9 @@ export default function AgencyTrackingScreen({ onLogout }) {
   useEffect(() => {
     let subscriptionPromise = null;
     let isMounted = true;
+
+    const trackerTable = isPemantauan ? 'pemantauan_trackers' : 'agency_trackers';
+    const historyTable = isPemantauan ? 'pemantauan_tracking_history' : 'agency_tracking_history';
 
     const startWatching = async () => {
       let { status: permStatus } = await requestPermissionCompat();
@@ -397,7 +426,7 @@ export default function AgencyTrackingScreen({ onLogout }) {
 
       // Récupère l'état persisté en base (survit à un rechargement de page)
       const { data: existingRow } = await supabase
-        .from('agency_trackers')
+        .from(trackerTable)
         .select('current_job_started_at, current_job_distance_km, latitude, longitude')
         .eq('id', trackerId)
         .maybeSingle();
@@ -416,7 +445,7 @@ export default function AgencyTrackingScreen({ onLogout }) {
         lastCoordsRef.current = null;
 
         await supabase
-          .from('agency_trackers')
+          .from(trackerTable)
           .update({
             current_job_started_at: new Date(jobStartTimeRef.current).toISOString(),
             current_job_distance_km: 0,
@@ -426,7 +455,7 @@ export default function AgencyTrackingScreen({ onLogout }) {
 
       wasTrackingRef.current = true;
 
-      await supabase.from('agency_trackers').update({ tracking_status: 'Online' }).eq('id', trackerId);
+      await supabase.from(trackerTable).update({ tracking_status: 'Online' }).eq('id', trackerId);
 
       subscriptionPromise = watchPositionCompat(
         async (loc) => {
@@ -444,7 +473,7 @@ export default function AgencyTrackingScreen({ onLogout }) {
           lastCoordsRef.current = loc.coords;
 
           const { error } = await supabase
-            .from('agency_trackers')
+            .from(trackerTable)
             .update({
               latitude: loc.coords.latitude,
               longitude: loc.coords.longitude,
@@ -476,7 +505,7 @@ export default function AgencyTrackingScreen({ onLogout }) {
     const recordHistoryAndStop = async () => {
       // Relit l'état persisté en base -> fiable même après un rechargement
       const { data: existingRow } = await supabase
-        .from('agency_trackers')
+        .from(trackerTable)
         .select('current_job_started_at, current_job_distance_km')
         .eq('id', trackerId)
         .maybeSingle();
@@ -486,8 +515,8 @@ export default function AgencyTrackingScreen({ onLogout }) {
         const endedAt = new Date();
         const durationSeconds = Math.round((endedAt.getTime() - startedAt.getTime()) / 1000);
 
-        await supabase.from('agency_tracking_history').insert([{
-          agency_id: selectedAgency?.id,
+        await supabase.from(historyTable).insert([{
+          ...(isPemantauan ? {} : { agency_id: selectedAgency?.id }),
           member_name: memberName,
           started_at: startedAt.toISOString(),
           ended_at: endedAt.toISOString(),
@@ -502,7 +531,7 @@ export default function AgencyTrackingScreen({ onLogout }) {
       distanceAccumRef.current = 0;
 
       await supabase
-        .from('agency_trackers')
+        .from(trackerTable)
         .update({
           tracking_status: 'Offline',
           current_job_started_at: null,
@@ -531,17 +560,19 @@ export default function AgencyTrackingScreen({ onLogout }) {
         });
       }
     };
-  }, [isTracking, trackerId]);
+  }, [isTracking, trackerId, isPemantauan]);
 
   // Détecte en temps réel si un admin supprime ce tracker depuis la carte — ramène
   // immédiatement à l'écran de connexion sans attendre un rechargement de page.
   useEffect(() => {
     if (!trackerId) return;
+    const kickTable = isPemantauan ? 'pemantauan_trackers' : 'agency_trackers';
     const channel = supabase
-      .channel(`agency_tracker_self_${trackerId}`)
-      .on('postgres_changes', { event: 'DELETE', schema: 'sandbox', table: 'agency_trackers', filter: `id=eq.${trackerId}` }, () => {
+      .channel(`agency_tracker_self_${trackerId}_${Math.random().toString(36).slice(2)}`)
+      .on('postgres_changes', { event: 'DELETE', schema: 'sandbox', table: kickTable, filter: `id=eq.${trackerId}` }, () => {
         clearSession();
         setSelectedAgency(null);
+        setIsPemantauan(false);
         setMemberName('');
         setAccessCode('');
         setTrackerId(null);
@@ -552,7 +583,7 @@ export default function AgencyTrackingScreen({ onLogout }) {
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [trackerId]);
+  }, [trackerId, isPemantauan]);
 
   const filteredAgencies = agencies.filter(a => a.agency.toLowerCase().includes(searchQuery.toLowerCase()));
 
@@ -583,6 +614,14 @@ export default function AgencyTrackingScreen({ onLogout }) {
             onChangeText={setSearchQuery}
           />
         </View>
+
+        <TouchableOpacity
+          style={styles.pemantauanButton}
+          onPress={() => setIsPemantauan(true)}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.pemantauanButtonText}>Pemantauan</Text>
+        </TouchableOpacity>
 
         {loadingAgencies ? (
           <ActivityIndicator size="large" color={PALETTE.orange} style={{ marginTop: 20 }} />
@@ -616,7 +655,7 @@ export default function AgencyTrackingScreen({ onLogout }) {
         )}
 
         {/* ---- Popup : rejoindre une agence (nom + code d'accès) ---- */}
-        <Modal visible={!!selectedAgency && !trackerId} transparent animationType="fade" onRequestClose={closeJoinModal}>
+        <Modal visible={(!!selectedAgency || isPemantauan) && !trackerId} transparent animationType="fade" onRequestClose={closeJoinModal}>
           <View style={joinStyles.overlay}>
             <View style={joinStyles.authCard}>
               <TouchableOpacity style={joinStyles.closeBtn} onPress={closeJoinModal}>
@@ -624,11 +663,13 @@ export default function AgencyTrackingScreen({ onLogout }) {
               </TouchableOpacity>
 
               <View style={joinStyles.authBanner}>
-                <View style={{ alignItems: 'center', marginBottom: 10 }}>
-                  <AgencyLogo url={lastSelectedAgencyRef.current?.logo_url} size={56} fallbackSize={36} />
-                </View>
+                {!isPemantauan && (
+                  <View style={{ alignItems: 'center', marginBottom: 10 }}>
+                    <AgencyLogo url={lastSelectedAgencyRef.current?.logo_url} size={56} fallbackSize={36} />
+                  </View>
+                )}
                 <Text style={joinStyles.authKicker}>APM W.P LABUAN</Text>
-                <Text style={joinStyles.authBannerTitle}>{lastSelectedAgencyRef.current?.agency}</Text>
+                <Text style={joinStyles.authBannerTitle}>{isPemantauan ? 'Pemantauan' : lastSelectedAgencyRef.current?.agency}</Text>
                 <Text style={joinStyles.authBannerSubtitle}>Masukkan nama anda untuk mula</Text>
               </View>
 
@@ -708,6 +749,7 @@ export default function AgencyTrackingScreen({ onLogout }) {
           }
           clearSession();
           setSelectedAgency(null);
+          setIsPemantauan(false);
           setTrackerId(null);
           setMemberName('');
         }}
@@ -718,10 +760,12 @@ export default function AgencyTrackingScreen({ onLogout }) {
 
       <View style={{ width: '100%', maxWidth: 900, alignSelf: 'center', alignItems: 'center' }}>
         <View style={styles.header}>
-          <View style={styles.agencyIconWrapLarge}>
-            <AgencyLogo url={selectedAgency.logo_url} size={56} fallbackSize={36} />
-          </View>
-          <Text style={styles.title}>{selectedAgency.agency}</Text>
+          {!isPemantauan && (
+            <View style={styles.agencyIconWrapLarge}>
+              <AgencyLogo url={selectedAgency?.logo_url} size={56} fallbackSize={36} />
+            </View>
+          )}
+          <Text style={styles.title}>{isPemantauan ? 'Pemantauan' : selectedAgency?.agency}</Text>
           <Text style={styles.subtitle}>{memberName}</Text>
         </View>
 
@@ -782,6 +826,20 @@ const styles = StyleSheet.create({
   subtitle: { fontSize: 13, color: PALETTE.textMutedDark, fontWeight: '600' },
   emptyText: { color: PALETTE.textMutedDark, textAlign: 'center', marginTop: 20 },
 
+  pemantauanButton: {
+    width: '100%',
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: PALETTE.orange,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 15,
+  },
+  pemantauanButtonText: {
+    color: '#fff',
+    fontWeight: '800',
+    fontSize: 14,
+  },
   searchContainer: {
     flexDirection: 'row', alignItems: 'center', width: '100%', paddingHorizontal: 15,
     borderRadius: 14, borderWidth: 1, borderColor: PALETTE.cardLightBorder,

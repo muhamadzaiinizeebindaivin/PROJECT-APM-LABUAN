@@ -355,7 +355,7 @@ export default function HomepagePdfCard({ theme, userRole, isEditing, onHeightCh
     fetchPdf();
 
     const subscription = supabase
-      .channel('homepage_pdf_changes')
+      .channel(`homepage_pdf_changes_${Math.random().toString(36).slice(2)}`)
       .on('postgres_changes', { event: '*', schema: 'sandbox', table: 'homepage_pdf' }, fetchPdf)
       .subscribe();
 

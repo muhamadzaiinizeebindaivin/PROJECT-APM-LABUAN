@@ -140,3 +140,67 @@ export async function generateKejadianPdf({ rows, categoryLabel, periodLabel }) 
   const filename = `rekod-kejadian-${categoryLabel.replace(/\s+/g, '-').toLowerCase()}-${periodLabel.replace(/\s+/g, '-').toLowerCase()}.pdf`;
   doc.save(filename);
 }
+
+/**
+ * Export PDF pour "Ringkasan Pemantauan" — une ligne par titik pemantauan,
+ * avec tarikh, lokasi, jumlah rumah terjejas, PPS, agensi di lapangan, bacaan air.
+ */
+export async function generatePemantauanPdf({ rows, periodLabel }) {
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const { pageWidth, cursorY } = await addLogoAndHeader(doc, 'Ringkasan Pemantauan', periodLabel);
+
+  if (rows.length === 0) {
+    doc.setFontSize(11);
+    doc.setFont(undefined, 'italic');
+    doc.setTextColor(100);
+    doc.text('Tiada rekod pemantauan untuk tempoh ini.', pageWidth / 2, cursorY + 10, { align: 'center' });
+    doc.setTextColor(0);
+  } else {
+    const tableRows = rows.map((p, index) => [
+      index + 1,
+      new Date(p.created_at).toLocaleDateString('ms-MY'),
+      p.lokasi || '-',
+      p.jumlah_rumah_terjejas ?? 0,
+      p.pps || '-',
+      p.agensi_di_lapangan || '-',
+      p.bacaan_air || '-',
+      p.status === 'resolved' ? 'Selesai' : 'Aktif',
+      p.resolved_at ? new Date(p.resolved_at).toLocaleDateString('ms-MY') : '-',
+    ]);
+
+    const marginLeft = 14;
+    const marginRight = 14;
+
+    autoTable(doc, {
+      startY: cursorY,
+      margin: { left: marginLeft, right: marginRight },
+      head: [['#', 'Tarikh', 'Lokasi', 'Jumlah Rumah', 'PPS', 'Agensi di Lapangan', 'Bacaan Air', 'Status', 'Tarikh Selesai']],
+      body: tableRows,
+      theme: 'grid',
+      styles: {
+        fontSize: 6.5, cellPadding: 2, overflow: 'linebreak',
+        lineColor: [30, 58, 138], lineWidth: 0.3,
+      },
+      headStyles: {
+        fillColor: [30, 58, 138], textColor: 255, fontStyle: 'bold',
+        lineColor: [30, 58, 138], lineWidth: 0.3,
+      },
+      bodyStyles: { lineColor: [180, 190, 210], lineWidth: 0.2 },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
+      columnStyles: {
+        0: { cellWidth: 8 },
+        1: { cellWidth: 18 },
+        2: { cellWidth: 'auto' },
+        3: { cellWidth: 16 },
+        4: { cellWidth: 18 },
+        5: { cellWidth: 26 },
+        6: { cellWidth: 18 },
+        7: { cellWidth: 14 },
+        8: { cellWidth: 20 },
+      },
+    });
+  }
+
+  const filename = `ringkasan-pemantauan-${periodLabel.replace(/\s+/g, '-').toLowerCase()}.pdf`;
+  doc.save(filename);
+}

@@ -50,14 +50,14 @@ export function useNg999Report(filterYear, filterMonth) {
     fetchNgData();
 
     const sub1 = supabaseSandbox
-      .channel('laporan_ng999_changes')
+      .channel(`laporan_ng999_changes_${Math.random().toString(36).slice(2)}`)
       .on('postgres_changes', { event: '*', schema: 'sandbox', table: 'laporan_ng999' }, () => {
         fetchNgData();
         fetchAllNgData();
       })
       .subscribe();
     const sub2 = supabaseSandbox
-      .channel('ng999_photos_changes')
+      .channel(`ng999_photos_changes_${Math.random().toString(36).slice(2)}`)
       .on('postgres_changes', { event: '*', schema: 'sandbox', table: 'ng999_photos' }, fetchNgData)
       .subscribe();
 

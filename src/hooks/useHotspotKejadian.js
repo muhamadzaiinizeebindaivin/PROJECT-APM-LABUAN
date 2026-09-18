@@ -31,7 +31,7 @@ export function useHotspotKejadian(onNotify) {
   useEffect(() => {
     fetchKejadian();
     const subscription = supabaseSandbox
-      .channel('sekretariat_bencana_points_kejadian_changes')
+      .channel(`sekretariat_bencana_points_kejadian_changes_${Math.random().toString(36).slice(2)}`)
       .on('postgres_changes', { event: '*', schema: 'sandbox', table: 'sekretariat_bencana_points' }, () => {
         fetchKejadian();
       })

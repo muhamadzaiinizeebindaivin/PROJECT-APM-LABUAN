@@ -28,7 +28,7 @@ export function useCatatanSekretariat() {
   useEffect(() => {
     fetchCatatan();
     const subscription = supabaseSandbox
-      .channel('catatan_sekretariat_changes')
+      .channel(`catatan_sekretariat_changes_${Math.random().toString(36).slice(2)}`)
       .on('postgres_changes', { event: '*', schema: 'sandbox', table: 'catatan_sekretariat' }, () => {
         fetchCatatan();
       })

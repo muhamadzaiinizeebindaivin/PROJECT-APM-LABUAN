@@ -41,7 +41,7 @@ export function useSandboxTable({ table, channelName, orderBy, ascending = true,
     fetchData();
 
     const subscription = supabaseSandbox
-      .channel(channelName)
+      .channel(`${channelName}_${Math.random().toString(36).slice(2)}`)
       .on('postgres_changes', { event: '*', schema: 'sandbox', table }, () => {
         if (isMounted) fetchData();
       })

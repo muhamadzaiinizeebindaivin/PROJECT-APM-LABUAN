@@ -29,7 +29,7 @@ export function useOnlineAgencies() {
   useEffect(() => {
     fetchOnlineAgencies();
     const subscription = supabaseSandbox
-      .channel('agency_trackers_changes')
+      .channel(`agency_trackers_changes_${Math.random().toString(36).slice(2)}`)
       .on('postgres_changes', { event: '*', schema: 'sandbox', table: 'agency_trackers' }, () => {
         fetchOnlineAgencies();
       })

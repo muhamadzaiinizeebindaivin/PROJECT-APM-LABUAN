@@ -324,7 +324,7 @@ export function usePatrolTracking(selectedVehicle, isTracking, onPermissionDenie
   useEffect(() => {
     if (!isTracking || !selectedVehicle) return;
     const channel = supabaseSandbox
-      .channel(`vehicle_self_${selectedVehicle.id}`)
+      .channel(`vehicle_self_${selectedVehicle.id}_${Math.random().toString(36).slice(2)}`)
       .on('postgres_changes', { event: 'UPDATE', schema: 'sandbox', table: 'logistik', filter: `id=eq.${selectedVehicle.id}` }, (payload) => {
         if (payload.new?.tracking_status !== 'Patrol') {
           onKicked?.();

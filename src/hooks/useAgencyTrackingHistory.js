@@ -24,7 +24,7 @@ export function useAgencyTrackingHistory() {
   useEffect(() => {
     fetchTrackingHistory();
     const subscription = supabaseSandbox
-      .channel('agency_tracking_history_changes')
+      .channel(`agency_tracking_history_changes_${Math.random().toString(36).slice(2)}`)
       .on('postgres_changes', { event: '*', schema: 'sandbox', table: 'agency_tracking_history' }, () => {
         fetchTrackingHistory();
       })

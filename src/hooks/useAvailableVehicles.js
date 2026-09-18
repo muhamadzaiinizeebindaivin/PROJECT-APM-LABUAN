@@ -50,7 +50,7 @@ export function useAvailableVehicles() {
     fetchVehicles();
 
     const subscription = supabaseSandbox
-      .channel('available_vehicles_channel')
+      .channel(`available_vehicles_channel_${Math.random().toString(36).slice(2)}`)
       .on('postgres_changes', { event: 'UPDATE', schema: 'sandbox', table: 'logistik' }, (payload) => {
         const updated = payload.new;
         if (isMounted) {
