@@ -29,7 +29,7 @@ export function useBencanaPoints() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const saveBencana = async ({ category, description, latitude, longitude, hotspot_id, jenis_bencana, lokasi, pps }) => {
+  const saveBencana = async ({ category, description, latitude, longitude, hotspot_id, jenis_bencana, lokasi, pps, jumlah_kir, jumlah_mangsa, jumlah_rumah_terjejas }) => {
     if (!category?.trim()) return { error: true };
     const { error } = await supabaseSandbox.from('sekretariat_bencana_points').insert([{
       category: category.trim(),
@@ -40,6 +40,9 @@ export function useBencanaPoints() {
       jenis_bencana: jenis_bencana?.trim() || null,
       lokasi: lokasi?.trim() || null,
       pps: pps?.trim() || null,
+      jumlah_kir: jumlah_kir === '' || jumlah_kir == null ? null : parseInt(jumlah_kir, 10),
+      jumlah_mangsa: jumlah_mangsa === '' || jumlah_mangsa == null ? null : parseInt(jumlah_mangsa, 10),
+      jumlah_rumah_terjejas: jumlah_rumah_terjejas === '' || jumlah_rumah_terjejas == null ? null : parseInt(jumlah_rumah_terjejas, 10),
     }]);
     if (error) {
       Alert.alert('Ralat', 'Gagal menyimpan titik bencana.');
@@ -50,7 +53,7 @@ export function useBencanaPoints() {
   };
 
   // Modifie un point actif sans le clôturer — accessible via "Kemaskini" sur la carte.
-  const updateBencana = async (id, { category, lokasi, pps, description }) => {
+  const updateBencana = async (id, { category, lokasi, pps, description, jumlah_kir, jumlah_mangsa, jumlah_rumah_terjejas }) => {
     if (!category?.trim()) return { error: true };
     const { error } = await supabaseSandbox
       .from('sekretariat_bencana_points')
@@ -59,6 +62,9 @@ export function useBencanaPoints() {
         lokasi: lokasi?.trim() || null,
         pps: pps?.trim() || null,
         description: description?.trim() || null,
+        jumlah_kir: jumlah_kir === '' || jumlah_kir == null ? null : parseInt(jumlah_kir, 10),
+        jumlah_mangsa: jumlah_mangsa === '' || jumlah_mangsa == null ? null : parseInt(jumlah_mangsa, 10),
+        jumlah_rumah_terjejas: jumlah_rumah_terjejas === '' || jumlah_rumah_terjejas == null ? null : parseInt(jumlah_rumah_terjejas, 10),
       })
       .eq('id', id);
     if (error) {
@@ -70,7 +76,7 @@ export function useBencanaPoints() {
   };
 
   // Rempli à l'étape "Selesai" — clôture le point avec les détails complets.
-  const completeBencana = async (id, { jenis_bencana, lokasi, jumlah_kir, jumlah_mangsa, pps, description }) => {
+  const completeBencana = async (id, { jenis_bencana, lokasi, jumlah_kir, jumlah_mangsa, jumlah_rumah_terjejas, pps, description }) => {
     const { error } = await supabaseSandbox
       .from('sekretariat_bencana_points')
       .update({
@@ -78,6 +84,7 @@ export function useBencanaPoints() {
         lokasi: lokasi?.trim() || null,
         jumlah_kir: jumlah_kir === '' || jumlah_kir == null ? null : parseInt(jumlah_kir, 10),
         jumlah_mangsa: jumlah_mangsa === '' || jumlah_mangsa == null ? null : parseInt(jumlah_mangsa, 10),
+        jumlah_rumah_terjejas: jumlah_rumah_terjejas === '' || jumlah_rumah_terjejas == null ? null : parseInt(jumlah_rumah_terjejas, 10),
         pps: pps?.trim() || null,
         description: description?.trim() || null,
         status: 'resolved',

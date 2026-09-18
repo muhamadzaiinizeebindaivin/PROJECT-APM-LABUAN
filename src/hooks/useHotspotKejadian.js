@@ -15,7 +15,7 @@ export function useHotspotKejadian(onNotify) {
   const [editIdKejadian, setEditIdKejadian] = useState(null);
   const [formKejadian, setFormKejadian] = useState({
     category: '', jenis_bencana: '', tarikh: '', lokasi: '',
-    jumlah_kir: '', jumlah_mangsa: '', pps: '', description: '',
+    jumlah_kir: '', jumlah_mangsa: '', jumlah_rumah_terjejas: '', pps: '', description: '',
   });
 
   const fetchKejadian = async () => {
@@ -42,7 +42,7 @@ export function useHotspotKejadian(onNotify) {
 
   const openAddKejadianModal = (categoryKey, categoryLabel) => {
     setFormModeKejadian('add');
-    setFormKejadian({ category: categoryKey, jenis_bencana: categoryLabel || '', tarikh: '', lokasi: '', jumlah_kir: '', jumlah_mangsa: '', pps: '', description: '' });
+    setFormKejadian({ category: categoryKey, jenis_bencana: categoryLabel || '', tarikh: '', lokasi: '', jumlah_kir: '', jumlah_mangsa: '', jumlah_rumah_terjejas: '', pps: '', description: '' });
     setModalKejadianVisible(true);
   };
 
@@ -56,6 +56,7 @@ export function useHotspotKejadian(onNotify) {
       lokasi: item.lokasi || '',
       jumlah_kir: item.jumlah_kir != null ? String(item.jumlah_kir) : '',
       jumlah_mangsa: item.jumlah_mangsa != null ? String(item.jumlah_mangsa) : '',
+      jumlah_rumah_terjejas: item.jumlah_rumah_terjejas != null ? String(item.jumlah_rumah_terjejas) : '',
       pps: item.pps || '',
       description: item.description || '',
     });
@@ -71,6 +72,7 @@ export function useHotspotKejadian(onNotify) {
       lokasi: formKejadian.lokasi?.trim() || null,
       jumlah_kir: formKejadian.jumlah_kir === '' ? null : parseInt(formKejadian.jumlah_kir, 10),
       jumlah_mangsa: formKejadian.jumlah_mangsa === '' ? null : parseInt(formKejadian.jumlah_mangsa, 10),
+      jumlah_rumah_terjejas: formKejadian.jumlah_rumah_terjejas === '' ? null : parseInt(formKejadian.jumlah_rumah_terjejas, 10),
       pps: formKejadian.pps?.trim() || null,
       description: formKejadian.description?.trim() || null,
     };

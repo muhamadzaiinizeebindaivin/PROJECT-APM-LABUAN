@@ -78,14 +78,19 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
   const { bencanaPoints, saveBencana, completeBencana, updateBencana, deleteBencana } = useBencanaPoints();
   const { kejadianList } = useHotspotKejadian();
   const [editingBencana, setEditingBencana] = useState(null);
-  const [editForm, setEditForm] = useState({ category: '', lokasi: '', pps: '', description: '' });
+  const [editForm, setEditForm] = useState({ category: '', lokasi: '', pps: '', description: '', jumlah_kir: '', jumlah_mangsa: '', jumlah_rumah_terjejas: '' });
   const [editingSaving, setEditingSaving] = useState(false);
 
   const openEditBencana = (id) => {
     const item = bencanaPointsRef.current.find((b) => b.id === id);
     if (!item) return;
     setEditingBencana(item);
-    setEditForm({ category: item.category || '', lokasi: item.lokasi || '', pps: item.pps || '', description: item.description || '' });
+    setEditForm({
+      category: item.category || '', lokasi: item.lokasi || '', pps: item.pps || '', description: item.description || '',
+      jumlah_kir: item.jumlah_kir != null ? String(item.jumlah_kir) : '',
+      jumlah_mangsa: item.jumlah_mangsa != null ? String(item.jumlah_mangsa) : '',
+      jumlah_rumah_terjejas: item.jumlah_rumah_terjejas != null ? String(item.jumlah_rumah_terjejas) : '',
+    });
   };
 
   const handleEditSave = async () => {
@@ -136,8 +141,15 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
     setExistingLokasi('');
     setExistingPps('');
     setExistingCategoryFilter(null);
+    setExistingJumlahKir('');
+    setExistingJumlahMangsa('');
+    setExistingJumlahRumahTerjejas('');
     setBencanaLokasi('');
     setBencanaPps('');
+    setBencanaJumlahKir('');
+    setBencanaJumlahMangsa('');
+    setBencanaJumlahRumahTerjejas('');
+    setBencanaFormError(null);
   };
 
   const [existingCategoryFilter, setExistingCategoryFilter] = useState(null);
@@ -145,9 +157,16 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
   const [existingKeterangan, setExistingKeterangan] = useState('');
   const [existingLokasi, setExistingLokasi] = useState('');
   const [existingPps, setExistingPps] = useState('');
+  const [existingJumlahKir, setExistingJumlahKir] = useState('');
+  const [existingJumlahMangsa, setExistingJumlahMangsa] = useState('');
+  const [existingJumlahRumahTerjejas, setExistingJumlahRumahTerjejas] = useState('');
   const [savingExistingHotspot, setSavingExistingHotspot] = useState(false);
   const [bencanaLokasi, setBencanaLokasi] = useState('');
   const [bencanaPps, setBencanaPps] = useState('');
+  const [bencanaJumlahKir, setBencanaJumlahKir] = useState('');
+  const [bencanaJumlahMangsa, setBencanaJumlahMangsa] = useState('');
+  const [bencanaJumlahRumahTerjejas, setBencanaJumlahRumahTerjejas] = useState('');
+  const [bencanaFormError, setBencanaFormError] = useState(null);
 
   // "Selesai" — formulaire de clôture d'un titik bencana actif
   const [completingBencana, setCompletingBencana] = useState(null); // le point en cours de clôture, ou null
@@ -163,7 +182,12 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
     const item = bencanaPointsRef.current.find((b) => b.id === id);
     if (!item) return;
     setCompletingBencana(item);
-    setCompleteForm({ jenis_bencana: item.jenis_bencana || '', lokasi: item.lokasi || '', jumlah_kir: item.jumlah_kir?.toString() || '', jumlah_mangsa: item.jumlah_mangsa?.toString() || '', pps: item.pps || '', description: item.description || '' });
+    setCompleteForm({
+      jenis_bencana: item.jenis_bencana || '', lokasi: item.lokasi || '',
+      jumlah_kir: item.jumlah_kir?.toString() || '', jumlah_mangsa: item.jumlah_mangsa?.toString() || '',
+      jumlah_rumah_terjejas: item.jumlah_rumah_terjejas != null ? String(item.jumlah_rumah_terjejas) : '',
+      pps: item.pps || '', description: item.description || '',
+    });
   };
 
   const handleCompleteSave = async () => {
@@ -184,6 +208,9 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
     setSelectedExistingHotspot(hotspot);
     setExistingLokasi(hotspot.area || '');
     setExistingPps('');
+    setExistingJumlahKir('');
+    setExistingJumlahMangsa('');
+    setExistingJumlahRumahTerjejas('');
   };
 
   const confirmSaveExistingHotspot = async () => {
@@ -199,6 +226,9 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
       jenis_bencana: categoryLabel,
       lokasi: existingLokasi,
       pps: existingPps,
+      jumlah_kir: existingJumlahKir,
+      jumlah_mangsa: existingJumlahMangsa,
+      jumlah_rumah_terjejas: existingJumlahRumahTerjejas,
     });
     setSavingExistingHotspot(false);
     if (!error) {
@@ -509,12 +539,12 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
   }, [isPlacingBencana, isPlacingPemantauanPoint]);
 
   const showBencanaError = (msg) => {
-    if (Platform.OS === 'web') window.alert(msg);
-    else Alert.alert('Ralat', msg);
+    setBencanaFormError(msg);
   };
 
   const handleSaveBencana = async () => {
     if (!pendingBencanaPlacement) return;
+    setBencanaFormError(null);
 
     const isCustom = newHotspotCategory === '__custom__';
     if (!newHotspotCategory || (isCustom && !customCategoryText.trim())) {
@@ -546,6 +576,9 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
       jenis_bencana: categoryLabel,
       lokasi: bencanaLokasi,
       pps: bencanaPps,
+      jumlah_kir: bencanaJumlahKir,
+      jumlah_mangsa: bencanaJumlahMangsa,
+      jumlah_rumah_terjejas: bencanaJumlahRumahTerjejas,
     });
     setSavingBencana(false);
     if (!error) resetBencanaForm();
@@ -1590,7 +1623,7 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
             </View>
 
             {selectedExistingHotspot ? (
-              <View style={sekretariatStyles.modalForm}>
+              <ScrollView style={{ maxHeight: 640 }} contentContainerStyle={sekretariatStyles.modalForm}>
                 <Text style={sekretariatStyles.inputLabel}>Kategori *</Text>
                 <View style={[sekretariatStyles.input, { justifyContent: 'center' }]}>
                   <Text style={{ fontSize: 14, color: PALETTE.textDark }}>
@@ -1604,6 +1637,33 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
                   placeholderTextColor={PALETTE.textMutedDark}
                   value={existingLokasi}
                   onChangeText={setExistingLokasi}
+                />
+                <Text style={sekretariatStyles.inputLabel}>Jumlah KIR</Text>
+                <TextInput
+                  style={sekretariatStyles.input}
+                  placeholder="Cth: 12"
+                  placeholderTextColor={PALETTE.textMutedDark}
+                  keyboardType="number-pad"
+                  value={existingJumlahKir}
+                  onChangeText={(t) => setExistingJumlahKir(t.replace(/[^0-9]/g, ''))}
+                />
+                <Text style={sekretariatStyles.inputLabel}>Jumlah Mangsa</Text>
+                <TextInput
+                  style={sekretariatStyles.input}
+                  placeholder="Cth: 45"
+                  placeholderTextColor={PALETTE.textMutedDark}
+                  keyboardType="number-pad"
+                  value={existingJumlahMangsa}
+                  onChangeText={(t) => setExistingJumlahMangsa(t.replace(/[^0-9]/g, ''))}
+                />
+                <Text style={sekretariatStyles.inputLabel}>Jumlah Rumah Terjejas</Text>
+                <TextInput
+                  style={sekretariatStyles.input}
+                  placeholder="Cth: 5"
+                  placeholderTextColor={PALETTE.textMutedDark}
+                  keyboardType="number-pad"
+                  value={existingJumlahRumahTerjejas}
+                  onChangeText={(t) => setExistingJumlahRumahTerjejas(t.replace(/[^0-9]/g, ''))}
                 />
                 <Text style={sekretariatStyles.inputLabel}>PPS</Text>
                 <TextInput
@@ -1625,7 +1685,7 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
                 <TouchableOpacity style={sekretariatStyles.saveButton} onPress={confirmSaveExistingHotspot} disabled={savingExistingHotspot}>
                   {savingExistingHotspot ? <ActivityIndicator size="small" color="#fff" /> : <Text style={sekretariatStyles.saveButtonText}>Simpan Titik</Text>}
                 </TouchableOpacity>
-              </View>
+              </ScrollView>
             ) : existingCategoryFilter ? (
               <ScrollView style={{ maxHeight: 520 }} contentContainerStyle={{ padding: 16, gap: 10 }}>
                 {hotspotList.filter((h) => h.category === existingCategoryFilter.key).length === 0 ? (
@@ -1781,6 +1841,11 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
                   </View>
                 </View>
               )}
+              {bencanaFormError && (
+                <Text style={{ color: PALETTE.danger || '#dc2626', fontSize: 12, fontWeight: '700', marginBottom: 10 }}>
+                  {bencanaFormError}
+                </Text>
+              )}
               <Text style={sekretariatStyles.inputLabel}>Kawasan Terjejas</Text>
               <TextInput
                 style={sekretariatStyles.input}
@@ -1788,6 +1853,33 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
                 placeholderTextColor={PALETTE.textMutedDark}
                 value={bencanaLokasi}
                 onChangeText={setBencanaLokasi}
+              />
+              <Text style={sekretariatStyles.inputLabel}>Jumlah KIR</Text>
+              <TextInput
+                style={sekretariatStyles.input}
+                placeholder="Cth: 12"
+                placeholderTextColor={PALETTE.textMutedDark}
+                keyboardType="numeric"
+                value={bencanaJumlahKir}
+                onChangeText={(t) => setBencanaJumlahKir(t.replace(/[^0-9]/g, ''))}
+              />
+              <Text style={sekretariatStyles.inputLabel}>Jumlah Mangsa</Text>
+              <TextInput
+                style={sekretariatStyles.input}
+                placeholder="Cth: 45"
+                placeholderTextColor={PALETTE.textMutedDark}
+                keyboardType="numeric"
+                value={bencanaJumlahMangsa}
+                onChangeText={(t) => setBencanaJumlahMangsa(t.replace(/[^0-9]/g, ''))}
+              />
+              <Text style={sekretariatStyles.inputLabel}>Jumlah Rumah Terjejas</Text>
+              <TextInput
+                style={sekretariatStyles.input}
+                placeholder="Cth: 5"
+                placeholderTextColor={PALETTE.textMutedDark}
+                keyboardType="numeric"
+                value={bencanaJumlahRumahTerjejas}
+                onChangeText={(t) => setBencanaJumlahRumahTerjejas(t.replace(/[^0-9]/g, ''))}
               />
               <Text style={sekretariatStyles.inputLabel}>PPS</Text>
               <TextInput
@@ -1982,6 +2074,15 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
                 value={completeForm.jumlah_mangsa}
                 onChangeText={(t) => setCompleteForm((f) => ({ ...f, jumlah_mangsa: t.replace(/[^0-9]/g, '') }))}
               />
+              <Text style={sekretariatStyles.inputLabel}>Jumlah Rumah Terjejas</Text>
+              <TextInput
+                style={sekretariatStyles.input}
+                placeholder="Cth: 5"
+                placeholderTextColor={PALETTE.textMutedDark}
+                keyboardType="number-pad"
+                value={completeForm.jumlah_rumah_terjejas}
+                onChangeText={(t) => setCompleteForm((f) => ({ ...f, jumlah_rumah_terjejas: t.replace(/[^0-9]/g, '') }))}
+              />
               <Text style={sekretariatStyles.inputLabel}>PPS</Text>
               <TextInput
                 style={sekretariatStyles.input}
@@ -2009,14 +2110,14 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
 
       <Modal visible={editingBencana !== null} transparent={true} animationType="fade">
         <View style={sekretariatStyles.modalOverlay}>
-          <View style={sekretariatStyles.modalContainer}>
+          <View style={[sekretariatStyles.modalContainer, { maxWidth: 640, width: '100%', maxHeight: '90%' }]}>
             <View style={sekretariatStyles.modalHeader}>
               <Text style={sekretariatStyles.modalTitle}>Kemaskini Titik Bencana</Text>
               <TouchableOpacity onPress={() => setEditingBencana(null)} disabled={editingSaving}>
                 <X size={24} color={PALETTE.textMutedDark} />
               </TouchableOpacity>
             </View>
-            <ScrollView style={{ maxHeight: 460 }} contentContainerStyle={sekretariatStyles.modalForm}>
+            <ScrollView style={{ maxHeight: 640 }} contentContainerStyle={sekretariatStyles.modalForm}>
               <Text style={sekretariatStyles.inputLabel}>Kategori</Text>
               <TextInput
                 style={sekretariatStyles.input}
@@ -2032,6 +2133,33 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
                 placeholderTextColor={PALETTE.textMutedDark}
                 value={editForm.lokasi}
                 onChangeText={(t) => setEditForm((f) => ({ ...f, lokasi: t }))}
+              />
+              <Text style={sekretariatStyles.inputLabel}>Jumlah KIR</Text>
+              <TextInput
+                style={sekretariatStyles.input}
+                placeholder="Cth: 12"
+                placeholderTextColor={PALETTE.textMutedDark}
+                keyboardType="number-pad"
+                value={editForm.jumlah_kir}
+                onChangeText={(t) => setEditForm((f) => ({ ...f, jumlah_kir: t.replace(/[^0-9]/g, '') }))}
+              />
+              <Text style={sekretariatStyles.inputLabel}>Jumlah Mangsa</Text>
+              <TextInput
+                style={sekretariatStyles.input}
+                placeholder="Cth: 45"
+                placeholderTextColor={PALETTE.textMutedDark}
+                keyboardType="number-pad"
+                value={editForm.jumlah_mangsa}
+                onChangeText={(t) => setEditForm((f) => ({ ...f, jumlah_mangsa: t.replace(/[^0-9]/g, '') }))}
+              />
+              <Text style={sekretariatStyles.inputLabel}>Jumlah Rumah Terjejas</Text>
+              <TextInput
+                style={sekretariatStyles.input}
+                placeholder="Cth: 5"
+                placeholderTextColor={PALETTE.textMutedDark}
+                keyboardType="number-pad"
+                value={editForm.jumlah_rumah_terjejas}
+                onChangeText={(t) => setEditForm((f) => ({ ...f, jumlah_rumah_terjejas: t.replace(/[^0-9]/g, '') }))}
               />
               <Text style={sekretariatStyles.inputLabel}>PPS</Text>
               <TextInput

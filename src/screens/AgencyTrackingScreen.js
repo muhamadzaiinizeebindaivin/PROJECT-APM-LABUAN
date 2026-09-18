@@ -34,7 +34,7 @@ const watchPositionCompat = (callback, onError) => {
     callback
   );
 };
-import { Navigation, StopCircle, ArrowLeft, Search, Building2, X, Lock, User as UserIcon, Eye, EyeOff } from 'lucide-react-native';
+import { Navigation, StopCircle, ArrowLeft, Search, Building2, X, Lock, User as UserIcon, Eye, EyeOff, Plus, MapPin } from 'lucide-react-native';
 import { supabaseSandbox as supabase } from '../supabaseSandboxClient';
 import { PALETTE } from '../constants/palette';
 import { buildSekretariatMapHtml } from './sekretariat/sekretariatMapTemplate';
@@ -184,6 +184,81 @@ export default function AgencyTrackingScreen({ onLogout }) {
   const lastSelectedAgencyRef = useRef(null);
   if (selectedAgency) lastSelectedAgencyRef.current = selectedAgency;
 
+  const [isPlacingPemantauanPoint, setIsPlacingPemantauanPoint] = useState(false);
+  const [pendingPemantauanPlacement, setPendingPemantauanPlacement] = useState(null);
+  const [pemantauanPointModalVisible, setPemantauanPointModalVisible] = useState(false);
+  const [pemantauanLokasi, setPemantauanLokasi] = useState('');
+  const [pemantauanJumlahRumah, setPemantauanJumlahRumah] = useState('');
+  const [pemantauanPps, setPemantauanPps] = useState('');
+  const [pemantauanAgensi, setPemantauanAgensi] = useState('');
+  const [pemantauanBacaanAir, setPemantauanBacaanAir] = useState('');
+  const [savingPemantauanPoint, setSavingPemantauanPoint] = useState(false);
+  const [pemantauanFormMode, setPemantauanFormMode] = useState('create'); // 'create' | 'edit' | 'complete'
+  const [editingPemantauanId, setEditingPemantauanId] = useState(null);
+
+  const resetPemantauanPointForm = () => {
+    setPemantauanPointModalVisible(false);
+    setIsPlacingPemantauanPoint(false);
+    setPendingPemantauanPlacement(null);
+    setTimeout(() => {
+      setPemantauanFormMode('create');
+      setEditingPemantauanId(null);
+      setPemantauanLokasi('');
+      setPemantauanJumlahRumah('');
+      setPemantauanPps('');
+      setPemantauanAgensi('');
+      setPemantauanBacaanAir('');
+    }, 300);
+  };
+
+  const openEditPemantauanPoint = (id) => {
+    const point = pemantauanPointsRef.current.find((p) => p.id === id);
+    if (!point) return;
+    setPemantauanFormMode('edit');
+    setEditingPemantauanId(id);
+    setPemantauanLokasi(point.lokasi || '');
+    setPemantauanJumlahRumah(point.jumlah_rumah_terjejas != null ? String(point.jumlah_rumah_terjejas) : '');
+    setPemantauanPps(point.pps || '');
+    setPemantauanAgensi(point.agensi_di_lapangan || '');
+    setPemantauanBacaanAir(point.bacaan_air || '');
+    setPemantauanPointModalVisible(true);
+  };
+
+  const openCompletePemantauanPoint = (id) => {
+    const point = pemantauanPointsRef.current.find((p) => p.id === id);
+    if (!point) return;
+    setPemantauanFormMode('complete');
+    setEditingPemantauanId(id);
+    setPemantauanLokasi(point.lokasi || '');
+    setPemantauanJumlahRumah(point.jumlah_rumah_terjejas != null ? String(point.jumlah_rumah_terjejas) : '');
+    setPemantauanPps(point.pps || '');
+    setPemantauanAgensi(point.agensi_di_lapangan || '');
+    setPemantauanBacaanAir(point.bacaan_air || '');
+    setPemantauanPointModalVisible(true);
+  };
+
+  const handleSavePemantauanPoint = async () => {
+    setSavingPemantauanPoint(true);
+    const fields = {
+      lokasi: pemantauanLokasi,
+      jumlah_rumah_terjejas: pemantauanJumlahRumah,
+      pps: pemantauanPps,
+      agensi_di_lapangan: pemantauanAgensi,
+      bacaan_air: pemantauanBacaanAir,
+    };
+    let result;
+    if (pemantauanFormMode === 'edit') {
+      result = await updatePemantauanPoint(editingPemantauanId, fields);
+    } else if (pemantauanFormMode === 'complete') {
+      result = await completePemantauanPoint(editingPemantauanId, fields);
+    } else {
+      if (!pendingPemantauanPlacement) { setSavingPemantauanPoint(false); return; }
+      result = await savePemantauanPoint({ ...fields, latitude: pendingPemantauanPlacement.lat, longitude: pendingPemantauanPlacement.lng });
+    }
+    setSavingPemantauanPoint(false);
+    if (!result.error) resetPemantauanPointForm();
+  };
+
   const [memberName, setMemberName] = useState('');
   const [accessCode, setAccessCode] = useState('');
   const [showAccessCode, setShowAccessCode] = useState(false);
@@ -206,7 +281,9 @@ export default function AgencyTrackingScreen({ onLogout }) {
 
   const { onlineAgencies } = useOnlineAgencies();
   const { onlinePemantauan } = useOnlinePemantauan();
-  const { pemantauanPoints } = usePemantauanPoints();
+  const { pemantauanPoints, savePemantauanPoint, updatePemantauanPoint, completePemantauanPoint, deletePemantauanPoint } = usePemantauanPoints();
+  const pemantauanPointsRef = useRef([]);
+  pemantauanPointsRef.current = pemantauanPoints;
   const { bencanaPoints } = useBencanaPoints();
   const { categories: hotspotCategories } = useHotspotCategories();
   const trackerMapIframeRef = useRef(null);
@@ -239,7 +316,7 @@ export default function AgencyTrackingScreen({ onLogout }) {
     return map;
   }, [agencies]);
 
-  const trackerMapHtml = useMemo(() => buildSekretariatMapHtml({ theme: { background: PALETTE.softOrangeBg }, pemantauanIconUrl: PEMANTAUAN_ICON_URL }), []);
+  const trackerMapHtml = useMemo(() => buildSekretariatMapHtml({ theme: { background: PALETTE.softOrangeBg }, pemantauanIconUrl: PEMANTAUAN_ICON_URL, userRole: isPemantauan ? 'pemantauan' : undefined }), [isPemantauan]);
   // srcDoc (au lieu d'un data: URI) : les iframes data: reçoivent une origine
   // opaque/cross-origin, et Chrome refuse la Fullscreen API dans ce contexte
   // même avec l'attribut allow="fullscreen" — srcDoc n'a pas ce problème.
@@ -250,11 +327,22 @@ export default function AgencyTrackingScreen({ onLogout }) {
       try {
         const data = JSON.parse(event.data);
         if (data?.type === 'MAP_READY') setTrackerMapReady(true);
+        else if (data?.type === 'MAP_CLICKED' && isPlacingPemantauanPoint) {
+          setPendingPemantauanPlacement({ lat: data.lat, lng: data.lng });
+          setPemantauanPointModalVisible(true);
+          setIsPlacingPemantauanPoint(false);
+        } else if (data?.type === 'EDIT_PEMANTAUAN_POINT_REQUEST') {
+          openEditPemantauanPoint(data.id);
+        } else if (data?.type === 'RESOLVE_PEMANTAUAN_POINT_REQUEST') {
+          openCompletePemantauanPoint(data.id);
+        } else if (data?.type === 'DELETE_PEMANTAUAN_POINT_REQUEST') {
+          deletePemantauanPoint(data.id);
+        }
       } catch (e) { /* messages non-JSON */ }
     };
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
-  }, []);
+  }, [isPlacingPemantauanPoint]);
 
   useEffect(() => {
     if (trackerMapReady && trackerMapIframeRef?.current?.contentWindow) {
@@ -834,9 +922,111 @@ export default function AgencyTrackingScreen({ onLogout }) {
               <ActivityIndicator size="large" color={PALETTE.orange} />
             </View>
           )}
+          {isPemantauan && (
+            <TouchableOpacity
+              onPress={() => setIsPlacingPemantauanPoint(v => !v)}
+              style={{
+                position: 'absolute', top: 12, right: 12, width: 44, height: 44, borderRadius: 22,
+                backgroundColor: isPlacingPemantauanPoint ? PALETTE.danger : '#fb923c',
+                alignItems: 'center', justifyContent: 'center',
+                shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 6, shadowOffset: { width: 0, height: 3 }, elevation: 4,
+              }}
+            >
+              {isPlacingPemantauanPoint ? <X size={22} color="#fff" /> : <Plus size={22} color="#fff" />}
+            </TouchableOpacity>
+          )}
+          {isPlacingPemantauanPoint && (
+            <View
+              style={{
+                position: 'absolute', top: 16, left: 0, right: 0,
+                alignItems: 'center', zIndex: 500, pointerEvents: 'none',
+              }}
+            >
+              <View
+                style={{
+                  flexDirection: 'row', alignItems: 'center', gap: 8,
+                  backgroundColor: 'rgba(15, 23, 42, 0.9)', borderRadius: 999,
+                  paddingHorizontal: 16, paddingVertical: 10,
+                  shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 6,
+                }}
+              >
+                <MapPin size={16} color="#fb923c" />
+                <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>Klik pada peta untuk letak titik</Text>
+              </View>
+            </View>
+          )}
         </View>
       </View>
     </ScrollView>
+
+    <Modal visible={pemantauanPointModalVisible} transparent={true} animationType="fade" onRequestClose={resetPemantauanPointForm}>
+      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+        <View style={{ width: '100%', maxWidth: 480, backgroundColor: '#fff', borderRadius: 18, maxHeight: '85%' }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderBottomColor: PALETTE.cardLightBorder }}>
+            <Text style={{ fontSize: 17, fontWeight: '900', color: PALETTE.textDark }}>
+              {pemantauanFormMode === 'edit' ? 'Kemaskini Titik Pemantauan' : pemantauanFormMode === 'complete' ? 'Selesaikan Titik Pemantauan' : 'Titik Pemantauan'}
+            </Text>
+            <TouchableOpacity onPress={resetPemantauanPointForm}>
+              <X size={24} color={PALETTE.textMutedDark} />
+            </TouchableOpacity>
+          </View>
+          <ScrollView contentContainerStyle={{ padding: 20 }}>
+            <Text style={{ fontSize: 12, fontWeight: '700', color: PALETTE.textMutedDark, marginBottom: 6 }}>Lokasi</Text>
+            <TextInput
+              style={styles.searchContainer}
+              placeholder="Cth: Simpang Bunga Ros, Kg Sungai Miri"
+              placeholderTextColor={PALETTE.textMutedDark}
+              value={pemantauanLokasi}
+              onChangeText={setPemantauanLokasi}
+            />
+            <Text style={{ fontSize: 12, fontWeight: '700', color: PALETTE.textMutedDark, marginTop: 14, marginBottom: 6 }}>Jumlah Rumah Terjejas</Text>
+            <TextInput
+              style={styles.searchContainer}
+              placeholder="0"
+              placeholderTextColor={PALETTE.textMutedDark}
+              keyboardType="numeric"
+              value={pemantauanJumlahRumah}
+              onChangeText={(t) => setPemantauanJumlahRumah(t.replace(/[^0-9]/g, ''))}
+            />
+            <Text style={{ fontSize: 12, fontWeight: '700', color: PALETTE.textMutedDark, marginTop: 14, marginBottom: 6 }}>PPS</Text>
+            <TextInput
+              style={styles.searchContainer}
+              placeholder="Cth: TIADA"
+              placeholderTextColor={PALETTE.textMutedDark}
+              value={pemantauanPps}
+              onChangeText={setPemantauanPps}
+            />
+            <Text style={{ fontSize: 12, fontWeight: '700', color: PALETTE.textMutedDark, marginTop: 14, marginBottom: 6 }}>Agensi di Lapangan</Text>
+            <TextInput
+              style={styles.searchContainer}
+              placeholder="Cth: APM"
+              placeholderTextColor={PALETTE.textMutedDark}
+              value={pemantauanAgensi}
+              onChangeText={setPemantauanAgensi}
+            />
+            <Text style={{ fontSize: 12, fontWeight: '700', color: PALETTE.textMutedDark, marginTop: 14, marginBottom: 6 }}>Bacaan Air</Text>
+            <TextInput
+              style={styles.searchContainer}
+              placeholder="Cth: 1.5m"
+              placeholderTextColor={PALETTE.textMutedDark}
+              value={pemantauanBacaanAir}
+              onChangeText={setPemantauanBacaanAir}
+            />
+            <TouchableOpacity
+              style={{ marginTop: 20, height: 48, borderRadius: 12, backgroundColor: '#fb923c', alignItems: 'center', justifyContent: 'center' }}
+              onPress={handleSavePemantauanPoint}
+              disabled={savingPemantauanPoint}
+            >
+              {savingPemantauanPoint ? <ActivityIndicator size="small" color="#fff" /> : (
+                <Text style={{ color: '#fff', fontWeight: '800', fontSize: 14 }}>
+                  {pemantauanFormMode === 'edit' ? 'Simpan Perubahan' : pemantauanFormMode === 'complete' ? 'Simpan & Tandakan Selesai' : 'Selesai'}
+                </Text>
+              )}
+            </TouchableOpacity>
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
     </View>
   );
 }

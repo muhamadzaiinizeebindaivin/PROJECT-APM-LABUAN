@@ -97,6 +97,7 @@ export async function generateKejadianPdf({ rows, categoryLabel, periodLabel }) 
       k.lokasi || '-',
       k.jumlah_kir ?? '-',
       k.jumlah_mangsa ?? '-',
+      k.jumlah_rumah_terjejas ?? '-',
       k.pps || '-',
       k.status === 'resolved' ? 'Selesai' : 'Aktif',
       k.resolved_at ? new Date(k.resolved_at).toLocaleDateString('ms-MY') : '-',
@@ -108,7 +109,7 @@ export async function generateKejadianPdf({ rows, categoryLabel, periodLabel }) 
     autoTable(doc, {
       startY: cursorY,
       margin: { left: marginLeft, right: marginRight },
-      head: [['#', 'Tarikh', 'Jenis Bencana', 'Kawasan Terjejas', 'Jumlah KIR', 'Jumlah Mangsa', 'PPS', 'Status', 'Tarikh Selesai']],
+      head: [['#', 'Tarikh', 'Jenis Bencana', 'Kawasan Terjejas', 'Jumlah KIR', 'Jumlah Mangsa', 'Rumah Terjejas', 'PPS', 'Status', 'Tarikh Selesai']],
       body: tableRows,
       theme: 'grid',
       styles: {

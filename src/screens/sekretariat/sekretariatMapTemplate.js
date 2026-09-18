@@ -47,6 +47,7 @@ export function buildSekretariatMapHtml({ theme, userRole, pemantauanIconUrl }) 
         <script>
           var canDeleteBencana = ${userRole === 'admin' || userRole === 'sekretariat' ? 'true' : 'false'};
           var canManageAgency = ${userRole === 'admin' || userRole === 'sekretariat' ? 'true' : 'false'};
+          var canManagePemantauanPoint = ${userRole === 'admin' || userRole === 'sekretariat' || userRole === 'pemantauan' ? 'true' : 'false'};
 
           function initMap() {
           var map = L.map('map', { zoomControl: false, attributionControl: false, maxZoom: 20 }).setView([5.2831, 115.2308], 12);
@@ -321,7 +322,7 @@ export function buildSekretariatMapHtml({ theme, userRole, pemantauanIconUrl }) 
                   popupDiv.appendChild(timeEl);
                 }
 
-                if (canDeleteBencana) {
+                if (canManagePemantauanPoint) {
                   var editBtnEl = document.createElement('button');
                   editBtnEl.textContent = 'Kemaskini';
                   editBtnEl.style.marginTop = '6px';
@@ -438,7 +439,7 @@ export function buildSekretariatMapHtml({ theme, userRole, pemantauanIconUrl }) 
                   popupDiv.appendChild(timeEl);
                 }
 
-                if (canDeleteBencana) {
+                if (canManagePemantauanPoint) {
                   var editBtnEl = document.createElement('button');
                   editBtnEl.textContent = 'Kemaskini';
                   editBtnEl.style.marginTop = '6px';

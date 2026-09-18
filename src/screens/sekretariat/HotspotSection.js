@@ -354,6 +354,7 @@ export default function HotspotSection({ userRole, isEditMode, onNotify }) {
     { key: 'lokasi', label: 'Kawasan Terjejas' },
     { key: 'jumlah_kir', label: 'Jumlah KIR' },
     { key: 'jumlah_mangsa', label: 'Jumlah Mangsa' },
+    { key: 'jumlah_rumah_terjejas', label: 'Rumah Terjejas' },
     { key: 'pps', label: 'PPS' },
   ];
 
@@ -394,6 +395,9 @@ export default function HotspotSection({ userRole, isEditMode, onNotify }) {
       </View>
       <View style={{ flex: 1, paddingVertical: 14, paddingHorizontal: 10 }}>
         <Text style={{ fontSize: 13, color: PALETTE.textDark, textAlign: 'center' }}>{item.jumlah_mangsa ?? '-'}</Text>
+      </View>
+      <View style={{ flex: 1, paddingVertical: 14, paddingHorizontal: 10 }}>
+        <Text style={{ fontSize: 13, color: PALETTE.textDark, textAlign: 'center' }}>{item.jumlah_rumah_terjejas ?? '-'}</Text>
       </View>
       <View style={{ flex: 1, paddingVertical: 14, paddingHorizontal: 10 }}>
         <Text style={{ fontSize: 13, color: PALETTE.textDark, textAlign: 'center' }}>{item.pps || '-'}</Text>
@@ -1078,6 +1082,15 @@ export default function HotspotSection({ userRole, isEditMode, onNotify }) {
               ) : (
                 <View style={{ backgroundColor: PALETTE.surface || '#f8fafc', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 12, marginBottom: 10 }}>
                   <Text style={{ fontSize: 14, color: PALETTE.textDark }}>{formKejadian.jumlah_mangsa}</Text>
+                </View>
+              )}
+
+              <Text style={styles.inputLabel}>Jumlah Rumah Terjejas</Text>
+              {isEditMode ? (
+                <TextInput style={styles.input} placeholder="Cth: 5" keyboardType="numeric" value={formKejadian.jumlah_rumah_terjejas} onChangeText={(t) => setFormKejadian({ ...formKejadian, jumlah_rumah_terjejas: t.replace(/[^0-9]/g, '') })} />
+              ) : (
+                <View style={{ backgroundColor: PALETTE.surface || '#f8fafc', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 12, marginBottom: 10 }}>
+                  <Text style={{ fontSize: 14, color: PALETTE.textDark }}>{formKejadian.jumlah_rumah_terjejas}</Text>
                 </View>
               )}
 
