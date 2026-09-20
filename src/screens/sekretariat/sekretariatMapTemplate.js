@@ -296,19 +296,20 @@ export function buildSekretariatMapHtml({ theme, userRole, pemantauanIconUrl }) 
                 strongEl.textContent = b.categoryLabel || b.category;
                 popupDiv.appendChild(strongEl);
 
-                if (b.lokasi) {
-                  var lokasiEl = document.createElement('span');
-                  lokasiEl.className = 'sub';
-                  lokasiEl.textContent = 'Kawasan Terjejas: ' + b.lokasi;
-                  popupDiv.appendChild(lokasiEl);
-                }
+                var lokasiEl = document.createElement('span');
+                lokasiEl.className = 'sub';
+                lokasiEl.textContent = 'Kawasan Terjejas: ' + (b.lokasi || '-');
+                popupDiv.appendChild(lokasiEl);
 
-                if (b.pps) {
-                  var ppsEl = document.createElement('span');
-                  ppsEl.className = 'sub';
-                  ppsEl.textContent = 'PPS: ' + b.pps;
-                  popupDiv.appendChild(ppsEl);
-                }
+                var ppsEl = document.createElement('span');
+                ppsEl.className = 'sub';
+                ppsEl.textContent = 'PPS: ' + (b.pps || '-');
+                popupDiv.appendChild(ppsEl);
+
+                var kirMangsaEl = document.createElement('span');
+                kirMangsaEl.className = 'sub';
+                kirMangsaEl.textContent = 'KIR: ' + (b.jumlah_kir != null ? b.jumlah_kir : '-') + '   MANGSA: ' + (b.jumlah_mangsa != null ? b.jumlah_mangsa : '-');
+                popupDiv.appendChild(kirMangsaEl);
 
                 var descEl = document.createElement('span');
                 descEl.className = 'sub';

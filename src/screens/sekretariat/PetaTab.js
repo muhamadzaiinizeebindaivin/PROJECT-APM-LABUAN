@@ -472,6 +472,8 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
             description: b.description || '',
             lokasi: b.lokasi || '',
             pps: b.pps || '',
+            jumlah_kir: b.jumlah_kir,
+            jumlah_mangsa: b.jumlah_mangsa,
             lat: b.latitude, lng: b.longitude, created_at: b.created_at,
           };
         });
