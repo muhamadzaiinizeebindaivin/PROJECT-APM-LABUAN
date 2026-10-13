@@ -1,12 +1,16 @@
 // src/screens/operasi/PertolonganCemasTab.js
 import React, { useState, useEffect, useCallback, createElement } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Modal, TextInput, ActivityIndicator, Alert, Platform } from 'react-native';
-import { Plus, X, Edit2, Trash2, Calendar, MapPin, Users, Truck, FileText, Clock } from 'lucide-react-native';
+import { Plus, X, Edit2, Trash2, Calendar, MapPin, Users, Truck, FileText, Clock, Download, Building2, Package } from 'lucide-react-native';
 import { supabaseSandbox } from '../../supabaseSandboxClient';
 import { formStyles } from '../../styles/formStyles';
 import { reportStyles as styles } from './reportStyles';
 import { canEditSection } from '../../permissions';
 import { useAvailableVehicles } from '../../hooks/useAvailableVehicles';
+import { useSekretariatLogistik } from '../../hooks/useSekretariatLogistik';
+import { useSekretariatAssets } from '../../hooks/useSekretariatAssets';
+import { generatePertolonganCemasPdf } from '../../utils/pertolonganCemasPdf';
+import { BULAN_MS } from '../../constants/bulan';
 
 const STATUS_OPTIONS = ['aktif', 'selesai', 'dibatal'];
 const STATUS_COLORS = {
@@ -18,6 +22,9 @@ const STATUS_COLORS = {
 const EMPTY_FORM = {
   id: null,
   nama_acara: '',
+  penganjur: '',
+  penganjur_pegawai: '',
+  penganjur_telefon: '',
   lokasi: '',
   tarikh: '',
   tarikh_tamat: '',
@@ -50,7 +57,15 @@ function InfoRow({ icon, label, value }) {
 export default function PertolonganCemasTab({ theme, userRole, isEditMode }) {
   const canManage = isEditMode && canEditSection(userRole, 'Operasi');
   const { vehicles } = useAvailableVehicles();
-  const vehicleOptions = vehicles.map(v => `${v.model}${v.reg ? ` (${v.reg})` : ''}`);
+  const { logistikList } = useSekretariatLogistik();
+  const { assetList } = useSekretariatAssets();
+  // "Jenis Kenderaan / Logistik": vehicles + Sekretariat equipment, grouped in the picker
+  const pilihanKumpulan = [
+    { tajuk: 'Kenderaan', ikon: Truck, pilihan: vehicles.map(v => `${v.model}${v.reg ? ` (${v.reg})` : ''}`) },
+    { tajuk: 'Logistik', ikon: Package, pilihan: (logistikList || []).map(l => (l.nama || '').trim()).filter(Boolean) },
+    { tajuk: 'Aset', ikon: Package, pilihan: (assetList || []).map(a => (a.nama || '').trim()).filter(Boolean) },
+  ].map(k => ({ ...k, pilihan: [...new Set(k.pilihan)] }));
+  const vehicleOptions = [...new Set(pilihanKumpulan.flatMap(k => k.pilihan))];
   const [jenisKenderaanOpen, setJenisKenderaanOpen] = useState(false);
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -84,10 +99,14 @@ export default function PertolonganCemasTab({ theme, userRole, isEditMode }) {
   }, [modalVisible]);
 
   const [saving, setSaving] = useState(false);
+  const [menjanaPdf, setMenjanaPdf] = useState(false);
+  // Shown inside the form: Alert.alert() does nothing on React Native Web
+  const [ralatBorang, setRalatBorang] = useState('');
   const [filterStatus, setFilterStatus] = useState('semua');
   const [statusModalId, setStatusModalId] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterYear, setFilterYear] = useState(new Date().getFullYear());
+  const [filterMonth, setFilterMonth] = useState('semua'); // 'semua' or 0-11
   const [currentPage, setCurrentPage] = useState(1);
   const EVENTS_PER_PAGE = 5;
   
@@ -115,13 +134,25 @@ export default function PertolonganCemasTab({ theme, userRole, isEditMode }) {
   }, [fetchEvents]);
 
   const handleSave = async () => {
-    if (!form.nama_acara || !form.lokasi || !form.tarikh || !form.tarikh_tamat || !form.masa_mula || !form.masa_tamat) {
-      Alert.alert('Ralat', 'Sila isi semua maklumat wajib.');
+    const tiadaIsi = [
+      ['Nama Acara', form.nama_acara],
+      ['Lokasi', form.lokasi],
+      ['Tarikh Mula', form.tarikh],
+      ['Masa Mula', form.masa_mula],
+      ['Tarikh Tamat', form.tarikh_tamat],
+      ['Masa Tamat', form.masa_tamat],
+    ].filter(([, v]) => !String(v || '').trim()).map(([label]) => label);
+    if (tiadaIsi.length > 0) {
+      setRalatBorang(`Sila isi: ${tiadaIsi.join(', ')}.`);
       return;
     }
+    setRalatBorang('');
     setSaving(true);
     const payload = {
       nama_acara: form.nama_acara.trim(),
+      penganjur: form.penganjur.trim() || null,
+      penganjur_pegawai: form.penganjur_pegawai.trim() || null,
+      penganjur_telefon: form.penganjur_telefon.trim() || null,
       lokasi: form.lokasi.trim(),
       tarikh: form.tarikh,
       tarikh_tamat: form.tarikh_tamat,
@@ -137,7 +168,13 @@ export default function PertolonganCemasTab({ theme, userRole, isEditMode }) {
     };
     let error, recordId = form.id;
     if (form.id) {
-      ({ error } = await supabaseSandbox.from('pertolongan_cemas').update(payload).eq('id', form.id));
+      // .select() returns the updated rows: 0 rows = refused silently (RLS / permission)
+      const { data: dikemaskini, error: updateError } = await supabaseSandbox
+        .from('pertolongan_cemas').update(payload).eq('id', form.id).select('id');
+      error = updateError;
+      if (!error && (!dikemaskini || dikemaskini.length === 0)) {
+        error = { message: 'tiada rekod dikemaskini (semak kebenaran RLS jadual pertolongan_cemas).' };
+      }
     } else {
       const { data, error: insertError } = await supabaseSandbox.from('pertolongan_cemas').insert([payload]).select('id').single();
       error = insertError;
@@ -146,7 +183,10 @@ export default function PertolonganCemasTab({ theme, userRole, isEditMode }) {
     if (!error) {
       await fetchEvents();
       closeModal();
-    } else Alert.alert('Ralat', 'Gagal menyimpan. Sila cuba lagi.');
+    } else {
+      console.error('Simpan pertolongan_cemas:', error);
+      setRalatBorang(`Gagal menyimpan: ${error.message || 'sila cuba lagi.'}`);
+    }
     setSaving(false);
   };
 
@@ -161,6 +201,9 @@ export default function PertolonganCemasTab({ theme, userRole, isEditMode }) {
     setForm({
       id: event.id,
       nama_acara: event.nama_acara || '',
+      penganjur: event.penganjur || '',
+      penganjur_pegawai: event.penganjur_pegawai || '',
+      penganjur_telefon: event.penganjur_telefon || '',
       lokasi: event.lokasi || '',
       tarikh: event.tarikh || '',
       tarikh_tamat: event.tarikh_tamat || '',
@@ -180,22 +223,43 @@ export default function PertolonganCemasTab({ theme, userRole, isEditMode }) {
   const closeModal = () => {
     setModalVisible(false);
     setForm(EMPTY_FORM);
+    setRalatBorang('');
   };
 
   const availableYears = [...new Set(events.map(e => new Date(e.tarikh).getFullYear()))].sort((a, b) => b - a);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [filterStatus, filterYear, searchQuery]);
+  }, [filterStatus, filterYear, filterMonth, searchQuery]);
 
   const filteredEvents = events.filter(e => {
     if (new Date(e.tarikh).getFullYear() !== filterYear) return false;
+    if (filterMonth !== 'semua' && new Date(e.tarikh).getMonth() !== filterMonth) return false;
     if (filterStatus !== 'semua' && e.status !== filterStatus) return false;
-    if (searchQuery.trim() && !(e.nama_acara + e.lokasi).toLowerCase().includes(searchQuery.trim().toLowerCase())) return false;
+    if (searchQuery.trim() && !`${e.nama_acara} ${e.lokasi} ${e.penganjur || ''}`.toLowerCase().includes(searchQuery.trim().toLowerCase())) return false;
     return true;
   });
 
   const totalPages = Math.max(1, Math.ceil(filteredEvents.length / EVENTS_PER_PAGE));
+
+  // PDF of the events shown with the current filters (year, status, search)
+  const handleJanaPdf = async () => {
+    setMenjanaPdf(true);
+    try {
+      const tapisan = [
+        filterMonth === 'semua' ? `Tahun ${filterYear}` : `${BULAN_MS[filterMonth]} ${filterYear}`,
+        `Status: ${filterStatus === 'semua' ? 'Semua' : filterStatus.charAt(0).toUpperCase() + filterStatus.slice(1)}`,
+        searchQuery.trim() ? `Carian: "${searchQuery.trim()}"` : null,
+      ].filter(Boolean).join(' · ');
+      await generatePertolonganCemasPdf({ events: filteredEvents, tapisan });
+    } catch (e) {
+      console.error(e);
+      if (Platform.OS === 'web') window.alert('Gagal menjana PDF. Sila cuba lagi.');
+      else Alert.alert('Ralat', 'Gagal menjana PDF. Sila cuba lagi.');
+    } finally {
+      setMenjanaPdf(false);
+    }
+  };
   const paginatedEvents = filteredEvents.slice((currentPage - 1) * EVENTS_PER_PAGE, currentPage * EVENTS_PER_PAGE);
 
   const inputStyle = [formStyles.inputField, { backgroundColor: theme.card, color: theme.text, borderColor: theme.border, marginBottom: 0 }];
@@ -234,6 +298,14 @@ export default function PertolonganCemasTab({ theme, userRole, isEditMode }) {
               placeholderTextColor={theme.textSecondary}
               value={searchQuery} onChangeText={setSearchQuery}
             />
+            <TouchableOpacity
+              style={[styles.addBtn, { backgroundColor: '#fff', borderWidth: 1.5, borderColor: '#1E3A8A' }, menjanaPdf && { opacity: 0.6 }]}
+              onPress={handleJanaPdf}
+              disabled={menjanaPdf}
+            >
+              {menjanaPdf ? <ActivityIndicator size="small" color="#1E3A8A" /> : <Download size={16} color="#1E3A8A" />}
+              <Text style={[styles.addBtnText, { color: '#1E3A8A' }]}>Jana PDF</Text>
+            </TouchableOpacity>
             {canManage && (
               <TouchableOpacity style={styles.addBtn} onPress={() => setModalVisible(true)}>
                 <Plus size={16} color="#fff" />
@@ -261,6 +333,28 @@ export default function PertolonganCemasTab({ theme, userRole, isEditMode }) {
                   <Text style={{ fontSize: 12, fontWeight: '700', color: filterYear === y ? '#fff' : '#64748b' }}>{y}</Text>
                 </TouchableOpacity>
               ))}
+            </View>
+          </ScrollView>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              {['semua', ...BULAN_MS.map((_, i) => i)].map(m => {
+                const aktif = filterMonth === m;
+                // Months with no event in the selected year are shown dimmed
+                const bil = m === 'semua'
+                  ? null
+                  : events.filter(e => {
+                      const t = new Date(e.tarikh);
+                      return t.getFullYear() === filterYear && t.getMonth() === m;
+                    }).length;
+                return (
+                  <TouchableOpacity key={String(m)} onPress={() => setFilterMonth(m)}
+                    style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, backgroundColor: aktif ? '#1E3A8A' : '#f1f5f9', opacity: bil === 0 && !aktif ? 0.5 : 1 }}>
+                    <Text style={{ fontSize: 12, fontWeight: '700', color: aktif ? '#fff' : '#64748b' }}>
+                      {m === 'semua' ? 'Semua Bulan' : BULAN_MS[m]}{bil ? ` (${bil})` : ''}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           </ScrollView>
         </View>
@@ -310,11 +404,16 @@ export default function PertolonganCemasTab({ theme, userRole, isEditMode }) {
 
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 16 }}>
                   <View style={{ flex: 1, minWidth: 200 }}>
+                    <InfoRow
+                      icon={<Building2 size={14} color="#94a3b8" />}
+                      label="Penganjur"
+                      value={[event.penganjur, [event.penganjur_pegawai, event.penganjur_telefon].filter(Boolean).join(' · ')].filter(Boolean).join('\n') || null}
+                    />
                     <InfoRow icon={<Calendar size={14} color="#94a3b8" />} label="Mula" value={event.tarikh ? `${event.tarikh} ${event.masa_mula || ''}`.trim() : null} />
                     <InfoRow icon={<Clock size={14} color="#94a3b8" />} label="Tamat" value={event.tarikh_tamat ? `${event.tarikh_tamat} ${event.masa_tamat || ''}`.trim() : null} />
                     <InfoRow icon={<Users size={14} color="#94a3b8" />} label="Bilangan Pegawai" value={event.bilangan_pegawai ? `${event.bilangan_pegawai} orang` : null} />
                     <InfoRow icon={<Users size={14} color="#94a3b8" />} label="Bilangan Anggota" value={`${event.bilangan_anggota} orang`} />
-                    <InfoRow icon={<Truck size={14} color="#94a3b8" />} label="Kenderaan" value={event.bilangan_kenderaan ? `${event.bilangan_kenderaan} unit${event.jenis_kenderaan ? ` (${event.jenis_kenderaan})` : ''}` : null} />
+                    <InfoRow icon={<Truck size={14} color="#94a3b8" />} label="Kenderaan / Logistik" value={event.bilangan_kenderaan ? `${event.bilangan_kenderaan} unit${event.jenis_kenderaan ? ` (${event.jenis_kenderaan})` : ''}` : null} />
                   </View>
                   <View style={{ flex: 1, minWidth: 200 }}>
                     <InfoRow icon={<Users size={14} color="#94a3b8" />} label="Bilangan Pesakit" value={event.bilangan_pesakit ? `${event.bilangan_pesakit} orang` : null} />
@@ -396,6 +495,24 @@ export default function PertolonganCemasTab({ theme, userRole, isEditMode }) {
               <Text style={labelStyle}>Nama Acara *</Text>
               <TextInput style={inputStyle} placeholder="Cth: Kejohanan Sukan Daerah" placeholderTextColor={theme.textSecondary}
                 value={form.nama_acara} onChangeText={v => setForm(f => ({ ...f, nama_acara: v }))} />
+
+              <Text style={labelStyle}>Penganjur</Text>
+              <TextInput style={inputStyle} placeholder="Cth: Majlis Sukan Negeri Labuan" placeholderTextColor={theme.textSecondary}
+                value={form.penganjur} onChangeText={v => setForm(f => ({ ...f, penganjur: v }))} />
+
+              <View style={{ flexDirection: 'row', gap: 12 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={labelStyle}>Pegawai Untuk Dihubungi</Text>
+                  <TextInput style={inputStyle} placeholder="Cth: Encik Ahmad" placeholderTextColor={theme.textSecondary}
+                    value={form.penganjur_pegawai} onChangeText={v => setForm(f => ({ ...f, penganjur_pegawai: v }))} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={labelStyle}>No. Telefon</Text>
+                  <TextInput style={inputStyle} placeholder="Cth: 012-3456789" placeholderTextColor={theme.textSecondary}
+                    keyboardType="phone-pad" value={form.penganjur_telefon}
+                    onChangeText={v => setForm(f => ({ ...f, penganjur_telefon: v.replace(/[^0-9+\-\s]/g, '') }))} />
+                </View>
+              </View>
 
               <Text style={labelStyle}>Lokasi *</Text>
               <TextInput style={inputStyle} placeholder="Cth: Stadium Labuan" placeholderTextColor={theme.textSecondary}
@@ -489,13 +606,13 @@ export default function PertolonganCemasTab({ theme, userRole, isEditMode }) {
                 </View>
               </View>
 
-              <Text style={labelStyle}>Jenis Kenderaan <Text style={{ color: '#94a3b8', fontWeight: '400' }}>(pilihan)</Text></Text>
+              <Text style={labelStyle}>Jenis Kenderaan / Logistik <Text style={{ color: '#94a3b8', fontWeight: '400' }}>(pilihan)</Text></Text>
               <TouchableOpacity
                 style={[inputStyle, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}
                 onPress={() => setJenisKenderaanOpen(true)}
               >
                 <Text style={{ color: selectedVehicles.length ? theme.text : theme.textSecondary, fontSize: 14, flex: 1 }} numberOfLines={1}>
-                  {selectedVehicles.length ? form.jenis_kenderaan : 'Pilih kenderaan...'}
+                  {selectedVehicles.length ? form.jenis_kenderaan : 'Pilih kenderaan / logistik...'}
                 </Text>
               </TouchableOpacity>
 
@@ -512,9 +629,9 @@ export default function PertolonganCemasTab({ theme, userRole, isEditMode }) {
                         paddingHorizontal: 18, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: theme.border,
                       }}>
                         <View>
-                          <Text style={{ fontSize: 16, fontWeight: '800', color: theme.text }}>Pilih Kenderaan</Text>
+                          <Text style={{ fontSize: 16, fontWeight: '800', color: theme.text }}>Pilih Kenderaan / Logistik</Text>
                           <Text style={{ fontSize: 12, color: theme.textSecondary, marginTop: 2, fontWeight: '600' }}>
-                            {selectedVehicles.length > 0 ? `${selectedVehicles.length} dipilih` : 'Tiada kenderaan dipilih'}
+                            {selectedVehicles.length > 0 ? `${selectedVehicles.length} dipilih` : 'Tiada dipilih'}
                           </Text>
                         </View>
                         <TouchableOpacity onPress={() => setJenisKenderaanOpen(false)} style={{ padding: 4 }}>
@@ -523,8 +640,15 @@ export default function PertolonganCemasTab({ theme, userRole, isEditMode }) {
                       </View>
 
                       <ScrollView style={{ maxHeight: 320 }}>
-                        {vehicleOptions.map((opt, i) => {
+                        {pilihanKumpulan.filter(k => k.pilihan.length > 0).map(k => (
+                        <View key={k.tajuk}>
+                          <Text style={{
+                            fontSize: 11, fontWeight: '800', color: '#94a3b8', letterSpacing: 0.6, textTransform: 'uppercase',
+                            paddingHorizontal: 18, paddingTop: 12, paddingBottom: 6, backgroundColor: theme.card,
+                          }}>{k.tajuk}</Text>
+                        {k.pilihan.map((opt) => {
                           const selected = selectedVehicles.includes(opt);
+                          const Ikon = k.ikon;
                           return (
                             <TouchableOpacity
                               key={opt}
@@ -545,11 +669,13 @@ export default function PertolonganCemasTab({ theme, userRole, isEditMode }) {
                               }}>
                                 {selected && <Text style={{ color: '#fff', fontSize: 12, fontWeight: '900' }}>✓</Text>}
                               </View>
-                              <Truck size={15} color={selected ? '#1E3A8A' : '#94a3b8'} />
+                              <Ikon size={15} color={selected ? '#1E3A8A' : '#94a3b8'} />
                               <Text style={{ fontSize: 14, color: theme.text, fontWeight: selected ? '700' : '500', flex: 1 }} numberOfLines={1}>{opt}</Text>
                             </TouchableOpacity>
                           );
                         })}
+                        </View>
+                        ))}
 
                         <View
                           style={{
@@ -619,6 +745,12 @@ export default function PertolonganCemasTab({ theme, userRole, isEditMode }) {
                   </TouchableOpacity>
                 ))}
               </View>
+
+              {ralatBorang ? (
+                <View style={{ marginTop: 16, padding: 12, borderRadius: 10, backgroundColor: '#fef2f2', borderWidth: 1, borderColor: '#fecaca' }}>
+                  <Text style={{ color: '#dc2626', fontSize: 13, fontWeight: '700' }}>{ralatBorang}</Text>
+                </View>
+              ) : null}
 
               <TouchableOpacity style={[formStyles.saveBtn, saving && { opacity: 0.7 }, { marginTop: 20 }]}
                 onPress={handleSave} disabled={saving}>

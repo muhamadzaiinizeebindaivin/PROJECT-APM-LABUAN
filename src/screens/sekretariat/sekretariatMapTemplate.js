@@ -56,7 +56,11 @@ export function buildSekretariatMapHtml({ theme, userRole, pemantauanIconUrl }) 
             maxZoom: 20, maxNativeZoom: 19,
             attribution: 'Tiles &copy; Esri'
           }).addTo(map);
-          L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png', {
+          // Labels from Esri (CARTO now requires an API key)
+          L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}', {
+            maxZoom: 20, maxNativeZoom: 19
+          }).addTo(map);
+          L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
             maxZoom: 20, maxNativeZoom: 19
           }).addTo(map);
 

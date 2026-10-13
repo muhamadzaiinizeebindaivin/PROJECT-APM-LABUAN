@@ -106,8 +106,8 @@ const buildMiniMapHtml = (lat, lng) => `
       zoomControl: true, dragging: true, touchZoom: true, scrollWheelZoom: true,
       doubleClickZoom: true, boxZoom: false, keyboard: false, attributionControl: true,
     }).setView([${lat}, ${lng}], 15);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; OpenStreetMap &copy; CARTO', maxZoom: 20,
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+      attribution: 'Tiles &copy; Esri', maxZoom: 20, maxNativeZoom: 19,
     }).addTo(map);
     L.marker([${lat}, ${lng}]).addTo(map);
   </script>
@@ -151,8 +151,12 @@ const buildPinpointMapHtml = (lat, lng, hasMarker) => `
     L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
       attribution: 'Tiles &copy; Esri', maxZoom: 20,
     }).addTo(map);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png', {
-      maxZoom: 20,
+    // Labels from Esri (CARTO now requires an API key)
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}', {
+      maxZoom: 20, maxNativeZoom: 19,
+    }).addTo(map);
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
+      maxZoom: 20, maxNativeZoom: 19,
     }).addTo(map);
 
     var marker = ${hasMarker ? `L.marker([${lat}, ${lng}], { draggable: true })` : 'null'};

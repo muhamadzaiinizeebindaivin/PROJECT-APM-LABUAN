@@ -29,6 +29,7 @@ import { useAgencyTrackingHistory } from '../../hooks/useAgencyTrackingHistory';
 import { usePemantauanPoints } from '../../hooks/usePemantauanPoints';
 import ModalSelectField from '../../components/ModalSelectField';
 import FullscreenViewer from '../../components/FullscreenViewer';
+import PilihLokasiModal from '../../components/PilihLokasiModal';
 import { generateAgencyHistoryPdf, generateKejadianPdf, generatePemantauanPdf } from '../../utils/agencyReportsPdf';
 import { appStyles as sekretariatStyles } from '../../styles/appStyles';
 import { petaStyles as styles } from './petaStyles';
@@ -333,6 +334,8 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
     setPemantauanPointModalVisible(true);
   };
   const [bencanaModalVisible, setBencanaModalVisible] = useState(false);
+  // "Hotspot Baharu": location chosen in a popup (search, lat/lng, small map)
+  const [pilihLokasiBencanaOpen, setPilihLokasiBencanaOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null); // { type: 'bencana' | 'history' | 'agency', id, label }
   const displayDeleteTargetRef = useRef(null);
   if (deleteTarget) displayDeleteTargetRef.current = deleteTarget;
@@ -1566,7 +1569,7 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
               </TouchableOpacity>
 
               <TouchableOpacity
-                onPress={() => { setBencanaFlowStep(null); setIsPlacingBencana(true); }}
+                onPress={() => { setBencanaFlowStep(null); setPilihLokasiBencanaOpen(true); }}
                 style={{
                   flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16,
                   borderRadius: 14, borderWidth: 1.5, borderColor: PALETTE.cardLightBorder || '#e2e8f0', backgroundColor: '#fff',
@@ -1577,7 +1580,7 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontSize: 14, fontWeight: '800', color: PALETTE.textDark }}>Hotspot Baharu</Text>
-                  <Text style={{ fontSize: 12, color: PALETTE.textMutedDark, marginTop: 2 }}>Tandakan lokasi sendiri pada peta</Text>
+                  <Text style={{ fontSize: 12, color: PALETTE.textMutedDark, marginTop: 2 }}>Cari tempat, masukkan koordinat atau klik pada peta</Text>
                 </View>
               </TouchableOpacity>
 
@@ -1600,6 +1603,22 @@ export default function PetaTab({ theme, userRole, isEditMode, onNotify }) {
           </View>
         </View>
       </Modal>
+
+      {/* Étape 2b — "Hotspot Baharu": choose the location, then the usual form opens */}
+      <PilihLokasiModal
+        visible={pilihLokasiBencanaOpen}
+        tajuk="Pilih Lokasi Bencana"
+        onClose={() => setPilihLokasiBencanaOpen(false)}
+        onSimpan={(lat, lng) => {
+          setPilihLokasiBencanaOpen(false);
+          setPendingBencanaPlacement({ lat, lng });
+          setBencanaModalVisible(true);
+        }}
+        onKlikPetaUtama={() => {
+          setPilihLokasiBencanaOpen(false);
+          setIsPlacingBencana(true);
+        }}
+      />
 
       {/* Étape 2a — liste des hotspots existants, clic = plot direct */}
       <Modal visible={bencanaFlowStep === 'existingList'} transparent={true} animationType="fade">

@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, Animated } from 'react-native';
 import { useBencanaPoints } from '../../hooks/useBencanaPoints';
 import { useCalamityPoints } from '../../hooks/useCalamityPoints';
+import { usePemantauanPoints } from '../../hooks/usePemantauanPoints';
 import { PALETTE } from '../../constants/palette';
 
 const SPEED = 70; // px/s
@@ -9,6 +10,7 @@ const SPEED = 70; // px/s
 export default function ActiveAlertsBanner() {
   const { bencanaPoints } = useBencanaPoints();
   const { calamityPoints } = useCalamityPoints();
+  const { pemantauanPoints } = usePemantauanPoints();
 
   const [containerWidth, setContainerWidth] = useState(0);
   const [textWidth, setTextWidth] = useState(0);
@@ -33,6 +35,10 @@ export default function ActiveAlertsBanner() {
     ...calamityPoints
       .filter((p) => p.category)
       .map((p) => ({ type: 'kecemasan', category: p.category })),
+    // Active monitoring points (not yet completed), same rule as the Sekretariat map
+    ...pemantauanPoints
+      .filter((p) => p.status !== 'resolved')
+      .map((p) => ({ type: 'pemantauan', category: p.lokasi?.trim() || 'Titik Pemantauan' })),
   ];
 
   const text = items.map((i) => i.category).join(' ');
@@ -113,9 +119,11 @@ export default function ActiveAlertsBanner() {
           {items.map((item, idx) => (
             <Text
               key={idx}
-              style={{ color: item.type === 'bencana' ? '#dc2626' : PALETTE.orange }}
+              style={{
+                color: item.type === 'bencana' ? '#dc2626' : item.type === 'pemantauan' ? PALETTE.blue : PALETTE.orange,
+              }}
             >
-              {item.type === 'bencana' ? 'BENCANA: ' : 'KECEMASAN: '}
+              {item.type === 'bencana' ? 'BENCANA: ' : item.type === 'pemantauan' ? 'PEMANTAUAN: ' : 'KECEMASAN: '}
               {item.category}
               {idx < items.length - 1 ? '   •   ' : ''}
             </Text>
