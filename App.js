@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, StatusBar, Platform, useWindowDimensions, ActivityIndicator, TouchableOpacity, Text } from 'react-native';
+import { View, StatusBar, Platform, useWindowDimensions, ActivityIndicator } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { useFonts, Orbitron_600SemiBold, Orbitron_700Bold } from '@expo-google-fonts/orbitron';
 import { Inter_400Regular, Inter_500Medium } from '@expo-google-fonts/inter';
@@ -22,16 +22,16 @@ import GuestFlow from './src/navigation/GuestFlow';
 import AgencyFlow from './src/navigation/AgencyFlow';
 import OperasiFlow from './src/navigation/OperasiFlow';
 
-import PublicNg999Form from './src/screens/PublicNg999Form';
 import SetPasswordScreen from './src/screens/SetPasswordScreen';
 import KemaskiniDataPage from './src/screens/angkatan/KemaskiniDataPage';
+
+// Thème clair unique — le mode sombre n'a jamais eu de bouton pour l'activer
+const theme = themes.light;
 
 export default function App() {
   const { width: appWidth } = useWindowDimensions();
   const isMobile = appWidth < 768;
-  const [isDarkMode, setIsDarkMode] = useState(false);
   const navigationRef = useRef(null);
-  const theme = isDarkMode ? themes.dark : themes.light;
 
   // Tracking d'affluence global : une ligne insérée à chaque ouverture du
   // site (peu importe la route ou si la personne se connecte ensuite), plus
@@ -73,14 +73,10 @@ export default function App() {
     }
   }, []);
 
-  // Formulaire public (lien partagé au personnel de terrain, avec code d'accès)
-  const isPublicNg999Route = Platform.OS === 'web' && typeof window !== 'undefined' &&
-    window.location.search.includes('lapor=ng999');
-
   // Page Kemaskini Data Anggota, ouverte dans un nouvel onglet depuis
   // AngkatanScreen — page à part pour ne jamais afficher les données
-  // d'employé par-dessus la liste dans l'onglet principal. Nécessite d'être
-  // connecté (admin/angkatan) : vérifié plus bas, après le chargement de la session.
+  // d'employé par-dessus la liste dans l'onglet principal. La connexion
+  // (admin/angkatan) est vérifiée dans KemaskiniDataPage elle-même.
   const isKemaskiniRoute = Platform.OS === 'web' && typeof window !== 'undefined' &&
     window.location.search.includes('kemaskini=data');
 
@@ -95,10 +91,6 @@ export default function App() {
         />
       </View>
     );
-  }
-
-  if (isPublicNg999Route) {
-    return <PublicNg999Form />;
   }
 
   if (isCheckingSession || !fontsLoaded) {
@@ -139,7 +131,7 @@ export default function App() {
           onClose={() => setStatusModalVisible(false)}
         />
 
-        <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} backgroundColor={theme.background} />
+        <StatusBar barStyle="dark-content" backgroundColor={theme.background} />
         {!userRole ? <AuthFlow theme={theme} handleLogin={handleLogin} /> :
         ROLE_PERMISSIONS[userRole] ? (
           <DepartmentFlow

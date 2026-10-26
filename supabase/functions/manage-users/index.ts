@@ -1,10 +1,23 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+// Même origine que create-user
+const ALLOWED_ORIGIN = "https://project-apm-labuan.vercel.app";
+
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Origin": ALLOWED_ORIGIN,
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+// Même liste que create-user — seuls les rôles département sont attribuables ici
+const ALLOWED_ROLES = ["admin", "pentadbiran", "kewangan", "logistik", "angkatan", "sekretariat", "latihan", "operasi"];
+
+function jsonResponse(body: Record<string, unknown>, status: number) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -12,7 +25,12 @@ serve(async (req) => {
   }
 
   try {
-    const authHeader = req.headers.get("Authorization")!;
+    // ── 1. Vérifie l'identité de l'appelant ──
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return jsonResponse({ error: "Non authentifié" }, 401);
+    }
+
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_ANON_KEY") ?? "",
@@ -21,12 +39,10 @@ serve(async (req) => {
 
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
     if (userError || !user) {
-      return new Response(JSON.stringify({ error: "Non authentifié" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return jsonResponse({ error: "Non authentifié" }, 401);
     }
 
+    // ── 2. Vérifie que l'appelant est bien admin ──
     const { data: callerProfile } = await supabaseClient
       .schema("sandbox")
       .from("profiles")
@@ -35,10 +51,7 @@ serve(async (req) => {
       .maybeSingle();
 
     if (!callerProfile || callerProfile.role !== "admin") {
-      return new Response(JSON.stringify({ error: "Akses ditolak. Hanya admin dibenarkan." }), {
-        status: 403,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return jsonResponse({ error: "Akses ditolak. Hanya admin dibenarkan." }, 403);
     }
 
     const supabaseAdmin = createClient(
@@ -60,10 +73,7 @@ serve(async (req) => {
       const from = (page - 1) * pageSize;
 
       // Exclusion des comptes anonymes (operasi/pemandu/agensi via kod akses)
-      // faite entièrement côté base (fonction sandbox.list_registered_profiles),
-      // au lieu de paginer tout auth.users et d'embarquer une liste d'IDs
-      // potentiellement énorme dans l'URL — ça évite les erreurs de protocole
-      // HTTP/2 une fois que cette liste devient trop longue.
+      // faite entièrement côté base (fonction sandbox.list_registered_profiles).
       const { data, error } = await supabaseAdmin
         .schema("sandbox")
         .rpc("list_registered_profiles", {
@@ -75,25 +85,14 @@ serve(async (req) => {
         });
 
       if (error) {
-        return new Response(JSON.stringify({ error: error.message }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return jsonResponse({ error: error.message }, 400);
       }
 
       const rows = data || [];
       const total = rows.length > 0 ? Number(rows[0].total_count) : 0;
       const users = rows.map(({ total_count, ...rest }) => rest);
 
-      return new Response(JSON.stringify({
-        users,
-        total,
-        page,
-        pageSize,
-      }), {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return jsonResponse({ users, total, page, pageSize }, 200);
     }
 
     // ============= UPDATE ROLE =============
@@ -101,10 +100,16 @@ serve(async (req) => {
       const { targetId, newRole } = body;
 
       if (!targetId || !newRole) {
-        return new Response(JSON.stringify({ error: "Data tidak lengkap" }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return jsonResponse({ error: "Data tidak lengkap" }, 400);
+      }
+
+      // Empêche un admin de se retirer lui-même ses droits (risque de verrouillage)
+      if (targetId === user.id) {
+        return jsonResponse({ error: "Anda tidak boleh menukar peranan anda sendiri." }, 400);
+      }
+
+      if (!ALLOWED_ROLES.includes(newRole)) {
+        return jsonResponse({ error: "Peranan tidak sah." }, 400);
       }
 
       const { error: updateError } = await supabaseAdmin
@@ -114,16 +119,10 @@ serve(async (req) => {
         .eq("id", targetId);
 
       if (updateError) {
-        return new Response(JSON.stringify({ error: updateError.message }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return jsonResponse({ error: updateError.message }, 400);
       }
 
-      return new Response(JSON.stringify({ success: true }), {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return jsonResponse({ success: true }, 200);
     }
 
     // ============= DELETE =============
@@ -131,42 +130,24 @@ serve(async (req) => {
       const { targetId } = body;
 
       if (!targetId) {
-        return new Response(JSON.stringify({ error: "Data tidak lengkap" }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return jsonResponse({ error: "Data tidak lengkap" }, 400);
       }
 
       if (targetId === user.id) {
-        return new Response(JSON.stringify({ error: "Anda tidak boleh memadam akaun anda sendiri." }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return jsonResponse({ error: "Anda tidak boleh memadam akaun anda sendiri." }, 400);
       }
 
       const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(targetId);
 
       if (deleteError) {
-        return new Response(JSON.stringify({ error: deleteError.message }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return jsonResponse({ error: deleteError.message }, 400);
       }
 
-      return new Response(JSON.stringify({ success: true }), {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return jsonResponse({ success: true }, 200);
     }
 
-    return new Response(JSON.stringify({ error: "Tindakan tidak dikenali" }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Tindakan tidak dikenali" }, 400);
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: err.message }, 500);
   }
 });

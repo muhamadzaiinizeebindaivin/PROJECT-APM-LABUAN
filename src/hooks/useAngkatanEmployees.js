@@ -478,7 +478,10 @@ export function useAngkatanEmployees() {
 
   const deleteEmployee = async (id) => {
     try {
-      await supabaseSandbox.from('angkatan_employees').delete().eq('id', id);
+      const { data, error } = await supabaseSandbox.from('angkatan_employees').delete().eq('id', id).select('id');
+      if (error) throw error;
+      // RLS bloque une suppression sans renvoyer d'erreur : 0 ligne = échec
+      if (!data?.length) throw new Error('Tiada rekod dipadam.');
       await fetchEmployees();
       return true;
     } catch (error) {

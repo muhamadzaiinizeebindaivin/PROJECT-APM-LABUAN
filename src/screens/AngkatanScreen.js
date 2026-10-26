@@ -165,11 +165,17 @@ const [semakDataModalVisible, setSemakDataModalVisible] = useState(false);
   };
   const handleSaveEmployee = async () => {
     const ok = await saveEmployee(employeeForm);
-    if (ok) closeEmployeeDetailModal();
+    if (ok) {
+      closeEmployeeDetailModal();
+      showNotification('success', 'Anggota berjaya disimpan.');
+    }
+    return ok;
   };
   const handleDeleteEmployee = async (id) => {
     const ok = await deleteEmployee(id);
     if (ok) closeEmployeeDetailModal();
+    showNotification(ok ? 'success' : 'error', ok ? 'Anggota berjaya dipadam.' : 'Gagal memadam anggota.');
+    return ok;
   };
 
   const handleDownloadLatestImport = async () => {

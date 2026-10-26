@@ -8,6 +8,16 @@ import EmployeeField from './EmployeeField';
 import CertificatesTab from './CertificatesTab';
 import CertEditModal from './CertEditModal';
 
+function InlineError({ message }) {
+  if (!message) return null;
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: PALETTE.dangerSoft, borderWidth: 1, borderColor: PALETTE.danger, borderRadius: 10, padding: 10, marginBottom: 10 }}>
+      <AlertTriangle size={16} color={PALETTE.danger} />
+      <Text style={{ flex: 1, color: PALETTE.danger, fontSize: 13, fontWeight: '600' }}>{message}</Text>
+    </View>
+  );
+}
+
 
 export default function EmployeeDetailModal({
   visible, onClose,
@@ -30,11 +40,33 @@ export default function EmployeeDetailModal({
   const [isDeletingCert, setIsDeletingCert] = useState(false);
   const [confirmDeleteEmployee, setConfirmDeleteEmployee] = useState(false);
   const [isDeletingEmployee, setIsDeletingEmployee] = useState(false);
+  const [deleteEmployeeError, setDeleteEmployeeError] = useState(null);
+  const [saveEmployeeError, setSaveEmployeeError] = useState(null);
+  const [isSavingEmployee, setIsSavingEmployee] = useState(false);
+
+  // Les messages d'erreur ne survivent pas à une réouverture du modal
+  useEffect(() => {
+    if (visible) { setSaveEmployeeError(null); setDeleteEmployeeError(null); }
+  }, [visible]);
+
+  const handleSaveEmployee = async () => {
+    setSaveEmployeeError(null);
+    setIsSavingEmployee(true);
+    const ok = await onSaveEmployee();
+    setIsSavingEmployee(false);
+    if (ok === false) setSaveEmployeeError('Gagal menyimpan anggota. Sila cuba lagi.');
+  };
 
   const handleConfirmDeleteEmployee = async () => {
+    setDeleteEmployeeError(null);
     setIsDeletingEmployee(true);
-    await onDeleteEmployee(employeeForm.id);
+    const ok = await onDeleteEmployee(employeeForm.id);
     setIsDeletingEmployee(false);
+    if (ok === false) {
+      // Le popup reste ouvert : l'erreur s'affiche là où l'utilisateur regarde
+      setDeleteEmployeeError('Gagal memadam anggota. Sila cuba lagi.');
+      return;
+    }
     setConfirmDeleteEmployee(false);
   };
 
@@ -276,9 +308,18 @@ export default function EmployeeDetailModal({
             )}
 
             {effectiveEditing && !certOnlyMode && (
-              <TouchableOpacity style={styles.saveButton} onPress={onSaveEmployee}>
-                <Text style={styles.saveButtonText}>Simpan Anggota</Text>
-              </TouchableOpacity>
+              <>
+                <InlineError message={saveEmployeeError} />
+                <TouchableOpacity
+                  style={[styles.saveButton, isSavingEmployee && { opacity: 0.7 }]}
+                  onPress={handleSaveEmployee}
+                  disabled={isSavingEmployee}
+                >
+                  {isSavingEmployee
+                    ? <ActivityIndicator size="small" color={PALETTE.white} />
+                    : <Text style={styles.saveButtonText}>Simpan Anggota</Text>}
+                </TouchableOpacity>
+              </>
             )}
           </ScrollView>
         </Animated.View>
@@ -305,10 +346,15 @@ export default function EmployeeDetailModal({
                 Padam anggota "{employeeForm.nama}"? Tindakan ini tidak boleh dibatalkan.
               </Text>
             </View>
+            {deleteEmployeeError && (
+              <View style={{ paddingHorizontal: 16, paddingTop: 12 }}>
+                <InlineError message={deleteEmployeeError} />
+              </View>
+            )}
             <View style={styles.confirmActions}>
               <TouchableOpacity
                 style={[styles.confirmCancelBtn, isDeletingEmployee && { opacity: 0.5 }]}
-                onPress={() => setConfirmDeleteEmployee(false)}
+                onPress={() => { setConfirmDeleteEmployee(false); setDeleteEmployeeError(null); }}
                 disabled={isDeletingEmployee}
               >
                 <Text style={styles.confirmCancelText}>Batal</Text>

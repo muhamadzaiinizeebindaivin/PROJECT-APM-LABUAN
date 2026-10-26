@@ -74,7 +74,8 @@ export function useAuthSession() {
       // doit JAMAIS être confondu avec un vrai compte département 'operasi'. On ne
       // cible QUE ce cas précis ici : les autres rôles anonymes ('driver' notamment)
       // n'entrent en collision avec rien et suivent le chemin normal plus bas.
-      if (session.user.is_anonymous && profile?.role === 'operasi') {
+      // 'operasi_lapor' = rôle dédié depuis la migration ; 'operasi' anonyme = sessions plus anciennes
+      if (profile?.role === 'operasi_lapor' || (session.user.is_anonymous && profile?.role === 'operasi')) {
         handleLogin('operasi_lapor');
         setIsCheckingSession(false);
         return;
