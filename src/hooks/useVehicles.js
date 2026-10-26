@@ -8,10 +8,11 @@ import { supabaseSandbox } from '../supabaseSandboxClient';
  * realtime event (OperasiScreen uses this to also push the change into
  * the Leaflet iframe via postMessage).
  */
-export function useVehicles(onUpdate) {
+export function useVehicles(onUpdate, { enabled = true } = {}) {
   const [vehicles, setVehicles] = useState([]);
 
   useEffect(() => {
+    if (!enabled) return undefined; // attend que l'accès soit validé (RLS)
     let isMounted = true;
 
     const fetchVehicles = async () => {
@@ -45,7 +46,7 @@ export function useVehicles(onUpdate) {
       supabaseSandbox.removeChannel(subscription);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [enabled]);
 
   return vehicles;
 }

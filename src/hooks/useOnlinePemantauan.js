@@ -5,7 +5,7 @@ import { supabaseSandbox } from '../supabaseSandboxClient';
 /**
  * Sessions Pemantauan actuellement en ligne (position live sur la carte).
  */
-export function useOnlinePemantauan() {
+export function useOnlinePemantauan({ enabled = true } = {}) {
   const [onlinePemantauan, setOnlinePemantauan] = useState([]);
   const [loadingPemantauan, setLoadingPemantauan] = useState(true);
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
@@ -27,6 +27,7 @@ export function useOnlinePemantauan() {
   };
 
   useEffect(() => {
+    if (!enabled) return undefined; // attend que l'accès soit validé (RLS)
     fetchOnlinePemantauan();
     const subscription = supabaseSandbox
       .channel(`pemantauan_trackers_changes_${Math.random().toString(36).slice(2)}`)
@@ -36,7 +37,7 @@ export function useOnlinePemantauan() {
       .subscribe();
     return () => { supabaseSandbox.removeChannel(subscription); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [enabled]);
 
   return { onlinePemantauan, loadingPemantauan };
 }

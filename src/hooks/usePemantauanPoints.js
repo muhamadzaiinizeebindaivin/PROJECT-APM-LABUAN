@@ -7,7 +7,7 @@ import { supabaseSandbox } from '../supabaseSandboxClient';
  * Titik Pemantauan (Laporan Awal Pemantauan Hotspot Banjir) : chargement + CRUD.
  * Table indépendante de sekretariat_bencana_points.
  */
-export function usePemantauanPoints() {
+export function usePemantauanPoints({ enabled = true } = {}) {
   const [pemantauanPoints, setPemantauanPoints] = useState([]);
 
   const fetchPemantauanPoints = async () => {
@@ -17,6 +17,7 @@ export function usePemantauanPoints() {
   };
 
   useEffect(() => {
+    if (!enabled) return undefined; // attend que l'accès soit validé (RLS)
     fetchPemantauanPoints();
     const channelName = `sekretariat_pemantauan_points_changes_${Math.random().toString(36).slice(2)}`;
     const subscription = supabaseSandbox
@@ -27,7 +28,7 @@ export function usePemantauanPoints() {
       .subscribe();
     return () => { supabaseSandbox.removeChannel(subscription); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [enabled]);
 
   const savePemantauanPoint = async ({ latitude, longitude, lokasi, jumlah_rumah_terjejas, pps, agensi_di_lapangan, bacaan_air }) => {
     const { error } = await supabaseSandbox.from('sekretariat_pemantauan_points').insert([{

@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { Alert, Platform } from 'react-native';
 import { supabaseSandbox } from '../supabaseSandboxClient';
 
-export function useHotspotCategories(onNotify) {
+export function useHotspotCategories(onNotify, { enabled = true } = {}) {
   const [categories, setCategories] = useState([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
 
@@ -17,7 +17,8 @@ export function useHotspotCategories(onNotify) {
     setLoadingCategories(false);
   };
 
-  useEffect(() => { fetchCategories(); }, []);
+  // `enabled` : attend que l'accès soit validé (RLS) avant de charger
+  useEffect(() => { if (enabled) fetchCategories(); }, [enabled]);
 
   const addCategory = async ({ label, sub, color, prefix, icon }) => {
     const key = label.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_');

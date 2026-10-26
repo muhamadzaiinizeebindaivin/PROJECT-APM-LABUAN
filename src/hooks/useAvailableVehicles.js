@@ -12,11 +12,12 @@ const STALE_JOB_THRESHOLD_MS = 12 * 60 * 60 * 1000; // même seuil que usePatrol
  * vehicle. Each vehicle also carries a computed `isBusy` flag (true when
  * it's genuinely in an active — not stale — patrol right now).
  */
-export function useAvailableVehicles() {
+export function useAvailableVehicles({ enabled = true } = {}) {
   const [vehicles, setVehicles] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!enabled) return undefined; // attend que l'accès soit validé (RLS)
     let isMounted = true;
 
     const fetchVehicles = async () => {
@@ -63,7 +64,7 @@ export function useAvailableVehicles() {
       isMounted = false;
       supabaseSandbox.removeChannel(subscription);
     };
-  }, []);
+  }, [enabled]);
 
   const vehiclesWithBusyFlag = vehicles.map(v => {
     const jobAgeMs = v.job_started_at ? Date.now() - new Date(v.job_started_at).getTime() : null;

@@ -7,7 +7,7 @@ import { supabaseSandbox } from '../supabaseSandboxClient';
  * Points bencana : chargement + CRUD (ajout, Selesai, Padam).
  * Table indépendante de calamity_points (exclusive à Operasi).
  */
-export function useBencanaPoints() {
+export function useBencanaPoints({ enabled = true } = {}) {
   const [bencanaPoints, setBencanaPoints] = useState([]);
 
   const fetchBencanaPoints = async () => {
@@ -17,6 +17,7 @@ export function useBencanaPoints() {
   };
 
   useEffect(() => {
+    if (!enabled) return undefined; // attend que l'accès soit validé (RLS)
     fetchBencanaPoints();
     const channelName = `sekretariat_bencana_points_changes_${Math.random().toString(36).slice(2)}`;
     const subscription = supabaseSandbox
@@ -27,7 +28,7 @@ export function useBencanaPoints() {
       .subscribe();
     return () => { supabaseSandbox.removeChannel(subscription); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [enabled]);
 
   const saveBencana = async ({ category, description, latitude, longitude, hotspot_id, jenis_bencana, lokasi, pps, jumlah_kir, jumlah_mangsa, jumlah_rumah_terjejas }) => {
     if (!category?.trim()) return { error: true };

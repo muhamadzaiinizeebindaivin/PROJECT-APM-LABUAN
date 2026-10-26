@@ -279,13 +279,16 @@ export default function AgencyTrackingScreen({ onLogout }) {
   const distanceAccumRef = useRef(0);
   const wasTrackingRef = useRef(false);
 
-  const { onlineAgencies } = useOnlineAgencies();
-  const { onlinePemantauan } = useOnlinePemantauan();
-  const { pemantauanPoints, savePemantauanPoint, updatePemantauanPoint, completePemantauanPoint, deletePemantauanPoint } = usePemantauanPoints();
+  // Les données de la carte (RLS : rôles agency / pemantauan) ne sont chargées
+  // qu'une fois l'agent rattaché (trackerId défini après join ou restauration)
+  const mapDataEnabled = !!trackerId;
+  const { onlineAgencies } = useOnlineAgencies({ enabled: mapDataEnabled });
+  const { onlinePemantauan } = useOnlinePemantauan({ enabled: mapDataEnabled });
+  const { pemantauanPoints, savePemantauanPoint, updatePemantauanPoint, completePemantauanPoint, deletePemantauanPoint } = usePemantauanPoints({ enabled: mapDataEnabled });
   const pemantauanPointsRef = useRef([]);
   pemantauanPointsRef.current = pemantauanPoints;
-  const { bencanaPoints } = useBencanaPoints();
-  const { categories: hotspotCategories } = useHotspotCategories();
+  const { bencanaPoints } = useBencanaPoints({ enabled: mapDataEnabled });
+  const { categories: hotspotCategories } = useHotspotCategories(undefined, { enabled: mapDataEnabled });
   const trackerMapIframeRef = useRef(null);
   const [trackerMapLoading, setTrackerMapLoading] = useState(true);
   const [confirmStopVisible, setConfirmStopVisible] = useState(false);
@@ -419,10 +422,9 @@ export default function AgencyTrackingScreen({ onLogout }) {
   useEffect(() => {
     let isMounted = true;
     const fetchAgencies = async () => {
-      const { data, error } = await supabase
-        .from('jpbd_directory')
-        .select('id, agency, logo_url')
-        .order('agency', { ascending: true });
+      // Avant connexion : jpbd_directory n'est plus lisible publiquement, on passe
+      // par une fonction qui ne renvoie que id / nom / logo
+      const { data, error } = await supabase.rpc('list_agencies');
 
       if (data && isMounted) setAgencies(data);
       if (error) console.error(error);

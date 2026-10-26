@@ -229,7 +229,6 @@ function PinpointMap({ latitude, longitude, onPick }) {
 }
 
 export default function LaporKesScreen({ onLogout }) {
-  const { calamityPoints, saveCalamity, resolveTreatedCalamity, deleteCalamity } = useCalamityPoints();
   const [pendingDeleteId, setPendingDeleteId] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -242,6 +241,8 @@ export default function LaporKesScreen({ onLogout }) {
   };
 
   const [accessVerified, setAccessVerified] = useState(false);
+  // Les points (RLS : rôle operasi_lapor) ne sont chargés qu'une fois l'accès validé
+  const { calamityPoints, saveCalamity, resolveTreatedCalamity, deleteCalamity } = useCalamityPoints({ enabled: accessVerified });
   const [checkingAccess, setCheckingAccess] = useState(true);
   const [accessCode, setAccessCode] = useState('');
   const [accessError, setAccessError] = useState(null);

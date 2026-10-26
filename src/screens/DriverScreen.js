@@ -99,7 +99,6 @@ const bgStyles = StyleSheet.create({
 export default function DriverScreen({ onLogout }) {
   const { width: screenWidth } = useWindowDimensions();
   const isMobile = screenWidth < 768;
-  const { vehicles, loading: loadingVehicles } = useAvailableVehicles();
 
   const [selectedVehicle, setSelectedVehicle] = useState(null);
   const [isTracking, setIsTracking] = useState(false);
@@ -114,6 +113,8 @@ export default function DriverScreen({ onLogout }) {
   const [accessError, setAccessError] = useState(null);
   const [showAccessCode, setShowAccessCode] = useState(false);
   const [accessFocused, setAccessFocused] = useState(false);
+  // Les données (RLS : rôle driver) ne sont chargées qu'une fois l'accès validé
+  const { vehicles, loading: loadingVehicles } = useAvailableVehicles({ enabled: accessVerified });
 
   // Vérifie s'il existe une vraie session Supabase active (pas juste un drapeau local)
   useEffect(() => {
@@ -178,7 +179,7 @@ export default function DriverScreen({ onLogout }) {
     }
   );
 
-  const { calamityPoints } = useCalamityPoints();
+  const { calamityPoints } = useCalamityPoints({ enabled: accessVerified });
   const mapIframeRef = useRef(null);
   const [mapLoading, setMapLoading] = useState(true);
   const [confirmStopVisible, setConfirmStopVisible] = useState(false);
@@ -215,7 +216,7 @@ export default function DriverScreen({ onLogout }) {
         status: updatedVehicle.tracking_status,
       }), '*');
     }
-  });
+  }, { enabled: accessVerified });
 
   useEffect(() => {
     // Seule source de vérité pour le marqueur du pemandu lui-même : sa

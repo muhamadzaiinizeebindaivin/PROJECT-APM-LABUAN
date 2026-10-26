@@ -5,7 +5,7 @@ import { supabaseSandbox } from '../supabaseSandboxClient';
 /**
  * Agences actuellement en ligne (position live sur la carte Peta).
  */
-export function useOnlineAgencies() {
+export function useOnlineAgencies({ enabled = true } = {}) {
   const [onlineAgencies, setOnlineAgencies] = useState([]);
   const [loadingPeta, setLoadingPeta] = useState(true);
   const [hasLoadedPetaOnce, setHasLoadedPetaOnce] = useState(false);
@@ -27,6 +27,7 @@ export function useOnlineAgencies() {
   };
 
   useEffect(() => {
+    if (!enabled) return undefined; // attend que l'accès soit validé (RLS)
     fetchOnlineAgencies();
     const subscription = supabaseSandbox
       .channel(`agency_trackers_changes_${Math.random().toString(36).slice(2)}`)
@@ -36,7 +37,7 @@ export function useOnlineAgencies() {
       .subscribe();
     return () => { supabaseSandbox.removeChannel(subscription); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [enabled]);
 
   return { onlineAgencies, loadingPeta };
 }

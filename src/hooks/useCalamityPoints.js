@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Platform } from 'react-native';
 import { supabaseSandbox } from '../supabaseSandboxClient';
 
-export function useCalamityPoints() {
+export function useCalamityPoints({ enabled = true } = {}) {
   const [calamityPoints, setCalamityPoints] = useState([]);
 
   const fetchCalamityPoints = useCallback(async () => {
@@ -17,13 +17,14 @@ export function useCalamityPoints() {
   }, []);
 
   useEffect(() => {
+    if (!enabled) return undefined; // attend que l'accès soit validé (RLS)
     fetchCalamityPoints();
     const sub = supabaseSandbox
       .channel(`operasi_calamity_changes_${Math.random().toString(36).slice(2)}`)
       .on('postgres_changes', { event: '*', schema: 'sandbox', table: 'laporan_ng999' }, fetchCalamityPoints)
       .subscribe();
     return () => supabaseSandbox.removeChannel(sub);
-  }, [fetchCalamityPoints]);
+  }, [fetchCalamityPoints, enabled]);
 
   // Crée un point sur la carte (actif). N'incrémente plus ng999_historique ici — le compteur
   // ne bouge qu'à la clôture (resolveCalamity / resolveTreatedCalamity), pas au pinpoint.
