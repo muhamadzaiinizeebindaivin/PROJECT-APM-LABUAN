@@ -1,4 +1,5 @@
 // src/screen/sekretariatMapTemplate.js
+import { MAP_LANDMARKS } from '../../constants/mapLandmarks';
 
 /**
  * Builds the Leaflet map HTML shown inside the Sekretariat web <iframe>.
@@ -64,6 +65,30 @@ export function buildSekretariatMapHtml({ theme, userRole, pemantauanIconUrl }) 
             maxZoom: 20, maxNativeZoom: 19
           }).addTo(map);
 
+
+          // ── Lieux fixes (PKOD, PDPA…) — voir constants/mapLandmarks.js ──
+          var LANDMARKS = ${JSON.stringify(MAP_LANDMARKS)};
+          var LANDMARK_SVG = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg>';
+          LANDMARKS.forEach(function(lm) {
+            var icon = L.divIcon({
+              className: '',
+              html: '<div style="display:flex;flex-direction:column;align-items:center;">' +
+                      '<div style="width:34px;height:34px;border-radius:9px;background:#1e3a8a;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;">' + LANDMARK_SVG + '</div>' +
+                      '<div style="margin-top:3px;padding:1px 6px;border-radius:6px;background:#fff;color:#1e3a8a;font:800 10px sans-serif;letter-spacing:0.5px;box-shadow:0 1px 3px rgba(0,0,0,0.35);">' + lm.code + '</div>' +
+                    '</div>',
+              iconSize: [60, 56],
+              iconAnchor: [30, 19],
+              popupAnchor: [0, -18]
+            });
+            var popup = '<div style="font-family:sans-serif;min-width:200px;">' +
+                          '<div style="font-size:10px;font-weight:800;color:#1e3a8a;letter-spacing:1px;">' + lm.code + '</div>' +
+                          '<div style="font-size:13px;font-weight:800;color:#1f1a16;margin:2px 0 6px;">' + lm.name + '</div>' +
+                          '<div style="font-size:12px;color:#7a6a5c;margin-bottom:4px;">' + lm.address + '</div>' +
+                          '<div style="font-size:12px;color:#1f1a16;">📞 ' + lm.phone + '</div>' +
+                          '<div style="font-size:11px;color:#7a6a5c;margin-top:4px;">' + lm.note + '</div>' +
+                        '</div>';
+            L.marker([lm.lat, lm.lng], { icon: icon, zIndexOffset: 500 }).addTo(map).bindPopup(popup);
+          });
 
           window.addEventListener('resize', function() {
             map.invalidateSize();

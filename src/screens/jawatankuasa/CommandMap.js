@@ -9,21 +9,24 @@ import { Asset } from 'expo-asset';
 import pemantauanIconAsset from '../../../assets/pemantauan-icon.png';
 import { buildSekretariatMapHtml } from '../sekretariat/sekretariatMapTemplate';
 import { usePetaMapBridge } from '../sekretariat/peta/usePetaMapBridge';
+import { MapHeaderCard, AgencyLegend } from '../sekretariat/peta/MapOverlays';
 import { CMD } from './commandPalette';
+import MapLegendPanel from './MapLegendPanel';
 
 const PEMANTAUAN_ICON_URL = Asset.fromModule(pemantauanIconAsset).uri;
 const MAP_THEME = { background: CMD.bg };
-const LEGEND = [
-  { label: 'Bencana', color: CMD.red },
-  { label: 'Pemantauan', color: CMD.yellow },
-  { label: 'Agensi', color: CMD.green },
-];
+// Annule le positionnement absolu propre à chaque bloc quand il est rangé dans la colonne
+const IN_COLUMN = { position: 'relative', top: 0, left: 0, right: 'auto' };
 
 export default function CommandMap({ data }) {
   const { width } = useWindowDimensions();
   const isMobile = width < 768;
   const iframeRef = useRef(null);
   const [loading, setLoading] = useState(true);
+  // Une seule légende ouverte à la fois, pour que la colonne tienne dans la hauteur de la carte.
+  // Desktop : AGENSI ouverte au départ ; mobile : tout replié.
+  const [openLegend, setOpenLegend] = useState(isMobile ? null : 'agensi'); // null | 'agensi' | 'petunjuk'
+  const toggleLegend = (key) => setOpenLegend((current) => (current === key ? null : key));
 
   const html = useMemo(
     () => buildSekretariatMapHtml({ theme: MAP_THEME, userRole: 'jawatankuasa', pemantauanIconUrl: PEMANTAUAN_ICON_URL }),
@@ -44,7 +47,7 @@ export default function CommandMap({ data }) {
   });
 
   return (
-    <View style={[styles.card, { height: isMobile ? 320 : 480 }]}>
+    <View style={[styles.card, { height: isMobile ? 420 : 480 }]}>
       {Platform.OS === 'web' ? (
         createElement('iframe', {
           ref: iframeRef,
@@ -64,18 +67,28 @@ export default function CommandMap({ data }) {
         </View>
       )}
 
-      <View style={[styles.chip, { top: 12, left: 12 }]}>
-        <View style={[styles.dot, { backgroundColor: CMD.green }]} />
-        <Text style={styles.chipText}>Peta Bencana · Masa nyata</Text>
-      </View>
-
-      <View style={[styles.chip, { bottom: 12, left: 12, gap: 10 }]}>
-        {LEGEND.map((l) => (
-          <View key={l.label} style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-            <View style={[styles.dot, { backgroundColor: l.color }]} />
-            <Text style={styles.chipText}>{l.label}</Text>
-          </View>
-        ))}
+      {/* Colonne à gauche : carte "Peta Agensi", légende AGENSI, puis Petunjuk.
+          Le nombre en ligne suit la règle des 15 minutes (activeAgencies). */}
+      <View style={styles.leftColumn}>
+        <MapHeaderCard isMobile={isMobile} onlineCount={data.activeAgencies.length} style={IN_COLUMN} />
+        <AgencyLegend
+          isMobile={isMobile}
+          agencyNames={data.agencyNames}
+          getAgencyLogo={data.getAgencyLogo}
+          getAgencyColor={data.getAgencyColor}
+          collapsible
+          isCollapsed={openLegend !== 'agensi'}
+          onToggle={() => toggleLegend('agensi')}
+          style={IN_COLUMN}
+        />
+        <MapLegendPanel
+          isMobile={isMobile}
+          categories={data.hotspotCategories}
+          isCollapsed={openLegend !== 'petunjuk'}
+          onToggle={() => toggleLegend('petunjuk')}
+          maxListHeight={isMobile ? 220 : 260}
+          style={IN_COLUMN}
+        />
       </View>
     </View>
   );
@@ -88,11 +101,5 @@ const styles = StyleSheet.create({
   },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   muted: { color: CMD.textMuted, fontSize: 13 },
-  chip: {
-    position: 'absolute', flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.92)', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6,
-    borderWidth: 1, borderColor: CMD.cardBorder, zIndex: 500,
-  },
-  dot: { width: 8, height: 8, borderRadius: 4 },
-  chipText: { color: CMD.text, fontSize: 11, fontWeight: '700' },
+  leftColumn: { position: 'absolute', top: 16, left: 16, zIndex: 10, gap: 8, alignItems: 'flex-start' },
 });
