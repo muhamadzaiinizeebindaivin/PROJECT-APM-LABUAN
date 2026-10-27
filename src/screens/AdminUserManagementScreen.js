@@ -30,7 +30,7 @@ export default function AdminUserManagementScreen() {
   const { totalVisits, loading: loadingVisitorStats } = useSiteVisitorStats();
 
   // ---- Kod akses (agensi & pemandu) ----
-  const [accessCodes, setAccessCodes] = useState({ agency_code: '', driver_code: '', operasi_code: '' });
+  const [accessCodes, setAccessCodes] = useState({ agency_code: '', driver_code: '', operasi_code: '', jawatankuasa_code: '' });
   const [loadingCodes, setLoadingCodes] = useState(true);
   const [revealCode, setRevealCode] = useState({ agency: false, driver: false });
   const [editingCode, setEditingCode] = useState(null); // 'agency' | 'driver' | null
@@ -40,12 +40,16 @@ export default function AdminUserManagementScreen() {
 
   const fetchAccessCodes = async () => {
     setLoadingCodes(true);
-    const { data, error } = await supabase.rpc('admin_get_access_codes');
+    const [{ data, error }, { data: jawatankuasaCode }] = await Promise.all([
+      supabase.rpc('admin_get_access_codes'),
+      supabase.rpc('admin_get_jawatankuasa_code'),
+    ]);
     if (!error && data?.[0]) {
       setAccessCodes({
         agency_code: data[0].agency_code || '',
         driver_code: data[0].driver_code || '',
         operasi_code: data[0].operasi_code || '',
+        jawatankuasa_code: jawatankuasaCode || '',
       });
     }
     setLoadingCodes(false);
@@ -53,7 +57,7 @@ export default function AdminUserManagementScreen() {
 
   useEffect(() => { fetchAccessCodes(); }, []);
 
-  const CODE_FIELD_BY_TYPE = { agency: 'agency_code', driver: 'driver_code', operasi: 'operasi_code' };
+  const CODE_FIELD_BY_TYPE = { agency: 'agency_code', driver: 'driver_code', operasi: 'operasi_code', jawatankuasa: 'jawatankuasa_code' };
   const startEditCode = (type) => {
     setEditingCode(type);
     setCodeDraft(accessCodes[CODE_FIELD_BY_TYPE[type]]);
@@ -71,7 +75,7 @@ export default function AdminUserManagementScreen() {
       return;
     }
     setSavingCode(true);
-    const RPC_BY_TYPE = { agency: 'admin_set_agency_code', driver: 'admin_set_driver_code', operasi: 'admin_set_operasi_code' };
+    const RPC_BY_TYPE = { agency: 'admin_set_agency_code', driver: 'admin_set_driver_code', operasi: 'admin_set_operasi_code', jawatankuasa: 'admin_set_jawatankuasa_code' };
     const { error } = await supabase.rpc(RPC_BY_TYPE[editingCode], { p_new_code: codeDraft.trim() });
     setSavingCode(false);
     if (error) {
@@ -280,6 +284,7 @@ export default function AdminUserManagementScreen() {
           { key: 'agency', label: 'Kod Akses Agensi', Icon: Building2, value: accessCodes.agency_code },
           { key: 'driver', label: 'Kod Akses Pemandu', Icon: Truck, value: accessCodes.driver_code },
           { key: 'operasi', label: 'Kod Akses Operasi', Icon: ShieldAlert, value: accessCodes.operasi_code },
+          { key: 'jawatankuasa', label: 'Kod Akses Jawatankuasa', Icon: Briefcase, value: accessCodes.jawatankuasa_code },
         ].map(({ key, label, Icon, value }) => (
           <View key={key} style={{ flex: isMobile ? undefined : 1, backgroundColor: PALETTE.surface, borderRadius: 14, padding: 16, borderWidth: 1, borderColor: PALETTE.cardLightBorder }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>

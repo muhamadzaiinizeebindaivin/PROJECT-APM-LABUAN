@@ -21,6 +21,7 @@ import DriverFlow from './src/navigation/DriverFlow';
 import GuestFlow from './src/navigation/GuestFlow';
 import AgencyFlow from './src/navigation/AgencyFlow';
 import OperasiFlow from './src/navigation/OperasiFlow';
+import JawatankuasaFlow from './src/navigation/JawatankuasaFlow';
 
 import SetPasswordScreen from './src/screens/SetPasswordScreen';
 import KemaskiniDataPage from './src/screens/angkatan/KemaskiniDataPage';
@@ -146,7 +147,13 @@ export default function App() {
         userRole === 'driver' ? <DriverFlow theme={theme} handleLogout={handleLogout} /> :
         userRole === 'operasi_lapor' ? <OperasiFlow theme={theme} handleLogout={handleLogout} /> :
         userRole === 'agency' ? <AgencyFlow theme={theme} handleLogout={handleLogout} /> :
-        <GuestFlow theme={theme} handleLogout={handleLogout} onLoginPress={() => setLoginModalVisible(true)} />}
+        userRole === 'jawatankuasa' ? <JawatankuasaFlow theme={theme} handleLogout={handleLogout} onBack={() => handleLogin('guest')} /> :
+        <GuestFlow
+          theme={theme}
+          handleLogout={handleLogout}
+          onLoginPress={() => setLoginModalVisible(true)}
+          onSekretariatPress={() => handleLogin('jawatankuasa')}
+        />}
       </NavigationContainer>
     </>
   );

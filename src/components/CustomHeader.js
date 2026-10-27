@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, Image, useWindowDimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ShieldCheck, LogOut, Menu } from 'lucide-react-native';
+import { ShieldCheck, LogOut, Menu, Briefcase } from 'lucide-react-native';
 import { FONTS } from '../styles/tacticalTheme';
 import { PALETTE } from '../constants/palette';
 import { customHeaderStyles as styles } from './customHeaderStyles';
@@ -21,7 +21,7 @@ function HeaderRoleBadge({ userRole }) {
   );
 }
 
-export default function CustomHeader({ title, theme, userRole, onLogout, onLoginPress, onMenuPress }) {
+export default function CustomHeader({ title, theme, userRole, onLogout, onLoginPress, onMenuPress, onSekretariatPress }) {
   const { width } = useWindowDimensions();
   const isNarrow = width < NARROW_BREAKPOINT;
 
@@ -57,12 +57,24 @@ export default function CustomHeader({ title, theme, userRole, onLogout, onLogin
 
       <View style={styles.actionsRow}>
         {userRole === 'guest' || !userRole ? (
-          <TouchableOpacity onPress={onLoginPress} style={styles.loginButton} activeOpacity={0.8}>
-            <ShieldCheck size={14} color={PALETTE.orange} />
-            <Text style={[styles.loginButtonText, { fontFamily: FONTS.bodyMedium }]}>
-              Log Masuk
-            </Text>
-          </TouchableOpacity>
+          <>
+            {onSekretariatPress && (
+              <TouchableOpacity onPress={onSekretariatPress} style={[styles.loginButton, { borderColor: PALETTE.blue }]} activeOpacity={0.8}>
+                <Briefcase size={14} color={PALETTE.blue} />
+                {!isNarrow && (
+                  <Text style={[styles.loginButtonText, { fontFamily: FONTS.bodyMedium, color: PALETTE.blue }]}>
+                    Sekretariat
+                  </Text>
+                )}
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity onPress={onLoginPress} style={styles.loginButton} activeOpacity={0.8}>
+              <ShieldCheck size={14} color={PALETTE.orange} />
+              <Text style={[styles.loginButtonText, { fontFamily: FONTS.bodyMedium }]}>
+                Log Masuk
+              </Text>
+            </TouchableOpacity>
+          </>
         ) : (
           <>
             <HeaderRoleBadge userRole={userRole} />
