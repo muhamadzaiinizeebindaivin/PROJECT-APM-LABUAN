@@ -13,6 +13,11 @@ import TrendMangsaChart from './TrendMangsaChart';
 import PpsStatusDonut from './PpsStatusDonut';
 import LaporanTerkini from './LaporanTerkini';
 import HotspotList from './HotspotList';
+import { PemantauanSideLeft, PemantauanSideRight, PemantauanTopBanner } from './PemantauanBanner';
+
+// À partir de cette largeur, la bannière Pemantauan occupe les espaces vides
+// à gauche et à droite ; en dessous, elle devient un bandeau en haut.
+const SIDE_RAILS_BREAKPOINT = 1500;
 
 // Deux colonnes sur grand écran, empilé sur mobile. Défini hors du composant
 // pour ne pas remonter (et réinitialiser) les blocs à chaque rendu.
@@ -29,20 +34,31 @@ export default function JawatankuasaDashboard() {
   const isWide = width >= 900;
   const data = useJawatankuasaData();
 
+  const hasPemantauan = data.pemantauanAktif.length > 0;
+  const showSideRails = hasPemantauan && width >= SIDE_RAILS_BREAKPOINT;
+  const showTopBanner = hasPemantauan && !showSideRails;
+
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <View style={styles.inner}>
-        <DashboardHeader />
-        <CommandMap data={data} />
-        <StatCards stats={data.stats} />
-        <Row isWide={isWide}>
-          <TrendMangsaChart availableYears={data.availableYears} monthlyTrend={data.monthlyTrend} />
-          <PpsStatusDonut ppsList={data.ppsList} />
-        </Row>
-        <Row isWide={isWide}>
-          <LaporanTerkini laporan={data.laporanTerkini} />
-          <HotspotList hotspotList={data.hotspotList} hotspotCategories={data.hotspotCategories} />
-        </Row>
+      <View style={styles.layout}>
+        {showSideRails && <PemantauanSideLeft reports={data.pemantauanAktif} />}
+
+        <View style={styles.inner}>
+          <DashboardHeader />
+          {showTopBanner && <PemantauanTopBanner reports={data.pemantauanAktif} />}
+          <CommandMap data={data} />
+          <StatCards stats={data.stats} />
+          <Row isWide={isWide}>
+            <TrendMangsaChart availableYears={data.availableYears} monthlyTrend={data.monthlyTrend} />
+            <PpsStatusDonut ppsList={data.ppsList} />
+          </Row>
+          <Row isWide={isWide}>
+            <LaporanTerkini laporan={data.laporanTerkini} />
+            <HotspotList hotspotList={data.hotspotList} hotspotCategories={data.hotspotCategories} />
+          </Row>
+        </View>
+
+        {showSideRails && <PemantauanSideRight reports={data.pemantauanAktif} />}
       </View>
     </ScrollView>
   );
@@ -51,7 +67,8 @@ export default function JawatankuasaDashboard() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: CMD.bg },
   content: { padding: 16, paddingBottom: 40 },
-  inner: { width: '100%', maxWidth: 1200, alignSelf: 'center', gap: 14 },
+  layout: { flexDirection: 'row', justifyContent: 'center', alignItems: 'flex-start', gap: 14 },
+  inner: { flex: 1, minWidth: 0, maxWidth: 1200, gap: 14 },
   row: { flexDirection: 'row', gap: 14, alignItems: 'stretch' },
   col: { flex: 1 },
   stack: { gap: 14 },

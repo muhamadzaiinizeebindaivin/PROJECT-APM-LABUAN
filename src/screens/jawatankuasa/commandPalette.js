@@ -17,7 +17,13 @@ export const CMD = {
   red: PALETTE.danger,
   yellow: PALETTE.yellow,
   grey: PALETTE.slateSoft,
+  greenSoft: PALETTE.successSoft,
+  redSoft: PALETTE.dangerSoft,
 };
+
+// Le statut PPS est un texte libre : "OK" ou la description du problème.
+// Tolère les espaces et la casse ("ok", " OK ").
+export const isPpsOk = (p) => (p?.status || '').trim().toUpperCase() === 'OK';
 
 // Un agent est considéré "en ligne" seulement si sa position a été mise à jour récemment
 // (un téléphone fermé sans arrêter le suivi reste sinon "Online" indéfiniment).

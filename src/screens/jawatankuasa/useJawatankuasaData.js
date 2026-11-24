@@ -10,7 +10,7 @@ import { useBencanaPoints } from '../../hooks/useBencanaPoints';
 import { usePemantauanPoints } from '../../hooks/usePemantauanPoints';
 import { useHotspotCategories } from '../../hooks/useHotspotCategories';
 import { useAgencyDirectory } from '../sekretariat/peta/useAgencyDirectory';
-import { ONLINE_FRESHNESS_MS } from './commandPalette';
+import { ONLINE_FRESHNESS_MS, isPpsOk } from './commandPalette';
 
 // pps_list et hotspots : chargement + mise à jour en temps réel
 function useLiveTable(table, columns, orderBy) {
@@ -42,7 +42,7 @@ export function useJawatankuasaData() {
   const { pemantauanPoints } = usePemantauanPoints();
   const { categories: hotspotCategories } = useHotspotCategories();
   const { agencyNames, getAgencyColor, getAgencyLogo } = useAgencyDirectory();
-  const ppsList = useLiveTable('pps_list', 'id, name, zone, status', 'name');
+  const ppsList = useLiveTable('pps_list', 'id, name, zone, capacity, status', 'name');
   const hotspotList = useLiveTable('hotspots', 'id, category, ref_no, river, area', null);
 
   // Recalcule la fraîcheur des positions chaque minute, même sans nouvelle donnée
@@ -69,7 +69,7 @@ export function useJawatankuasaData() {
       bencanaAktif: active.length,
       mangsa: active.reduce((s, b) => s + (Number(b.jumlah_mangsa) || 0), 0),
       keluarga: active.reduce((s, b) => s + (Number(b.jumlah_kir) || 0), 0),
-      ppsOk: ppsList.filter((p) => p.status === 'OK').length,
+      ppsOk: ppsList.filter(isPpsOk).length,
       ppsTotal: ppsList.length,
       kawasanTerjejas: kawasan.size,
       agensiDiLapangan: activeAgencies.length,
@@ -108,7 +108,15 @@ export function useJawatankuasaData() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   [bencanaPoints, hotspotCategories]);
 
+  // Rapports de pemantauan non clôturés, du plus récent au plus ancien (bannière)
+  const pemantauanAktif = useMemo(() => pemantauanPoints
+    .filter((p) => p.status !== 'resolved')
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at)),
+  [pemantauanPoints]);
+
   return {
+    // bannière pemantauan
+    pemantauanAktif,
     // carte
     activeAgencies, activePemantauan, bencanaPoints, pemantauanPoints,
     hotspotCategories, agencyNames, getAgencyColor, getAgencyLogo,
