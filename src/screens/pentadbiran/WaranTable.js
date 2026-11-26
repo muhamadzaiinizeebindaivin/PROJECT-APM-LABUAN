@@ -6,8 +6,8 @@ import { pentadbiranStyles as styles } from './pentadbiranStyles';
 import SectionHeader from './SectionHeader';
 import SectionSaveButton from './SectionSaveButton';
 
-const COLUMNS = ['kp9', 'kp5', 'kp2', 'n2', 'kp1', 'n1', 'h1', 'jumlah'];
-const COLUMN_HEADERS = ['KP9', 'KP5', 'KP2', 'N2', 'KP1', 'N1', 'H1', 'JUMLAH'];
+const COLUMNS = ['kp9', 'kp5', 'kp2', 'n2', 'w2', 'kp1', 'n1', 'h1', 'jumlah'];
+const COLUMN_HEADERS = ['KP9', 'KP5', 'KP2', 'N2', 'W2', 'KP1', 'N1', 'H1', 'JUMLAH'];
 
 export default function WaranTable({ pageData, isEditing, updateArrayField, onSave, onNotify }) {
   const { width: screenWidth } = useWindowDimensions();
@@ -82,12 +82,12 @@ export default function WaranTable({ pageData, isEditing, updateArrayField, onSa
                   <TextInput
                     key={key}
                     style={[styles.tableCell, styles.tableInput, columnStyle, key === 'jumlah' ? styles.boldCell : null]}
-                    value={row[key]}
+                    value={row[key] ?? ''}
                     onChangeText={(text) => updateArrayField('waran', index, key, text)}
                     keyboardType="numeric"
                   />
                 ) : (
-                  <Text key={key} style={[styles.tableCell, columnStyle, key === 'jumlah' ? styles.boldCell : null]}>{row[key]}</Text>
+                  <Text key={key} style={[styles.tableCell, columnStyle, key === 'jumlah' ? styles.boldCell : null]}>{row[key] ?? '-'}</Text>
                 )
               ))}
             </View>
