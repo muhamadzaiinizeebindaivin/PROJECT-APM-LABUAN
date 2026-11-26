@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, Animated, PanResponder, ScrollView, Modal, TextInput, useWindowDimensions } from 'react-native';
-import { Wallet, Pencil, Trash2, FolderOpen, AlertTriangle, Check, Plus, X, TrendingUp } from 'lucide-react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, Animated, PanResponder, ScrollView, Modal, TextInput, StyleSheet, useWindowDimensions } from 'react-native';
+import { Wallet, Pencil, Trash2, FolderOpen, AlertTriangle, Check, Plus, X, TrendingUp, Link2 } from 'lucide-react-native';
 import { PALETTE } from '../../constants/palette';
 import { formatCurrency, parseCurrency } from '../../utils/currency';
 import { kewanganStyles as styles } from './kewanganStyles';
@@ -15,6 +15,18 @@ const PX_PER_SECOND = 35;
 const SCROLLBAR_TRACK_WIDTH = 160;
 const MIN_THUMB_WIDTH = 28;
 const ITEMS_PER_PAGE = 5;
+
+// Lignes liées entre pages (colonne `sumber`) :
+//   - côté Kewangan : montant venant d'une autre page (linkedFrom) ou total auto (isJumlah) → verrouillé
+//   - côté Angkatan/Operasi : ligne source affichée dans Kewangan → modifiable mais pas supprimable
+const isLockedItem = (item) => !!(item.linkedFrom || item.isJumlah);
+const isSharedItem = (item) => !!item.sumber && !isLockedItem(item);
+const linkBadgeText = (item) => {
+  if (item.isJumlah) return 'Jumlah · Auto';
+  if (item.linkedFrom) return `Auto · ${item.linkedFrom}`;
+  if (item.sumber) return 'Dipaparkan di Kewangan';
+  return null;
+};
 
 export default function BudgetSection({ budgetData, loading, isEditMode, saveBudgetItem, deleteBudgetItem, deleteCategory, renameCategory, onNotify, renderKpiOverride, children }) {
   const { width: screenWidth } = useWindowDimensions();
@@ -84,8 +96,9 @@ export default function BudgetSection({ budgetData, loading, isEditMode, saveBud
   const openManage = (kat) => {
     setManageTarget(kat);
     setManageNameDraft(kat);
-    setManageRows((grouped[kat] || []).map((item) => ({
-      id: item.id, perihal: item.perihal, agihan: String(item.agihan), belanja: String(item.belanja),
+    // Les lignes verrouillées (montant automatique) ne sont pas modifiables ici
+    setManageRows((grouped[kat] || []).filter((item) => !isLockedItem(item)).map((item) => ({
+      id: item.id, perihal: item.perihal, agihan: String(item.agihan), belanja: String(item.belanja), sumber: item.sumber || null,
     })));
     setManageError(null);
   };
@@ -158,8 +171,10 @@ export default function BudgetSection({ budgetData, loading, isEditMode, saveBud
     }
   };
 
-  const totalAgihan = budgetData.reduce((sum, item) => sum + parseCurrency(item.agihan), 0);
-  const totalBelanja = budgetData.reduce((sum, item) => sum + parseCurrency(item.belanja), 0);
+  // La ligne "Jumlah" contient déjà les autres lignes : exclue des totaux (sinon comptée deux fois)
+  const countedItems = budgetData.filter((item) => !item.isJumlah);
+  const totalAgihan = countedItems.reduce((sum, item) => sum + parseCurrency(item.agihan), 0);
+  const totalBelanja = countedItems.reduce((sum, item) => sum + parseCurrency(item.belanja), 0);
   const baki = totalAgihan - totalBelanja;
 
   const grouped = budgetData.reduce((acc, item) => {
@@ -170,9 +185,11 @@ export default function BudgetSection({ budgetData, loading, isEditMode, saveBud
   // Pas de tri alphabétique : garde l'ordre d'apparition (budgetData est déjà trié par id croissant),
   // pour qu'une nouvelle catégorie s'ajoute toujours à la fin sans jamais réarranger les pills existantes
   const existingCategories = Object.keys(grouped);
+  // Une catégorie contenant une ligne liée ne peut pas être supprimée (le lien serait perdu)
+  const linkedCategories = new Set(budgetData.filter((item) => item.sumber).map((item) => item.kategori));
 
   const categoryTotals = existingCategories.reduce((acc, cat) => {
-    const items = grouped[cat];
+    const items = grouped[cat].filter((i) => !i.isJumlah);
     const agihan = items.reduce((s, i) => s + parseCurrency(i.agihan), 0);
     const belanja = items.reduce((s, i) => s + parseCurrency(i.belanja), 0);
     acc[cat] = { agihan, belanja, baki: agihan - belanja };
@@ -346,7 +363,7 @@ export default function BudgetSection({ budgetData, loading, isEditMode, saveBud
     <>
       {!loading && (
         <View style={[styles.card, { position: 'relative' }]}>
-          {false && isEditMode && (
+          {isEditMode && (
             <TouchableOpacity style={styles.categoryAddBtnFloating} onPress={openAdd}>
               <Text style={styles.addBtnText}>+ Tambah</Text>
             </TouchableOpacity>
@@ -378,7 +395,13 @@ export default function BudgetSection({ budgetData, loading, isEditMode, saveBud
 
           {loading && <ActivityIndicator size="large" color={PALETTE.orange} style={{ marginVertical: 20 }} />}
 
-          {!loading && (existingCategories.length === 0 ? null : (
+          {!loading && (existingCategories.length === 0 ? (
+            isEditMode ? (
+              <Text style={{ fontSize: 13, color: PALETTE.textMutedDark, textAlign: 'center', marginVertical: 16 }}>
+                Tiada kategori perbelanjaan. Tekan "+ Tambah" untuk menambah.
+              </Text>
+            ) : null
+          ) : (
           <>
           <View
             style={styles.categoryCarouselViewport}
@@ -416,12 +439,14 @@ export default function BudgetSection({ budgetData, loading, isEditMode, saveBud
                         >
                           <Pencil size={13} color={PALETTE.orange} />
                         </TouchableOpacity>
-                        <TouchableOpacity
-                          style={styles.categoryDeleteBtn}
-                          onPress={() => setConfirmDeleteCategory(kat)}
-                        >
-                          <Trash2 size={13} color={PALETTE.orange} />
-                        </TouchableOpacity>
+                        {!linkedCategories.has(kat) && (
+                          <TouchableOpacity
+                            style={styles.categoryDeleteBtn}
+                            onPress={() => setConfirmDeleteCategory(kat)}
+                          >
+                            <Trash2 size={13} color={PALETTE.orange} />
+                          </TouchableOpacity>
+                        )}
                       </>
                     )}
                     <Text style={[styles.categoryCardText, selected && styles.categoryCardTextSelected]}>{kat}</Text>
@@ -462,18 +487,29 @@ export default function BudgetSection({ budgetData, loading, isEditMode, saveBud
                 const agihan = parseCurrency(item.agihan);
                 const belanja = parseCurrency(item.belanja);
                 const itemBaki = agihan - belanja;
+                const badgeText = linkBadgeText(item);
                 return (
                   <View key={item.id || index} style={styles.budgetItemRow}>
                     <View style={styles.budgetMainInfo}>
-                      <Text style={styles.budgetPerihal}>{item.perihal}</Text>
-                      {isEditMode && (
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.budgetPerihal}>{item.perihal}</Text>
+                        {!!badgeText && (
+                          <View style={[linkStyles.badge, item.isJumlah && linkStyles.badgeJumlah]}>
+                            <Link2 size={10} color={item.isJumlah ? PALETTE.blue : PALETTE.orange} />
+                            <Text style={[linkStyles.badgeText, item.isJumlah && { color: PALETTE.blue }]}>{badgeText}</Text>
+                          </View>
+                        )}
+                      </View>
+                      {isEditMode && !isLockedItem(item) && (
                         <View style={styles.budgetActionGroup}>
                           <TouchableOpacity style={[styles.budgetActionBtn, { backgroundColor: 'rgba(249, 115, 22, 0.12)' }]} onPress={() => openEditSingle(item)}>
                             <Pencil size={13} color={PALETTE.orange} />
                           </TouchableOpacity>
-                          <TouchableOpacity style={[styles.budgetActionBtn, { backgroundColor: 'rgba(220, 38, 38, 0.10)' }]} onPress={() => setConfirmDeleteItem(item)}>
-                            <Trash2 size={13} color="#dc2626" />
-                          </TouchableOpacity>
+                          {!isSharedItem(item) && (
+                            <TouchableOpacity style={[styles.budgetActionBtn, { backgroundColor: 'rgba(220, 38, 38, 0.10)' }]} onPress={() => setConfirmDeleteItem(item)}>
+                              <Trash2 size={13} color="#dc2626" />
+                            </TouchableOpacity>
+                          )}
                         </View>
                       )}
                     </View>
@@ -491,6 +527,18 @@ export default function BudgetSection({ budgetData, loading, isEditMode, saveBud
                         <Text style={[styles.budgetStatValue, { color: '#16a34a' }]}>{formatCurrency(itemBaki)}</Text>
                       </View>
                     </View>
+                    {item.breakdown?.length > 0 && (
+                      <View style={linkStyles.breakdown}>
+                        {item.breakdown.map((part) => (
+                          <View key={part.label} style={linkStyles.breakdownRow}>
+                            <Text style={linkStyles.breakdownLabel}>└ {part.label}</Text>
+                            <Text style={linkStyles.breakdownValue}>{formatCurrency(part.agihan)}</Text>
+                            <Text style={[linkStyles.breakdownValue, { color: part.belanja > 0 ? PALETTE.orange : PALETTE.textMutedDark }]}>{formatCurrency(part.belanja)}</Text>
+                            <Text style={[linkStyles.breakdownValue, { color: '#16a34a' }]}>{formatCurrency(part.agihan - part.belanja)}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    )}
                   </View>
                 );
               })}
@@ -614,9 +662,11 @@ export default function BudgetSection({ budgetData, loading, isEditMode, saveBud
                 <View key={row.id ?? `new-${index}`} style={styles.multiRowBlock}>
                   <View style={styles.multiRowHeader}>
                     <Text style={styles.multiRowIndex}>Perkara {index + 1}</Text>
-                    <TouchableOpacity style={styles.multiRowDeleteBtn} onPress={() => requestDeleteManageRow(index)}>
-                      <Trash2 size={13} color="#dc2626" />
-                    </TouchableOpacity>
+                    {!row.sumber && (
+                      <TouchableOpacity style={styles.multiRowDeleteBtn} onPress={() => requestDeleteManageRow(index)}>
+                        <Trash2 size={13} color="#dc2626" />
+                      </TouchableOpacity>
+                    )}
                   </View>
 
                   <TextInput
@@ -791,3 +841,16 @@ export default function BudgetSection({ budgetData, loading, isEditMode, saveBud
     </>
   );
 }
+
+const linkStyles = StyleSheet.create({
+  badge: {
+    flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', marginTop: 4,
+    paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10, backgroundColor: PALETTE.orangeSoft,
+  },
+  badgeJumlah: { backgroundColor: PALETTE.blueSoft },
+  badgeText: { fontSize: 10, fontWeight: '800', color: PALETTE.orange },
+  breakdown: { marginTop: 6, paddingHorizontal: 10, gap: 4 },
+  breakdownRow: { flexDirection: 'row', alignItems: 'center' },
+  breakdownLabel: { flex: 1.2, fontSize: 11, color: PALETTE.textMutedDark },
+  breakdownValue: { flex: 1, fontSize: 11, fontWeight: '600', color: PALETTE.textDark, textAlign: 'center' },
+});
